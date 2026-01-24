@@ -217,4 +217,71 @@ public class ReplServiceTests
 
         commandCount.Should().Be(1);
     }
+
+    [Fact]
+    public async Task RunAsync_WithSessionState_InitializesSession()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+        var input = new MockConsoleInput("exit");
+        var authService = new MockAuthService(true, "testuser", "env var");
+        var sessionService = new SessionStateService(authService);
+        var repl = new ReplService(input, output, sessionService);
+
+        await repl.RunAsync(async args => 0);
+
+        repl.SessionState.Should().NotBeNull();
+        repl.SessionState!.IsAuthenticated.Should().BeTrue();
+        repl.SessionState.Username.Should().Be("testuser");
+    }
+
+    [Fact]
+    public async Task RunAsync_WithSessionState_RecordsCommands()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+        var input = new MockConsoleInput("version", "help", "exit");
+        var authService = new MockAuthService();
+        var sessionService = new SessionStateService(authService);
+        var repl = new ReplService(input, output, sessionService);
+
+        await repl.RunAsync(async args => 0);
+
+        repl.SessionState.Should().NotBeNull();
+        repl.SessionState!.CommandCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithoutSessionState_WorksNormally()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+        var input = new MockConsoleInput("version", "exit");
+        var repl = new ReplService(input, output);
+
+        await repl.RunAsync(async args => 0);
+
+        repl.SessionState.Should().BeNull();
+        console.Output.Should().Contain("Goodbye!");
+    }
+
+    [Fact]
+    public async Task SessionState_ReturnsCurrentState()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+        var input = new MockConsoleInput("exit");
+        var authService = new MockAuthService();
+        var sessionService = new SessionStateService(authService);
+        var repl = new ReplService(input, output, sessionService);
+
+        // Before running
+        repl.SessionState.Should().NotBeNull();
+        var sessionIdBefore = repl.SessionState!.SessionId;
+
+        await repl.RunAsync(async args => 0);
+
+        // After running - should have new session
+        repl.SessionState!.SessionId.Should().NotBe(sessionIdBefore);
+    }
 }

@@ -7,6 +7,7 @@ public class ReplService
 {
     private readonly IConsoleInput _input;
     private readonly ConsoleOutput _output;
+    private readonly ISessionStateService? _sessionStateService;
     private readonly string _prompt;
 
     /// <summary>
@@ -19,11 +20,22 @@ public class ReplService
     };
 
     public ReplService(IConsoleInput input, ConsoleOutput output, string prompt = "lopen> ")
+        : this(input, output, null, prompt)
+    {
+    }
+
+    public ReplService(IConsoleInput input, ConsoleOutput output, ISessionStateService? sessionStateService, string prompt = "lopen> ")
     {
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _output = output ?? throw new ArgumentNullException(nameof(output));
+        _sessionStateService = sessionStateService;
         _prompt = prompt;
     }
+
+    /// <summary>
+    /// Gets the current session state, if available.
+    /// </summary>
+    public SessionState? SessionState => _sessionStateService?.CurrentState;
 
     /// <summary>
     /// Runs the REPL loop.
@@ -35,6 +47,12 @@ public class ReplService
         Func<string[], Task<int>> commandExecutor,
         CancellationToken cancellationToken = default)
     {
+        // Initialize session state if available
+        if (_sessionStateService is not null)
+        {
+            await _sessionStateService.InitializeAsync();
+        }
+
         // Combine external cancellation with Ctrl+C
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken, _input.CancellationToken);
@@ -76,6 +94,9 @@ public class ReplService
             {
                 break;
             }
+
+            // Record command in session state
+            _sessionStateService?.RecordCommand(trimmed);
 
             // Parse and execute command
             var args = ParseArgs(trimmed);

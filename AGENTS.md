@@ -60,9 +60,9 @@ dotnet run --project src/Lopen.Cli
 
 ## Project Status
 
-- **State**: Phase 2 REPL in progress (JTBD-001 through JTBD-007 complete)
-- **Tests**: 59 tests passing (40 Core, 19 CLI)
-- **Next**: JTBD-008 - Session State Management
+- **State**: Phase 2 REPL complete (JTBD-001 through JTBD-008 complete)
+- **Tests**: 80 tests passing (61 Core, 19 CLI)
+- **Next**: JTBD-009 - Command History
 
 ## Key Dependencies
 
