@@ -12,7 +12,7 @@ public class AuthCommandTests
         var output = RunCli(["auth", "status"]);
 
         output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("Authenticated: No");
+        output.StandardOutput.Should().Contain("Not authenticated");
     }
 
     [Fact]

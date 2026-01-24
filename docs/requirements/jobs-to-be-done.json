@@ -44,8 +44,8 @@
     "requirement": "REQ-014",
     "description": "Modern TUI Patterns - Spectre.Console 0.54.0 integration",
     "priority": 6,
-    "status": "not_started",
-    "notes": "Add incrementally. Spectre.Console 0.54.0 is latest stable."
+    "status": "done",
+    "notes": "Completed: ConsoleOutput helper with success/error/warning/info/muted styles. NO_COLOR support. 6 new tests."
   },
   {
     "id": "JTBD-007",

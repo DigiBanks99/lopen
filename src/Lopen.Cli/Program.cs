@@ -8,6 +8,7 @@ var versionService = new VersionService(typeof(Program).Assembly);
 var helpService = new HelpService();
 var credentialStore = new FileCredentialStore();
 var authService = new AuthService(credentialStore);
+var output = new ConsoleOutput();
 
 // Format option for structured output (reusable)
 var formatOption = new Option<string>("--format")
@@ -69,23 +70,23 @@ loginCommand.SetAction(async parseResult =>
     if (!string.IsNullOrEmpty(token))
     {
         await authService.StoreTokenAsync(token);
-        Console.WriteLine("Token stored successfully.");
+        output.Success("Token stored successfully.");
         return 0;
     }
 
     var status = await authService.GetStatusAsync();
     if (status.IsAuthenticated)
     {
-        Console.WriteLine($"Already authenticated via {status.Source}");
+        output.Info($"Already authenticated via {status.Source}");
         return 0;
     }
 
-    Console.WriteLine("To authenticate, provide a token:");
-    Console.WriteLine("  lopen auth login --token <your-token>");
-    Console.WriteLine();
-    Console.WriteLine("Or set the GITHUB_TOKEN environment variable.");
-    Console.WriteLine("Get a token from: https://github.com/settings/tokens");
-    Console.WriteLine("Required scopes: copilot, read:user");
+    output.Info("To authenticate, provide a token:");
+    output.WriteLine("  lopen auth login --token <your-token>");
+    output.WriteLine();
+    output.Muted("Or set the GITHUB_TOKEN environment variable.");
+    output.Muted("Get a token from: https://github.com/settings/tokens");
+    output.Muted("Required scopes: copilot, read:user");
     return 0;
 });
 authCommand.Subcommands.Add(loginCommand);
@@ -97,13 +98,13 @@ statusCommand.SetAction(async parseResult =>
     var status = await authService.GetStatusAsync();
     if (status.IsAuthenticated)
     {
-        Console.WriteLine($"Authenticated: Yes");
-        Console.WriteLine($"Source: {status.Source}");
+        output.Success("Authenticated");
+        output.KeyValue("Source", status.Source ?? "unknown");
     }
     else
     {
-        Console.WriteLine("Authenticated: No");
-        Console.WriteLine("Run 'lopen auth login' to authenticate.");
+        output.Warning("Not authenticated");
+        output.Muted("Run 'lopen auth login' to authenticate.");
     }
     return 0;
 });
@@ -114,7 +115,7 @@ var logoutCommand = new Command("logout", "Clear stored credentials");
 logoutCommand.SetAction(async parseResult =>
 {
     await authService.ClearAsync();
-    Console.WriteLine("Credentials cleared.");
+    output.Success("Credentials cleared.");
     return 0;
 });
 authCommand.Subcommands.Add(logoutCommand);

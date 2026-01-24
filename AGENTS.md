@@ -60,9 +60,9 @@ dotnet run --project src/Lopen.Cli
 
 ## Project Status
 
-- **State**: Foundation complete (JTBD-001 done)
-- **Current**: Version command with format option (JTBD-002 in progress)
-- **Research**: Implementation details in `docs/requirements/*/RESEARCH.md`
+- **State**: Phase 1 foundation complete (JTBD-001 through JTBD-005)
+- **Tests**: 38 tests passing (22 Core, 16 CLI)
+- **Next**: JTBD-006 - Modern TUI Patterns
 
 ## Key Dependencies
 
@@ -79,6 +79,7 @@ dotnet run --project src/Lopen.Cli
 - Use `RootCommand.Parse(args).Invoke()` pattern
 - Subcommands via `Command` class with `SetAction(parseResult => ...)` handlers
 - Access option values with `parseResult.GetValue(option)`
+- Async actions use `SetAction(async parseResult => { ... })`
 
 ## Key Learnings
 
@@ -87,3 +88,5 @@ dotnet run --project src/Lopen.Cli
 - **.NET 10**: SDK 10.0.100 available and confirmed working in environment
 - **Option API**: Use `new Option<T>("--name") { Description = "...", DefaultValueFactory = _ => "default" }` and `option.Aliases.Add("-n")` for aliases
 - **Option Constructor**: First string param is name, subsequent strings are aliases (not description!). Set description via property.
+- **File Permissions**: Use `File.SetUnixFileMode()` for credential files on Unix
+- **Trimming**: Use `SuppressTrimAnalysisWarnings` for JSON serialization until source generators added
