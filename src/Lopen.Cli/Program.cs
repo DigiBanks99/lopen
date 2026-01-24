@@ -191,6 +191,120 @@ helpCommand.SetAction(parseResult =>
 });
 rootCommand.Subcommands.Add(helpCommand);
 
+// Chat command
+var chatCommand = new Command("chat", "Start AI chat session");
+
+var modelOption = new Option<string>("--model")
+{
+    Description = "AI model to use",
+    DefaultValueFactory = _ => "gpt-5"
+};
+modelOption.Aliases.Add("-m");
+
+var streamingOption = new Option<bool>("--streaming")
+{
+    Description = "Enable streaming output (default: true)",
+    DefaultValueFactory = _ => true
+};
+streamingOption.Aliases.Add("-s");
+
+var promptArg = new Argument<string?>("prompt")
+{
+    Description = "Single query (omit for interactive mode)",
+    DefaultValueFactory = _ => null
+};
+
+chatCommand.Options.Add(modelOption);
+chatCommand.Options.Add(streamingOption);
+chatCommand.Arguments.Add(promptArg);
+
+chatCommand.SetAction(async parseResult =>
+{
+    var model = parseResult.GetValue(modelOption);
+    var streaming = parseResult.GetValue(streamingOption);
+    var prompt = parseResult.GetValue(promptArg);
+
+    // Create Copilot service
+    await using var copilotService = new CopilotService();
+
+    // Check authentication
+    try
+    {
+        var authStatus = await copilotService.GetAuthStatusAsync();
+        if (!authStatus.IsAuthenticated)
+        {
+            output.Error("Not authenticated. Run 'copilot auth login' first.");
+            return ExitCodes.AuthenticationError;
+        }
+    }
+    catch (Exception ex) when (ex is FileNotFoundException or InvalidOperationException)
+    {
+        output.Error($"Copilot CLI not available: {ex.Message}");
+        output.Muted("Install Copilot CLI: https://docs.github.com/en/copilot");
+        return ExitCodes.CopilotError;
+    }
+
+    // Create session with model selection
+    await using var session = await copilotService.CreateSessionAsync(new CopilotSessionOptions
+    {
+        Model = model!,
+        Streaming = streaming
+    });
+
+    // Single query mode
+    if (!string.IsNullOrEmpty(prompt))
+    {
+        await foreach (var chunk in session.StreamAsync(prompt))
+        {
+            Console.Write(chunk);
+        }
+        Console.WriteLine();
+        return ExitCodes.Success;
+    }
+
+    // Interactive mode
+    output.Info($"Chat session started (model: {model}). Type 'exit' or 'quit' to end.");
+
+    using var cts = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) =>
+    {
+        e.Cancel = true;
+        cts.Cancel();
+    };
+
+    while (!cts.IsCancellationRequested)
+    {
+        output.Write("You: ");
+        var input = Console.ReadLine();
+
+        if (input is null or "exit" or "quit")
+            break;
+
+        if (string.IsNullOrWhiteSpace(input))
+            continue;
+
+        output.Write("AI: ");
+        try
+        {
+            await foreach (var chunk in session.StreamAsync(input, cts.Token))
+            {
+                Console.Write(chunk);
+            }
+            Console.WriteLine();
+        }
+        catch (OperationCanceledException)
+        {
+            await session.AbortAsync();
+            Console.WriteLine("\n[Aborted]");
+            break;
+        }
+    }
+
+    output.Info("Goodbye!");
+    return ExitCodes.Success;
+});
+rootCommand.Subcommands.Add(chatCommand);
+
 // REPL command
 var replCommand = new Command("repl", "Start interactive REPL mode");
 replCommand.SetAction(async parseResult =>
@@ -202,6 +316,8 @@ replCommand.SetAction(async parseResult =>
     autoCompleter.RegisterCommand("auth", "Authentication commands", 
         subcommands: ["login", "logout", "status"], 
         options: ["--token"]);
+    autoCompleter.RegisterCommand("chat", "Start AI chat session",
+        options: ["--model", "-m", "--streaming", "-s"]);
     autoCompleter.RegisterCommand("repl", "Start interactive REPL mode");
     autoCompleter.RegisterCommand("exit", "Exit the REPL");
     autoCompleter.RegisterCommand("quit", "Exit the REPL");

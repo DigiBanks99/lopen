@@ -7,7 +7,7 @@
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
 | REQ-020 | Copilot SDK Integration | Critical | 🟢 Complete |
-| REQ-021 | Chat Command | High | 🔴 Not Started |
+| REQ-021 | Chat Command | High | 🟢 Complete |
 | REQ-022 | Streaming Responses | High | 🔴 Not Started |
 | REQ-023 | Custom Tools | Medium | 🔴 Not Started |
 | REQ-024 | Session Persistence | Medium | 🔴 Not Started |
@@ -72,11 +72,11 @@ lopen chat --streaming         # Enable streaming (default)
 
 ### Acceptance Criteria
 
-- [ ] `lopen chat` starts interactive chat session
-- [ ] Single query mode with inline prompt argument
-- [ ] Model selection via `--model` option
-- [ ] Streaming enabled by default
-- [ ] Graceful exit with `exit`, `quit`, or Ctrl+C
+- [x] `lopen chat` starts interactive chat session
+- [x] Single query mode with inline prompt argument
+- [x] Model selection via `--model` option
+- [x] Streaming enabled by default
+- [x] Graceful exit with `exit`, `quit`, or Ctrl+C
 
 ### Test Cases
 

@@ -108,8 +108,8 @@
     "requirement": "REQ-021",
     "description": "Chat Command - lopen chat with single-query and interactive modes",
     "priority": 14,
-    "status": "not-started",
-    "notes": "Depends on JTBD-013. Support --model option, integrate with ConsoleOutput for streaming display."
+    "status": "done",
+    "notes": "Completed: lopen chat with --model, --streaming options. Single-query and interactive modes. Ctrl+C handling with abort. 6 new tests (178 total)."
   },
   {
     "id": "JTBD-015",

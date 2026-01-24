@@ -1,7 +1,7 @@
 # Implementation Plan
 
 > Status: **Phase 3 - Copilot Integration**
-> Next: JTBD-014 (REQ-021 Chat Command)
+> Next: JTBD-015 (REQ-022 Streaming Responses)
 > Last updated: 2026-01-24
 
 ## Completed
@@ -12,57 +12,45 @@
 | Phase 2 - REPL | JTBD-007 to JTBD-010 | ✅ Complete |
 | Platform NFRs | JTBD-011, JTBD-012 | ✅ Complete |
 | Copilot SDK | JTBD-013 | ✅ Complete |
+| Chat Command | JTBD-014 | ✅ Complete |
 
-**Tests: 172 passing**
-
----
-
-## Completed: JTBD-013 - Copilot SDK Integration (REQ-020)
-
-GitHub.Copilot.SDK v0.1.17 integrated with:
-- `ICopilotService` / `ICopilotSession` interfaces
-- `CopilotService` / `CopilotSession` SDK wrappers
-- `MockCopilotService` / `MockCopilotSession` for testing
-- 24 unit tests covering all service/session operations
-
-Files created:
-- `src/Lopen.Core/ICopilotService.cs`
-- `src/Lopen.Core/ICopilotSession.cs`
-- `src/Lopen.Core/CopilotService.cs`
-- `src/Lopen.Core/CopilotSession.cs`
-- `src/Lopen.Core/CopilotModels.cs`
-- `src/Lopen.Core/MockCopilotService.cs`
-- `src/Lopen.Core/MockCopilotSession.cs`
-- `tests/Lopen.Core.Tests/CopilotServiceTests.cs`
-- `tests/Lopen.Core.Tests/CopilotSessionTests.cs`
+**Tests: 178 passing**
 
 ---
 
-## Next: JTBD-014 - Chat Command (REQ-021)
+## Completed: JTBD-014 - Chat Command (REQ-021)
+
+`lopen chat` command implemented with:
+- Single query mode: `lopen chat "Hello"`
+- Interactive mode: `lopen chat`
+- Model selection: `--model gpt-5` / `-m`
+- Streaming toggle: `--streaming` / `-s`
+- Graceful Ctrl+C handling with abort
+- 6 unit tests for command parsing
+
+Files modified:
+- `src/Lopen.Cli/Program.cs` - Added chat command
+- `tests/Lopen.Cli.Tests/ChatCommandTests.cs` - 6 tests
+
+---
+
+## Next: JTBD-015 - Streaming Responses (REQ-022)
 
 ### Overview
-Add `lopen chat` command for AI-powered conversations.
-
-### Command Signature
-```bash
-lopen chat                     # Start interactive chat
-lopen chat "query"             # Single query mode
-lopen chat --model gpt-4.1     # Specify model
-```
+Enhance streaming response display in chat command.
 
 ### Implementation Steps
-1. Create `ChatCommand` in Lopen.Cli
-2. Add `--model` option with model selection
-3. Support inline prompt argument for single-query mode
-4. Integrate with `ICopilotService` for session management
-5. Display streaming responses via `ConsoleOutput`
+1. Subscribe to `AssistantMessageDeltaEvent` events
+2. Write delta content immediately to console
+3. Handle `SessionIdleEvent` to finalize response
+4. Respect `NO_COLOR` for output styling
+5. Support cancellation via Ctrl+C
 
 ### Success Criteria
-- [ ] `lopen chat "Hello"` returns AI response
-- [ ] `lopen chat --model gpt-4.1` uses specified model
-- [ ] Interactive mode with exit/quit commands
-- [ ] Ctrl+C gracefully aborts in-flight requests
-- [ ] Unit tests for command parsing
+- [ ] Streaming chunks display in real-time
+- [ ] `NO_COLOR` environment variable respected
+- [ ] Graceful handling of SessionErrorEvent
+- [ ] Unit tests for streaming behavior
 
 ---
 
@@ -70,7 +58,6 @@ lopen chat --model gpt-4.1     # Specify model
 
 | ID | Requirement | Description |
 |----|-------------|-------------|
-| JTBD-014 | REQ-021 | Chat Command (`lopen chat`) |
 | JTBD-015 | REQ-022 | Streaming Responses display |
 | JTBD-016 | REQ-023 | Custom Tools (AIFunctionFactory) |
 | JTBD-017 | REQ-024 | Session Persistence |
