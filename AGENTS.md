@@ -60,9 +60,9 @@ dotnet run --project src/Lopen.Cli
 
 ## Project Status
 
-- **State**: All core JTBDs complete (JTBD-001 through JTBD-012)
-- **Tests**: 142 tests passing (123 Core, 19 CLI)
-- **Next**: Copilot SDK integration (pending SDK availability)
+- **State**: Phase 3 - Copilot Integration (JTBD-014 next)
+- **Tests**: 172 tests passing
+- **Next**: Implement `lopen chat` command (REQ-021)
 
 ## Key Dependencies
 
@@ -70,6 +70,7 @@ dotnet run --project src/Lopen.Cli
 |---------|---------|---------|
 | System.CommandLine | 2.0.2 (GA) | CLI parsing, subcommands, help/version |
 | Spectre.Console | 0.54.0 | TUI output, colors, progress |
+| GitHub.Copilot.SDK | 0.1.17 | Copilot CLI integration |
 | FluentAssertions | 8.8.0 | Test assertions |
 | coverlet.collector | latest | Code coverage |
 
@@ -83,7 +84,12 @@ dotnet run --project src/Lopen.Cli
 
 ## Key Learnings
 
-- **No Copilot SDK**: No official `GitHub.Copilot.SDK` NuGet package exists; use GitHub OAuth2 device flow directly
+- **Copilot SDK Available**: `GitHub.Copilot.SDK` v0.1.17 on NuGet; wraps Copilot CLI via JSON-RPC, auth via `gh auth`
+- **Copilot CLI Required**: SDK spawns `copilot` CLI process; must be in PATH. Installed: v0.0.394
+- **SDK Patterns**: `CopilotClient` → `CopilotSession` → events (`AssistantMessageDeltaEvent` for streaming)
+- **SDK Error Handling**: Uses standard .NET exceptions (FileNotFoundException, InvalidOperationException, TimeoutException)
+- **SDK API Details**: `ListModelsAsync()` returns `List<ModelInfo>`, `AssistantMessageData.Content` (not Message), param is `cancellationToken`
+- **Streaming**: Subscribe with `session.On(evt => ...)`, yield deltas via `Channel<string>` for `IAsyncEnumerable`
 - **System.CommandLine 2.0**: Now GA (not beta); API uses `SetAction()` with `ParseResult` parameter
 - **.NET 10**: SDK 10.0.100 available and confirmed working in environment
 - **Option API**: Use `new Option<T>("--name") { Description = "...", DefaultValueFactory = _ => "default" }` and `option.Aliases.Add("-n")` for aliases

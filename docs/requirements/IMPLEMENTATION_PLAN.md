@@ -1,48 +1,83 @@
 # Implementation Plan
 
-> Status: **All core JTBDs complete** (JTBD-001 through JTBD-012)
+> Status: **Phase 3 - Copilot Integration**
+> Next: JTBD-014 (REQ-021 Chat Command)
 > Last updated: 2026-01-24
 
 ## Completed
 
-### Phase 1 - Foundation ✅
-- JTBD-001: .NET 10 Solution
-- JTBD-002: Version Command (REQ-001)
-- JTBD-003: Help Command (REQ-002)
-- JTBD-004: Cross-Platform Build (NFR-002)
-- JTBD-005: Authentication (REQ-003)
-- JTBD-006: TUI Patterns (REQ-014)
+| Phase | JTBDs | Status |
+|-------|-------|--------|
+| Phase 1 - Foundation | JTBD-001 to JTBD-006 | ✅ Complete |
+| Phase 2 - REPL | JTBD-007 to JTBD-010 | ✅ Complete |
+| Platform NFRs | JTBD-011, JTBD-012 | ✅ Complete |
+| Copilot SDK | JTBD-013 | ✅ Complete |
 
-### Phase 2 - REPL ✅
-- JTBD-007: REPL Mode (REQ-010)
-- JTBD-008: Session State Management (REQ-011)
-- JTBD-009: Command History (REQ-012)
-- JTBD-010: Auto-completion (REQ-013)
+**Tests: 172 passing**
 
-### Phase 3 - Platform ✅
-- JTBD-011: Performance (~185ms startup)
-- JTBD-012: Accessibility (exit codes, NO_COLOR)
+---
 
-**Tests: 142 passing (123 Core, 19 CLI)**
+## Completed: JTBD-013 - Copilot SDK Integration (REQ-020)
 
-## Current Structure
+GitHub.Copilot.SDK v0.1.17 integrated with:
+- `ICopilotService` / `ICopilotSession` interfaces
+- `CopilotService` / `CopilotSession` SDK wrappers
+- `MockCopilotService` / `MockCopilotSession` for testing
+- 24 unit tests covering all service/session operations
 
+Files created:
+- `src/Lopen.Core/ICopilotService.cs`
+- `src/Lopen.Core/ICopilotSession.cs`
+- `src/Lopen.Core/CopilotService.cs`
+- `src/Lopen.Core/CopilotSession.cs`
+- `src/Lopen.Core/CopilotModels.cs`
+- `src/Lopen.Core/MockCopilotService.cs`
+- `src/Lopen.Core/MockCopilotSession.cs`
+- `tests/Lopen.Core.Tests/CopilotServiceTests.cs`
+- `tests/Lopen.Core.Tests/CopilotSessionTests.cs`
+
+---
+
+## Next: JTBD-014 - Chat Command (REQ-021)
+
+### Overview
+Add `lopen chat` command for AI-powered conversations.
+
+### Command Signature
+```bash
+lopen chat                     # Start interactive chat
+lopen chat "query"             # Single query mode
+lopen chat --model gpt-4.1     # Specify model
 ```
-lopen/
-├── src/
-│   ├── Lopen.Cli/        # CLI commands (version, help, auth, repl)
-│   └── Lopen.Core/       # 11 service classes
-├── tests/
-│   ├── Lopen.Cli.Tests/  # 19 CLI tests
-│   └── Lopen.Core.Tests/ # 123 unit tests
-├── Directory.Build.props
-└── Lopen.sln
-```
 
-## What's Next
+### Implementation Steps
+1. Create `ChatCommand` in Lopen.Cli
+2. Add `--model` option with model selection
+3. Support inline prompt argument for single-query mode
+4. Integrate with `ICopilotService` for session management
+5. Display streaming responses via `ConsoleOutput`
 
-All defined JTBDs are complete. Potential future work:
-- Copilot SDK integration (pending SDK availability)
-- Shell completion scripts (bash, zsh, fish)
-- Configuration file support
-- Logging infrastructure
+### Success Criteria
+- [ ] `lopen chat "Hello"` returns AI response
+- [ ] `lopen chat --model gpt-4.1` uses specified model
+- [ ] Interactive mode with exit/quit commands
+- [ ] Ctrl+C gracefully aborts in-flight requests
+- [ ] Unit tests for command parsing
+
+---
+
+## Upcoming JTBDs
+
+| ID | Requirement | Description |
+|----|-------------|-------------|
+| JTBD-014 | REQ-021 | Chat Command (`lopen chat`) |
+| JTBD-015 | REQ-022 | Streaming Responses display |
+| JTBD-016 | REQ-023 | Custom Tools (AIFunctionFactory) |
+| JTBD-017 | REQ-024 | Session Persistence |
+
+---
+
+## References
+
+- [copilot/RESEARCH.md](copilot/RESEARCH.md) - Full SDK API patterns
+- [copilot/SPECIFICATION.md](copilot/SPECIFICATION.md) - Requirements

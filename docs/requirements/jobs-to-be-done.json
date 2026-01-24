@@ -94,5 +94,45 @@
     "priority": 12,
     "status": "done",
     "notes": "Completed: ExitCodes class with standardized codes, NO_COLOR support via ConsoleOutput, clear symbols for screen readers. 16 new tests."
+  },
+  {
+    "id": "JTBD-013",
+    "requirement": "REQ-020",
+    "description": "Copilot SDK Integration - Add GitHub.Copilot.SDK, ICopilotService interface, CopilotService wrapper",
+    "priority": 13,
+    "status": "done",
+    "notes": "Completed: GitHub.Copilot.SDK v0.1.17 added. ICopilotService, ICopilotSession interfaces. CopilotService wrapper with streaming via Channel<string>. Mock implementations. 24 new tests (172 total)."
+  },
+  {
+    "id": "JTBD-014",
+    "requirement": "REQ-021",
+    "description": "Chat Command - lopen chat with single-query and interactive modes",
+    "priority": 14,
+    "status": "not-started",
+    "notes": "Depends on JTBD-013. Support --model option, integrate with ConsoleOutput for streaming display."
+  },
+  {
+    "id": "JTBD-015",
+    "requirement": "REQ-022",
+    "description": "Streaming Responses - Real-time display via AssistantMessageDeltaEvent",
+    "priority": 15,
+    "status": "not-started",
+    "notes": "Depends on JTBD-013. Use Channel<string> pattern for IAsyncEnumerable streaming. Handle Ctrl+C with AbortAsync."
+  },
+  {
+    "id": "JTBD-016",
+    "requirement": "REQ-023",
+    "description": "Custom Tools - AIFunctionFactory tools for file ops, git commands",
+    "priority": 16,
+    "status": "not-started",
+    "notes": "Depends on JTBD-013. Register tools via SessionConfig.Tools. Built-in tools available via AvailableTools config."
+  },
+  {
+    "id": "JTBD-017",
+    "requirement": "REQ-024",
+    "description": "Session Persistence - Save/resume sessions, list/delete sessions",
+    "priority": 17,
+    "status": "not-started",
+    "notes": "Depends on JTBD-014. Use ResumeSessionAsync, ListSessionsAsync, DeleteSessionAsync APIs. Sessions stored in ~/.lopen/sessions/."
   }
 ]
