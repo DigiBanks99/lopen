@@ -1,6 +1,6 @@
 # Implementation Plan
 
-> Priority: **JTBD-010** - Auto-completion (REQ-013)
+> Priority: **JTBD-011** - Performance optimization (NFR-001)
 > Last updated: 2026-01-24
 
 ## Completed
@@ -17,8 +17,9 @@
 - JTBD-007: REPL Mode (REQ-010)
 - JTBD-008: Session State Management (REQ-011)
 - JTBD-009: Command History (REQ-012)
+- JTBD-010: Auto-completion (REQ-013)
 
-**Tests: 109 passing (90 Core, 19 CLI)**
+**Tests: 126 passing (107 Core, 19 CLI)**
 
 ## Current Structure
 
@@ -26,24 +27,22 @@
 lopen/
 ├── src/
 │   ├── Lopen.Cli/        # CLI commands (version, help, auth, repl)
-│   └── Lopen.Core/       # Services (Version, Help, Auth, Repl, SessionState, CommandHistory)
+│   └── Lopen.Core/       # Services (Version, Help, Auth, Repl, SessionState, CommandHistory, AutoCompleter)
 ├── tests/
 │   ├── Lopen.Cli.Tests/  # 19 CLI tests
-│   └── Lopen.Core.Tests/ # 90 unit tests
+│   └── Lopen.Core.Tests/ # 107 unit tests
 ├── Directory.Build.props
 └── Lopen.sln
 ```
 
-## Next: JTBD-010 (REQ-013) - Auto-completion
+## Next: JTBD-011 (NFR-001) - Performance optimization
 
 ### Acceptance Criteria
 
-- [ ] Tab completion for commands
-- [ ] Tab completion for subcommands
-- [ ] Tab completion for common options
-- [ ] Context-aware suggestions
+- [ ] Startup time < 500ms
+- [ ] Measure and optimize cold start
+- [ ] Consider AOT compilation if needed
 
 ## Later
 
-→ JTBD-011 (NFR-001): Performance optimization
 → JTBD-012 (NFR-003): Accessibility

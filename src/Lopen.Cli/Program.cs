@@ -195,9 +195,20 @@ rootCommand.Subcommands.Add(helpCommand);
 var replCommand = new Command("repl", "Start interactive REPL mode");
 replCommand.SetAction(async parseResult =>
 {
+    // Set up auto-completer with available commands
+    var autoCompleter = new CommandAutoCompleter();
+    autoCompleter.RegisterCommand("version", "Display version information", options: ["--format", "-f"]);
+    autoCompleter.RegisterCommand("help", "Display help information", options: ["--format", "-f"]);
+    autoCompleter.RegisterCommand("auth", "Authentication commands", 
+        subcommands: ["login", "logout", "status"], 
+        options: ["--token"]);
+    autoCompleter.RegisterCommand("repl", "Start interactive REPL mode");
+    autoCompleter.RegisterCommand("exit", "Exit the REPL");
+    autoCompleter.RegisterCommand("quit", "Exit the REPL");
+    
     // Set up command history with persistence
     var history = new PersistentCommandHistory();
-    var consoleInput = new ConsoleInputWithHistory(history);
+    var consoleInput = new ConsoleInputWithHistory(history, autoCompleter);
     
     // Set up session state
     var sessionStateService = new SessionStateService(authService);

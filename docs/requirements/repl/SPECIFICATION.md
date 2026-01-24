@@ -9,7 +9,7 @@
 | REQ-010 | REPL Mode | High | 🟢 Complete |
 | REQ-011 | Session State Management | High | 🟢 Complete |
 | REQ-012 | Command History | Medium | 🟢 Complete |
-| REQ-013 | Auto-completion | Medium | 🔴 Not Started |
+| REQ-013 | Auto-completion | Medium | 🟢 Complete |
 
 ---
 
@@ -86,7 +86,15 @@ Remember and navigate through previously entered commands.
 Provide intelligent command completion suggestions.
 
 ### Acceptance Criteria
-- [ ] Tab completion for commands
-- [ ] Tab completion for subcommands
-- [ ] Tab completion for common options
-- [ ] Context-aware suggestions
+- [x] Tab completion for commands
+- [x] Tab completion for subcommands
+- [x] Tab completion for common options
+- [x] Context-aware suggestions
+
+### Implementation
+- `IAutoCompleter` interface for completion providers
+- `CompletionItem` record with Text and optional Description
+- `CommandAutoCompleter` with command/subcommand/option registration
+- Tab key cycles through completions in ConsoleInputWithHistory
+- Context-aware: shows subcommands after command, options after `--`
+- 17 unit tests covering all completion scenarios

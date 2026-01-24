@@ -18,7 +18,7 @@ public interface IConsoleInput
 }
 
 /// <summary>
-/// Console input with command history support (Up/Down arrow navigation).
+/// Console input with command history and auto-completion support.
 /// </summary>
 public interface IConsoleInputWithHistory : IConsoleInput
 {
@@ -26,6 +26,11 @@ public interface IConsoleInputWithHistory : IConsoleInput
     /// Gets the command history.
     /// </summary>
     ICommandHistory History { get; }
+    
+    /// <summary>
+    /// Gets or sets the auto-completer.
+    /// </summary>
+    IAutoCompleter? AutoCompleter { get; set; }
 }
 
 /// <summary>
@@ -56,10 +61,14 @@ public class ConsoleInputWithHistory : IConsoleInputWithHistory
 {
     private readonly CancellationTokenSource _cts = new();
     private readonly ICommandHistory _history;
+    private IAutoCompleter? _autoCompleter;
+    private IReadOnlyList<CompletionItem>? _currentCompletions;
+    private int _completionIndex;
 
-    public ConsoleInputWithHistory(ICommandHistory history)
+    public ConsoleInputWithHistory(ICommandHistory history, IAutoCompleter? autoCompleter = null)
     {
         _history = history ?? throw new ArgumentNullException(nameof(history));
+        _autoCompleter = autoCompleter;
         Console.CancelKeyPress += (_, e) =>
         {
             e.Cancel = true;
@@ -68,6 +77,12 @@ public class ConsoleInputWithHistory : IConsoleInputWithHistory
     }
 
     public ICommandHistory History => _history;
+    
+    public IAutoCompleter? AutoCompleter 
+    { 
+        get => _autoCompleter; 
+        set => _autoCompleter = value; 
+    }
 
     public CancellationToken CancellationToken => _cts.Token;
 
@@ -153,11 +168,20 @@ public class ConsoleInputWithHistory : IConsoleInputWithHistory
                     break;
 
                 case ConsoleKey.Escape:
-                    // Clear current input
+                    // Clear current input and reset completions
+                    _currentCompletions = null;
+                    _completionIndex = 0;
                     ReplaceBuffer(buffer, "", ref cursorPos);
                     break;
 
+                case ConsoleKey.Tab:
+                    HandleTabCompletion(buffer, ref cursorPos);
+                    break;
+
                 default:
+                    // Any other key resets completion state
+                    _currentCompletions = null;
+                    _completionIndex = 0;
                     if (!char.IsControl(key.KeyChar))
                     {
                         buffer.Insert(cursorPos, key.KeyChar);
@@ -205,6 +229,47 @@ public class ConsoleInputWithHistory : IConsoleInputWithHistory
         cursorPos = buffer.Count;
 
         Console.Write(newContent);
+    }
+
+    private void HandleTabCompletion(List<char> buffer, ref int cursorPos)
+    {
+        if (_autoCompleter == null)
+            return;
+
+        var input = new string(buffer.ToArray());
+
+        // Get new completions if we don't have any or input changed
+        if (_currentCompletions == null || _currentCompletions.Count == 0)
+        {
+            _currentCompletions = _autoCompleter.GetCompletions(input, cursorPos);
+            _completionIndex = 0;
+
+            if (_currentCompletions.Count == 0)
+                return;
+        }
+        else
+        {
+            // Cycle through completions
+            _completionIndex = (_completionIndex + 1) % _currentCompletions.Count;
+        }
+
+        // Apply the completion
+        var completion = _currentCompletions[_completionIndex];
+        var newInput = ApplyCompletion(input, cursorPos, completion.Text);
+        ReplaceBuffer(buffer, newInput, ref cursorPos);
+    }
+
+    private static string ApplyCompletion(string input, int cursorPos, string completionText)
+    {
+        // Find the token being completed
+        var beforeCursor = input[..cursorPos];
+        var afterCursor = input[cursorPos..];
+
+        // Find the start of the current token (last space or start)
+        var tokenStart = beforeCursor.LastIndexOf(' ') + 1;
+        var prefix = beforeCursor[..tokenStart];
+
+        return prefix + completionText + (afterCursor.Length > 0 ? afterCursor : " ");
     }
 }
 

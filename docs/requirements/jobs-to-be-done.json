@@ -76,8 +76,8 @@
     "requirement": "REQ-013",
     "description": "Auto-completion - Tab completion for commands",
     "priority": 10,
-    "status": "not_started",
-    "notes": "REPL enhancement. Consider shell completion scripts."
+    "status": "done",
+    "notes": "Completed: IAutoCompleter interface, CommandAutoCompleter with context-aware completion, Tab cycling in ConsoleInputWithHistory. 17 new tests."
   },
   {
     "id": "JTBD-011",
