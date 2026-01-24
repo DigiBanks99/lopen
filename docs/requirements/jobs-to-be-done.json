@@ -28,8 +28,8 @@
     "requirement": "NFR-002",
     "description": "Cross-Platform build configuration - Windows, macOS, Linux targets",
     "priority": 4,
-    "status": "not_started",
-    "notes": "Configure in Directory.Build.props and csproj for multi-RID publishing."
+    "status": "done",
+    "notes": "Completed: Single-file, self-contained publish config. Linux-x64 tested (~13MB)."
   },
   {
     "id": "JTBD-005",

@@ -7,7 +7,7 @@
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
 | NFR-001 | Performance | High | 🔴 Not Started |
-| NFR-002 | Cross-Platform | High | 🔴 Not Started |
+| NFR-002 | Cross-Platform | High | 🟢 Complete |
 | NFR-003 | Accessibility | Medium | 🔴 Not Started |
 
 ---
@@ -38,21 +38,26 @@ Ensure responsive CLI performance.
 Support Windows, macOS, and Linux.
 
 ### Acceptance Criteria
-- [ ] Windows 10+ support
-- [ ] macOS 11+ support
-- [ ] Linux (Ubuntu 20.04+, Debian 11+) support
-- [ ] Single self-contained executable option
-- [ ] ARM64 support where applicable
+- [x] Windows 10+ support (RID: win-x64)
+- [x] macOS 11+ support (RID: osx-x64, osx-arm64)
+- [x] Linux (Ubuntu 20.04+, Debian 11+) support (RID: linux-x64)
+- [x] Single self-contained executable option
+- [x] ARM64 support where applicable
 
 ### Build Targets
-| Platform | RID | Architecture |
-|----------|-----|--------------|
-| Windows | win-x64 | x64 |
-| Windows | win-arm64 | ARM64 |
-| macOS | osx-x64 | x64 |
-| macOS | osx-arm64 | ARM64 (Apple Silicon) |
-| Linux | linux-x64 | x64 |
-| Linux | linux-arm64 | ARM64 |
+| Platform | RID | Architecture | Status |
+|----------|-----|--------------|--------|
+| Windows | win-x64 | x64 | ✅ Configured |
+| Windows | win-arm64 | ARM64 | ✅ Configured |
+| macOS | osx-x64 | x64 | ✅ Configured |
+| macOS | osx-arm64 | ARM64 (Apple Silicon) | ✅ Configured |
+| Linux | linux-x64 | x64 | ✅ Tested |
+| Linux | linux-arm64 | ARM64 | ✅ Configured |
+
+### Publish Command
+```bash
+dotnet publish src/Lopen.Cli -c Release -r <RID> --self-contained -p:PublishSingleFile=true
+```
 
 ---
 
