@@ -8,7 +8,7 @@
 |----|-------------|----------|--------|
 | REQ-020 | Copilot SDK Integration | Critical | 🟢 Complete |
 | REQ-021 | Chat Command | High | 🟢 Complete |
-| REQ-022 | Streaming Responses | High | 🔴 Not Started |
+| REQ-022 | Streaming Responses | High | 🟢 Complete |
 | REQ-023 | Custom Tools | Medium | 🔴 Not Started |
 | REQ-024 | Session Persistence | Medium | 🔴 Not Started |
 
@@ -96,11 +96,11 @@ Display AI responses as they are generated, word by word.
 
 ### Acceptance Criteria
 
-- [ ] Subscribe to `AssistantMessageDeltaEvent` events
-- [ ] Write delta content immediately to console
-- [ ] Handle `SessionIdleEvent` to finalize response
-- [ ] Respect `NO_COLOR` for output styling
-- [ ] Support cancellation via Ctrl+C
+- [x] Subscribe to `AssistantMessageDeltaEvent` events
+- [x] Write delta content immediately to console
+- [x] Handle `SessionIdleEvent` to finalize response
+- [x] Respect `NO_COLOR` for output styling
+- [x] Support cancellation via Ctrl+C
 
 ### Implementation Pattern
 

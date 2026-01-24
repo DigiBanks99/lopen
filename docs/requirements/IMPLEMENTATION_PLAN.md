@@ -1,7 +1,7 @@
 # Implementation Plan
 
 > Status: **Phase 3 - Copilot Integration**
-> Next: JTBD-015 (REQ-022 Streaming Responses)
+> Next: JTBD-016 (REQ-023 Custom Tools)
 > Last updated: 2026-01-24
 
 ## Completed
@@ -13,44 +13,39 @@
 | Platform NFRs | JTBD-011, JTBD-012 | ✅ Complete |
 | Copilot SDK | JTBD-013 | ✅ Complete |
 | Chat Command | JTBD-014 | ✅ Complete |
+| Streaming | JTBD-015 | ✅ Complete |
 
 **Tests: 178 passing**
 
 ---
 
-## Completed: JTBD-014 - Chat Command (REQ-021)
+## Completed: JTBD-015 - Streaming Responses (REQ-022)
 
-`lopen chat` command implemented with:
-- Single query mode: `lopen chat "Hello"`
-- Interactive mode: `lopen chat`
-- Model selection: `--model gpt-5` / `-m`
-- Streaming toggle: `--streaming` / `-s`
-- Graceful Ctrl+C handling with abort
-- 6 unit tests for command parsing
-
-Files modified:
-- `src/Lopen.Cli/Program.cs` - Added chat command
-- `tests/Lopen.Cli.Tests/ChatCommandTests.cs` - 6 tests
+Streaming was implemented as part of JTBD-013/JTBD-014:
+- `CopilotSession.StreamAsync` handles `AssistantMessageDeltaEvent`
+- Chat command displays chunks via `Console.Write`
+- `ConsoleOutput` respects `NO_COLOR`
+- Cancellation via Ctrl+C with `AbortAsync`
 
 ---
 
-## Next: JTBD-015 - Streaming Responses (REQ-022)
+## Next: JTBD-016 - Custom Tools (REQ-023)
 
 ### Overview
-Enhance streaming response display in chat command.
+Add custom tools that Copilot can invoke during conversations.
 
 ### Implementation Steps
-1. Subscribe to `AssistantMessageDeltaEvent` events
-2. Write delta content immediately to console
-3. Handle `SessionIdleEvent` to finalize response
-4. Respect `NO_COLOR` for output styling
-5. Support cancellation via Ctrl+C
+1. Define tools using `Microsoft.Extensions.AI` pattern
+2. Register tools with session configuration
+3. Add built-in tools: file operations, git commands
+4. Handle tool invocations automatically
+5. Create tests for tool registration and invocation
 
 ### Success Criteria
-- [ ] Streaming chunks display in real-time
-- [ ] `NO_COLOR` environment variable respected
-- [ ] Graceful handling of SessionErrorEvent
-- [ ] Unit tests for streaming behavior
+- [ ] Define tools via AIFunctionFactory.Create
+- [ ] Register tools with SessionConfig.Tools
+- [ ] Built-in lopen tools (config, history, session)
+- [ ] Unit tests for tool behavior
 
 ---
 
@@ -58,7 +53,6 @@ Enhance streaming response display in chat command.
 
 | ID | Requirement | Description |
 |----|-------------|-------------|
-| JTBD-015 | REQ-022 | Streaming Responses display |
 | JTBD-016 | REQ-023 | Custom Tools (AIFunctionFactory) |
 | JTBD-017 | REQ-024 | Session Persistence |
 

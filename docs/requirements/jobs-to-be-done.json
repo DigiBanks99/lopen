@@ -116,8 +116,8 @@
     "requirement": "REQ-022",
     "description": "Streaming Responses - Real-time display via AssistantMessageDeltaEvent",
     "priority": 15,
-    "status": "not-started",
-    "notes": "Depends on JTBD-013. Use Channel<string> pattern for IAsyncEnumerable streaming. Handle Ctrl+C with AbortAsync."
+    "status": "done",
+    "notes": "Completed as part of JTBD-013/JTBD-014. CopilotSession.StreamAsync handles events via Channel<string> pattern. Chat command displays chunks in real-time. ConsoleOutput supports NO_COLOR. Ctrl+C cancellation with AbortAsync. Tests already included in CopilotSessionTests."
   },
   {
     "id": "JTBD-016",
