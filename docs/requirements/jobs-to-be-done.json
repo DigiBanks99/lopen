@@ -124,8 +124,8 @@
     "requirement": "REQ-023",
     "description": "Custom Tools - AIFunctionFactory tools for file ops, git commands",
     "priority": 16,
-    "status": "not-started",
-    "notes": "Depends on JTBD-013. Register tools via SessionConfig.Tools. Built-in tools available via AvailableTools config."
+    "status": "done",
+    "notes": "Completed: LopenTools class with 4 built-in tools (read_file, list_directory, get_cwd, file_exists). CopilotSessionOptions extended with Tools, AvailableTools, ExcludedTools. 17 new tests (192 total)."
   },
   {
     "id": "JTBD-017",

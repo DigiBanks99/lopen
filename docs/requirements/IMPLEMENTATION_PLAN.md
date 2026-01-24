@@ -1,7 +1,7 @@
 # Implementation Plan
 
 > Status: **Phase 3 - Copilot Integration**
-> Next: JTBD-016 (REQ-023 Custom Tools)
+> Next: JTBD-017 (REQ-024 Session Persistence)
 > Last updated: 2026-01-24
 
 ## Completed
@@ -14,38 +14,43 @@
 | Copilot SDK | JTBD-013 | ✅ Complete |
 | Chat Command | JTBD-014 | ✅ Complete |
 | Streaming | JTBD-015 | ✅ Complete |
+| Custom Tools | JTBD-016 | ✅ Complete |
 
-**Tests: 178 passing**
-
----
-
-## Completed: JTBD-015 - Streaming Responses (REQ-022)
-
-Streaming was implemented as part of JTBD-013/JTBD-014:
-- `CopilotSession.StreamAsync` handles `AssistantMessageDeltaEvent`
-- Chat command displays chunks via `Console.Write`
-- `ConsoleOutput` respects `NO_COLOR`
-- Cancellation via Ctrl+C with `AbortAsync`
+**Tests: 192 passing**
 
 ---
 
-## Next: JTBD-016 - Custom Tools (REQ-023)
+## Completed: JTBD-016 - Custom Tools (REQ-023)
+
+Custom tools infrastructure implemented:
+- `LopenTools` class with 4 built-in tools
+- `CopilotSessionOptions.Tools` for custom AIFunction collection
+- `AvailableTools` and `ExcludedTools` for SDK built-in tools
+- 17 new tests
+
+Files created:
+- `src/Lopen.Core/LopenTools.cs`
+- `tests/Lopen.Core.Tests/LopenToolsTests.cs`
+
+---
+
+## Next: JTBD-017 - Session Persistence (REQ-024)
 
 ### Overview
-Add custom tools that Copilot can invoke during conversations.
+Save and restore chat sessions across CLI invocations.
 
 ### Implementation Steps
-1. Define tools using `Microsoft.Extensions.AI` pattern
-2. Register tools with session configuration
-3. Add built-in tools: file operations, git commands
-4. Handle tool invocations automatically
-5. Create tests for tool registration and invocation
+1. Use SDK ResumeSessionAsync to restore sessions
+2. Add --resume option to chat command
+3. Add sessions list/delete commands
+4. Store session IDs in ~/.lopen/sessions/
+5. Create tests for session persistence
 
 ### Success Criteria
-- [ ] Define tools via AIFunctionFactory.Create
-- [ ] Register tools with SessionConfig.Tools
-- [ ] Built-in lopen tools (config, history, session)
-- [ ] Unit tests for tool behavior
+- [ ] `lopen chat --resume <session-id>` resumes session
+- [ ] `lopen sessions list` shows available sessions
+- [ ] `lopen sessions delete <id>` removes session
+- [ ] Unit tests for session management
 
 ---
 
@@ -53,7 +58,6 @@ Add custom tools that Copilot can invoke during conversations.
 
 | ID | Requirement | Description |
 |----|-------------|-------------|
-| JTBD-016 | REQ-023 | Custom Tools (AIFunctionFactory) |
 | JTBD-017 | REQ-024 | Session Persistence |
 
 ---

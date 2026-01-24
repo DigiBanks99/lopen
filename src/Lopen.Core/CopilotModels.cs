@@ -1,3 +1,5 @@
+using Microsoft.Extensions.AI;
+
 namespace Lopen.Core;
 
 /// <summary>
@@ -24,6 +26,21 @@ public record CopilotSessionOptions
     /// Enable streaming responses.
     /// </summary>
     public bool Streaming { get; init; } = true;
+
+    /// <summary>
+    /// Custom tools to register with the session.
+    /// </summary>
+    public ICollection<AIFunction>? Tools { get; init; }
+
+    /// <summary>
+    /// Built-in tools to enable (e.g., "file_system", "git", "shell").
+    /// </summary>
+    public ICollection<string>? AvailableTools { get; init; }
+
+    /// <summary>
+    /// Built-in tools to disable.
+    /// </summary>
+    public ICollection<string>? ExcludedTools { get; init; }
 }
 
 /// <summary>

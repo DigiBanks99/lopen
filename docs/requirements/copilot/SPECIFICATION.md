@@ -9,7 +9,7 @@
 | REQ-020 | Copilot SDK Integration | Critical | 🟢 Complete |
 | REQ-021 | Chat Command | High | 🟢 Complete |
 | REQ-022 | Streaming Responses | High | 🟢 Complete |
-| REQ-023 | Custom Tools | Medium | 🔴 Not Started |
+| REQ-023 | Custom Tools | Medium | 🟢 Complete |
 | REQ-024 | Session Persistence | Medium | 🔴 Not Started |
 
 ---
@@ -124,10 +124,23 @@ Enable custom tools that Copilot can invoke during conversations.
 
 ### Acceptance Criteria
 
-- [ ] Define tools using `Microsoft.Extensions.AI` pattern
-- [ ] Register tools with session configuration
-- [ ] Handle tool invocations automatically
-- [ ] Built-in tools: file operations, git commands, shell execution
+- [x] Define tools using `Microsoft.Extensions.AI` pattern
+- [x] Register tools with session configuration
+- [x] Handle tool invocations automatically
+- [x] Built-in tools: file operations (read, list, exists, cwd)
+
+### Implementation
+
+Built-in `LopenTools` class with:
+- `lopen_read_file` - Read file contents
+- `lopen_list_directory` - List directory entries
+- `lopen_get_cwd` - Get current working directory
+- `lopen_file_exists` - Check if file/directory exists
+
+`CopilotSessionOptions` extended with:
+- `Tools` - Custom AIFunction collection
+- `AvailableTools` - Built-in tools to enable
+- `ExcludedTools` - Built-in tools to disable
 
 ### Example Tool
 

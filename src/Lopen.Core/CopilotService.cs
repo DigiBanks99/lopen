@@ -87,7 +87,10 @@ public class CopilotService : ICopilotService
         {
             SessionId = options?.SessionId,
             Model = options?.Model ?? "gpt-5",
-            Streaming = options?.Streaming ?? true
+            Streaming = options?.Streaming ?? true,
+            Tools = options?.Tools,
+            AvailableTools = options?.AvailableTools?.ToList(),
+            ExcludedTools = options?.ExcludedTools?.ToList()
         };
 
         var session = await _client.CreateSessionAsync(sessionConfig, ct);
