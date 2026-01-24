@@ -1,0 +1,5 @@
+{
+    "chat.useAgentSkills": true,
+    "chat.customAgentInSubagent.enabled": true,
+    "chat.agent.enabled": true
+}

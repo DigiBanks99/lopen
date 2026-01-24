@@ -1,0 +1,86 @@
+[
+  {
+    "id": "JTBD-001",
+    "requirement": "PROJECT-SETUP",
+    "description": "Initialize .NET 10 solution with project structure (Lopen.Cli, Lopen.Core, tests)",
+    "status": "not_started",
+    "notes": "Foundation - must be done first before any requirements can be implemented"
+  },
+  {
+    "id": "JTBD-002",
+    "requirement": "REQ-001",
+    "description": "Version Command - Display CLI version with --version/-v flags",
+    "status": "not_started",
+    "notes": "First functional command, validates CLI framework setup"
+  },
+  {
+    "id": "JTBD-003",
+    "requirement": "REQ-002",
+    "description": "Help/Commands List - --help/-h and help subcommand",
+    "status": "not_started",
+    "notes": "Essential CLI UX, provides discoverability"
+  },
+  {
+    "id": "JTBD-004",
+    "requirement": "NFR-002",
+    "description": "Cross-Platform build configuration - Windows, macOS, Linux targets",
+    "status": "not_started",
+    "notes": "Build infrastructure needed early for CI/CD"
+  },
+  {
+    "id": "JTBD-005",
+    "requirement": "REQ-003",
+    "description": "Copilot SDK Authentication - OAuth2 and device flow",
+    "status": "not_started",
+    "notes": "Core functionality, required before REPL can interact with Copilot"
+  },
+  {
+    "id": "JTBD-006",
+    "requirement": "REQ-014",
+    "description": "Modern TUI Patterns - Spectre.Console integration",
+    "status": "not_started",
+    "notes": "Visual polish, can be added incrementally"
+  },
+  {
+    "id": "JTBD-007",
+    "requirement": "REQ-010",
+    "description": "REPL Mode - Interactive command loop",
+    "status": "not_started",
+    "notes": "Phase 2, depends on auth being complete"
+  },
+  {
+    "id": "JTBD-008",
+    "requirement": "REQ-011",
+    "description": "Session State Management - Maintain state between commands",
+    "status": "not_started",
+    "notes": "Required for REPL context preservation"
+  },
+  {
+    "id": "JTBD-009",
+    "requirement": "REQ-012",
+    "description": "Command History - Up/Down navigation, persistent history",
+    "status": "not_started",
+    "notes": "REPL enhancement"
+  },
+  {
+    "id": "JTBD-010",
+    "requirement": "REQ-013",
+    "description": "Auto-completion - Tab completion for commands",
+    "status": "not_started",
+    "notes": "REPL enhancement"
+  },
+  {
+    "id": "JTBD-011",
+    "requirement": "NFR-001",
+    "description": "Performance optimization - Startup < 500ms",
+    "status": "not_started",
+    "notes": "Measure after initial implementation, optimize as needed"
+  },
+  {
+    "id": "JTBD-012",
+    "requirement": "NFR-003",
+    "description": "Accessibility - NO_COLOR support, exit codes, screen reader friendly",
+    "status": "not_started",
+    "notes": "Cross-cutting, implement alongside TUI"
+  }
+]
