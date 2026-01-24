@@ -147,3 +147,76 @@ public class VersionCommandTests
 
     private record CliOutput(int ExitCode, string StandardOutput, string StandardError);
 }
+
+public class HelpCommandTests
+{
+    [Fact]
+    public void HelpCommand_ListsAllCommands()
+    {
+        var output = RunCli(["help"]);
+
+        output.ExitCode.Should().Be(0);
+        output.StandardOutput.Should().Contain("Commands:");
+        output.StandardOutput.Should().Contain("version");
+    }
+
+    [Fact]
+    public void HelpCommand_JsonFormat_ReturnsValidJson()
+    {
+        var output = RunCli(["help", "--format", "json"]);
+
+        output.ExitCode.Should().Be(0);
+        output.StandardOutput.Should().Contain("\"commands\"");
+        output.StandardOutput.Should().Contain("\"version\"");
+    }
+
+    [Fact]
+    public void HelpCommand_WithCommandName_ShowsCommandHelp()
+    {
+        var output = RunCli(["help", "version"]);
+
+        output.ExitCode.Should().Be(0);
+        output.StandardOutput.Should().Contain("version");
+        output.StandardOutput.Should().Contain("Display version information");
+    }
+
+    [Fact]
+    public void HelpCommand_UnknownCommand_ReturnsError()
+    {
+        var output = RunCli(["help", "nonexistent"]);
+
+        output.ExitCode.Should().NotBe(0);
+        output.StandardError.Should().Contain("Unknown command");
+    }
+
+    private static CliOutput RunCli(string[] args)
+    {
+        var cliProjectPath = GetCliProjectPath();
+        
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = $"run --project \"{cliProjectPath}\" --no-build -- {string.Join(" ", args)}",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(startInfo)!;
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        return new CliOutput(process.ExitCode, stdout, stderr);
+    }
+
+    private static string GetCliProjectPath()
+    {
+        var testDir = AppContext.BaseDirectory;
+        var repoRoot = Path.GetFullPath(Path.Combine(testDir, "..", "..", "..", "..", ".."));
+        return Path.Combine(repoRoot, "src", "Lopen.Cli", "Lopen.Cli.csproj");
+    }
+
+    private record CliOutput(int ExitCode, string StandardOutput, string StandardError);
+}

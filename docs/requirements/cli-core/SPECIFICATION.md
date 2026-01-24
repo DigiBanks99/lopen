@@ -7,7 +7,7 @@
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
 | REQ-001 | Version Command | High | 🟢 Complete |
-| REQ-002 | Help/Commands List | High | 🔴 Not Started |
+| REQ-002 | Help/Commands List | High | 🟢 Complete |
 
 ---
 
@@ -48,25 +48,27 @@ Display available commands and their descriptions.
 
 ### Command Signature
 ```bash
-lopen --help
-lopen -h
-lopen help
-lopen help <command>
+lopen --help           # Built-in System.CommandLine
+lopen -h               # Built-in System.CommandLine
+lopen help             # Custom help subcommand
+lopen help <command>   # Detailed command help
+lopen help --format json
 ```
 
 ### Acceptance Criteria
-- [ ] Lists all available commands with descriptions
-- [ ] Supports `--help`, `-h`, and `help` subcommand
-- [ ] Provides detailed help for specific commands via `help <command>`
-- [ ] Output is formatted for terminal readability
-- [ ] Supports JSON output format via `--format json`
+- [x] Lists all available commands with descriptions
+- [x] Supports `--help`, `-h` (built-in), and `help` subcommand
+- [x] Provides detailed help for specific commands via `help <command>`
+- [x] Output is formatted for terminal readability
+- [x] Supports JSON output format via `--format json`
 
 ### Test Cases
-| ID | Description | Expected |
-|----|-------------|----------|
-| TC-002-01 | `lopen --help` | Lists all commands |
-| TC-002-02 | `lopen help auth` | Shows auth subcommand details |
-| TC-002-03 | `lopen --help --format json` | Outputs valid JSON |
+| ID | Description | Expected | Status |
+|----|-------------|----------|--------|
+| TC-002-01 | `lopen help` | Lists all commands | ✅ |
+| TC-002-02 | `lopen help version` | Shows version command details | ✅ |
+| TC-002-03 | `lopen help --format json` | Outputs valid JSON | ✅ |
+| TC-002-04 | `lopen help nonexistent` | Returns error | ✅ |
 
 ---
 

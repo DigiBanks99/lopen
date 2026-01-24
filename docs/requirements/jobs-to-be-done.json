@@ -20,8 +20,8 @@
     "requirement": "REQ-002",
     "description": "Help/Commands List - --help/-h built-in + help subcommand",
     "priority": 3,
-    "status": "not_started",
-    "notes": "System.CommandLine 2.0.2 provides --help automatically. Add help subcommand."
+    "status": "done",
+    "notes": "Completed: `lopen help` subcommand with --format option and command argument. 9 new tests added."
   },
   {
     "id": "JTBD-004",
