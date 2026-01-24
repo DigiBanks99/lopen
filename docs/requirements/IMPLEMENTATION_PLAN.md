@@ -1,6 +1,6 @@
 # Implementation Plan
 
-> Priority: **JTBD-007** - REPL Mode (REQ-010)
+> Priority: **JTBD-008** - Session State Management (REQ-011)
 > Last updated: 2026-01-24
 
 ## Completed
@@ -13,32 +13,34 @@
 - JTBD-005: Authentication (REQ-003)
 - JTBD-006: TUI Patterns (REQ-014)
 
-**Tests: 44 passing (28 Core, 16 CLI)**
+### Phase 2 - REPL ✅
+- JTBD-007: REPL Mode (REQ-010)
+
+**Tests: 59 passing (40 Core, 19 CLI)**
 
 ## Current Structure
 
 ```
 lopen/
 ├── src/
-│   ├── Lopen.Cli/        # CLI commands (version, help, auth)
-│   └── Lopen.Core/       # Services (Version, Help, Auth, ConsoleOutput)
+│   ├── Lopen.Cli/        # CLI commands (version, help, auth, repl)
+│   └── Lopen.Core/       # Services (Version, Help, Auth, ConsoleOutput, Repl)
 ├── tests/
-│   ├── Lopen.Cli.Tests/  # 16 CLI tests
-│   └── Lopen.Core.Tests/ # 28 unit tests
+│   ├── Lopen.Cli.Tests/  # 19 CLI tests
+│   └── Lopen.Core.Tests/ # 40 unit tests
 ├── Directory.Build.props
 └── Lopen.sln
 ```
 
-## Next: JTBD-007 (REQ-010) - REPL Mode
+## Next: JTBD-008 (REQ-011) - Session State Management
 
 ### Acceptance Criteria
 
-- [ ] Interactive command loop
-- [ ] Prompt with context display
-- [ ] Exit on 'exit' or 'quit' command
-- [ ] Ctrl+C handling
+- [ ] Preserve conversation context across prompts
+- [ ] Track authenticated state
+- [ ] Manage Copilot SDK session lifecycle
 
 ## Later
 
-→ JTBD-008 (REQ-011): Session State Management
 → JTBD-009 (REQ-012): Command History
+→ JTBD-010 (REQ-013): Auto-completion

@@ -60,9 +60,9 @@ dotnet run --project src/Lopen.Cli
 
 ## Project Status
 
-- **State**: Phase 1 foundation complete (JTBD-001 through JTBD-005)
-- **Tests**: 38 tests passing (22 Core, 16 CLI)
-- **Next**: JTBD-006 - Modern TUI Patterns
+- **State**: Phase 2 REPL in progress (JTBD-001 through JTBD-007 complete)
+- **Tests**: 59 tests passing (40 Core, 19 CLI)
+- **Next**: JTBD-008 - Session State Management
 
 ## Key Dependencies
 
@@ -90,3 +90,5 @@ dotnet run --project src/Lopen.Cli
 - **Option Constructor**: First string param is name, subsequent strings are aliases (not description!). Set description via property.
 - **File Permissions**: Use `File.SetUnixFileMode()` for credential files on Unix
 - **Trimming**: Use `SuppressTrimAnalysisWarnings` for JSON serialization until source generators added
+- **REPL Testing**: Use interface abstraction (IConsoleInput) for Console.ReadLine() to enable unit testing; Spectre.Console.Testing.TestConsole for output mocking
+- **REPL Command Execution**: System.CommandLine `RootCommand.Parse(args).InvokeAsync()` can be called in a loop for REPL command execution

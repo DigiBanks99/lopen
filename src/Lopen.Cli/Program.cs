@@ -191,10 +191,26 @@ helpCommand.SetAction(parseResult =>
 });
 rootCommand.Subcommands.Add(helpCommand);
 
+// REPL command
+var replCommand = new Command("repl", "Start interactive REPL mode");
+replCommand.SetAction(async parseResult =>
+{
+    var consoleInput = new DefaultConsoleInput();
+    var replService = new ReplService(consoleInput, output);
+    
+    return await replService.RunAsync(async cmdArgs =>
+    {
+        // Execute command using the root command parser
+        var result = rootCommand.Parse(cmdArgs);
+        return await result.InvokeAsync();
+    });
+});
+rootCommand.Subcommands.Add(replCommand);
+
 // Set action for root command (when no subcommand given)
 rootCommand.SetAction(parseResult =>
 {
-    Console.WriteLine("Use --help for available commands");
+    Console.WriteLine("Use --help for available commands or 'lopen repl' for interactive mode");
     return 0;
 });
 

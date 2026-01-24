@@ -1,0 +1,66 @@
+using System.Diagnostics;
+using FluentAssertions;
+using Xunit;
+
+namespace Lopen.Cli.Tests;
+
+public class ReplCommandTests
+{
+    [Fact]
+    public void ReplCommand_Help_ShowsReplDescription()
+    {
+        var output = RunCli(["repl", "--help"]);
+
+        output.ExitCode.Should().Be(0);
+        output.StandardOutput.Should().Contain("interactive");
+    }
+
+    [Fact]
+    public void ReplCommand_AppearsInHelpList()
+    {
+        var output = RunCli(["--help"]);
+
+        output.ExitCode.Should().Be(0);
+        output.StandardOutput.Should().Contain("repl");
+    }
+
+    [Fact]
+    public void RootCommand_WithNoArgs_MentionsRepl()
+    {
+        var output = RunCli([]);
+
+        output.ExitCode.Should().Be(0);
+        output.StandardOutput.Should().Contain("repl");
+    }
+
+    private static CliOutput RunCli(string[] args)
+    {
+        var cliProjectPath = GetCliProjectPath();
+        
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = $"run --project \"{cliProjectPath}\" --no-build -- {string.Join(" ", args)}",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(startInfo)!;
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        return new CliOutput(process.ExitCode, stdout, stderr);
+    }
+
+    private static string GetCliProjectPath()
+    {
+        var testDir = AppContext.BaseDirectory;
+        var repoRoot = Path.GetFullPath(Path.Combine(testDir, "..", "..", "..", "..", ".."));
+        return Path.Combine(repoRoot, "src", "Lopen.Cli", "Lopen.Cli.csproj");
+    }
+
+    private record CliOutput(int ExitCode, string StandardOutput, string StandardError);
+}

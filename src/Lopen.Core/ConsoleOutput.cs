@@ -113,6 +113,14 @@ public class ConsoleOutput
     }
 
     /// <summary>
+    /// Write text without newline (for prompts).
+    /// </summary>
+    public void Write(string text)
+    {
+        _console.Write(new Text(text));
+    }
+
+    /// <summary>
     /// Write a key-value pair.
     /// </summary>
     public void KeyValue(string key, string value)

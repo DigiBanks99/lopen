@@ -52,8 +52,8 @@
     "requirement": "REQ-010",
     "description": "REPL Mode - Interactive command loop",
     "priority": 7,
-    "status": "not_started",
-    "notes": "Phase 2, depends on auth. Consider Spectre.Console.Prompt for input."
+    "status": "done",
+    "notes": "Completed: ReplService with interactive loop, exit/quit commands, Ctrl+C handling. IConsoleInput abstraction for testing. 12 new tests."
   },
   {
     "id": "JTBD-008",
