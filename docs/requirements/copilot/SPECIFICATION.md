@@ -10,7 +10,7 @@
 | REQ-021 | Chat Command | High | 🟢 Complete |
 | REQ-022 | Streaming Responses | High | 🟢 Complete |
 | REQ-023 | Custom Tools | Medium | 🟢 Complete |
-| REQ-024 | Session Persistence | Medium | 🔴 Not Started |
+| REQ-024 | Session Persistence | Medium | 🟢 Complete |
 
 ---
 
@@ -162,10 +162,10 @@ Save and restore chat sessions across CLI invocations.
 
 ### Acceptance Criteria
 
-- [ ] Save session state to `~/.lopen/sessions/`
-- [ ] Resume sessions by ID
-- [ ] List available sessions
-- [ ] Delete old sessions
+- [x] Save session state to `~/.lopen/sessions/`
+- [x] Resume sessions by ID
+- [x] List available sessions
+- [x] Delete old sessions
 
 ### Command Signature
 
@@ -174,6 +174,13 @@ lopen chat --resume <session-id>
 lopen sessions list
 lopen sessions delete <id>
 ```
+
+### Implementation
+
+- `lopen chat --resume/-r <id>` resumes existing session
+- `lopen sessions list` shows all sessions with timestamps
+- `lopen sessions delete <id>` removes a session
+- Session ID displayed after each chat interaction
 
 ---
 

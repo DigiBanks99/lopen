@@ -132,7 +132,7 @@
     "requirement": "REQ-024",
     "description": "Session Persistence - Save/resume sessions, list/delete sessions",
     "priority": 17,
-    "status": "not-started",
-    "notes": "Depends on JTBD-014. Use ResumeSessionAsync, ListSessionsAsync, DeleteSessionAsync APIs. Sessions stored in ~/.lopen/sessions/."
+    "status": "done",
+    "notes": "Completed: lopen chat --resume/-r option. lopen sessions list/delete commands. Session ID displayed after interactions. 8 new tests (200 total)."
   }
 ]

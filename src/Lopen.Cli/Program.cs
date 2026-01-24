@@ -208,6 +208,12 @@ var streamingOption = new Option<bool>("--streaming")
 };
 streamingOption.Aliases.Add("-s");
 
+var resumeOption = new Option<string?>("--resume")
+{
+    Description = "Resume a previous session by ID"
+};
+resumeOption.Aliases.Add("-r");
+
 var promptArg = new Argument<string?>("prompt")
 {
     Description = "Single query (omit for interactive mode)",
@@ -216,12 +222,14 @@ var promptArg = new Argument<string?>("prompt")
 
 chatCommand.Options.Add(modelOption);
 chatCommand.Options.Add(streamingOption);
+chatCommand.Options.Add(resumeOption);
 chatCommand.Arguments.Add(promptArg);
 
 chatCommand.SetAction(async parseResult =>
 {
     var model = parseResult.GetValue(modelOption);
     var streaming = parseResult.GetValue(streamingOption);
+    var resumeId = parseResult.GetValue(resumeOption);
     var prompt = parseResult.GetValue(promptArg);
 
     // Create Copilot service
@@ -244,12 +252,30 @@ chatCommand.SetAction(async parseResult =>
         return ExitCodes.CopilotError;
     }
 
-    // Create session with model selection
-    await using var session = await copilotService.CreateSessionAsync(new CopilotSessionOptions
+    // Create or resume session
+    ICopilotSession session;
+    if (!string.IsNullOrEmpty(resumeId))
     {
-        Model = model!,
-        Streaming = streaming
-    });
+        try
+        {
+            session = await copilotService.ResumeSessionAsync(resumeId);
+            output.Info($"Resumed session: {resumeId}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            output.Error($"Failed to resume session: {ex.Message}");
+            return ExitCodes.GeneralError;
+        }
+    }
+    else
+    {
+        session = await copilotService.CreateSessionAsync(new CopilotSessionOptions
+        {
+            Model = model!,
+            Streaming = streaming
+        });
+    }
+    await using var _ = session;
 
     // Single query mode
     if (!string.IsNullOrEmpty(prompt))
@@ -259,11 +285,13 @@ chatCommand.SetAction(async parseResult =>
             Console.Write(chunk);
         }
         Console.WriteLine();
+        output.Muted($"Session ID: {session.SessionId}");
         return ExitCodes.Success;
     }
 
     // Interactive mode
     output.Info($"Chat session started (model: {model}). Type 'exit' or 'quit' to end.");
+    output.Muted($"Session ID: {session.SessionId}");
 
     using var cts = new CancellationTokenSource();
     Console.CancelKeyPress += (_, e) =>
@@ -305,6 +333,71 @@ chatCommand.SetAction(async parseResult =>
 });
 rootCommand.Subcommands.Add(chatCommand);
 
+// Sessions command with subcommands
+var sessionsCommand = new Command("sessions", "Manage chat sessions");
+
+// sessions list
+var sessionsListCommand = new Command("list", "List available sessions");
+sessionsListCommand.SetAction(async parseResult =>
+{
+    await using var copilotService = new CopilotService();
+
+    try
+    {
+        var sessions = await copilotService.ListSessionsAsync();
+
+        if (sessions.Count == 0)
+        {
+            output.Info("No sessions found.");
+            return ExitCodes.Success;
+        }
+
+        output.Info($"Found {sessions.Count} session(s):");
+        foreach (var session in sessions)
+        {
+            var summary = session.Summary ?? "(no summary)";
+            output.WriteLine($"  {session.SessionId}");
+            output.Muted($"    Modified: {session.ModifiedTime:g}");
+            output.Muted($"    Summary: {summary}");
+        }
+        return ExitCodes.Success;
+    }
+    catch (Exception ex)
+    {
+        output.Error($"Failed to list sessions: {ex.Message}");
+        return ExitCodes.CopilotError;
+    }
+});
+sessionsCommand.Subcommands.Add(sessionsListCommand);
+
+// sessions delete
+var sessionIdArg = new Argument<string>("session-id")
+{
+    Description = "Session ID to delete"
+};
+var sessionsDeleteCommand = new Command("delete", "Delete a session");
+sessionsDeleteCommand.Arguments.Add(sessionIdArg);
+sessionsDeleteCommand.SetAction(async parseResult =>
+{
+    var sessionId = parseResult.GetValue(sessionIdArg);
+    await using var copilotService = new CopilotService();
+
+    try
+    {
+        await copilotService.DeleteSessionAsync(sessionId!);
+        output.Success($"Session deleted: {sessionId}");
+        return ExitCodes.Success;
+    }
+    catch (Exception ex)
+    {
+        output.Error($"Failed to delete session: {ex.Message}");
+        return ExitCodes.CopilotError;
+    }
+});
+sessionsCommand.Subcommands.Add(sessionsDeleteCommand);
+
+rootCommand.Subcommands.Add(sessionsCommand);
+
 // REPL command
 var replCommand = new Command("repl", "Start interactive REPL mode");
 replCommand.SetAction(async parseResult =>
@@ -317,7 +410,9 @@ replCommand.SetAction(async parseResult =>
         subcommands: ["login", "logout", "status"], 
         options: ["--token"]);
     autoCompleter.RegisterCommand("chat", "Start AI chat session",
-        options: ["--model", "-m", "--streaming", "-s"]);
+        options: ["--model", "-m", "--streaming", "-s", "--resume", "-r"]);
+    autoCompleter.RegisterCommand("sessions", "Manage chat sessions",
+        subcommands: ["list", "delete"]);
     autoCompleter.RegisterCommand("repl", "Start interactive REPL mode");
     autoCompleter.RegisterCommand("exit", "Exit the REPL");
     autoCompleter.RegisterCommand("quit", "Exit the REPL");
