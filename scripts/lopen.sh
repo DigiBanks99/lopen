@@ -2,6 +2,8 @@
 
 cd "$(dirname "$0")/.."
 
+ITERATION=0
+
 # if first arg is "plan" use PLAN.PROMPT.md
 if [ "$1" == "plan" ]; then
     PROMPT_FILE="PLAN.PROMPT.md"
@@ -37,6 +39,16 @@ while [ ! -f lopen.loop.done ]; do
         --stream on \
         --no-auto-update\
         --log-level all
+    
+    # if iteration is not yet initialized, initialize it
+    if [ -z "$ITERATION" ]; then
+        ITERATION=0
+    fi
+
+    echo "------------------------------"
+    echo "Completed iteration $ITERATION"
+    echo "------------------------------"
+    ITERATION=$((ITERATION + 1))
 done
 
 cd -

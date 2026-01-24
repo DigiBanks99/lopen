@@ -60,8 +60,8 @@ dotnet run --project src/Lopen.Cli
 
 ## Project Status
 
-- **State**: Greenfield - no source code exists yet
-- **Next Step**: Initialize .NET 10 solution structure (JTBD-001)
+- **State**: Foundation complete (JTBD-001 done)
+- **Current**: Version command with format option (JTBD-002 in progress)
 - **Research**: Implementation details in `docs/requirements/*/RESEARCH.md`
 
 ## Key Dependencies
@@ -70,7 +70,7 @@ dotnet run --project src/Lopen.Cli
 |---------|---------|---------|
 | System.CommandLine | 2.0.2 (GA) | CLI parsing, subcommands, help/version |
 | Spectre.Console | 0.54.0 | TUI output, colors, progress |
-| FluentAssertions | latest | Test assertions |
+| FluentAssertions | 8.8.0 | Test assertions |
 | coverlet.collector | latest | Code coverage |
 
 ## CLI Patterns
@@ -85,3 +85,5 @@ dotnet run --project src/Lopen.Cli
 - **No Copilot SDK**: No official `GitHub.Copilot.SDK` NuGet package exists; use GitHub OAuth2 device flow directly
 - **System.CommandLine 2.0**: Now GA (not beta); API uses `SetAction()` with `ParseResult` parameter
 - **.NET 10**: SDK 10.0.100 available and confirmed working in environment
+- **Option API**: Use `new Option<T>("--name") { Description = "...", DefaultValueFactory = _ => "default" }` and `option.Aliases.Add("-n")` for aliases
+- **Option Constructor**: First string param is name, subsequent strings are aliases (not description!). Set description via property.

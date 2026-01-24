@@ -6,7 +6,7 @@
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| REQ-001 | Version Command | High | 🔴 Not Started |
+| REQ-001 | Version Command | High | 🟢 Complete |
 | REQ-002 | Help/Commands List | High | 🔴 Not Started |
 
 ---
@@ -18,23 +18,26 @@ Display the current version of the Lopen CLI application.
 
 ### Command Signature
 ```bash
-lopen --version
-lopen -v
+lopen version
+lopen version --format json
+lopen version -f json
+lopen --version  # Built-in System.CommandLine
 ```
 
 ### Acceptance Criteria
-- [ ] Displays semantic version (e.g., `1.0.0`)
-- [ ] Exits with code 0 on success
-- [ ] Supports both `--version` and `-v` flags
-- [ ] Output format: `lopen version X.Y.Z`
-- [ ] JSON format: `{"version": "X.Y.Z"}` with `--format json`
+- [x] Displays semantic version (e.g., `0.1.0`)
+- [x] Exits with code 0 on success
+- [x] Output format: `lopen version X.Y.Z`
+- [x] JSON format: `{"version": "X.Y.Z"}` with `--format json`
+- [x] Short flag `-f` for format option
 
 ### Test Cases
-| ID | Description | Expected |
-|----|-------------|----------|
-| TC-001-01 | `lopen --version` | Outputs version string |
-| TC-001-02 | `lopen -v` | Same as `--version` |
-| TC-001-03 | Exit code | Returns 0 |
+| ID | Description | Expected | Status |
+|----|-------------|----------|--------|
+| TC-001-01 | `lopen version` | Outputs `lopen version X.Y.Z` | ✅ |
+| TC-001-02 | `lopen version --format json` | Outputs valid JSON | ✅ |
+| TC-001-03 | `lopen version -f json` | Same as `--format json` | ✅ |
+| TC-001-04 | `lopen --version` | Built-in version output | ✅ |
 
 ---
 

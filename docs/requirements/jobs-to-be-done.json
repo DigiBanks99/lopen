@@ -12,8 +12,8 @@
     "requirement": "REQ-001",
     "description": "Version Command - Display CLI version with --version flag",
     "priority": 2,
-    "status": "not_started",
-    "notes": "System.CommandLine 2.0.2 provides --version automatically. Add custom formatting support."
+    "status": "done",
+    "notes": "Completed: `lopen version` subcommand with --format (text/json) option. 4 new tests added."
   },
   {
     "id": "JTBD-003",
