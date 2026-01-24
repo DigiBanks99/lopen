@@ -60,9 +60,9 @@ dotnet run --project src/Lopen.Cli
 
 ## Project Status
 
-- **State**: Phase 2 REPL complete (JTBD-001 through JTBD-010 complete)
+- **State**: Phase 2 REPL + Performance complete (JTBD-001 through JTBD-011 complete)
 - **Tests**: 126 tests passing (107 Core, 19 CLI)
-- **Next**: JTBD-011 - Performance optimization
+- **Next**: JTBD-012 - Accessibility
 
 ## Key Dependencies
 
