@@ -11,3 +11,4 @@ IMPORTANT:
 - Use only existing ones from SPECIFICATION.md
 - If you find that there are gaps in SPECIFICATION.md, add them.
 - If a new module is needed, create a new requirement folder in @docs/requirements and add a SPECIFICATION.md file there. Update @docs/requirements/README.md to reference the new module.
+- The @.github/agents/research.agent.md agent is good at research if you are picking subagents

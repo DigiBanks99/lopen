@@ -20,3 +20,6 @@ coverage/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Lopen
+lopen.loop.done

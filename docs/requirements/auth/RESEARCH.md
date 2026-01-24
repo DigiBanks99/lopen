@@ -1,11 +1,31 @@
 # Authentication Research
 
 > Research for REQ-003: GitHub OAuth2 Authentication
-> Last validated: 2026-01-24
+> Last validated: 2026-01-29
 
 ## Key Finding
 
-**No official GitHub Copilot SDK for .NET exists on NuGet.** Authentication must use GitHub's OAuth2 device flow directly.
+**GitHub.Copilot.SDK (v0.1.17) now exists on NuGet.** The SDK wraps the Copilot CLI executable and relies on it for authentication. Authentication is handled by the CLI via `gh auth`.
+
+### SDK Auth Approach (Recommended)
+
+When using the SDK, authentication is managed by the Copilot CLI:
+- SDK spawns/connects to the `copilot` CLI process
+- CLI uses existing `gh auth` credentials
+- No manual OAuth flow needed if user has `gh auth login` completed
+
+```csharp
+// SDK handles auth via CLI - no manual token management
+await using var client = new CopilotClient();
+await client.StartAsync(); // Uses gh auth credentials
+```
+
+### When OAuth2 Device Flow is Still Needed
+
+1. **Standalone usage** - If not using the SDK or CLI
+2. **Custom integrations** - Direct API access without CLI
+3. **CI/CD environments** - Where interactive CLI auth isn't available
+4. **GITHUB_TOKEN fallback** - Environment variable override still useful
 
 ## GitHub OAuth2 Device Flow
 
@@ -100,13 +120,30 @@ Register app at https://github.com/settings/developers:
 
 ## Implementation Order
 
-1. Create `IAuthService` interface in Lopen.Core
+### With SDK (Recommended Path)
+
+1. Add `GitHub.Copilot.SDK` package reference
+2. Use `CopilotClient` - auth handled by CLI
+3. Support `GITHUB_TOKEN` environment variable as override
+4. Keep `IAuthService` for status checking and manual scenarios
+
+### Without SDK (Custom Auth)
+
+1. Create `IAuthService` interface in Lopen.Core ✅
 2. Implement device flow in `GitHubDeviceFlowAuth`
-3. Add simple file-based credential storage
+3. Add simple file-based credential storage ✅
 4. Create `auth login`, `auth status`, `auth logout` commands
-5. Support `GITHUB_TOKEN` environment variable override
+5. Support `GITHUB_TOKEN` environment variable override ✅
+
+## Current Implementation Status
+
+- `IAuthService` interface exists with `GetTokenAsync()`, `GetStatusAsync()`, `StoreTokenAsync()`, `ClearAsync()`
+- `AuthService` supports `GITHUB_TOKEN` environment variable (priority 1) and file-based storage (priority 2)
+- `ICredentialStore` abstraction for cross-platform credential storage
+- Device flow not yet implemented (may be optional with SDK)
 
 ## References
 
+- [GitHub.Copilot.SDK on NuGet](https://www.nuget.org/packages/GitHub.Copilot.SDK)
 - [GitHub Device Flow](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow)
 - [OAuth 2.0 Device Authorization Grant](https://datatracker.ietf.org/doc/html/rfc8628)

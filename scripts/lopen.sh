@@ -4,6 +4,9 @@ cd "$(dirname "$0")/.."
 
 ITERATION=0
 
+echo "Removing previous lopen.loop.done file if it exists..."
+rm -f lopen.loop.done
+
 # if first arg is "plan" use PLAN.PROMPT.md
 if [ "$1" == "plan" ]; then
     PROMPT_FILE="PLAN.PROMPT.md"
