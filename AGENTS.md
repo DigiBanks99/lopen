@@ -60,9 +60,9 @@ dotnet run --project src/Lopen.Cli
 
 ## Project Status
 
-- **State**: Phase 3 - Copilot Integration (JTBD-014 next)
-- **Tests**: 172 tests passing
-- **Next**: Implement `lopen chat` command (REQ-021)
+- **State**: All JTBDs Complete! 🎉
+- **Tests**: 200 tests passing
+- **Features**: CLI, REPL, Copilot Integration
 
 ## Key Dependencies
 
@@ -71,6 +71,7 @@ dotnet run --project src/Lopen.Cli
 | System.CommandLine | 2.0.2 (GA) | CLI parsing, subcommands, help/version |
 | Spectre.Console | 0.54.0 | TUI output, colors, progress |
 | GitHub.Copilot.SDK | 0.1.17 | Copilot CLI integration |
+| Microsoft.Extensions.AI | 10.1.1 | AIFunctionFactory for tools |
 | FluentAssertions | 8.8.0 | Test assertions |
 | coverlet.collector | latest | Code coverage |
 
@@ -99,3 +100,6 @@ dotnet run --project src/Lopen.Cli
 - **REPL Testing**: Use interface abstraction (IConsoleInput) for Console.ReadLine() to enable unit testing; Spectre.Console.Testing.TestConsole for output mocking
 - **REPL Command Execution**: System.CommandLine `RootCommand.Parse(args).InvokeAsync()` can be called in a loop for REPL command execution
 - **Console Line Editing**: Custom `Console.ReadKey(intercept: true)` loop allows full line editing (arrows, Home/End, Delete) and history navigation without external libraries
+- **AIFunctionFactory**: Use `AIFunctionFactory.Create(func, name, description)` from Microsoft.Extensions.AI; result `.Name` property (not `.Metadata.Name`)
+- **AIFunction InvokeAsync**: Returns JsonElement for non-string types; use `new AIFunctionArguments { ["param"] = value }` for arguments
+- **Session Management**: SDK handles persistence via `ResumeSessionAsync`, `ListSessionsAsync`, `DeleteSessionAsync`
