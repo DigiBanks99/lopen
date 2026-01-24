@@ -1,0 +1,42 @@
+#!/bin/bash
+
+cd "$(dirname "$0")/.."
+
+# if first arg is "plan" use PLAN.PROMPT.md
+if [ "$1" == "plan" ]; then
+    PROMPT_FILE="PLAN.PROMPT.md"
+
+    # Print a message indicating that we are running in plan mode
+    echo "------------"
+    echo "Mode: PLAN"
+    echo "------------"
+
+    # run copilot cli once with --allow-all for the selected prompt file and exit
+    copilot -p "$(cat "$PROMPT_FILE")" \
+        --allow-all \
+        --model claude-opus-4.5 \
+        --stream on \
+        --no-auto-update\
+        --log-level all
+
+    cd -
+    exit 0
+else
+    PROMPT_FILE="BUILD.PROMPT.md"
+fi
+
+# Print a message indicating that we are running in build mode
+echo "------------"
+echo "Mode: BUILD"
+echo "------------"
+
+# loop over copilot cli with --allow-all for the selected prompt file until lopen.loop.done file exists
+while [ ! -f lopen.loop.done ]; do
+    copilot -p "$(cat "$PROMPT_FILE")" --allow-all \
+        --model claude-opus-4.5 \
+        --stream on \
+        --no-auto-update\
+        --log-level all
+done
+
+cd -
