@@ -60,9 +60,9 @@ dotnet run --project src/Lopen.Cli
 
 ## Project Status
 
-- **State**: Phase 2 REPL + Performance complete (JTBD-001 through JTBD-011 complete)
-- **Tests**: 126 tests passing (107 Core, 19 CLI)
-- **Next**: JTBD-012 - Accessibility
+- **State**: All core JTBDs complete (JTBD-001 through JTBD-012)
+- **Tests**: 142 tests passing (123 Core, 19 CLI)
+- **Next**: Copilot SDK integration (pending SDK availability)
 
 ## Key Dependencies
 

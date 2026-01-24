@@ -92,7 +92,7 @@
     "requirement": "NFR-003",
     "description": "Accessibility - NO_COLOR support, exit codes, screen reader friendly",
     "priority": 12,
-    "status": "not_started",
-    "notes": "Cross-cutting, implement alongside TUI."
+    "status": "done",
+    "notes": "Completed: ExitCodes class with standardized codes, NO_COLOR support via ConsoleOutput, clear symbols for screen readers. 16 new tests."
   }
 ]

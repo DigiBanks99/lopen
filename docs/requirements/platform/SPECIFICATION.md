@@ -8,7 +8,7 @@
 |----|-------------|----------|--------|
 | NFR-001 | Performance | High | 🟢 Complete |
 | NFR-002 | Cross-Platform | High | 🟢 Complete |
-| NFR-003 | Accessibility | Medium | 🔴 Not Started |
+| NFR-003 | Accessibility | Medium | 🟢 Complete |
 
 ---
 
@@ -74,11 +74,17 @@ dotnet publish src/Lopen.Cli -c Release -r <RID> --self-contained -p:PublishSing
 Ensure CLI is accessible to all users.
 
 ### Acceptance Criteria
-- [ ] Clear, readable output
-- [ ] Proper exit codes (0 = success, non-zero = failure)
-- [ ] Screen reader friendly output
-- [ ] Respect `NO_COLOR` environment variable
-- [ ] Support for high contrast terminals
+- [x] Clear, readable output (Spectre.Console with styled messages)
+- [x] Proper exit codes (0 = success, non-zero = failure)
+- [x] Screen reader friendly output (text-based with symbols)
+- [x] Respect `NO_COLOR` environment variable
+- [x] Support for high contrast terminals (uses standard ANSI colors)
+
+### Implementation
+- `ExitCodes` class with standardized exit codes and descriptions
+- `ConsoleOutput` respects NO_COLOR environment variable
+- Output uses clear symbols (✓, ✗, !, ℹ) for accessibility
+- 16 unit tests for exit codes
 
 ### Exit Codes
 | Code | Meaning |
@@ -89,6 +95,8 @@ Ensure CLI is accessible to all users.
 | 3 | Authentication error |
 | 4 | Network error |
 | 5 | Copilot SDK error |
+| 6 | Configuration error |
+| 130 | Operation cancelled |
 
 ---
 
