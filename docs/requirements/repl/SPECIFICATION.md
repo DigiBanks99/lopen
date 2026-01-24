@@ -8,7 +8,7 @@
 |----|-------------|----------|--------|
 | REQ-010 | REPL Mode | High | 🟢 Complete |
 | REQ-011 | Session State Management | High | 🟢 Complete |
-| REQ-012 | Command History | Medium | 🔴 Not Started |
+| REQ-012 | Command History | Medium | 🟢 Complete |
 | REQ-013 | Auto-completion | Medium | 🔴 Not Started |
 
 ---
@@ -65,10 +65,18 @@ Maintain state between commands within a REPL session.
 Remember and navigate through previously entered commands.
 
 ### Acceptance Criteria
-- [ ] Up/Down arrow navigation through history
-- [ ] Persistent history across REPL sessions
-- [ ] History file location: `~/.lopen/history`
-- [ ] Configurable history size (default: 1000)
+- [x] Up/Down arrow navigation through history
+- [x] Persistent history across REPL sessions
+- [x] History file location: `~/.lopen/history`
+- [x] Configurable history size (default: 1000)
+
+### Implementation
+- `ICommandHistory` interface with navigation API (GetPrevious, GetNext, ResetPosition)
+- `CommandHistory` class for in-memory history with max size limit
+- `PersistentCommandHistory` for file-based persistence
+- `ConsoleInputWithHistory` for enhanced console input with arrow key navigation
+- Full line editing: Backspace, Delete, Home, End, Left/Right arrows, Escape to clear
+- 29 unit tests covering all functionality
 
 ---
 

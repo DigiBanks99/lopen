@@ -195,8 +195,14 @@ rootCommand.Subcommands.Add(helpCommand);
 var replCommand = new Command("repl", "Start interactive REPL mode");
 replCommand.SetAction(async parseResult =>
 {
-    var consoleInput = new DefaultConsoleInput();
-    var replService = new ReplService(consoleInput, output);
+    // Set up command history with persistence
+    var history = new PersistentCommandHistory();
+    var consoleInput = new ConsoleInputWithHistory(history);
+    
+    // Set up session state
+    var sessionStateService = new SessionStateService(authService);
+    
+    var replService = new ReplService(consoleInput, output, sessionStateService);
     
     return await replService.RunAsync(async cmdArgs =>
     {

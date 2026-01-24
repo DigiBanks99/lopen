@@ -1,6 +1,6 @@
 # Implementation Plan
 
-> Priority: **JTBD-009** - Command History (REQ-012)
+> Priority: **JTBD-010** - Auto-completion (REQ-013)
 > Last updated: 2026-01-24
 
 ## Completed
@@ -16,8 +16,9 @@
 ### Phase 2 - REPL ✅
 - JTBD-007: REPL Mode (REQ-010)
 - JTBD-008: Session State Management (REQ-011)
+- JTBD-009: Command History (REQ-012)
 
-**Tests: 80 passing (61 Core, 19 CLI)**
+**Tests: 109 passing (90 Core, 19 CLI)**
 
 ## Current Structure
 
@@ -25,25 +26,24 @@
 lopen/
 ├── src/
 │   ├── Lopen.Cli/        # CLI commands (version, help, auth, repl)
-│   └── Lopen.Core/       # Services (Version, Help, Auth, ConsoleOutput, Repl, SessionState)
+│   └── Lopen.Core/       # Services (Version, Help, Auth, Repl, SessionState, CommandHistory)
 ├── tests/
 │   ├── Lopen.Cli.Tests/  # 19 CLI tests
-│   └── Lopen.Core.Tests/ # 61 unit tests
+│   └── Lopen.Core.Tests/ # 90 unit tests
 ├── Directory.Build.props
 └── Lopen.sln
 ```
 
-## Next: JTBD-009 (REQ-012) - Command History
+## Next: JTBD-010 (REQ-013) - Auto-completion
 
 ### Acceptance Criteria
 
-- [ ] Up/Down arrow navigation through history
-- [ ] Persistent history across REPL sessions
-- [ ] History file location: `~/.lopen/history`
-- [ ] Configurable history size (default: 1000)
+- [ ] Tab completion for commands
+- [ ] Tab completion for subcommands
+- [ ] Tab completion for common options
+- [ ] Context-aware suggestions
 
 ## Later
 
-→ JTBD-010 (REQ-013): Auto-completion
 → JTBD-011 (NFR-001): Performance optimization
 → JTBD-012 (NFR-003): Accessibility

@@ -14,3 +14,32 @@ public class ConsoleInputTests
         input.CancellationToken.IsCancellationRequested.Should().BeFalse();
     }
 }
+
+public class ConsoleInputWithHistoryTests
+{
+    [Fact]
+    public void Constructor_ThrowsOnNullHistory()
+    {
+        var act = () => new ConsoleInputWithHistory(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void History_ReturnsProvidedHistory()
+    {
+        var history = new CommandHistory();
+        var input = new ConsoleInputWithHistory(history);
+
+        input.History.Should().BeSameAs(history);
+    }
+
+    [Fact]
+    public void CancellationToken_IsNotCancelledByDefault()
+    {
+        var history = new CommandHistory();
+        var input = new ConsoleInputWithHistory(history);
+
+        input.CancellationToken.IsCancellationRequested.Should().BeFalse();
+    }
+}

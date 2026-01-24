@@ -60,9 +60,9 @@ dotnet run --project src/Lopen.Cli
 
 ## Project Status
 
-- **State**: Phase 2 REPL complete (JTBD-001 through JTBD-008 complete)
-- **Tests**: 80 tests passing (61 Core, 19 CLI)
-- **Next**: JTBD-009 - Command History
+- **State**: Phase 2 REPL complete (JTBD-001 through JTBD-009 complete)
+- **Tests**: 109 tests passing (90 Core, 19 CLI)
+- **Next**: JTBD-010 - Auto-completion
 
 ## Key Dependencies
 
@@ -92,3 +92,4 @@ dotnet run --project src/Lopen.Cli
 - **Trimming**: Use `SuppressTrimAnalysisWarnings` for JSON serialization until source generators added
 - **REPL Testing**: Use interface abstraction (IConsoleInput) for Console.ReadLine() to enable unit testing; Spectre.Console.Testing.TestConsole for output mocking
 - **REPL Command Execution**: System.CommandLine `RootCommand.Parse(args).InvokeAsync()` can be called in a loop for REPL command execution
+- **Console Line Editing**: Custom `Console.ReadKey(intercept: true)` loop allows full line editing (arrows, Home/End, Delete) and history navigation without external libraries

@@ -68,8 +68,8 @@
     "requirement": "REQ-012",
     "description": "Command History - Up/Down navigation, persistent history",
     "priority": 9,
-    "status": "not_started",
-    "notes": "REPL enhancement. ReadLine library or custom implementation."
+    "status": "done",
+    "notes": "Completed: CommandHistory with navigation, PersistentCommandHistory for file persistence, ConsoleInputWithHistory with full line editing. 29 new tests."
   },
   {
     "id": "JTBD-010",
