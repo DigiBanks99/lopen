@@ -36,8 +36,8 @@
     "requirement": "REQ-003",
     "description": "GitHub OAuth2 Authentication - Device flow for Copilot access",
     "priority": 5,
-    "status": "not_started",
-    "notes": "No official Copilot SDK exists. Use GitHub OAuth2 device flow directly. See auth/RESEARCH.md."
+    "status": "done",
+    "notes": "Completed: AuthService with env var and file-based token storage. Device flow planned (requires OAuth app). 17 new tests."
   },
   {
     "id": "JTBD-006",

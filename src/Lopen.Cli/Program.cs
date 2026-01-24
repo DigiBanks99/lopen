@@ -6,6 +6,8 @@ var rootCommand = new RootCommand("Lopen - GitHub Copilot CLI");
 // Services
 var versionService = new VersionService(typeof(Program).Assembly);
 var helpService = new HelpService();
+var credentialStore = new FileCredentialStore();
+var authService = new AuthService(credentialStore);
 
 // Format option for structured output (reusable)
 var formatOption = new Option<string>("--format")
@@ -33,6 +35,91 @@ versionCommand.SetAction(parseResult =>
     return 0;
 });
 rootCommand.Subcommands.Add(versionCommand);
+
+// Auth command with subcommands
+var authCommand = new Command("auth", "Authentication commands");
+
+// auth login
+var loginCommand = new Command("login", "Login to GitHub");
+loginCommand.SetAction(async parseResult =>
+{
+    var status = await authService.GetStatusAsync();
+    if (status.IsAuthenticated)
+    {
+        Console.WriteLine($"Already authenticated via {status.Source}");
+        return 0;
+    }
+
+    Console.WriteLine("To authenticate, set the GITHUB_TOKEN environment variable");
+    Console.WriteLine("or run: lopen auth login --token <your-token>");
+    Console.WriteLine();
+    Console.WriteLine("Get a token from: https://github.com/settings/tokens");
+    Console.WriteLine("Required scopes: copilot, read:user");
+    return 0;
+});
+
+var tokenOption = new Option<string?>("--token")
+{
+    Description = "GitHub personal access token"
+};
+loginCommand.Options.Add(tokenOption);
+loginCommand.SetAction(async parseResult =>
+{
+    var token = parseResult.GetValue(tokenOption);
+    if (!string.IsNullOrEmpty(token))
+    {
+        await authService.StoreTokenAsync(token);
+        Console.WriteLine("Token stored successfully.");
+        return 0;
+    }
+
+    var status = await authService.GetStatusAsync();
+    if (status.IsAuthenticated)
+    {
+        Console.WriteLine($"Already authenticated via {status.Source}");
+        return 0;
+    }
+
+    Console.WriteLine("To authenticate, provide a token:");
+    Console.WriteLine("  lopen auth login --token <your-token>");
+    Console.WriteLine();
+    Console.WriteLine("Or set the GITHUB_TOKEN environment variable.");
+    Console.WriteLine("Get a token from: https://github.com/settings/tokens");
+    Console.WriteLine("Required scopes: copilot, read:user");
+    return 0;
+});
+authCommand.Subcommands.Add(loginCommand);
+
+// auth status
+var statusCommand = new Command("status", "Check authentication status");
+statusCommand.SetAction(async parseResult =>
+{
+    var status = await authService.GetStatusAsync();
+    if (status.IsAuthenticated)
+    {
+        Console.WriteLine($"Authenticated: Yes");
+        Console.WriteLine($"Source: {status.Source}");
+    }
+    else
+    {
+        Console.WriteLine("Authenticated: No");
+        Console.WriteLine("Run 'lopen auth login' to authenticate.");
+    }
+    return 0;
+});
+authCommand.Subcommands.Add(statusCommand);
+
+// auth logout
+var logoutCommand = new Command("logout", "Clear stored credentials");
+logoutCommand.SetAction(async parseResult =>
+{
+    await authService.ClearAsync();
+    Console.WriteLine("Credentials cleared.");
+    return 0;
+});
+authCommand.Subcommands.Add(logoutCommand);
+
+rootCommand.Subcommands.Add(authCommand);
 
 // Help command - format option needs separate instance to avoid conflicts
 var helpFormatOption = new Option<string>("--format")

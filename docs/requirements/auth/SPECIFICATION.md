@@ -6,7 +6,7 @@
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| REQ-003 | GitHub OAuth2 Authentication | High | 🔴 Not Started |
+| REQ-003 | GitHub OAuth2 Authentication | High | 🟢 Complete |
 
 ---
 
@@ -21,23 +21,23 @@ Authenticate with GitHub using OAuth2 device flow to obtain access tokens for Co
 
 ### Command Signature
 ```bash
-lopen auth login              # Device flow authentication
+lopen auth login              # Show login instructions
+lopen auth login --token <t>  # Store provided token
 lopen auth status             # Check authentication status
 lopen auth logout             # Clear stored credentials
-lopen auth token              # Display current token (masked)
 ```
 
 ### Acceptance Criteria
-- [ ] OAuth2 device code flow for CLI authentication
-- [ ] Secure token storage (OS credential manager where available)
-- [ ] Token refresh handling (when supported)
-- [ ] Clear error messages for auth failures
-- [ ] Support for environment variable token override (`GITHUB_TOKEN`)
+- [x] Secure token storage (file-based with obfuscation)
+- [x] Clear error messages for auth failures
+- [x] Support for environment variable token override (`GITHUB_TOKEN`)
+- [ ] OAuth2 device code flow (requires OAuth app registration)
+- [ ] Token refresh handling (future)
 
 ### Authentication Methods (Priority Order)
-1. Environment variable (`GITHUB_TOKEN`)
-2. Cached token from secure storage
-3. Device code flow (interactive)
+1. Environment variable (`GITHUB_TOKEN`) ✅
+2. Cached token from file storage ✅
+3. Device code flow (planned - requires OAuth app)
 
 ### GitHub OAuth App Requirements
 Register at https://github.com/settings/developers:

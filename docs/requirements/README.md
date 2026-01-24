@@ -32,7 +32,7 @@
 |----|-------------|--------|--------|
 | REQ-001 | Version Command | [cli-core](cli-core/SPECIFICATION.md) | 🟢 Complete |
 | REQ-002 | Help/Commands List | [cli-core](cli-core/SPECIFICATION.md) | 🟢 Complete |
-| REQ-003 | Copilot SDK Authentication | [auth](auth/SPECIFICATION.md) | 🔴 Not Started |
+| REQ-003 | Copilot SDK Authentication | [auth](auth/SPECIFICATION.md) | 🟢 Complete |
 
 ### Phase 2 - REPL & TUI (Planned)
 

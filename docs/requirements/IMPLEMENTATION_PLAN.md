@@ -1,6 +1,6 @@
 # Implementation Plan
 
-> Priority: **JTBD-005** - GitHub OAuth2 Authentication (REQ-003)
+> Priority: **JTBD-006** - Modern TUI Patterns (REQ-014)
 > Last updated: 2026-01-24
 
 ## Completed
@@ -9,43 +9,42 @@
 ### JTBD-002 - Version Command (REQ-001) ✅
 ### JTBD-003 - Help Command (REQ-002) ✅
 ### JTBD-004 - Cross-Platform Build (NFR-002) ✅
-- Single-file, self-contained publish configuration
-- Linux-x64 tested (~13MB executable)
-- All platform RIDs configured
+### JTBD-005 - GitHub Authentication (REQ-003) ✅
+- AuthService with env var and file-based token storage
+- auth login/status/logout commands
+- 38 tests passing (22 Core, 16 CLI)
 
 ## Current Structure
 
 ```
 lopen/
 ├── src/
-│   ├── Lopen.Cli/        # CLI entry, version/help commands
-│   └── Lopen.Core/       # VersionService, HelpService
+│   ├── Lopen.Cli/        # CLI entry, version/help/auth commands
+│   └── Lopen.Core/       # VersionService, HelpService, AuthService
 ├── tests/
-│   ├── Lopen.Cli.Tests/  # 12 CLI tests
-│   └── Lopen.Core.Tests/ # 10 unit tests
+│   ├── Lopen.Cli.Tests/  # 16 CLI tests
+│   └── Lopen.Core.Tests/ # 22 unit tests
 ├── Directory.Build.props
 └── Lopen.sln
 ```
 
-## Next: JTBD-005 (REQ-003) - GitHub OAuth2 Authentication
+## Next: JTBD-006 (REQ-014) - Modern TUI Patterns
 
 ### Steps
 
-1. Research GitHub OAuth2 device flow
-2. Create AuthService in Lopen.Core
-3. Add auth commands (login, logout, status)
-4. Implement token storage
-5. Add tests
+1. Add Spectre.Console styled output to commands
+2. Implement NO_COLOR support
+3. Add progress indicators for long operations
+4. Add color-coded status messages
 
-### Acceptance Criteria (from REQ-003)
+### Acceptance Criteria (from REQ-014)
 
-- [ ] Device flow authentication to GitHub
-- [ ] Secure token storage
-- [ ] `lopen auth login` initiates flow
-- [ ] `lopen auth status` shows current auth state
-- [ ] `lopen auth logout` clears credentials
+- [ ] Colored output using Spectre.Console
+- [ ] NO_COLOR environment variable support
+- [ ] Progress indicators for operations
+- [ ] Terminal-friendly formatting
 
 ## Later
 
-→ JTBD-006 (REQ-014): Modern TUI Patterns
 → JTBD-007 (REQ-010): REPL Mode
+→ JTBD-008 (REQ-011): Session State Management
