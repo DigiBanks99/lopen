@@ -58,11 +58,13 @@
 
 | Component | Technology |
 |-----------|------------|
-| CLI Framework | System.CommandLine |
-| TUI | Spectre.Console |
-| Copilot SDK | GitHub.Copilot.SDK |
+| CLI Framework | System.CommandLine (2.0.2) |
+| TUI | Spectre.Console (0.54.0) |
+| Auth | GitHub OAuth2 (device flow) |
 | Testing | xUnit + FluentAssertions + Verify |
 | Logging | Serilog |
+
+> **Note**: No official GitHub Copilot SDK for .NET exists on NuGet. Authentication will use GitHub's OAuth2 device flow directly.
 
 ---
 

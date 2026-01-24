@@ -1,6 +1,13 @@
 # CLI Core Research
 
 > Research findings for JTBD-001 (Project Setup) and REQ-001/REQ-002 implementation
+> Last validated: 2026-01-24
+
+## Environment Verified
+
+- .NET SDK: 10.0.100
+- System.CommandLine: 2.0.2 (GA - stable)
+- Spectre.Console: 0.54.0 (latest stable)
 
 ## 1. .NET 10 Solution Structure
 
@@ -10,11 +17,14 @@
 # Create solution
 dotnet new sln -n Lopen
 
-# Create projects
-dotnet new console -n Lopen.Cli -f net10.0
-dotnet new classlib -n Lopen.Core -f net10.0
-dotnet new xunit -n Lopen.Core.Tests -f net10.0
-dotnet new xunit -n Lopen.Cli.Tests -f net10.0
+# Create directories
+mkdir -p src tests
+
+# Create projects (note: -o for output directory)
+dotnet new console -n Lopen.Cli -o src/Lopen.Cli
+dotnet new classlib -n Lopen.Core -o src/Lopen.Core
+dotnet new xunit -n Lopen.Core.Tests -o tests/Lopen.Core.Tests
+dotnet new xunit -n Lopen.Cli.Tests -o tests/Lopen.Cli.Tests
 
 # Add projects to solution
 dotnet sln add src/Lopen.Cli/Lopen.Cli.csproj
@@ -23,9 +33,9 @@ dotnet sln add tests/Lopen.Core.Tests/Lopen.Core.Tests.csproj
 dotnet sln add tests/Lopen.Cli.Tests/Lopen.Cli.Tests.csproj
 
 # Add references
-dotnet add src/Lopen.Cli/Lopen.Cli.csproj reference src/Lopen.Core/Lopen.Core.csproj
-dotnet add tests/Lopen.Core.Tests/Lopen.Core.Tests.csproj reference src/Lopen.Core/Lopen.Core.csproj
-dotnet add tests/Lopen.Cli.Tests/Lopen.Cli.Tests.csproj reference src/Lopen.Cli/Lopen.Cli.csproj
+dotnet add src/Lopen.Cli reference src/Lopen.Core
+dotnet add tests/Lopen.Core.Tests reference src/Lopen.Core
+dotnet add tests/Lopen.Cli.Tests reference src/Lopen.Cli
 ```
 
 ### Directory.Build.props
@@ -46,12 +56,14 @@ Place in repository root for shared settings:
 
 ---
 
-## 2. System.CommandLine Setup
+## 2. System.CommandLine 2.0 Setup
+
+**Important**: System.CommandLine 2.0 is now GA (version 2.0.2). API uses `SetAction()` pattern.
 
 ### NuGet Package
 
 ```bash
-dotnet add package System.CommandLine
+dotnet add src/Lopen.Cli package System.CommandLine
 ```
 
 ### Root Command with Version and Help
@@ -59,36 +71,47 @@ dotnet add package System.CommandLine
 ```csharp
 using System.CommandLine;
 
-var rootCommand = new RootCommand("Lopen - GitHub Copilot CLI")
-{
-    // Options and subcommands added here
-};
+var rootCommand = new RootCommand("Lopen - GitHub Copilot CLI");
 
-// Version comes automatically with RootCommand
-// Help (--help, -h, -?) comes automatically
+// --version and --help/-h/-? are automatic with RootCommand
+// SetAction for root command (optional, for when no subcommand given)
+rootCommand.SetAction(parseResult =>
+{
+    // Default behavior when no command specified
+    Console.WriteLine("Use --help for available commands");
+    return 0;
+});
 
 // Parse and invoke
 return rootCommand.Parse(args).Invoke();
 ```
 
-### Subcommand Pattern
+### Subcommand Pattern (System.CommandLine 2.0)
 
 ```csharp
 // Create auth command with subcommands
 var authCommand = new Command("auth", "Authentication commands");
 
-var loginCommand = new Command("login", "Login to GitHub Copilot");
-loginCommand.SetAction(parseResult => { /* login logic */ return 0; });
+var loginCommand = new Command("login", "Login to GitHub");
+loginCommand.SetAction(parseResult =>
+{
+    // login logic here
+    return 0;
+});
 authCommand.Subcommands.Add(loginCommand);
 
 var statusCommand = new Command("status", "Check authentication status");
-statusCommand.SetAction(parseResult => { /* status logic */ return 0; });
+statusCommand.SetAction(parseResult =>
+{
+    // status logic here
+    return 0;
+});
 authCommand.Subcommands.Add(statusCommand);
 
 rootCommand.Subcommands.Add(authCommand);
 ```
 
-### Global Options
+### Global Options (2.0 API)
 
 ```csharp
 // Format option available to all commands
@@ -98,6 +121,14 @@ var formatOption = new Option<string>("--format", "Output format")
 };
 formatOption.AcceptOnlyFromAmong("text", "json");
 rootCommand.Options.Add(formatOption);
+
+// Access in action handler:
+rootCommand.SetAction(parseResult =>
+{
+    string format = parseResult.GetValue(formatOption);
+    // ...
+    return 0;
+});
 ```
 
 ---

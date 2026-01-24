@@ -3,84 +3,96 @@
     "id": "JTBD-001",
     "requirement": "PROJECT-SETUP",
     "description": "Initialize .NET 10 solution with project structure (Lopen.Cli, Lopen.Core, tests)",
-    "status": "not_started",
-    "notes": "Foundation - must be done first before any requirements can be implemented"
+    "priority": 1,
+    "status": "done",
+    "notes": "Completed: Solution structure, System.CommandLine 2.0.2, Spectre.Console 0.54.0, xUnit, FluentAssertions. 8 tests pass."
   },
   {
     "id": "JTBD-002",
     "requirement": "REQ-001",
-    "description": "Version Command - Display CLI version with --version/-v flags",
+    "description": "Version Command - Display CLI version with --version flag",
+    "priority": 2,
     "status": "not_started",
-    "notes": "First functional command, validates CLI framework setup"
+    "notes": "System.CommandLine 2.0.2 provides --version automatically. Add custom formatting support."
   },
   {
     "id": "JTBD-003",
     "requirement": "REQ-002",
-    "description": "Help/Commands List - --help/-h and help subcommand",
+    "description": "Help/Commands List - --help/-h built-in + help subcommand",
+    "priority": 3,
     "status": "not_started",
-    "notes": "Essential CLI UX, provides discoverability"
+    "notes": "System.CommandLine 2.0.2 provides --help automatically. Add help subcommand."
   },
   {
     "id": "JTBD-004",
     "requirement": "NFR-002",
     "description": "Cross-Platform build configuration - Windows, macOS, Linux targets",
+    "priority": 4,
     "status": "not_started",
-    "notes": "Build infrastructure needed early for CI/CD"
+    "notes": "Configure in Directory.Build.props and csproj for multi-RID publishing."
   },
   {
     "id": "JTBD-005",
     "requirement": "REQ-003",
-    "description": "Copilot SDK Authentication - OAuth2 and device flow",
+    "description": "GitHub OAuth2 Authentication - Device flow for Copilot access",
+    "priority": 5,
     "status": "not_started",
-    "notes": "Core functionality, required before REPL can interact with Copilot"
+    "notes": "No official Copilot SDK exists. Use GitHub OAuth2 device flow directly. See auth/RESEARCH.md."
   },
   {
     "id": "JTBD-006",
     "requirement": "REQ-014",
-    "description": "Modern TUI Patterns - Spectre.Console integration",
+    "description": "Modern TUI Patterns - Spectre.Console 0.54.0 integration",
+    "priority": 6,
     "status": "not_started",
-    "notes": "Visual polish, can be added incrementally"
+    "notes": "Add incrementally. Spectre.Console 0.54.0 is latest stable."
   },
   {
     "id": "JTBD-007",
     "requirement": "REQ-010",
     "description": "REPL Mode - Interactive command loop",
+    "priority": 7,
     "status": "not_started",
-    "notes": "Phase 2, depends on auth being complete"
+    "notes": "Phase 2, depends on auth. Consider Spectre.Console.Prompt for input."
   },
   {
     "id": "JTBD-008",
     "requirement": "REQ-011",
     "description": "Session State Management - Maintain state between commands",
+    "priority": 8,
     "status": "not_started",
-    "notes": "Required for REPL context preservation"
+    "notes": "Required for REPL context preservation."
   },
   {
     "id": "JTBD-009",
     "requirement": "REQ-012",
     "description": "Command History - Up/Down navigation, persistent history",
+    "priority": 9,
     "status": "not_started",
-    "notes": "REPL enhancement"
+    "notes": "REPL enhancement. ReadLine library or custom implementation."
   },
   {
     "id": "JTBD-010",
     "requirement": "REQ-013",
     "description": "Auto-completion - Tab completion for commands",
+    "priority": 10,
     "status": "not_started",
-    "notes": "REPL enhancement"
+    "notes": "REPL enhancement. Consider shell completion scripts."
   },
   {
     "id": "JTBD-011",
     "requirement": "NFR-001",
     "description": "Performance optimization - Startup < 500ms",
+    "priority": 11,
     "status": "not_started",
-    "notes": "Measure after initial implementation, optimize as needed"
+    "notes": "Measure after initial implementation. Consider AOT if needed."
   },
   {
     "id": "JTBD-012",
     "requirement": "NFR-003",
     "description": "Accessibility - NO_COLOR support, exit codes, screen reader friendly",
+    "priority": 12,
     "status": "not_started",
-    "notes": "Cross-cutting, implement alongside TUI"
+    "notes": "Cross-cutting, implement alongside TUI."
   }
 ]

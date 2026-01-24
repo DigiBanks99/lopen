@@ -5,13 +5,13 @@ IMPORTANT:
 - Update this document with learnings.
 - Keep it brief and concise.
 
-**Lopen** is a .NET 10 CLI application with REPL capabilities for GitHub Copilot SDK integration.
+**Lopen** is a .NET 10 CLI application with REPL capabilities for GitHub Copilot integration.
 
 ## Quick Reference
 
 | Aspect         | Value                                |
 | -------------- | ------------------------------------ |
-| Language       | C# / .NET 10                         |
+| Language       | C# / .NET 10.0.100                   |
 | CLI Pattern    | Subcommands (`lopen <cmd> <subcmd>`) |
 | Argument Style | POSIX (`--flag`, `-f`)               |
 | Test Framework | xUnit                                |
@@ -26,8 +26,7 @@ lopen/
 ├── src/
 │   ├── Lopen.Cli/              # CLI entry point, command definitions
 │   ├── Lopen.Core/             # Core business logic (100% test coverage)
-│   ├── Lopen.Repl/             # REPL implementation
-│   └── Lopen.Sdk/              # Copilot SDK integration
+│   └── Lopen.Repl/             # REPL implementation
 ├── tests/
 │   ├── Lopen.Core.Tests/       # Unit tests for core logic
 │   ├── Lopen.Cli.Tests/        # CLI command tests
@@ -49,9 +48,6 @@ dotnet test --collect:"XPlat Code Coverage"
 
 # Run CLI
 dotnet run --project src/Lopen.Cli
-
-# Publish single executable
-dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
 ```
 
 ## Important
@@ -70,15 +66,22 @@ dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
 
 ## Key Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| System.CommandLine | CLI parsing, subcommands, help/version |
-| Spectre.Console | TUI output, colors, progress |
-| FluentAssertions | Test assertions |
-| coverlet.collector | Code coverage |
+| Package | Version | Purpose |
+|---------|---------|---------|
+| System.CommandLine | 2.0.2 (GA) | CLI parsing, subcommands, help/version |
+| Spectre.Console | 0.54.0 | TUI output, colors, progress |
+| FluentAssertions | latest | Test assertions |
+| coverlet.collector | latest | Code coverage |
 
 ## CLI Patterns
 
-- System.CommandLine provides `--help`, `-h`, `-?` and `--version` automatically
+- System.CommandLine 2.0 provides `--help`, `-h`, `-?` and `--version` automatically
 - Use `RootCommand.Parse(args).Invoke()` pattern
-- Subcommands via `Command` class with `SetAction()` for handlers
+- Subcommands via `Command` class with `SetAction(parseResult => ...)` handlers
+- Access option values with `parseResult.GetValue(option)`
+
+## Key Learnings
+
+- **No Copilot SDK**: No official `GitHub.Copilot.SDK` NuGet package exists; use GitHub OAuth2 device flow directly
+- **System.CommandLine 2.0**: Now GA (not beta); API uses `SetAction()` with `ParseResult` parameter
+- **.NET 10**: SDK 10.0.100 available and confirmed working in environment

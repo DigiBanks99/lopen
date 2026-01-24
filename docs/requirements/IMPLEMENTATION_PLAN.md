@@ -1,97 +1,58 @@
 # Implementation Plan
 
-> Next priority: **JTBD-001** - Initialize .NET 10 solution with project structure
+> Priority: **JTBD-002** - Version Command Enhancements (REQ-001)
+> Last updated: 2026-01-24
 
-## Objective
+## Completed: JTBD-001 - Initialize .NET 10 Solution ✅
 
-Create the foundational .NET 10 solution structure with CLI entry point, core library, and test projects.
+- Created solution structure with Lopen.Cli, Lopen.Core, test projects
+- Added System.CommandLine 2.0.2, Spectre.Console 0.54.0, FluentAssertions 8.8.0
+- Implemented VersionService in Lopen.Core with text/JSON formatting
+- 8 tests passing (5 Core, 3 CLI)
+- `--version` and `--help` working via System.CommandLine built-in support
 
----
-
-## Steps
-
-### 1. Create Solution Structure
+## Current Structure
 
 ```
 lopen/
 ├── src/
-│   ├── Lopen.Cli/        # CLI entry point
-│   └── Lopen.Core/       # Core business logic
+│   ├── Lopen.Cli/        # CLI entry (System.CommandLine 2.0.2)
+│   └── Lopen.Core/       # Business logic (VersionService)
 ├── tests/
-│   ├── Lopen.Cli.Tests/
-│   └── Lopen.Core.Tests/
-├── Directory.Build.props  # Shared build settings
+│   ├── Lopen.Cli.Tests/  # CLI integration tests
+│   └── Lopen.Core.Tests/ # Unit tests
+├── Directory.Build.props # Shared .NET 10 settings
 └── Lopen.sln
 ```
 
-**Commands:** See [cli-core/RESEARCH.md](cli-core/RESEARCH.md#1-net-10-solution-structure)
+## Next: JTBD-002 (REQ-001) - Version Command Enhancements
 
-### 2. Add NuGet Dependencies
+### Steps
 
-| Project | Package | Purpose |
-|---------|---------|---------|
-| Lopen.Cli | System.CommandLine | CLI framework |
-| Lopen.Cli | Spectre.Console | TUI output |
-| Lopen.Core | (none initially) | Pure .NET |
-| Tests | FluentAssertions | Test assertions |
-| Tests | coverlet.collector | Code coverage |
+1. Add `-v` short alias for `--version`
+2. Add `--format` option (text/json)
+3. Update output format: `lopen version X.Y.Z`
+4. Add tests for format options
+5. Update CLI tests
 
-**Commands:** See [cli-core/RESEARCH.md](cli-core/RESEARCH.md#2-systemcommandline-setup)
+### Acceptance Criteria (from REQ-001)
 
-### 3. Implement Minimal CLI
+- [x] Displays semantic version (e.g., `0.1.0`)
+- [ ] Supports both `--version` and `-v` flags
+- [ ] Output format: `lopen version X.Y.Z`
+- [ ] JSON format: `{"version": "X.Y.Z"}` with `--format json`
+- [x] Exits with code 0 on success
 
-Create `Program.cs` with:
-- RootCommand with description
-- Version display (auto-provided by System.CommandLine)
-- Help display (auto-provided)
-- Parse and invoke pattern
+## Dependencies (Verified)
 
-**Code:** See [cli-core/RESEARCH.md](cli-core/RESEARCH.md#root-command-with-version-and-help)
+| Package | Version | Status |
+|---------|---------|--------|
+| System.CommandLine | 2.0.2 | ✅ Installed |
+| Spectre.Console | 0.54.0 | ✅ Installed |
+| FluentAssertions | 8.8.0 | ✅ Installed |
+| .NET SDK | 10.0.100 | ✅ Available |
 
-### 4. Create VersionService in Core
+## Later
 
-```csharp
-public interface IVersionService
-{
-    string GetVersion();
-    string GetFormattedVersion(bool json);
-}
-```
-
-- Read version from assembly metadata
-- Support plain text and JSON output
-
-### 5. Add Unit Tests
-
-- Test VersionService returns valid semver
-- Test JSON output format
-
-**Example:** See [cli-core/RESEARCH.md](cli-core/RESEARCH.md#4-xunit-with-fluentassertions)
-
-### 6. Configure Publishing
-
-Add single-file publishing settings to Lopen.Cli.csproj.
-
-**Config:** See [cli-core/RESEARCH.md](cli-core/RESEARCH.md#5-single-file-publishing)
-
----
-
-## Acceptance Criteria
-
-- [ ] `dotnet build` succeeds
-- [ ] `dotnet test` passes
-- [ ] `dotnet run --project src/Lopen.Cli -- --version` displays version
-- [ ] `dotnet run --project src/Lopen.Cli -- --help` displays help
-
----
-
-## Estimated Effort
-
-~2-4 hours
-
----
-
-## Next Steps After Completion
-
-1. **JTBD-002**: REQ-001 Version command with `--format json`
-2. **JTBD-003**: REQ-002 Help command enhancements
+→ JTBD-003 (REQ-002): Help subcommand
+→ JTBD-004 (NFR-002): Cross-platform build configuration
