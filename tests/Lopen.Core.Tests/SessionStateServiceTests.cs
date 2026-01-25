@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Core.Tests;
@@ -36,15 +36,15 @@ public class SessionStateTests
     {
         var state = new SessionState();
 
-        state.SessionId.Should().NotBeNullOrEmpty();
-        state.SessionId.Should().HaveLength(8);
-        state.StartedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(1));
-        state.IsAuthenticated.Should().BeFalse();
-        state.AuthSource.Should().BeNull();
-        state.Username.Should().BeNull();
-        state.CommandCount.Should().Be(0);
-        state.ConversationHistory.Should().BeEmpty();
-        state.Preferences.Should().BeEmpty();
+        state.SessionId.ShouldNotBeNullOrEmpty();
+        state.SessionId.Length.ShouldBe(8);
+        state.StartedAt.ShouldBe(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(1));
+        state.IsAuthenticated.ShouldBeFalse();
+        state.AuthSource.ShouldBeNull();
+        state.Username.ShouldBeNull();
+        state.CommandCount.ShouldBe(0);
+        state.ConversationHistory.ShouldBeEmpty();
+        state.Preferences.ShouldBeEmpty();
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public class SessionStateTests
         var state1 = new SessionState();
         var state2 = new SessionState();
 
-        state1.SessionId.Should().NotBe(state2.SessionId);
+        state1.SessionId.ShouldNotBe(state2.SessionId);
     }
 }
 
@@ -68,7 +68,7 @@ public class SessionStateServiceTests
 
         await service.InitializeAsync();
 
-        service.CurrentState.SessionId.Should().NotBe(oldSessionId);
+        service.CurrentState.SessionId.ShouldNotBe(oldSessionId);
     }
 
     [Fact]
@@ -79,9 +79,9 @@ public class SessionStateServiceTests
 
         await service.InitializeAsync();
 
-        service.CurrentState.IsAuthenticated.Should().BeTrue();
-        service.CurrentState.Username.Should().Be("testuser");
-        service.CurrentState.AuthSource.Should().Be("test source");
+        service.CurrentState.IsAuthenticated.ShouldBeTrue();
+        service.CurrentState.Username.ShouldBe("testuser");
+        service.CurrentState.AuthSource.ShouldBe("test source");
     }
 
     [Fact]
@@ -94,9 +94,9 @@ public class SessionStateServiceTests
         authService.SetStatus(true, "newuser", "env var");
         await service.RefreshAuthStatusAsync();
 
-        service.CurrentState.IsAuthenticated.Should().BeTrue();
-        service.CurrentState.Username.Should().Be("newuser");
-        service.CurrentState.AuthSource.Should().Be("env var");
+        service.CurrentState.IsAuthenticated.ShouldBeTrue();
+        service.CurrentState.Username.ShouldBe("newuser");
+        service.CurrentState.AuthSource.ShouldBe("env var");
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class SessionStateServiceTests
         service.RecordCommand("help");
         service.RecordCommand("auth status");
 
-        service.CurrentState.CommandCount.Should().Be(3);
+        service.CurrentState.CommandCount.ShouldBe(3);
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public class SessionStateServiceTests
         service.RecordCommand("   ");
         service.RecordCommand(null!);
 
-        service.CurrentState.CommandCount.Should().Be(0);
+        service.CurrentState.CommandCount.ShouldBe(0);
     }
 
     [Fact]
@@ -137,9 +137,9 @@ public class SessionStateServiceTests
         service.AddConversationEntry("msg-001");
         service.AddConversationEntry("msg-002");
 
-        service.CurrentState.ConversationHistory.Should().HaveCount(2);
-        service.CurrentState.ConversationHistory.Should().Contain("msg-001");
-        service.CurrentState.ConversationHistory.Should().Contain("msg-002");
+        service.CurrentState.ConversationHistory.Count.ShouldBe(2);
+        service.CurrentState.ConversationHistory.ShouldContain("msg-001");
+        service.CurrentState.ConversationHistory.ShouldContain("msg-002");
     }
 
     [Fact]
@@ -152,7 +152,7 @@ public class SessionStateServiceTests
         service.AddConversationEntry("");
         service.AddConversationEntry("   ");
 
-        service.CurrentState.ConversationHistory.Should().BeEmpty();
+        service.CurrentState.ConversationHistory.ShouldBeEmpty();
     }
 
     [Fact]
@@ -164,8 +164,8 @@ public class SessionStateServiceTests
 
         service.SetPreference("theme", "dark");
 
-        service.CurrentState.Preferences.Should().ContainKey("theme");
-        service.CurrentState.Preferences["theme"].Should().Be("dark");
+        service.CurrentState.Preferences.ShouldContainKey("theme");
+        service.CurrentState.Preferences["theme"].ShouldBe("dark");
     }
 
     [Fact]
@@ -178,7 +178,7 @@ public class SessionStateServiceTests
         service.SetPreference("theme", "light");
         service.SetPreference("theme", "dark");
 
-        service.GetPreference("theme").Should().Be("dark");
+        service.GetPreference("theme").ShouldBe("dark");
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public class SessionStateServiceTests
         var service = new SessionStateService(authService);
         await service.InitializeAsync();
 
-        service.GetPreference("nonexistent").Should().BeNull();
+        service.GetPreference("nonexistent").ShouldBeNull();
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public class SessionStateServiceTests
 
         service.SetPreference("output_format", "json");
 
-        service.GetPreference("output_format").Should().Be("json");
+        service.GetPreference("output_format").ShouldBe("json");
     }
 
     [Fact]
@@ -216,9 +216,9 @@ public class SessionStateServiceTests
 
         await service.ResetAsync();
 
-        service.CurrentState.SessionId.Should().NotBe(oldSessionId);
-        service.CurrentState.CommandCount.Should().Be(0);
-        service.CurrentState.Preferences.Should().BeEmpty();
+        service.CurrentState.SessionId.ShouldNotBe(oldSessionId);
+        service.CurrentState.CommandCount.ShouldBe(0);
+        service.CurrentState.Preferences.ShouldBeEmpty();
     }
 
     [Fact]
@@ -226,7 +226,7 @@ public class SessionStateServiceTests
     {
         var act = () => new SessionStateService(null!);
 
-        act.Should().Throw<ArgumentNullException>();
+        Should.Throw<ArgumentNullException>(act);
     }
 
     [Fact]
@@ -237,7 +237,7 @@ public class SessionStateServiceTests
 
         var act = () => service.SetPreference(null!, "value");
 
-        act.Should().Throw<ArgumentNullException>();
+        Should.Throw<ArgumentNullException>(act);
     }
 
     [Fact]
@@ -248,6 +248,6 @@ public class SessionStateServiceTests
 
         var act = () => service.GetPreference(null!);
 
-        act.Should().Throw<ArgumentNullException>();
+        Should.Throw<ArgumentNullException>(act);
     }
 }

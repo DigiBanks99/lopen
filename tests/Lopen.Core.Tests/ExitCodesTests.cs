@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Core.Tests;
@@ -8,44 +8,44 @@ public class ExitCodesTests
     [Fact]
     public void Success_IsZero()
     {
-        ExitCodes.Success.Should().Be(0);
+        ExitCodes.Success.ShouldBe(0);
     }
 
     [Fact]
     public void GeneralError_IsOne()
     {
-        ExitCodes.GeneralError.Should().Be(1);
+        ExitCodes.GeneralError.ShouldBe(1);
     }
 
     [Fact]
     public void InvalidArguments_IsTwo()
     {
-        ExitCodes.InvalidArguments.Should().Be(2);
+        ExitCodes.InvalidArguments.ShouldBe(2);
     }
 
     [Fact]
     public void AuthenticationError_IsThree()
     {
-        ExitCodes.AuthenticationError.Should().Be(3);
+        ExitCodes.AuthenticationError.ShouldBe(3);
     }
 
     [Fact]
     public void NetworkError_IsFour()
     {
-        ExitCodes.NetworkError.Should().Be(4);
+        ExitCodes.NetworkError.ShouldBe(4);
     }
 
     [Fact]
     public void CopilotError_IsFive()
     {
-        ExitCodes.CopilotError.Should().Be(5);
+        ExitCodes.CopilotError.ShouldBe(5);
     }
 
     [Fact]
     public void Cancelled_Is130()
     {
         // 128 + SIGINT (2) = 130 is the Unix convention
-        ExitCodes.Cancelled.Should().Be(130);
+        ExitCodes.Cancelled.ShouldBe(130);
     }
 
     [Theory]
@@ -59,13 +59,13 @@ public class ExitCodesTests
     [InlineData(130, "Operation cancelled")]
     public void GetDescription_ReturnsCorrectDescription(int code, string expected)
     {
-        ExitCodes.GetDescription(code).Should().Be(expected);
+        ExitCodes.GetDescription(code).ShouldBe(expected);
     }
 
     [Fact]
     public void GetDescription_UnknownCode_ReturnsUnknown()
     {
-        ExitCodes.GetDescription(99).Should().Contain("Unknown");
-        ExitCodes.GetDescription(99).Should().Contain("99");
+        ExitCodes.GetDescription(99).ShouldContain("Unknown");
+        ExitCodes.GetDescription(99).ShouldContain("99");
     }
 }

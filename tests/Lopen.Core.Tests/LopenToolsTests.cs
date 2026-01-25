@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Microsoft.Extensions.AI;
 using Xunit;
 
@@ -11,7 +11,7 @@ public class LopenToolsTests
     {
         var tool = LopenTools.ReadFile();
 
-        tool.Name.Should().Be("lopen_read_file");
+        tool.Name.ShouldBe("lopen_read_file");
     }
 
     [Fact]
@@ -19,7 +19,7 @@ public class LopenToolsTests
     {
         var tool = LopenTools.ListDirectory();
 
-        tool.Name.Should().Be("lopen_list_directory");
+        tool.Name.ShouldBe("lopen_list_directory");
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public class LopenToolsTests
     {
         var tool = LopenTools.GetWorkingDirectory();
 
-        tool.Name.Should().Be("lopen_get_cwd");
+        tool.Name.ShouldBe("lopen_get_cwd");
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public class LopenToolsTests
     {
         var tool = LopenTools.FileExists();
 
-        tool.Name.Should().Be("lopen_file_exists");
+        tool.Name.ShouldBe("lopen_file_exists");
     }
 
     [Fact]
@@ -43,11 +43,11 @@ public class LopenToolsTests
     {
         var tools = LopenTools.GetAll();
 
-        tools.Should().HaveCount(4);
-        tools.Select(t => t.Name).Should().Contain("lopen_read_file");
-        tools.Select(t => t.Name).Should().Contain("lopen_list_directory");
-        tools.Select(t => t.Name).Should().Contain("lopen_get_cwd");
-        tools.Select(t => t.Name).Should().Contain("lopen_file_exists");
+        tools.Count().ShouldBe(4);
+        tools.Select(t => t.Name).ShouldContain("lopen_read_file");
+        tools.Select(t => t.Name).ShouldContain("lopen_list_directory");
+        tools.Select(t => t.Name).ShouldContain("lopen_get_cwd");
+        tools.Select(t => t.Name).ShouldContain("lopen_file_exists");
     }
 
     [Fact]
@@ -62,8 +62,8 @@ public class LopenToolsTests
             var args = new AIFunctionArguments { ["path"] = tempFile };
             var result = await tool.InvokeAsync(args);
 
-            result.Should().NotBeNull();
-            result!.ToString().Should().Contain("test content");
+            result.ShouldNotBeNull();
+            result!.ToString()!.ShouldContain("test content");
         }
         finally
         {
@@ -79,8 +79,8 @@ public class LopenToolsTests
         var args = new AIFunctionArguments { ["path"] = "/nonexistent/file.txt" };
         var result = await tool.InvokeAsync(args);
 
-        result.Should().NotBeNull();
-        result!.ToString().Should().Contain("Error");
+        result.ShouldNotBeNull();
+        result!.ToString()!.ShouldContain("Error");
     }
 
     [Fact]
@@ -96,8 +96,8 @@ public class LopenToolsTests
             var args = new AIFunctionArguments { ["path"] = tempDir };
             var result = await tool.InvokeAsync(args);
 
-            result.Should().NotBeNull();
-            result!.ToString().Should().Contain("test.txt");
+            result.ShouldNotBeNull();
+            result!.ToString()!.ShouldContain("test.txt");
         }
         finally
         {
@@ -112,8 +112,8 @@ public class LopenToolsTests
 
         var result = await tool.InvokeAsync(new AIFunctionArguments());
 
-        result.Should().NotBeNull();
-        result!.ToString().Should().Be(Directory.GetCurrentDirectory());
+        result.ShouldNotBeNull();
+        result!.ToString()!.ShouldBe(Directory.GetCurrentDirectory());
     }
 
     [Fact]
@@ -127,9 +127,9 @@ public class LopenToolsTests
             var args = new AIFunctionArguments { ["path"] = tempFile };
             var result = await tool.InvokeAsync(args);
 
-            result.Should().NotBeNull();
+            result.ShouldNotBeNull();
             var jsonElement = (System.Text.Json.JsonElement)result!;
-            jsonElement.GetBoolean().Should().BeTrue();
+            jsonElement.GetBoolean().ShouldBeTrue();
         }
         finally
         {
@@ -145,9 +145,9 @@ public class LopenToolsTests
         var args = new AIFunctionArguments { ["path"] = "/nonexistent/path" };
         var result = await tool.InvokeAsync(args);
 
-        result.Should().NotBeNull();
+        result.ShouldNotBeNull();
         var jsonElement = (System.Text.Json.JsonElement)result!;
-        jsonElement.GetBoolean().Should().BeFalse();
+        jsonElement.GetBoolean().ShouldBeFalse();
     }
 }
 
@@ -162,7 +162,7 @@ public class CopilotSessionOptionsToolsTests
             Tools = tools
         };
 
-        options.Tools.Should().HaveCount(4);
+        options.Tools.Count().ShouldBe(4);
     }
 
     [Fact]
@@ -173,8 +173,8 @@ public class CopilotSessionOptionsToolsTests
             AvailableTools = ["file_system", "git"]
         };
 
-        options.AvailableTools.Should().Contain("file_system");
-        options.AvailableTools.Should().Contain("git");
+        options.AvailableTools.ShouldContain("file_system");
+        options.AvailableTools.ShouldContain("git");
     }
 
     [Fact]
@@ -185,7 +185,7 @@ public class CopilotSessionOptionsToolsTests
             ExcludedTools = ["shell", "web"]
         };
 
-        options.ExcludedTools.Should().Contain("shell");
-        options.ExcludedTools.Should().Contain("web");
+        options.ExcludedTools.ShouldContain("shell");
+        options.ExcludedTools.ShouldContain("web");
     }
 }

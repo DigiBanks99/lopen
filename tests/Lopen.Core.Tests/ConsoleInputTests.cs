@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Core.Tests;
@@ -10,8 +10,8 @@ public class ConsoleInputTests
     {
         var input = new DefaultConsoleInput();
         
-        input.CancellationToken.Should().NotBeNull();
-        input.CancellationToken.IsCancellationRequested.Should().BeFalse();
+        // CancellationToken is a struct, so just verify it's usable
+        input.CancellationToken.IsCancellationRequested.ShouldBeFalse();
     }
 }
 
@@ -22,7 +22,7 @@ public class ConsoleInputWithHistoryTests
     {
         var act = () => new ConsoleInputWithHistory(null!);
 
-        act.Should().Throw<ArgumentNullException>();
+        Should.Throw<ArgumentNullException>(act);
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public class ConsoleInputWithHistoryTests
         var history = new CommandHistory();
         var input = new ConsoleInputWithHistory(history);
 
-        input.History.Should().BeSameAs(history);
+        input.History.ShouldBeSameAs(history);
     }
 
     [Fact]
@@ -40,6 +40,6 @@ public class ConsoleInputWithHistoryTests
         var history = new CommandHistory();
         var input = new ConsoleInputWithHistory(history);
 
-        input.CancellationToken.IsCancellationRequested.Should().BeFalse();
+        input.CancellationToken.IsCancellationRequested.ShouldBeFalse();
     }
 }

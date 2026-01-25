@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Core.Tests;
@@ -18,10 +18,10 @@ public class HelpServiceTests
 
         var result = _service.FormatCommandListAsText("lopen", "GitHub Copilot CLI", commands);
 
-        result.Should().Contain("lopen - GitHub Copilot CLI");
-        result.Should().Contain("Commands:");
-        result.Should().Contain("version");
-        result.Should().Contain("auth");
+        result.ShouldContain("lopen - GitHub Copilot CLI");
+        result.ShouldContain("Commands:");
+        result.ShouldContain("version");
+        result.ShouldContain("auth");
     }
 
     [Fact]
@@ -34,9 +34,9 @@ public class HelpServiceTests
 
         var result = _service.FormatCommandListAsJson("lopen", "GitHub Copilot CLI", commands);
 
-        result.Should().Contain("\"name\":\"lopen\"");
-        result.Should().Contain("\"commands\"");
-        result.Should().Contain("\"version\"");
+        result.ShouldContain("\"name\":\"lopen\"");
+        result.ShouldContain("\"commands\"");
+        result.ShouldContain("\"version\"");
     }
 
     [Fact]
@@ -50,9 +50,9 @@ public class HelpServiceTests
 
         var result = _service.FormatCommandHelpAsText(command);
 
-        result.Should().Contain("auth - Authentication commands");
-        result.Should().Contain("Subcommands:");
-        result.Should().Contain("login");
+        result.ShouldContain("auth - Authentication commands");
+        result.ShouldContain("Subcommands:");
+        result.ShouldContain("login");
     }
 
     [Fact]
@@ -62,8 +62,8 @@ public class HelpServiceTests
 
         var result = _service.FormatCommandHelpAsText(command);
 
-        result.Should().Contain("version - Display version information");
-        result.Should().NotContain("Subcommands:");
+        result.ShouldContain("version - Display version information");
+        result.ShouldNotContain("Subcommands:");
     }
 
     [Fact]
@@ -77,8 +77,8 @@ public class HelpServiceTests
 
         var result = _service.FormatCommandHelpAsJson(command);
 
-        result.Should().Contain("\"name\":\"auth\"");
-        result.Should().Contain("\"subcommands\"");
-        result.Should().Contain("\"login\"");
+        result.ShouldContain("\"name\":\"auth\"");
+        result.ShouldContain("\"subcommands\"");
+        result.ShouldContain("\"login\"");
     }
 }

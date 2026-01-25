@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Core.Tests;
@@ -24,8 +24,8 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("", 0);
 
-        completions.Should().HaveCount(4);
-        completions.Select(c => c.Text).Should().Contain(["version", "help", "auth", "repl"]);
+        completions.Count().ShouldBe(4);
+        completions.Select(c => c.Text).ShouldBe(new[] { "version", "help", "auth", "repl" }, ignoreOrder: true);
     }
 
     [Fact]
@@ -35,8 +35,8 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("ver", 3);
 
-        completions.Should().HaveCount(1);
-        completions[0].Text.Should().Be("version");
+        completions.Count().ShouldBe(1);
+        completions[0].Text.ShouldBe("version");
     }
 
     [Fact]
@@ -46,8 +46,8 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("VER", 3);
 
-        completions.Should().HaveCount(1);
-        completions[0].Text.Should().Be("version");
+        completions.Count().ShouldBe(1);
+        completions[0].Text.ShouldBe("version");
     }
 
     [Fact]
@@ -57,10 +57,10 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("auth ", 5);
 
-        completions.Should().Contain(c => c.Text == "login");
-        completions.Should().Contain(c => c.Text == "logout");
-        completions.Should().Contain(c => c.Text == "status");
-        completions.Should().Contain(c => c.Text == "--token");
+        completions.ShouldContain(c => c.Text == "login");
+        completions.ShouldContain(c => c.Text == "logout");
+        completions.ShouldContain(c => c.Text == "status");
+        completions.ShouldContain(c => c.Text == "--token");
     }
 
     [Fact]
@@ -70,8 +70,8 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("auth log", 8);
 
-        completions.Should().HaveCount(2);
-        completions.Select(c => c.Text).Should().Contain(["login", "logout"]);
+        completions.Count().ShouldBe(2);
+        completions.Select(c => c.Text).ShouldBe(new[] { "login", "logout" }, ignoreOrder: true);
     }
 
     [Fact]
@@ -81,8 +81,8 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("version --for", 13);
 
-        completions.Should().HaveCount(1);
-        completions[0].Text.Should().Be("--format");
+        completions.Count().ShouldBe(1);
+        completions[0].Text.ShouldBe("--format");
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("version -", 9);
 
-        completions.Should().Contain(c => c.Text == "-f");
+        completions.ShouldContain(c => c.Text == "-f");
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("unknown ", 8);
 
-        completions.Should().BeEmpty();
+        completions.ShouldBeEmpty();
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("xyz", 3);
 
-        completions.Should().BeEmpty();
+        completions.ShouldBeEmpty();
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("ver", 3);
 
-        completions[0].Description.Should().Be("Display version information");
+        completions[0].Description.ShouldBe("Display version information");
     }
 
     [Fact]
@@ -132,8 +132,8 @@ public class CommandAutoCompleterTests
 
         completer.RegisterCommand("test", "Test command");
 
-        completer.Commands.Should().HaveCount(1);
-        completer.Commands[0].Name.Should().Be("test");
+        completer.Commands.Count().ShouldBe(1);
+        completer.Commands[0].Name.ShouldBe("test");
     }
 
     [Fact]
@@ -148,7 +148,7 @@ public class CommandAutoCompleterTests
 
         completer.RegisterCommands(commands);
 
-        completer.Commands.Should().HaveCount(2);
+        completer.Commands.Count().ShouldBe(2);
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("auth login --", 13);
 
-        completions.Should().Contain(c => c.Text == "--token");
+        completions.ShouldContain(c => c.Text == "--token");
     }
 
     [Fact]
@@ -168,9 +168,9 @@ public class CommandAutoCompleterTests
 
         var completions = completer.GetCompletions("version ", 8);
 
-        completions.Should().Contain(c => c.Text == "--format");
-        completions.Should().Contain(c => c.Text == "-f");
-        completions.Should().NotContain(c => c.Text == "login");
+        completions.ShouldContain(c => c.Text == "--format");
+        completions.ShouldContain(c => c.Text == "-f");
+        completions.ShouldNotContain(c => c.Text == "login");
     }
 
     [Fact]
@@ -178,8 +178,8 @@ public class CommandAutoCompleterTests
     {
         var item = new CompletionItem("test", "A test item");
 
-        item.Text.Should().Be("test");
-        item.Description.Should().Be("A test item");
+        item.Text.ShouldBe("test");
+        item.Description.ShouldBe("A test item");
     }
 
     [Fact]
@@ -187,8 +187,8 @@ public class CommandAutoCompleterTests
     {
         var item = new CompletionItem("test");
 
-        item.Text.Should().Be("test");
-        item.Description.Should().BeNull();
+        item.Text.ShouldBe("test");
+        item.Description.ShouldBeNull();
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public class CommandAutoCompleterTests
     {
         var cmd = new CommandDefinition("test");
 
-        cmd.Subcommands.Should().BeEmpty();
-        cmd.Options.Should().BeEmpty();
+        cmd.Subcommands.ShouldBeEmpty();
+        cmd.Options.ShouldBeEmpty();
     }
 }

@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Cli.Tests;
@@ -11,8 +11,8 @@ public class ReplCommandTests
     {
         var output = RunCli(["repl", "--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("interactive");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("interactive");
     }
 
     [Fact]
@@ -20,8 +20,8 @@ public class ReplCommandTests
     {
         var output = RunCli(["--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("repl");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("repl");
     }
 
     [Fact]
@@ -29,8 +29,8 @@ public class ReplCommandTests
     {
         var output = RunCli([]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("repl");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("repl");
     }
 
     private static CliOutput RunCli(string[] args)

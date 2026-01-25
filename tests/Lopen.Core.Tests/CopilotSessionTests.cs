@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Core.Tests;
@@ -10,7 +10,7 @@ public class CopilotSessionTests
     {
         var session = new MockCopilotSession("test-session-123");
 
-        session.SessionId.Should().Be("test-session-123");
+        session.SessionId.ShouldBe("test-session-123");
     }
 
     [Fact]
@@ -24,7 +24,7 @@ public class CopilotSessionTests
             chunks.Add(chunk);
         }
 
-        chunks.Should().BeEquivalentTo(["Hello", " from ", "mock!"]);
+        chunks.ShouldBe(new[] { "Hello", " from ", "mock!" });
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class CopilotSessionTests
             chunks.Add(chunk);
         }
 
-        chunks.Should().BeEquivalentTo(["Custom ", "response"]);
+        chunks.ShouldBe(new[] { "Custom ", "response" });
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class CopilotSessionTests
             await foreach (var _ in session.StreamAsync("")) { }
         };
 
-        await act.Should().ThrowAsync<ArgumentException>();
+        await Should.ThrowAsync<ArgumentException>(act);
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class CopilotSessionTests
 
         var response = await session.SendAsync("test prompt");
 
-        response.Should().Be("Hello from mock!");
+        response.ShouldBe("Hello from mock!");
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class CopilotSessionTests
 
         var response = await session.SendAsync("test");
 
-        response.Should().Be("Echo: test");
+        response.ShouldBe("Echo: test");
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class CopilotSessionTests
 
         var act = () => session.SendAsync("");
 
-        await act.Should().ThrowAsync<ArgumentException>();
+        await Should.ThrowAsync<ArgumentException>(act);
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class CopilotSessionTests
 
         await session.AbortAsync();
 
-        session.WasAborted.Should().BeTrue();
+        session.WasAborted.ShouldBeTrue();
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class CopilotSessionTests
 
         await session.DisposeAsync();
 
-        session.WasDisposed.Should().BeTrue();
+        session.WasDisposed.ShouldBeTrue();
     }
 
     [Fact]
@@ -146,7 +146,7 @@ public class CopilotSessionTests
         }
 
         // Either cancelled or completed quickly
-        chunks.Count.Should().BeLessThanOrEqualTo(3);
+        chunks.Count.ShouldBeLessThanOrEqualTo(3);
     }
 }
 
@@ -157,9 +157,9 @@ public class CopilotModelsTests
     {
         var status = new CopilotAuthStatus(true, "oauth", "testuser");
 
-        status.IsAuthenticated.Should().BeTrue();
-        status.AuthType.Should().Be("oauth");
-        status.Login.Should().Be("testuser");
+        status.IsAuthenticated.ShouldBeTrue();
+        status.AuthType.ShouldBe("oauth");
+        status.Login.ShouldBe("testuser");
     }
 
     [Fact]
@@ -167,9 +167,9 @@ public class CopilotModelsTests
     {
         var options = new CopilotSessionOptions();
 
-        options.Model.Should().Be("gpt-5");
-        options.Streaming.Should().BeTrue();
-        options.SessionId.Should().BeNull();
+        options.Model.ShouldBe("gpt-5");
+        options.Streaming.ShouldBeTrue();
+        options.SessionId.ShouldBeNull();
     }
 
     [Fact]
@@ -182,9 +182,9 @@ public class CopilotModelsTests
             Streaming = false
         };
 
-        options.SessionId.Should().Be("custom-id");
-        options.Model.Should().Be("claude-sonnet-4.5");
-        options.Streaming.Should().BeFalse();
+        options.SessionId.ShouldBe("custom-id");
+        options.Model.ShouldBe("claude-sonnet-4.5");
+        options.Streaming.ShouldBeFalse();
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class CopilotModelsTests
         var now = DateTime.UtcNow;
         var info = new CopilotSessionInfo("session-1", now, now, "Test summary");
 
-        info.SessionId.Should().Be("session-1");
-        info.Summary.Should().Be("Test summary");
+        info.SessionId.ShouldBe("session-1");
+        info.Summary.ShouldBe("Test summary");
     }
 }

@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Core.Tests;
@@ -30,7 +30,7 @@ public class FileCredentialStoreTests : IDisposable
 
         var retrieved = await _store.GetTokenAsync();
 
-        retrieved.Should().Be("ghp_test123");
+        retrieved.ShouldBe("ghp_test123");
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public class FileCredentialStoreTests : IDisposable
     {
         var result = await _store.GetTokenAsync();
 
-        result.Should().BeNull();
+        result.ShouldBeNull();
     }
 
     [Fact]
@@ -48,20 +48,20 @@ public class FileCredentialStoreTests : IDisposable
 
         await _store.ClearAsync();
 
-        File.Exists(_testPath).Should().BeFalse();
+        File.Exists(_testPath).ShouldBeFalse();
         var result = await _store.GetTokenAsync();
-        result.Should().BeNull();
+        result.ShouldBeNull();
     }
 
     [Fact]
     public async Task StoreTokenAsync_CreatesDirectory()
     {
         var dir = Path.GetDirectoryName(_testPath)!;
-        Directory.Exists(dir).Should().BeFalse();
+        Directory.Exists(dir).ShouldBeFalse();
 
         await _store.StoreTokenAsync("test-token");
 
-        Directory.Exists(dir).Should().BeTrue();
-        File.Exists(_testPath).Should().BeTrue();
+        Directory.Exists(dir).ShouldBeTrue();
+        File.Exists(_testPath).ShouldBeTrue();
     }
 }

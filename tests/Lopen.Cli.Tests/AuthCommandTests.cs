@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Cli.Tests;
@@ -11,8 +11,8 @@ public class AuthCommandTests
     {
         var output = RunCli(["auth", "status"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("Not authenticated");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("Not authenticated");
     }
 
     [Fact]
@@ -20,8 +20,8 @@ public class AuthCommandTests
     {
         var output = RunCli(["auth", "logout"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("Credentials cleared");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("Credentials cleared");
     }
 
     [Fact]
@@ -29,8 +29,8 @@ public class AuthCommandTests
     {
         var output = RunCli(["auth", "login"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("token");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("token");
     }
 
     [Fact]
@@ -38,10 +38,10 @@ public class AuthCommandTests
     {
         var output = RunCli(["help", "auth"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("login");
-        output.StandardOutput.Should().Contain("status");
-        output.StandardOutput.Should().Contain("logout");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("login");
+        output.StandardOutput.ShouldContain("status");
+        output.StandardOutput.ShouldContain("logout");
     }
 
     private static CliOutput RunCli(string[] args)

@@ -1,4 +1,7 @@
-Create or update the @docs/requirements/jobs-to-be-done.json document describing the next most important tasks that need to be done to build out lopen.
+Study the SPECIFICATION.md files in the @docs/requirements/<module>/ folders and the existing @docs/requirements/jobs-to-be-done.json file.
+Look for incomplete or partially complete jobs to be done.
+Use sub-agents to study the code and look for TODOs, FIXMEs, temporary implementations or other indicators of incomplete work that map back to existing requirements.
+Create or update the @docs/requirements/jobs-to-be-done.json document describing the next most important tasks that need to be done to build out lopen limited to 100.
 Each line should have an id, a requirement code that maps back to a @docs/requirements/<module>/SPECIFICATION.md for a requirement module, a brief description for human readability and a status tracking with an optional partial implementation description or issues experienced. Make use of subagents to identify the most important items and to order them by priority.
 After that has been done, decide on the next most important thing to be done and use up to 50 agents to research how to do it and output a IMPLEMENTATION_PLAN.md inside @docs/requirements. @docs/requirements/IMPLEMENTATION_PLAN.md must be brief but explain what must be done. @docs/requirements/IMPLEMENTATION_PLAN.md might not be correct, so verify.
 The additional research must be added to a RESEARCH.md file inside the relevant requirement sub-folder and IMPLEMENTATION_PLAN.md can reference back to that for detailed instructions where needed.

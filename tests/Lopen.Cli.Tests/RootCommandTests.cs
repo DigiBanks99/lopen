@@ -1,6 +1,6 @@
 using System.CommandLine;
 using System.Diagnostics;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Cli.Tests;
@@ -12,8 +12,8 @@ public class RootCommandTests
     {
         var output = RunCli([]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("--help");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("--help");
     }
 
     [Fact]
@@ -21,9 +21,9 @@ public class RootCommandTests
     {
         var output = RunCli(["--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("Lopen");
-        output.StandardOutput.Should().Contain("GitHub Copilot CLI");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("Lopen");
+        output.StandardOutput.ShouldContain("GitHub Copilot CLI");
     }
 
     [Fact]
@@ -31,8 +31,8 @@ public class RootCommandTests
     {
         var output = RunCli(["--version"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().MatchRegex(@"\d+\.\d+\.\d+");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldMatch(@"\d+\.\d+\.\d+");
     }
 
     [Fact]
@@ -40,8 +40,8 @@ public class RootCommandTests
     {
         var output = RunCli(["--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("version");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("version");
     }
 
     private static CliOutput RunCli(string[] args)
@@ -85,8 +85,8 @@ public class VersionCommandTests
     {
         var output = RunCli(["version"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().MatchRegex(@"lopen version \d+\.\d+\.\d+");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldMatch(@"lopen version \d+\.\d+\.\d+");
     }
 
     [Fact]
@@ -94,9 +94,9 @@ public class VersionCommandTests
     {
         var output = RunCli(["version", "--format", "json"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("\"version\"");
-        output.StandardOutput.Should().MatchRegex(@"\{""version"":""\d+\.\d+\.\d+""\}");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("\"version\"");
+        output.StandardOutput.ShouldMatch(@"\{""version"":""\d+\.\d+\.\d+""\}");
     }
 
     [Fact]
@@ -104,8 +104,8 @@ public class VersionCommandTests
     {
         var output = RunCli(["version", "-f", "json"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("\"version\"");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("\"version\"");
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class VersionCommandTests
     {
         var output = RunCli(["version", "--format", "xml"]);
 
-        output.ExitCode.Should().NotBe(0);
+        output.ExitCode.ShouldNotBe(0);
     }
 
     private static CliOutput RunCli(string[] args)
@@ -155,9 +155,9 @@ public class HelpCommandTests
     {
         var output = RunCli(["help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("Commands:");
-        output.StandardOutput.Should().Contain("version");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("Commands:");
+        output.StandardOutput.ShouldContain("version");
     }
 
     [Fact]
@@ -165,9 +165,9 @@ public class HelpCommandTests
     {
         var output = RunCli(["help", "--format", "json"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("\"commands\"");
-        output.StandardOutput.Should().Contain("\"version\"");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("\"commands\"");
+        output.StandardOutput.ShouldContain("\"version\"");
     }
 
     [Fact]
@@ -175,9 +175,9 @@ public class HelpCommandTests
     {
         var output = RunCli(["help", "version"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("version");
-        output.StandardOutput.Should().Contain("Display version information");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("version");
+        output.StandardOutput.ShouldContain("Display version information");
     }
 
     [Fact]
@@ -185,8 +185,8 @@ public class HelpCommandTests
     {
         var output = RunCli(["help", "nonexistent"]);
 
-        output.ExitCode.Should().NotBe(0);
-        output.StandardError.Should().Contain("Unknown command");
+        output.ExitCode.ShouldNotBe(0);
+        output.StandardError.ShouldContain("Unknown command");
     }
 
     private static CliOutput RunCli(string[] args)

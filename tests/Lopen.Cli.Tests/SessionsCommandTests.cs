@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Cli.Tests;
@@ -11,8 +11,8 @@ public class SessionsCommandTests
     {
         var output = RunCli(["sessions", "--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("session");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("session");
     }
 
     [Fact]
@@ -20,8 +20,8 @@ public class SessionsCommandTests
     {
         var output = RunCli(["--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("sessions");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("sessions");
     }
 
     [Fact]
@@ -29,8 +29,8 @@ public class SessionsCommandTests
     {
         var output = RunCli(["sessions", "--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("list");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("list");
     }
 
     [Fact]
@@ -38,8 +38,8 @@ public class SessionsCommandTests
     {
         var output = RunCli(["sessions", "--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("delete");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("delete");
     }
 
     [Fact]
@@ -47,8 +47,8 @@ public class SessionsCommandTests
     {
         var output = RunCli(["sessions", "list", "--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("List");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("List");
     }
 
     [Fact]
@@ -56,8 +56,8 @@ public class SessionsCommandTests
     {
         var output = RunCli(["sessions", "delete", "--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("session-id");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("session-id");
     }
 
     [Fact]
@@ -65,9 +65,9 @@ public class SessionsCommandTests
     {
         var output = RunCli(["help", "sessions"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("list");
-        output.StandardOutput.Should().Contain("delete");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("list");
+        output.StandardOutput.ShouldContain("delete");
     }
 
     [Fact]
@@ -75,9 +75,9 @@ public class SessionsCommandTests
     {
         var output = RunCli(["chat", "--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("--resume");
-        output.StandardOutput.Should().Contain("-r");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("--resume");
+        output.StandardOutput.ShouldContain("-r");
     }
 
     private static CliOutput RunCli(string[] args)

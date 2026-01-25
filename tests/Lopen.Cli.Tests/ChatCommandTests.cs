@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Cli.Tests;
@@ -11,8 +11,8 @@ public class ChatCommandTests
     {
         var output = RunCli(["chat", "--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("AI chat");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("AI chat");
     }
 
     [Fact]
@@ -20,8 +20,8 @@ public class ChatCommandTests
     {
         var output = RunCli(["--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("chat");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("chat");
     }
 
     [Fact]
@@ -29,9 +29,9 @@ public class ChatCommandTests
     {
         var output = RunCli(["chat", "--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("--model");
-        output.StandardOutput.Should().Contain("-m");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("--model");
+        output.StandardOutput.ShouldContain("-m");
     }
 
     [Fact]
@@ -39,9 +39,9 @@ public class ChatCommandTests
     {
         var output = RunCli(["chat", "--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("--streaming");
-        output.StandardOutput.Should().Contain("-s");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("--streaming");
+        output.StandardOutput.ShouldContain("-s");
     }
 
     [Fact]
@@ -49,8 +49,8 @@ public class ChatCommandTests
     {
         var output = RunCli(["chat", "--help"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("prompt");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("prompt");
     }
 
     [Fact]
@@ -58,9 +58,9 @@ public class ChatCommandTests
     {
         var output = RunCli(["help", "chat"]);
 
-        output.ExitCode.Should().Be(0);
-        output.StandardOutput.Should().Contain("chat");
-        output.StandardOutput.Should().Contain("AI");
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("chat");
+        output.StandardOutput.ShouldContain("AI");
     }
 
     private static CliOutput RunCli(string[] args)

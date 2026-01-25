@@ -60,9 +60,10 @@ dotnet run --project src/Lopen.Cli
 
 ## Project Status
 
-- **State**: All JTBDs Complete! 🎉
+- **State**: Phase 4 - Quality & Enhancements
 - **Tests**: 200 tests passing
 - **Features**: CLI, REPL, Copilot Integration
+- **Next**: TUI Spinners (JTBD-019)
 
 ## Key Dependencies
 
@@ -72,7 +73,7 @@ dotnet run --project src/Lopen.Cli
 | Spectre.Console | 0.54.0 | TUI output, colors, progress |
 | GitHub.Copilot.SDK | 0.1.17 | Copilot CLI integration |
 | Microsoft.Extensions.AI | 10.1.1 | AIFunctionFactory for tools |
-| FluentAssertions | 8.8.0 | Test assertions |
+| Shouldly | 4.3.0 | Test assertions (MIT license) |
 | coverlet.collector | latest | Code coverage |
 
 ## CLI Patterns
@@ -103,3 +104,11 @@ dotnet run --project src/Lopen.Cli
 - **AIFunctionFactory**: Use `AIFunctionFactory.Create(func, name, description)` from Microsoft.Extensions.AI; result `.Name` property (not `.Metadata.Name`)
 - **AIFunction InvokeAsync**: Returns JsonElement for non-string types; use `new AIFunctionArguments { ["param"] = value }` for arguments
 - **Session Management**: SDK handles persistence via `ResumeSessionAsync`, `ListSessionsAsync`, `DeleteSessionAsync`
+- **Spectre.Console NO_COLOR**: Automatically respects `NO_COLOR` env var; no special code needed
+- **Spectre.Console Tables**: Use `new Table().RoundedBorder()` for session lists; `.AsciiBorder()` for accessibility
+- **Spectre.Console Spinners**: Use `AnsiConsole.Status().Spinner(Spinner.Known.Dots).StartAsync()` for async ops
+- **Shouldly vs FluentAssertions**: Shouldly has MIT license, simpler API, better error messages showing variable names
+- **Shouldly Patterns**: `.ShouldBe()`, `.ShouldContain()`, `Should.Throw<T>(action)` for exceptions, `.ShouldNotBeNull()` only for reference types
+- **Shouldly Collections**: Use `.ShouldBe(expected, ignoreOrder: true)` for unordered collection comparison, `.Count.ShouldBe(n)` (property not method)
+- **Argument Parsing**: For quoted strings, use state machine approach (not regex) following CommandLineToArgvW conventions
+- **OAuth Device Flow**: GitHub device flow doesn't require client_secret; poll with backoff per RFC 8628

@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Core.Tests;
@@ -16,7 +16,7 @@ public class AuthServiceTests
 
             var token = await service.GetTokenAsync();
 
-            token.Should().Be("test-env-token");
+            token.ShouldBe("test-env-token");
         }
         finally
         {
@@ -34,7 +34,7 @@ public class AuthServiceTests
 
         var token = await service.GetTokenAsync();
 
-        token.Should().Be("stored-token");
+        token.ShouldBe("stored-token");
     }
 
     [Fact]
@@ -48,8 +48,9 @@ public class AuthServiceTests
 
             var status = await service.GetStatusAsync();
 
-            status.IsAuthenticated.Should().BeTrue();
-            status.Source.Should().Contain("environment variable");
+            status.IsAuthenticated.ShouldBeTrue();
+            status.Source.ShouldNotBeNull();
+            status.Source.ShouldContain("environment variable");
         }
         finally
         {
@@ -67,8 +68,9 @@ public class AuthServiceTests
 
         var status = await service.GetStatusAsync();
 
-        status.IsAuthenticated.Should().BeTrue();
-        status.Source.Should().Contain("stored credentials");
+        status.IsAuthenticated.ShouldBeTrue();
+        status.Source.ShouldNotBeNull();
+        status.Source.ShouldContain("stored credentials");
     }
 
     [Fact]
@@ -80,7 +82,7 @@ public class AuthServiceTests
 
         var status = await service.GetStatusAsync();
 
-        status.IsAuthenticated.Should().BeFalse();
+        status.IsAuthenticated.ShouldBeFalse();
     }
 
     [Fact]
@@ -92,7 +94,7 @@ public class AuthServiceTests
         await service.StoreTokenAsync("my-token");
 
         var stored = await store.GetTokenAsync();
-        stored.Should().Be("my-token");
+        stored.ShouldBe("my-token");
     }
 
     [Fact]
@@ -105,18 +107,18 @@ public class AuthServiceTests
         await service.ClearAsync();
 
         var stored = await store.GetTokenAsync();
-        stored.Should().BeNull();
+        stored.ShouldBeNull();
     }
 
     [Fact]
-    public void StoreTokenAsync_WithEmptyToken_ThrowsArgumentException()
+    public async Task StoreTokenAsync_WithEmptyToken_ThrowsArgumentException()
     {
         var store = new InMemoryCredentialStore();
         var service = new AuthService(store);
 
         Func<Task> act = () => service.StoreTokenAsync("");
 
-        act.Should().ThrowAsync<ArgumentException>();
+        await Should.ThrowAsync<ArgumentException>(act);
     }
 }
 

@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Core.Tests;
@@ -12,7 +12,7 @@ public class CopilotServiceTests
 
         var result = await service.IsAvailableAsync();
 
-        result.Should().BeTrue();
+        result.ShouldBeTrue();
     }
 
     [Fact]
@@ -22,7 +22,7 @@ public class CopilotServiceTests
 
         var result = await service.IsAvailableAsync();
 
-        result.Should().BeFalse();
+        result.ShouldBeFalse();
     }
 
     [Fact]
@@ -35,9 +35,9 @@ public class CopilotServiceTests
 
         var status = await service.GetAuthStatusAsync();
 
-        status.IsAuthenticated.Should().BeTrue();
-        status.AuthType.Should().Be("user");
-        status.Login.Should().Be("testuser");
+        status.IsAuthenticated.ShouldBeTrue();
+        status.AuthType.ShouldBe("user");
+        status.Login.ShouldBe("testuser");
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class CopilotServiceTests
 
         var status = await service.GetAuthStatusAsync();
 
-        status.IsAuthenticated.Should().BeFalse();
+        status.IsAuthenticated.ShouldBeFalse();
     }
 
     [Fact]
@@ -60,8 +60,8 @@ public class CopilotServiceTests
 
         var models = await service.GetModelsAsync();
 
-        models.Should().Contain("gpt-5");
-        models.Should().Contain("claude-sonnet-4.5");
+        models.ShouldContain("gpt-5");
+        models.ShouldContain("claude-sonnet-4.5");
     }
 
     [Fact]
@@ -71,8 +71,8 @@ public class CopilotServiceTests
 
         await using var session = await service.CreateSessionAsync();
 
-        session.Should().NotBeNull();
-        session.SessionId.Should().StartWith("mock-session");
+        session.ShouldNotBeNull();
+        session.SessionId.ShouldStartWith("mock-session");
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public class CopilotServiceTests
 
         await using var session = await service.CreateSessionAsync(options);
 
-        session.SessionId.Should().Be("custom-session-id");
+        session.SessionId.ShouldBe("custom-session-id");
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public class CopilotServiceTests
 
         var act = () => service.CreateSessionAsync();
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await Should.ThrowAsync<InvalidOperationException>(act);
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public class CopilotServiceTests
 
         await using var resumed = await service.ResumeSessionAsync(sessionId);
 
-        resumed.SessionId.Should().Be(sessionId);
+        resumed.SessionId.ShouldBe(sessionId);
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class CopilotServiceTests
 
         var act = () => service.ResumeSessionAsync("nonexistent");
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await Should.ThrowAsync<InvalidOperationException>(act);
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class CopilotServiceTests
 
         var act = () => service.ResumeSessionAsync("");
 
-        await act.Should().ThrowAsync<ArgumentException>();
+        await Should.ThrowAsync<ArgumentException>(act);
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public class CopilotServiceTests
 
         var sessions = await service.ListSessionsAsync();
 
-        sessions.Should().HaveCount(2);
+        sessions.Count().ShouldBe(2);
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public class CopilotServiceTests
         await service.DeleteSessionAsync(sessionId);
 
         var sessions = await service.ListSessionsAsync();
-        sessions.Should().NotContain(s => s.SessionId == sessionId);
+        sessions.ShouldNotContain(s => s.SessionId == sessionId);
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public class CopilotServiceTests
 
         var act = () => service.DeleteSessionAsync("");
 
-        await act.Should().ThrowAsync<ArgumentException>();
+        await Should.ThrowAsync<ArgumentException>(act);
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class CopilotServiceTests
 
         await service.DisposeAsync();
 
-        service.WasDisposed.Should().BeTrue();
+        service.WasDisposed.ShouldBeTrue();
     }
 
     [Fact]
@@ -180,6 +180,6 @@ public class CopilotServiceTests
         await using var _ = await service.CreateSessionAsync();
         await using var __ = await service.CreateSessionAsync();
 
-        service.SessionsCreated.Should().Be(2);
+        service.SessionsCreated.ShouldBe(2);
     }
 }

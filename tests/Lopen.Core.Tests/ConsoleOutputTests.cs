@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Spectre.Console;
 using Spectre.Console.Testing;
 using Xunit;
@@ -15,8 +15,8 @@ public class ConsoleOutputTests
 
         output.Success("Operation completed");
 
-        console.Output.Should().Contain("✓");
-        console.Output.Should().Contain("Operation completed");
+        console.Output.ShouldContain("✓");
+        console.Output.ShouldContain("Operation completed");
     }
 
     [Fact]
@@ -27,8 +27,8 @@ public class ConsoleOutputTests
 
         output.Error("Something failed");
 
-        console.Output.Should().Contain("✗");
-        console.Output.Should().Contain("Something failed");
+        console.Output.ShouldContain("✗");
+        console.Output.ShouldContain("Something failed");
     }
 
     [Fact]
@@ -39,8 +39,8 @@ public class ConsoleOutputTests
 
         output.Warning("Be careful");
 
-        console.Output.Should().Contain("!");
-        console.Output.Should().Contain("Be careful");
+        console.Output.ShouldContain("!");
+        console.Output.ShouldContain("Be careful");
     }
 
     [Fact]
@@ -51,8 +51,8 @@ public class ConsoleOutputTests
 
         output.Info("For your information");
 
-        console.Output.Should().Contain("ℹ");
-        console.Output.Should().Contain("For your information");
+        console.Output.ShouldContain("ℹ");
+        console.Output.ShouldContain("For your information");
     }
 
     [Fact]
@@ -63,8 +63,8 @@ public class ConsoleOutputTests
 
         output.KeyValue("Status", "Ready");
 
-        console.Output.Should().Contain("Status");
-        console.Output.Should().Contain("Ready");
+        console.Output.ShouldContain("Status");
+        console.Output.ShouldContain("Ready");
     }
 
     [Fact]
@@ -75,6 +75,6 @@ public class ConsoleOutputTests
 
         output.WriteLine("Plain text");
 
-        console.Output.Should().Contain("Plain text");
+        console.Output.ShouldContain("Plain text");
     }
 }

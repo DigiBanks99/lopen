@@ -1,49 +1,66 @@
 # Implementation Plan
 
-> Status: **Phase 3 - Copilot Integration Complete**
-> All JTBDs Complete!
-> Last updated: 2026-01-24
+> Status: **Phase 4 - Quality & Enhancements**
+> Last updated: 2026-01-25
+> Tests: 200 passing
 
-## Completed
+## Summary
+
+Phase 1-3 complete. JTBD-018 (Shouldly migration) complete. Now focusing on TUI enhancements.
+
+---
+
+## ✅ Completed: JTBD-018 - Migrate to Shouldly
+
+**Requirement**: REQ-TD-001
+
+Migrated 200 tests from FluentAssertions 8.8.0 to Shouldly 4.3.0. All tests pass.
+
+---
+
+## Next Priority: JTBD-019 - TUI Spinners
+
+**Requirement**: REQ-014
+
+### What
+Add spinners for async operations using Spectre.Console.
+
+### Why
+- Better UX during Copilot API calls
+- Visual feedback for long-running operations
+
+### Research
+See `docs/research/SPECTRE_SUMMARY.md`
+
+---
+
+## Backlog (Priority Order)
+
+| JTBD | Description | Requirement | Notes |
+|------|-------------|-------------|-------|
+| JTBD-020 | TUI Tables for sessions | REQ-014 | Same research |
+| JTBD-021 | Quoted string parsing | REQ-010 | TODO in ReplService |
+| JTBD-022 | OAuth Device Flow | REQ-003 | See auth/DEVICE_FLOW.md |
+| JTBD-023 | Secure token storage | REQ-003 | Platform-specific |
+| JTBD-024 | Git tools for Copilot | REQ-023 | Extend LopenTools |
+| JTBD-025 | Shell tool for Copilot | REQ-023 | Needs permission model |
+
+---
+
+## Completed Phases
 
 | Phase | JTBDs | Status |
 |-------|-------|--------|
 | Phase 1 - Foundation | JTBD-001 to JTBD-006 | ✅ Complete |
 | Phase 2 - REPL | JTBD-007 to JTBD-010 | ✅ Complete |
 | Platform NFRs | JTBD-011, JTBD-012 | ✅ Complete |
-| Copilot SDK | JTBD-013 | ✅ Complete |
-| Chat Command | JTBD-014 | ✅ Complete |
-| Streaming | JTBD-015 | ✅ Complete |
-| Custom Tools | JTBD-016 | ✅ Complete |
-| Session Persistence | JTBD-017 | ✅ Complete |
-
-**Tests: 200 passing**
-
----
-
-## Completed: JTBD-017 - Session Persistence (REQ-024)
-
-Session management implemented:
-- `lopen chat --resume/-r <id>` resumes existing session
-- `lopen sessions list` shows all sessions with timestamps
-- `lopen sessions delete <id>` removes a session
-- Session ID displayed after each chat interaction
-- 8 new tests
-
----
-
-## All JTBDs Complete
-
-All 17 Jobs-to-be-Done from the initial roadmap are complete.
-The Lopen CLI now includes:
-
-1. **Core CLI** - Version, help, auth commands
-2. **REPL** - Interactive mode with history and auto-completion
-3. **Copilot Integration** - Chat, streaming, tools, sessions
+| Phase 3 - Copilot | JTBD-013 to JTBD-017 | ✅ Complete |
+| Tech Debt | JTBD-018 | ✅ Complete |
 
 ---
 
 ## References
 
-- [copilot/RESEARCH.md](copilot/RESEARCH.md) - Full SDK API patterns
-- [copilot/SPECIFICATION.md](copilot/SPECIFICATION.md) - Requirements
+- [tech-debt/SPECIFICATION.md](tech-debt/SPECIFICATION.md) - Tech debt requirements
+- [copilot/RESEARCH.md](copilot/RESEARCH.md) - SDK patterns
+- [auth/DEVICE_FLOW.md](auth/DEVICE_FLOW.md) - OAuth implementation

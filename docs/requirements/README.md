@@ -22,6 +22,7 @@
 | [tui](tui/SPECIFICATION.md) | Terminal UI patterns (Spectre.Console) | Phase 2 |
 | [platform](platform/SPECIFICATION.md) | Performance, cross-platform, accessibility | Cross-cutting |
 | [copilot](copilot/SPECIFICATION.md) | Copilot SDK, chat, streaming, tools | Phase 3 |
+| [tech-debt](tech-debt/SPECIFICATION.md) | Items related to cleaning up the code | Cross-cutting |
 
 ---
 

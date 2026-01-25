@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Core.Tests;
@@ -12,8 +12,8 @@ public class CommandHistoryTests
 
         history.Add("version");
 
-        history.Count.Should().Be(1);
-        history.GetAll().Should().Contain("version");
+        history.Count.ShouldBe(1);
+        history.GetAll().ShouldContain("version");
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public class CommandHistoryTests
         history.Add("   ");
         history.Add(null!);
 
-        history.Count.Should().Be(0);
+        history.Count.ShouldBe(0);
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class CommandHistoryTests
         history.Add("version");
         history.Add("version");
 
-        history.Count.Should().Be(1);
+        history.Count.ShouldBe(1);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class CommandHistoryTests
         history.Add("help");
         history.Add("version");
 
-        history.Count.Should().Be(3);
+        history.Count.ShouldBe(3);
     }
 
     [Fact]
@@ -62,11 +62,11 @@ public class CommandHistoryTests
         history.Add("cmd3");
         history.Add("cmd4");
 
-        history.Count.Should().Be(3);
-        history.GetAll().Should().NotContain("cmd1");
-        history.GetAll().Should().Contain("cmd2");
-        history.GetAll().Should().Contain("cmd3");
-        history.GetAll().Should().Contain("cmd4");
+        history.Count.ShouldBe(3);
+        history.GetAll().ShouldNotContain("cmd1");
+        history.GetAll().ShouldContain("cmd2");
+        history.GetAll().ShouldContain("cmd3");
+        history.GetAll().ShouldContain("cmd4");
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class CommandHistoryTests
 
         var result = history.GetPrevious();
 
-        result.Should().Be("cmd3");
+        result.ShouldBe("cmd3");
     }
 
     [Fact]
@@ -90,9 +90,9 @@ public class CommandHistoryTests
         history.Add("cmd2");
         history.Add("cmd3");
 
-        history.GetPrevious().Should().Be("cmd3");
-        history.GetPrevious().Should().Be("cmd2");
-        history.GetPrevious().Should().Be("cmd1");
+        history.GetPrevious().ShouldBe("cmd3");
+        history.GetPrevious().ShouldBe("cmd2");
+        history.GetPrevious().ShouldBe("cmd1");
     }
 
     [Fact]
@@ -104,8 +104,8 @@ public class CommandHistoryTests
 
         history.GetPrevious(); // cmd2
         history.GetPrevious(); // cmd1
-        history.GetPrevious().Should().Be("cmd1"); // Still cmd1
-        history.GetPrevious().Should().Be("cmd1"); // Still cmd1
+        history.GetPrevious().ShouldBe("cmd1"); // Still cmd1
+        history.GetPrevious().ShouldBe("cmd1"); // Still cmd1
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class CommandHistoryTests
     {
         var history = new CommandHistory();
 
-        history.GetPrevious().Should().BeNull();
+        history.GetPrevious().ShouldBeNull();
     }
 
     [Fact]
@@ -128,8 +128,8 @@ public class CommandHistoryTests
         history.GetPrevious(); // cmd2
         history.GetPrevious(); // cmd1
 
-        history.GetNext().Should().Be("cmd2");
-        history.GetNext().Should().Be("cmd3");
+        history.GetNext().ShouldBe("cmd2");
+        history.GetNext().ShouldBe("cmd3");
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public class CommandHistoryTests
         history.GetPrevious(); // cmd2
         history.GetPrevious(); // cmd1
         history.GetNext(); // cmd2
-        history.GetNext().Should().BeNull(); // Past end
+        history.GetNext().ShouldBeNull(); // Past end
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public class CommandHistoryTests
         var history = new CommandHistory();
         history.Add("cmd1");
 
-        history.GetNext().Should().BeNull();
+        history.GetNext().ShouldBeNull();
     }
 
     [Fact]
@@ -166,7 +166,7 @@ public class CommandHistoryTests
         history.GetPrevious(); // cmd2
         history.ResetPosition();
 
-        history.GetPrevious().Should().Be("cmd3");
+        history.GetPrevious().ShouldBe("cmd3");
     }
 
     [Fact]
@@ -181,7 +181,7 @@ public class CommandHistoryTests
 
         history.Add("cmd3");
 
-        history.GetPrevious().Should().Be("cmd3");
+        history.GetPrevious().ShouldBe("cmd3");
     }
 
     [Fact]
@@ -193,8 +193,8 @@ public class CommandHistoryTests
 
         history.Clear();
 
-        history.Count.Should().Be(0);
-        history.GetAll().Should().BeEmpty();
+        history.Count.ShouldBe(0);
+        history.GetAll().ShouldBeEmpty();
     }
 
     [Fact]
@@ -202,7 +202,7 @@ public class CommandHistoryTests
     {
         var act = () => new CommandHistory(maxSize: 0);
 
-        act.Should().Throw<ArgumentOutOfRangeException>();
+        Should.Throw<ArgumentOutOfRangeException>(act);
     }
 
     [Fact]
@@ -210,13 +210,13 @@ public class CommandHistoryTests
     {
         var history = new CommandHistory(maxSize: 50);
 
-        history.MaxSize.Should().Be(50);
+        history.MaxSize.ShouldBe(50);
     }
 
     [Fact]
     public void DefaultMaxSize_Is1000()
     {
-        CommandHistory.DefaultMaxSize.Should().Be(1000);
+        CommandHistory.DefaultMaxSize.ShouldBe(1000);
     }
 
     [Fact]
@@ -227,7 +227,7 @@ public class CommandHistoryTests
 
         var all = history.GetAll();
 
-        all.Should().BeAssignableTo<IReadOnlyList<string>>();
+        all.ShouldBeAssignableTo<IReadOnlyList<string>>();
     }
 }
 
@@ -257,11 +257,11 @@ public class PersistentCommandHistoryTests : IDisposable
         history.Add("version");
         history.Add("help");
 
-        File.Exists(_tempFile).Should().BeTrue();
+        File.Exists(_tempFile).ShouldBeTrue();
         var lines = File.ReadAllLines(_tempFile);
-        lines.Should().HaveCount(2);
-        lines.Should().Contain("version");
-        lines.Should().Contain("help");
+        lines.Count().ShouldBe(2);
+        lines.ShouldContain("version");
+        lines.ShouldContain("help");
     }
 
     [Fact]
@@ -271,10 +271,10 @@ public class PersistentCommandHistoryTests : IDisposable
 
         var history = new PersistentCommandHistory(_tempFile);
 
-        history.Count.Should().Be(3);
-        history.GetAll().Should().Contain("cmd1");
-        history.GetAll().Should().Contain("cmd2");
-        history.GetAll().Should().Contain("cmd3");
+        history.Count.ShouldBe(3);
+        history.GetAll().ShouldContain("cmd1");
+        history.GetAll().ShouldContain("cmd2");
+        history.GetAll().ShouldContain("cmd3");
     }
 
     [Fact]
@@ -282,7 +282,7 @@ public class PersistentCommandHistoryTests : IDisposable
     {
         var history = new PersistentCommandHistory(_tempFile);
 
-        history.Count.Should().Be(0);
+        history.Count.ShouldBe(0);
     }
 
     [Fact]
@@ -294,7 +294,7 @@ public class PersistentCommandHistoryTests : IDisposable
 
         history.Clear();
 
-        File.ReadAllText(_tempFile).Trim().Should().BeEmpty();
+        File.ReadAllText(_tempFile).Trim().ShouldBeEmpty();
     }
 
     [Fact]
@@ -304,8 +304,8 @@ public class PersistentCommandHistoryTests : IDisposable
 
         var history = new PersistentCommandHistory(_tempFile);
 
-        history.GetPrevious().Should().Be("cmd2");
-        history.GetPrevious().Should().Be("cmd1");
+        history.GetPrevious().ShouldBe("cmd2");
+        history.GetPrevious().ShouldBe("cmd1");
     }
 
     [Fact]
@@ -317,8 +317,8 @@ public class PersistentCommandHistoryTests : IDisposable
         history.Add("cmd2");
         history.Add("cmd3");
 
-        history.Count.Should().Be(2);
-        history.GetAll().Should().NotContain("cmd1");
+        history.Count.ShouldBe(2);
+        history.GetAll().ShouldNotContain("cmd1");
     }
 
     [Fact]
@@ -332,8 +332,8 @@ public class PersistentCommandHistoryTests : IDisposable
             var history = new PersistentCommandHistory(historyPath);
             history.Add("test");
 
-            Directory.Exists(tempDir).Should().BeTrue();
-            File.Exists(historyPath).Should().BeTrue();
+            Directory.Exists(tempDir).ShouldBeTrue();
+            File.Exists(historyPath).ShouldBeTrue();
         }
         finally
         {

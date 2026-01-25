@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Spectre.Console.Testing;
 using Xunit;
 
@@ -46,9 +46,9 @@ public class ReplServiceTests
             return 0;
         });
 
-        result.Should().Be(0);
-        commandExecuted.Should().BeFalse();
-        console.Output.Should().Contain("Goodbye!");
+        result.ShouldBe(0);
+        commandExecuted.ShouldBeFalse();
+        console.Output.ShouldContain("Goodbye!");
     }
 
     [Fact]
@@ -61,8 +61,8 @@ public class ReplServiceTests
 
         var result = await repl.RunAsync(async args => 0);
 
-        result.Should().Be(0);
-        console.Output.Should().Contain("Goodbye!");
+        result.ShouldBe(0);
+        console.Output.ShouldContain("Goodbye!");
     }
 
     [Fact]
@@ -75,8 +75,8 @@ public class ReplServiceTests
 
         var result = await repl.RunAsync(async args => 0);
 
-        result.Should().Be(0);
-        console.Output.Should().Contain("Goodbye!");
+        result.ShouldBe(0);
+        console.Output.ShouldContain("Goodbye!");
     }
 
     [Fact]
@@ -94,8 +94,8 @@ public class ReplServiceTests
             return 0;
         });
 
-        executedArgs.Should().HaveCount(1);
-        executedArgs[0].Should().BeEquivalentTo(["version"]);
+        executedArgs.Count().ShouldBe(1);
+        executedArgs[0].ShouldBe(new[] { "version" });
     }
 
     [Fact]
@@ -113,8 +113,8 @@ public class ReplServiceTests
             return 0;
         });
 
-        executedArgs.Should().HaveCount(1);
-        executedArgs[0].Should().BeEquivalentTo(["version"]);
+        executedArgs.Count().ShouldBe(1);
+        executedArgs[0].ShouldBe(new[] { "version" });
     }
 
     [Fact]
@@ -132,8 +132,8 @@ public class ReplServiceTests
             return 0;
         });
 
-        executedArgs.Should().HaveCount(1);
-        executedArgs[0].Should().BeEquivalentTo(["version", "--format", "json"]);
+        executedArgs.Count().ShouldBe(1);
+        executedArgs[0].ShouldBe(new[] { "version", "--format", "json" });
     }
 
     [Fact]
@@ -149,8 +149,8 @@ public class ReplServiceTests
             throw new InvalidOperationException("Test error");
         });
 
-        console.Output.Should().Contain("Command failed");
-        console.Output.Should().Contain("Test error");
+        console.Output.ShouldContain("Command failed");
+        console.Output.ShouldContain("Test error");
     }
 
     [Fact]
@@ -163,7 +163,7 @@ public class ReplServiceTests
 
         await repl.RunAsync(async args => 0);
 
-        console.Output.Should().Contain("test>");
+        console.Output.ShouldContain("test>");
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public class ReplServiceTests
 
         await repl.RunAsync(async args => 0);
 
-        console.Output.Should().Contain("REPL started");
+        console.Output.ShouldContain("REPL started");
     }
 
     [Fact]
@@ -194,8 +194,8 @@ public class ReplServiceTests
             return 0;
         });
 
-        commandExecuted.Should().BeFalse();
-        console.Output.Should().Contain("Goodbye!");
+        commandExecuted.ShouldBeFalse();
+        console.Output.ShouldContain("Goodbye!");
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public class ReplServiceTests
             return 0;
         }, cts.Token);
 
-        commandCount.Should().Be(1);
+        commandCount.ShouldBe(1);
     }
 
     [Fact]
@@ -230,9 +230,9 @@ public class ReplServiceTests
 
         await repl.RunAsync(async args => 0);
 
-        repl.SessionState.Should().NotBeNull();
-        repl.SessionState!.IsAuthenticated.Should().BeTrue();
-        repl.SessionState.Username.Should().Be("testuser");
+        repl.SessionState.ShouldNotBeNull();
+        repl.SessionState!.IsAuthenticated.ShouldBeTrue();
+        repl.SessionState.Username.ShouldBe("testuser");
     }
 
     [Fact]
@@ -247,8 +247,8 @@ public class ReplServiceTests
 
         await repl.RunAsync(async args => 0);
 
-        repl.SessionState.Should().NotBeNull();
-        repl.SessionState!.CommandCount.Should().Be(2);
+        repl.SessionState.ShouldNotBeNull();
+        repl.SessionState!.CommandCount.ShouldBe(2);
     }
 
     [Fact]
@@ -261,8 +261,8 @@ public class ReplServiceTests
 
         await repl.RunAsync(async args => 0);
 
-        repl.SessionState.Should().BeNull();
-        console.Output.Should().Contain("Goodbye!");
+        repl.SessionState.ShouldBeNull();
+        console.Output.ShouldContain("Goodbye!");
     }
 
     [Fact]
@@ -276,12 +276,12 @@ public class ReplServiceTests
         var repl = new ReplService(input, output, sessionService);
 
         // Before running
-        repl.SessionState.Should().NotBeNull();
+        repl.SessionState.ShouldNotBeNull();
         var sessionIdBefore = repl.SessionState!.SessionId;
 
         await repl.RunAsync(async args => 0);
 
         // After running - should have new session
-        repl.SessionState!.SessionId.Should().NotBe(sessionIdBefore);
+        repl.SessionState!.SessionId.ShouldNotBe(sessionIdBefore);
     }
 }

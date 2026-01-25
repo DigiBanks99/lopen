@@ -34,10 +34,10 @@
   {
     "id": "JTBD-005",
     "requirement": "REQ-003",
-    "description": "GitHub OAuth2 Authentication - Device flow for Copilot access",
+    "description": "GitHub OAuth2 Authentication - Token storage and env var support",
     "priority": 5,
     "status": "done",
-    "notes": "Completed: AuthService with env var and file-based token storage. Device flow planned (requires OAuth app). 17 new tests."
+    "notes": "Completed: AuthService with env var and file-based token storage. 17 new tests."
   },
   {
     "id": "JTBD-006",
@@ -134,5 +134,109 @@
     "priority": 17,
     "status": "done",
     "notes": "Completed: lopen chat --resume/-r option. lopen sessions list/delete commands. Session ID displayed after interactions. 8 new tests (200 total)."
+  },
+  {
+    "id": "JTBD-018",
+    "requirement": "REQ-TD-001",
+    "description": "Migrate from FluentAssertions to Shouldly",
+    "priority": 18,
+    "status": "done",
+    "notes": "Completed: Migrated 200 tests from FluentAssertions 8.8.0 to Shouldly 4.3.0. MIT license, better error messages, simpler API. All tests pass."
+  },
+  {
+    "id": "JTBD-019",
+    "requirement": "REQ-014",
+    "description": "TUI Progress Indicators - Spinners for async operations",
+    "priority": 19,
+    "status": "pending",
+    "notes": "Use Spectre.Console Status/Spinner for API calls. Research complete in docs/research/SPECTRE_SUMMARY.md."
+  },
+  {
+    "id": "JTBD-020",
+    "requirement": "REQ-014",
+    "description": "TUI Tables - Structured data display for sessions",
+    "priority": 20,
+    "status": "pending",
+    "notes": "Use Spectre.Console Table for sessions list command. Research complete in docs/research/SPECTRE_SUMMARY.md."
+  },
+  {
+    "id": "JTBD-021",
+    "requirement": "REQ-010",
+    "description": "REPL Quoted String Parsing - Handle quoted arguments properly",
+    "priority": 21,
+    "status": "pending",
+    "notes": "TODO in ReplService.ParseArgs. Implement CommandLineToArgvW-style parsing. Research agent provided implementation."
+  },
+  {
+    "id": "JTBD-022",
+    "requirement": "REQ-003",
+    "description": "OAuth2 Device Flow - Browser-based authentication fallback",
+    "priority": 22,
+    "status": "pending",
+    "notes": "Requires GitHub OAuth app registration. Full implementation guide in docs/requirements/auth/DEVICE_FLOW.md."
+  },
+  {
+    "id": "JTBD-023",
+    "requirement": "REQ-003",
+    "description": "Platform-specific Secure Token Storage - DPAPI/Keychain/libsecret",
+    "priority": 23,
+    "status": "pending",
+    "notes": "Windows: DPAPI, macOS: Keychain, Linux: libsecret. Documented in auth/DEVICE_FLOW.md section 8."
+  },
+  {
+    "id": "JTBD-024",
+    "requirement": "REQ-023",
+    "description": "Git Tools - Add git status, diff, log tools for Copilot",
+    "priority": 24,
+    "status": "pending",
+    "notes": "Extend LopenTools with git commands. See copilot/RESEARCH.md for tool patterns."
+  },
+  {
+    "id": "JTBD-025",
+    "requirement": "REQ-023",
+    "description": "Shell Tool - Add command execution tool for Copilot",
+    "priority": 25,
+    "status": "pending",
+    "notes": "Add safe shell execution tool. Requires permission model. See copilot/RESEARCH.md."
+  },
+  {
+    "id": "JTBD-026",
+    "requirement": "REQ-011",
+    "description": "REPL Context Persistence - Maintain context between commands",
+    "priority": 26,
+    "status": "pending",
+    "notes": "Unchecked item in repl/SPECIFICATION.md. SessionState exists but not fully integrated."
+  },
+  {
+    "id": "JTBD-027",
+    "requirement": "NFR-001",
+    "description": "Copilot Response Time Metrics - First response < 2s",
+    "priority": 27,
+    "status": "pending",
+    "notes": "Unchecked item in platform/SPECIFICATION.md. Need to measure and optimize."
+  },
+  {
+    "id": "JTBD-028",
+    "requirement": "REQ-014",
+    "description": "TUI Progress Bars - Batch operations progress display",
+    "priority": 28,
+    "status": "pending",
+    "notes": "Future enhancement. Research complete in docs/research/SPECTRE_SUMMARY.md."
+  },
+  {
+    "id": "JTBD-029",
+    "requirement": "REQ-003",
+    "description": "Token Refresh Handling - Automatic token refresh",
+    "priority": 29,
+    "status": "pending",
+    "notes": "Unchecked item in auth/SPECIFICATION.md. Implement after device flow."
+  },
+  {
+    "id": "JTBD-030",
+    "requirement": "REQ-011",
+    "description": "Session Save/Restore - Optional session persistence",
+    "priority": 30,
+    "status": "pending",
+    "notes": "Unchecked optional item in repl/SPECIFICATION.md. Lower priority enhancement."
   }
 ]

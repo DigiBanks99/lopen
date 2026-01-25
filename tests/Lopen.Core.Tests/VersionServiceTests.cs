@@ -1,5 +1,5 @@
 using System.Reflection;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace Lopen.Core.Tests;
@@ -13,7 +13,7 @@ public class VersionServiceTests
 
         var version = service.GetVersion();
 
-        version.Should().MatchRegex(@"^\d+\.\d+\.\d+$");
+        version.ShouldMatch(@"^\d+\.\d+\.\d+$");
     }
 
     [Fact]
@@ -24,8 +24,8 @@ public class VersionServiceTests
 
         var version = service.GetVersion();
 
-        version.Should().NotBeNullOrEmpty();
-        version.Should().MatchRegex(@"^\d+\.\d+\.\d+");
+        version.ShouldNotBeNullOrEmpty();
+        version.ShouldMatch(@"^\d+\.\d+\.\d+");
     }
 
     [Fact]
@@ -35,8 +35,8 @@ public class VersionServiceTests
 
         var text = service.FormatAsText("lopen");
 
-        text.Should().StartWith("lopen version ");
-        text.Should().MatchRegex(@"lopen version \d+\.\d+\.\d+");
+        text.ShouldStartWith("lopen version ");
+        text.ShouldMatch(@"lopen version \d+\.\d+\.\d+");
     }
 
     [Fact]
@@ -46,8 +46,8 @@ public class VersionServiceTests
 
         var json = service.FormatAsJson();
 
-        json.Should().Contain("\"version\"");
-        json.Should().MatchRegex(@"\{""version"":""\d+\.\d+\.\d+""\}");
+        json.ShouldContain("\"version\"");
+        json.ShouldMatch(@"\{""version"":""\d+\.\d+\.\d+""\}");
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class VersionServiceTests
     {
         Action act = () => new VersionService(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("assembly");
+        var ex = Should.Throw<ArgumentNullException>(act);
+        ex.ParamName.ShouldBe("assembly");
     }
 }
