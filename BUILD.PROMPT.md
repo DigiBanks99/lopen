@@ -8,9 +8,10 @@
 8. Use subagents to research how the feature integrates with existing modules and features
 9. Use a subagent to output a concise plan in @docs/requirements/IMPLEMENTATION_PLAN.md for the job to be done.
 10. If all tasks in @docs/requirements/IMPLEMENTATION_PLAN.md are complete, identify the next most important task to focus on from the jobs-to-be-done.json file. If still none to be done, output a "lopen.loop.done" file to signal completion.
-11. Prioritize adding tests before marking a task as complete.
-12. Document new features or changes to features using the divio model
-13. Commit all the changes using conventional commit messages.
+11. If there @docs/requirements/IMPLEMENTATION_PLAN.md contains tasks to be done, implement them in the codebase.
+12. Prioritize adding tests before marking a task or jobgi as complete.
+13. Document new features or changes to features using the divio model
+14. Commit all the changes using conventional commit messages.
 
 IMPORTANT:
 - If you learn anything about working in this repo add it to AGENTS.md
