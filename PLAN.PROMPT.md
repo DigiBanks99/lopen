@@ -1,7 +1,7 @@
 1. Study the SPECIFICATION.md files in the @docs/requirements/<module>/ folders and the existing @docs/requirements/jobs-to-be-done.json file.
 2. Look for incomplete or partially complete jobs to be done.
 3. Use sub-agents to study the code and look for TODOs, FIXMEs, temporary implementations or other indicators of incomplete work that map back to existing requirements.
-4. Verify if the job might already be done (do not assume not implemented).
+4. Verify if the job might already be done (do not assume not implemented). Also ensure it truly is done by checking for tests that prove the implementation works as intended.
 5. Create or update the @docs/requirements/jobs-to-be-done.json document describing the next most important tasks that need to be done to build out lopen limited to 100 jobs.
 6. Each line should have an id, a requirement code that maps back to a @docs/requirements/<module>/SPECIFICATION.md for a requirement module, a brief description for human readability and a status tracking with an optional partial implementation description or issues experienced. Make use of subagents to identify the most important items and to order them by priority.
 7. Use subagents to research how to do the open jobs to be done and write them to the appropriate @docs/requirements/<module>/RESEARCH.md file.
@@ -17,3 +17,4 @@ IMPORTANT:
 - Ensure all jobs to be done are atomic, actionable, and easily referenceable in a SPECIFICATION.md file.
 - Adding tests can be a job to be done if tests are missing for a requirement.
 - Fixing build and test failures must be done as high priority jobs to be done.
+- Update @docs/requirements/README.md if a module is present in the file structure but missing from the README.md file.

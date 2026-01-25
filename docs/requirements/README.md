@@ -22,6 +22,8 @@
 | [tui](tui/SPECIFICATION.md) | Terminal UI patterns (Spectre.Console) | Phase 2 |
 | [platform](platform/SPECIFICATION.md) | Performance, cross-platform, accessibility | Cross-cutting |
 | [copilot](copilot/SPECIFICATION.md) | Copilot SDK, chat, streaming, tools | Phase 3 |
+| [testing](testing/SPECIFICATION.md) | Lopen Testing harness | Cross-cutting |
+| [loop](loop/SPECIFICATION.md) | The Lopen Loop - autonomous iterative development | Phase 4 |
 | [tech-debt](tech-debt/SPECIFICATION.md) | Items related to cleaning up the code | Cross-cutting |
 
 ---
@@ -55,6 +57,18 @@
 | REQ-022 | Streaming Responses | [copilot](copilot/SPECIFICATION.md) | 🔴 Not Started |
 | REQ-023 | Custom Tools | [copilot](copilot/SPECIFICATION.md) | 🔴 Not Started |
 | REQ-024 | Session Persistence | [copilot](copilot/SPECIFICATION.md) | 🔴 Not Started |
+
+### Phase 4 - The Lopen Loop (Planned)
+
+| ID | Requirement | Module | Status |
+|----|-------------|--------|--------|
+| REQ-030 | Loop Command | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
+| REQ-031 | Loop Configuration | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
+| REQ-032 | Plan Phase | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
+| REQ-033 | Build Phase | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
+| REQ-034 | State Management | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
+| REQ-035 | Output Streaming | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
+| REQ-036 | Verification Agent | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
 
 ### Non-Functional Requirements
 
