@@ -54,11 +54,73 @@ public record TokenResponse
     [JsonPropertyName("scope")]
     public string? Scope { get; init; }
 
+    [JsonPropertyName("refresh_token")]
+    public string? RefreshToken { get; init; }
+
+    [JsonPropertyName("expires_in")]
+    public int? ExpiresIn { get; init; }
+
+    [JsonPropertyName("refresh_token_expires_in")]
+    public int? RefreshTokenExpiresIn { get; init; }
+
     [JsonPropertyName("error")]
     public string? Error { get; init; }
 
     [JsonPropertyName("error_description")]
     public string? ErrorDescription { get; init; }
+}
+
+/// <summary>
+/// Token information with expiry tracking for credential storage.
+/// </summary>
+public record TokenInfo
+{
+    public required string AccessToken { get; init; }
+    public string? RefreshToken { get; init; }
+    public DateTimeOffset? ExpiresAt { get; init; }
+    public DateTimeOffset? RefreshTokenExpiresAt { get; init; }
+
+    /// <summary>
+    /// Creates TokenInfo from a TokenResponse.
+    /// </summary>
+    public static TokenInfo FromResponse(TokenResponse response, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        if (response.AccessToken is null)
+            throw new ArgumentException("Access token is required", nameof(response));
+
+        return new TokenInfo
+        {
+            AccessToken = response.AccessToken,
+            RefreshToken = response.RefreshToken,
+            ExpiresAt = response.ExpiresIn.HasValue 
+                ? now.AddSeconds(response.ExpiresIn.Value) 
+                : null,
+            RefreshTokenExpiresAt = response.RefreshTokenExpiresIn.HasValue
+                ? now.AddSeconds(response.RefreshTokenExpiresIn.Value)
+                : null
+        };
+    }
+
+    /// <summary>
+    /// Checks if the access token is expired or will expire within the specified buffer.
+    /// </summary>
+    public bool IsExpired(DateTimeOffset now, TimeSpan buffer = default)
+    {
+        if (ExpiresAt is null)
+            return false; // No expiry = doesn't expire
+        return now.Add(buffer) >= ExpiresAt;
+    }
+
+    /// <summary>
+    /// Checks if the refresh token is expired.
+    /// </summary>
+    public bool IsRefreshTokenExpired(DateTimeOffset now)
+    {
+        if (RefreshTokenExpiresAt is null)
+            return RefreshToken is null; // No expiry but has token = valid
+        return now >= RefreshTokenExpiresAt;
+    }
 }
 
 /// <summary>
@@ -71,6 +133,16 @@ public record DeviceFlowResult
     public string? Error { get; init; }
     public string? UserCode { get; init; }
     public string? VerificationUri { get; init; }
+}
+
+/// <summary>
+/// Result of token refresh operation.
+/// </summary>
+public record RefreshTokenResult
+{
+    public bool Success { get; init; }
+    public TokenInfo? TokenInfo { get; init; }
+    public string? Error { get; init; }
 }
 
 /// <summary>
@@ -94,6 +166,13 @@ public interface IDeviceFlowAuth
     Task<DeviceFlowResult> PollForTokenAsync(
         DeviceCodeResponse deviceCode,
         Action<string, string>? onWaitingForUser = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Refreshes an access token using a refresh token.
+    /// </summary>
+    Task<RefreshTokenResult> RefreshTokenAsync(
+        string refreshToken,
         CancellationToken cancellationToken = default);
 }
 
@@ -282,6 +361,59 @@ public class DeviceFlowAuth : IDeviceFlowAuth
             VerificationUri = deviceCode.VerificationUri
         };
     }
+
+    public async Task<RefreshTokenResult> RefreshTokenAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(refreshToken))
+            return new RefreshTokenResult { Success = false, Error = "Refresh token is required" };
+
+        var config = GetConfig();
+        if (config is null)
+            return new RefreshTokenResult { Success = false, Error = "OAuth configuration not found" };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint)
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["client_id"] = config.ClientId,
+                ["grant_type"] = "refresh_token",
+                ["refresh_token"] = refreshToken
+            })
+        };
+        request.Headers.Accept.Add(new("application/json"));
+
+        try
+        {
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            var tokenResponse = await response.Content.ReadFromJsonAsync<TokenResponse>(cancellationToken);
+
+            if (tokenResponse?.AccessToken is not null)
+            {
+                var tokenInfo = TokenInfo.FromResponse(tokenResponse, DateTimeOffset.UtcNow);
+                return new RefreshTokenResult
+                {
+                    Success = true,
+                    TokenInfo = tokenInfo
+                };
+            }
+
+            return new RefreshTokenResult
+            {
+                Success = false,
+                Error = tokenResponse?.ErrorDescription ?? tokenResponse?.Error ?? "Failed to refresh token"
+            };
+        }
+        catch (Exception ex)
+        {
+            return new RefreshTokenResult
+            {
+                Success = false,
+                Error = $"Failed to refresh token: {ex.Message}"
+            };
+        }
+    }
 }
 
 /// <summary>
@@ -292,10 +424,13 @@ public class MockDeviceFlowAuth : IDeviceFlowAuth
     private OAuthAppConfig? _config;
     private DeviceCodeResponse? _deviceCodeResponse;
     private DeviceFlowResult? _pollResult;
+    private RefreshTokenResult? _refreshResult;
     private bool _startFlowShouldFail;
 
     public bool StartFlowWasCalled { get; private set; }
     public bool PollWasCalled { get; private set; }
+    public bool RefreshWasCalled { get; private set; }
+    public string? LastRefreshToken { get; private set; }
 
     public MockDeviceFlowAuth WithConfig(OAuthAppConfig config)
     {
@@ -312,6 +447,12 @@ public class MockDeviceFlowAuth : IDeviceFlowAuth
     public MockDeviceFlowAuth WithPollResult(DeviceFlowResult result)
     {
         _pollResult = result;
+        return this;
+    }
+
+    public MockDeviceFlowAuth WithRefreshResult(RefreshTokenResult result)
+    {
+        _refreshResult = result;
         return this;
     }
 
@@ -339,5 +480,14 @@ public class MockDeviceFlowAuth : IDeviceFlowAuth
         PollWasCalled = true;
         onWaitingForUser?.Invoke(deviceCode.UserCode, deviceCode.VerificationUri);
         return Task.FromResult(_pollResult ?? new DeviceFlowResult { Success = false, Error = "Not configured" });
+    }
+
+    public Task<RefreshTokenResult> RefreshTokenAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default)
+    {
+        RefreshWasCalled = true;
+        LastRefreshToken = refreshToken;
+        return Task.FromResult(_refreshResult ?? new RefreshTokenResult { Success = false, Error = "Not configured" });
     }
 }

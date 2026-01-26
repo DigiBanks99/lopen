@@ -1,3 +1,4 @@
+using System.Text.Json;
 using GitCredentialManager;
 
 namespace Lopen.Core;
@@ -8,11 +9,12 @@ namespace Lopen.Core;
 /// macOS: Keychain
 /// Linux: libsecret (Secret Service API)
 /// </summary>
-public class SecureCredentialStore : ICredentialStore
+public class SecureCredentialStore : ICredentialStore, ITokenInfoStore
 {
     private readonly GitCredentialManager.ICredentialStore _store;
     private const string Service = "github.com";
     private const string Account = "lopen-oauth-token";
+    private const string TokenInfoAccount = "lopen-oauth-token-info";
 
     public SecureCredentialStore()
     {
@@ -42,6 +44,23 @@ public class SecureCredentialStore : ICredentialStore
         }
     }
 
+    public Task<TokenInfo?> GetTokenInfoAsync()
+    {
+        try
+        {
+            var credential = _store.Get(Service, TokenInfoAccount);
+            if (credential?.Password is null)
+                return Task.FromResult<TokenInfo?>(null);
+
+            var tokenInfo = JsonSerializer.Deserialize<TokenInfo>(credential.Password);
+            return Task.FromResult(tokenInfo);
+        }
+        catch
+        {
+            return Task.FromResult<TokenInfo?>(null);
+        }
+    }
+
     public Task StoreTokenAsync(string token)
     {
         if (string.IsNullOrWhiteSpace(token))
@@ -59,11 +78,38 @@ public class SecureCredentialStore : ICredentialStore
         }
     }
 
+    public Task StoreTokenInfoAsync(TokenInfo tokenInfo)
+    {
+        ArgumentNullException.ThrowIfNull(tokenInfo);
+
+        try
+        {
+            var json = JsonSerializer.Serialize(tokenInfo);
+            _store.AddOrUpdate(Service, TokenInfoAccount, json);
+            // Also store just the access token for backward compatibility
+            _store.AddOrUpdate(Service, Account, tokenInfo.AccessToken);
+            return Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Failed to store credential securely: {ex.Message}", ex);
+        }
+    }
+
     public Task ClearAsync()
     {
         try
         {
             _store.Remove(Service, Account);
+        }
+        catch
+        {
+            // Ignore if credential doesn't exist
+        }
+        try
+        {
+            _store.Remove(Service, TokenInfoAccount);
         }
         catch
         {

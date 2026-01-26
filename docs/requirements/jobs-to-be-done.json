@@ -340,8 +340,8 @@
     "requirement": "REQ-003",
     "description": "Token Refresh Handling - Automatic token refresh",
     "priority": 43,
-    "status": "pending",
-    "notes": "Unchecked item in auth/SPECIFICATION.md. Lower priority."
+    "status": "done",
+    "notes": "Completed: TokenInfo record, ITokenInfoStore interface, RefreshTokenAsync in DeviceFlowAuth, AuthService auto-refresh with 5-min buffer. 16 tests added (736 total)."
   },
   {
     "id": "JTBD-044",

@@ -420,6 +420,13 @@ file class MockAuthService : IAuthService
         return Task.CompletedTask;
     }
 
+    public Task StoreTokenInfoAsync(TokenInfo tokenInfo)
+    {
+        Token = tokenInfo.AccessToken;
+        IsAuthenticated = true;
+        return Task.CompletedTask;
+    }
+
     public Task ClearAsync()
     {
         Token = null;

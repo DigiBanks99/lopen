@@ -33,7 +33,7 @@ lopen auth logout             # Clear stored credentials
 - [x] Support for environment variable token override (`GITHUB_TOKEN`)
 - [x] OAuth2 device code flow
 - [x] Platform-specific secure storage (DPAPI/Keychain/libsecret)
-- [ ] Token refresh handling (future)
+- [x] Token refresh handling (automatic refresh before expiry)
 
 ### Authentication Methods (Priority Order)
 1. Environment variable (`GITHUB_TOKEN`) ✅
@@ -52,12 +52,21 @@ OAuth app credentials stored in `~/.config/lopen/oauth.json`:
 
 ### Implementation
 - `IDeviceFlowAuth` interface for device flow authentication
-- `DeviceFlowAuth` service with `StartDeviceFlowAsync()` and `PollForTokenAsync()`
+- `DeviceFlowAuth` service with `StartDeviceFlowAsync()`, `PollForTokenAsync()`, and `RefreshTokenAsync()`
 - `OAuthAppConfig` record for OAuth app configuration
 - `DeviceCodeResponse` and `TokenResponse` for GitHub API responses
-- `DeviceFlowResult` for polling result
+- `TokenInfo` record for storing access token, refresh token, and expiry times
+- `DeviceFlowResult` and `RefreshTokenResult` for operation results
+- `ITokenInfoStore` interface for token info storage with refresh support
 - `MockDeviceFlowAuth` for testing
-- 13 unit tests covering device flow functionality
+- 24 unit tests covering device flow and token refresh functionality
+
+### Token Refresh Behavior
+- GitHub OAuth tokens expire after 8 hours (if token expiration is enabled)
+- Refresh tokens expire after 6 months
+- `AuthService` automatically refreshes tokens 5 minutes before expiry
+- If refresh fails and token is not fully expired, returns existing token
+- If both access and refresh tokens are expired, user must re-authenticate
 
 ### Secure Storage Locations
 | Platform | Storage |

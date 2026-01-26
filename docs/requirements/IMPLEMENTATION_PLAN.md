@@ -1,23 +1,23 @@
 # Implementation Plan
 
-> ✅ This iteration complete - Secure Token Storage implemented
+> ✅ This iteration complete - Token Refresh Handling implemented
 
 ## Completed This Iteration
 
-### JTBD-039: Secure Token Storage (REQ-003) ✅
-- `SecureCredentialStore` class using Devlooped.CredentialManager (GCM)
-- Platform auto-detection: Windows (Credential Manager/DPAPI), macOS (Keychain), Linux (libsecret)
-- `ICredentialStoreFactory` for runtime store selection with fallback
-- `CredentialMigration` utility for migrating from FileCredentialStore
-- `MockCredentialStore` for testing
-- Updated Program.cs to prefer secure storage with file-based fallback
-- 22 tests added
+### JTBD-043: Token Refresh Handling (REQ-003) ✅
+- Extended `TokenResponse` with `refresh_token`, `expires_in`, `refresh_token_expires_in` fields
+- Created `TokenInfo` record with expiry tracking and helper methods
+- Added `ITokenInfoStore` interface for refresh token storage
+- Updated `FileCredentialStore` and `SecureCredentialStore` to implement `ITokenInfoStore`
+- Added `RefreshTokenAsync()` to `IDeviceFlowAuth` and `DeviceFlowAuth`
+- Enhanced `AuthService` with auto-refresh logic (5-minute buffer before expiry)
+- Updated `MockDeviceFlowAuth` and `MockCredentialStore` for testing
+- 16 tests added (736 total)
 
-## Total Tests: 720
+## Total Tests: 736
 
 ## Next Priority Tasks
 
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
-| JTBD-043 | Token Refresh Handling | 43 | Automatic token refresh |
 | JTBD-045 | Response Time Metrics | 45 | Copilot SDK metrics |

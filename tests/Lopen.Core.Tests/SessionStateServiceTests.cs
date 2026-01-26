@@ -10,6 +10,7 @@ public class MockAuthService : IAuthService
 {
     private AuthStatus _status;
     private string? _token;
+    private TokenInfo? _tokenInfo;
 
     public MockAuthService(bool isAuthenticated = false, string? username = null, string? source = null)
     {
@@ -26,7 +27,8 @@ public class MockAuthService : IAuthService
     public Task<AuthStatus> GetStatusAsync() => Task.FromResult(_status);
     public Task<string?> GetTokenAsync() => Task.FromResult(_token);
     public Task StoreTokenAsync(string token) { _token = token; return Task.CompletedTask; }
-    public Task ClearAsync() { _token = null; _status = new AuthStatus(false); return Task.CompletedTask; }
+    public Task StoreTokenInfoAsync(TokenInfo tokenInfo) { _tokenInfo = tokenInfo; _token = tokenInfo.AccessToken; return Task.CompletedTask; }
+    public Task ClearAsync() { _token = null; _tokenInfo = null; _status = new AuthStatus(false); return Task.CompletedTask; }
 }
 
 public class SessionStateTests

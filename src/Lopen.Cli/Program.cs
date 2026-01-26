@@ -9,19 +9,25 @@ var helpService = new HelpService();
 
 // Use secure credential storage with fallback to file-based storage
 ICredentialStore credentialStore;
+ITokenInfoStore tokenInfoStore;
 if (SecureCredentialStore.IsAvailable())
 {
-    credentialStore = new SecureCredentialStore();
+    var secureStore = new SecureCredentialStore();
+    credentialStore = secureStore;
+    tokenInfoStore = secureStore;
     // Migrate credentials from file storage if present
     var fileStore = new FileCredentialStore();
     await CredentialMigration.MigrateIfNeededAsync(credentialStore, fileStore);
 }
 else
 {
-    credentialStore = new FileCredentialStore();
+    var fileStore = new FileCredentialStore();
+    credentialStore = fileStore;
+    tokenInfoStore = fileStore;
 }
 
-var authService = new AuthService(credentialStore);
+var deviceFlowAuth = new DeviceFlowAuth();
+var authService = new AuthService(credentialStore, tokenInfoStore, deviceFlowAuth);
 var sessionStore = new FileSessionStore();
 var output = new ConsoleOutput();
 
@@ -54,7 +60,6 @@ rootCommand.Subcommands.Add(versionCommand);
 
 // Auth command with subcommands
 var authCommand = new Command("auth", "Authentication commands");
-var deviceFlowAuth = new DeviceFlowAuth();
 
 // auth login
 var loginCommand = new Command("login", "Login to GitHub");
