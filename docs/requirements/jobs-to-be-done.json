@@ -388,8 +388,8 @@
     "requirement": "REQ-020-TEST",
     "description": "Self-Testing Interactive Mode - Suite/test selection UI",
     "priority": 49,
-    "status": "pending",
-    "notes": "Spectre.Console MultiSelectionPrompt. Depends on JTBD-034."
+    "status": "done",
+    "notes": "Completed: IInteractiveTestSelector interface, SpectreInteractiveTestSelector with MultiSelectionPrompt, MockInteractiveTestSelector for testing. --interactive/-i flag. 11 tests added (657 total)."
   },
   {
     "id": "JTBD-050",

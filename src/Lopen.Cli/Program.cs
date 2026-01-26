@@ -651,11 +651,19 @@ var testFormatOption = new Option<string>("--format")
 testFormatOption.Aliases.Add("-f");
 testFormatOption.AcceptOnlyFromAmong("text", "json");
 
+var testInteractiveOption = new Option<bool>("--interactive")
+{
+    Description = "Interactive suite/test selection mode",
+    DefaultValueFactory = _ => false
+};
+testInteractiveOption.Aliases.Add("-i");
+
 testSelfCommand.Options.Add(testVerboseOption);
 testSelfCommand.Options.Add(testFilterOption);
 testSelfCommand.Options.Add(testModelOption);
 testSelfCommand.Options.Add(testTimeoutOption);
 testSelfCommand.Options.Add(testFormatOption);
+testSelfCommand.Options.Add(testInteractiveOption);
 
 testSelfCommand.SetAction(async parseResult =>
 {
@@ -664,6 +672,7 @@ testSelfCommand.SetAction(async parseResult =>
     var model = parseResult.GetValue(testModelOption);
     var timeout = parseResult.GetValue(testTimeoutOption);
     var format = parseResult.GetValue(testFormatOption);
+    var interactive = parseResult.GetValue(testInteractiveOption);
     
     // Get tests (apply filter if specified)
     var tests = string.IsNullOrEmpty(filter)
@@ -674,6 +683,43 @@ testSelfCommand.SetAction(async parseResult =>
     {
         output.Warning("No tests match the specified filter.");
         return ExitCodes.Success;
+    }
+    
+    // Set up cancellation
+    using var cts = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) =>
+    {
+        e.Cancel = true;
+        cts.Cancel();
+    };
+    
+    // Interactive mode: prompt for test/model selection
+    if (interactive)
+    {
+        if (!Console.IsInputRedirected)
+        {
+            var selector = new Lopen.Core.Testing.SpectreInteractiveTestSelector();
+            var selection = selector.SelectTests(tests, model!, cts.Token);
+            
+            if (selection.Cancelled)
+            {
+                output.Muted("Selection cancelled.");
+                return ExitCodes.Success;
+            }
+            
+            tests = selection.Tests.ToList();
+            model = selection.Model;
+            
+            if (tests.Count == 0)
+            {
+                output.Warning("No tests selected.");
+                return ExitCodes.Success;
+            }
+        }
+        else
+        {
+            output.Warning("Interactive mode requires a terminal. Running all matching tests.");
+        }
     }
     
     var context = new Lopen.Core.Testing.TestContext
@@ -690,14 +736,6 @@ testSelfCommand.SetAction(async parseResult =>
     {
         testOutput.DisplayHeader(model!, tests.Count);
     }
-    
-    // Set up cancellation
-    using var cts = new CancellationTokenSource();
-    Console.CancelKeyPress += (_, e) =>
-    {
-        e.Cancel = true;
-        cts.Cancel();
-    };
     
     // Run tests
     var runner = new Lopen.Core.Testing.TestRunner();

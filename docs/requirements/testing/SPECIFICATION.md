@@ -39,7 +39,7 @@ lopen test self --format json             # Output results as JSON
 - [ ] Per-test logging with timestamps (Phase 2)
 - [x] Exit code 0 if all pass, 1 if any fail
 - [x] Rich terminal output using Spectre.Console (tables, progress bars, panels)
-- [ ] Interactive mode for suite/test selection (Phase 2)
+- [x] Interactive mode for suite/test selection
 - [x] Filter tests by name pattern
 - [x] Configurable timeout per test
 - [x] Model override via --model flag
@@ -175,14 +175,14 @@ Pattern matching for `--filter`:
 ### Test Cases
 | ID | Description | Expected | Status |
 |----|-------------|----------|--------|
-| TC-020-01 | `lopen test self` | Runs all tests, exits 0 if pass | ⏳ |
-| TC-020-02 | `lopen test self --filter chat` | Runs only chat tests | ⏳ |
-| TC-020-03 | `lopen test self --verbose` | Shows detailed logs | ⏳ |
-| TC-020-04 | `lopen test self --format json` | Valid JSON output | ⏳ |
-| TC-020-05 | `lopen test self --model gpt-5` | Uses specified model | ⏳ |
-| TC-020-06 | Test failure | Exits with code 1 | ⏳ |
-| TC-020-07 | `lopen test self --interactive` | Prompts for selection | ⏳ |
-| TC-020-08 | `lopen test self --timeout 60` | Uses custom timeout | ⏳ |
+| TC-020-01 | `lopen test self` | Runs all tests, exits 0 if pass | ✅ |
+| TC-020-02 | `lopen test self --filter chat` | Runs only chat tests | ✅ |
+| TC-020-03 | `lopen test self --verbose` | Shows detailed logs | ✅ |
+| TC-020-04 | `lopen test self --format json` | Valid JSON output | ✅ |
+| TC-020-05 | `lopen test self --model gpt-5` | Uses specified model | ✅ |
+| TC-020-06 | Test failure | Exits with code 1 | ✅ |
+| TC-020-07 | `lopen test self --interactive` | Prompts for selection | ✅ |
+| TC-020-08 | `lopen test self --timeout 60` | Uses custom timeout | ✅ |
 
 ---
 
