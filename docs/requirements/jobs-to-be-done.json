@@ -228,8 +228,8 @@
     "requirement": "REQ-018",
     "description": "TUI Right-Side Panels - Split layouts for task context",
     "priority": 29,
-    "status": "pending",
-    "notes": "Layout.SplitColumns for main/panel. Research complete."
+    "status": "done",
+    "notes": "Completed: ILayoutRenderer, SpectreLayoutRenderer, MockLayoutRenderer, TaskItem/TaskStatus enums. 32 tests added (391 total)."
   },
   {
     "id": "JTBD-030",

@@ -369,11 +369,11 @@ if (terminalWidth < 60) {
 Split-screen layouts with right-side task/status panels for enhanced context in interactive REPL mode.
 
 ### Acceptance Criteria
-- [ ] Two-column layout support (main content | right panel)
-- [ ] Right panel shows task progress, status, or context
-- [ ] Responsive: Hide right panel when terminal width < 100 chars
-- [ ] Non-blocking: Main content updates independently
-- [ ] Auto-scroll right panel for long content
+- [x] Two-column layout support (main content | right panel)
+- [x] Right panel shows task progress, status, or context
+- [x] Responsive: Hide right panel when terminal width < 100 chars
+- [ ] Non-blocking: Main content updates independently (future: LiveContext)
+- [ ] Auto-scroll right panel for long content (future: LiveContext)
 
 ### Layout Architecture
 

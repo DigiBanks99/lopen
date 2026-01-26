@@ -236,4 +236,44 @@ public class ConsoleOutput
         var renderer = new SpectreDataRenderer(_console);
         renderer.RenderMetadata(data, title);
     }
+
+    /// <summary>
+    /// Render a split layout with main content and optional side panel.
+    /// Falls back to full-width main content if terminal is too narrow.
+    /// </summary>
+    /// <param name="mainContent">The main content to display.</param>
+    /// <param name="sidePanel">Optional side panel content.</param>
+    /// <param name="config">Layout configuration (optional).</param>
+    public void SplitLayout(
+        Spectre.Console.Rendering.IRenderable mainContent,
+        Spectre.Console.Rendering.IRenderable? sidePanel = null,
+        SplitLayoutConfig? config = null)
+    {
+        var renderer = new SpectreLayoutRenderer(_console);
+        renderer.RenderSplitLayout(mainContent, sidePanel, config);
+    }
+
+    /// <summary>
+    /// Render a task progress panel.
+    /// </summary>
+    /// <param name="tasks">Tasks to display.</param>
+    /// <param name="title">Panel title.</param>
+    /// <returns>A renderable panel containing the task list.</returns>
+    public Spectre.Console.Rendering.IRenderable TaskPanel(IReadOnlyList<TaskItem> tasks, string title = "Progress")
+    {
+        var renderer = new SpectreLayoutRenderer(_console);
+        return renderer.RenderTaskPanel(tasks, title);
+    }
+
+    /// <summary>
+    /// Render a context panel with key-value metadata.
+    /// </summary>
+    /// <param name="data">Key-value pairs to display.</param>
+    /// <param name="title">Panel title.</param>
+    /// <returns>A renderable panel containing the metadata.</returns>
+    public Spectre.Console.Rendering.IRenderable ContextPanel(IReadOnlyDictionary<string, string> data, string title = "Context")
+    {
+        var renderer = new SpectreLayoutRenderer(_console);
+        return renderer.RenderContextPanel(data, title);
+    }
 }
