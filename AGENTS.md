@@ -61,9 +61,9 @@ dotnet run --project src/Lopen.Cli
 ## Project Status
 
 - **State**: Phase 4 - Quality & Enhancements
-- **Tests**: 562 tests passing
-- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts, TUI AI Streaming, TUI Terminal Detection, TUI Welcome Header, Self-Testing, Quoted String Parsing, Git Tools, File Tools, Shell Tool
-- **Next**: OAuth2 Device Flow (JTBD-038) or Platform Security (JTBD-039)
+- **Tests**: 646 tests passing
+- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts, TUI AI Streaming, TUI Terminal Detection, TUI Welcome Header, Self-Testing, Quoted String Parsing, Git Tools, File Tools, Shell Tool, TUI Emoji Support, TUI Color Depth, TUI Trees
+- **Next**: OAuth2 Device Flow (JTBD-038), Self-Testing Interactive Mode (JTBD-049)
 
 ## Key Dependencies
 
@@ -132,3 +132,7 @@ dotnet run --project src/Lopen.Cli
 - **LopenTools Pattern**: Use AIFunctionFactory.Create(Impl, "name", "description"); implementations return error strings on failure; GetAll() returns all tools
 - **Cross-Platform Shell**: Use `OperatingSystem.IsWindows()` for shell detection; bash -c on Linux/macOS, cmd /c on Windows
 - **Process Timeout**: Use CancellationTokenSource with TimeSpan, WaitForExitAsync with token, Kill(entireProcessTree: true) on timeout
+- **SymbolProvider Pattern**: StatusSymbol enum for emoji types; ISymbolProvider interface; SymbolProvider returns unicode emoji or ASCII fallback based on ITerminalCapabilities.SupportsUnicode
+- **ColorProvider Pattern**: ColorCategory enum for color types; IColorProvider interface; ColorProvider gracefully degrades TrueColor→256→16 based on ITerminalCapabilities.Supports256Colors/SupportsTrueColor
+- **ITreeRenderer Pattern**: TreeNode model with Label/Icon/Children; ITreeRenderer interface; SpectreTreeRenderer uses Spectre.Console Tree; max 5 depth, 80 char truncation; MockTreeRenderer tracks RenderedTrees
+- **Spectre TreeNode Conflict**: Lopen.Core.TreeNode conflicts with Spectre.Console.TreeNode; use fully qualified `Spectre.Console.TreeNode` for AddChildNode parameter
