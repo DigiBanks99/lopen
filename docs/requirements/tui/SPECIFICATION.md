@@ -12,7 +12,7 @@
 | REQ-017 | Structured Data Display | Medium | 🟢 Complete |
 | REQ-018 | Layout & Right-Side Panels | Medium | 🔴 Planned |
 | REQ-019 | AI Response Streaming | High | 🔴 Planned |
-| REQ-020 | Responsive Terminal Detection | Medium | 🔴 Planned |
+| REQ-020 | Responsive Terminal Detection | Medium | 🟢 Done |
 | REQ-021 | TUI Testing & Mocking | High | 🟡 Partial |
 | REQ-022 | Welcome Header & REPL Banner | High | 🔴 Planned |
 
@@ -547,11 +547,11 @@ Assistant: [content appears here]
 Automatic detection and adaptation to terminal capabilities (width, height, color depth, features).
 
 ### Acceptance Criteria
-- [ ] Detect terminal width and adapt layouts
-- [ ] Detect color support (16/256/RGB)
-- [ ] Detect Unicode support
-- [ ] Graceful fallback for limited terminals
-- [ ] Respect NO_COLOR environment variable
+- [x] Detect terminal width and adapt layouts
+- [x] Detect color support (16/256/RGB)
+- [x] Detect Unicode support
+- [x] Graceful fallback for limited terminals
+- [x] Respect NO_COLOR environment variable
 
 ### Detection Priority
 

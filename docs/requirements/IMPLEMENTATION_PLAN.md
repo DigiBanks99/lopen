@@ -1,56 +1,57 @@
 # Implementation Plan
 
-> Current Focus: JTBD-030 - TUI AI Streaming (REQ-019) ✅ COMPLETE
+> Current Focus: JTBD-031 - TUI Terminal Detection (REQ-020) ✅ COMPLETE
 
 ## Overview
 
-Implemented buffered paragraph rendering for AI streaming responses. Buffers tokens until paragraph break or timeout to reduce flicker and improve readability.
+Detect terminal capabilities (size, color, unicode, interactivity) for adaptive TUI rendering. Uses Spectre.Console detection with Console fallbacks.
 
 ## Workplan
 
-### Phase 1: Core Infrastructure ✅
+### Phase 1: Core Interface ✅
 
-- [x] Create `IStreamRenderer` interface in Lopen.Core
-  - `RenderStreamAsync(tokenStream, config, cancellationToken)`
-- [x] Create `StreamConfig` record for configuration (timeout, token limit)
+- [x] Create `ITerminalCapabilities` interface in Lopen.Core
+  - Width, Height properties (int)
+  - ColorSystem property (Spectre.Console.ColorSystem)
+  - SupportsUnicode property (bool)
+  - IsInteractive property (bool)
+  - IsNoColorSet property (bool)
+  - Helper properties: SupportsColor, IsWideTerminal (≥120), IsNarrowTerminal (<60)
 
-### Phase 2: Spectre Implementation ✅
+### Phase 2: Implementation ✅
 
-- [x] Create `SpectreStreamRenderer` with buffering logic
-  - Buffer tokens in StringBuilder
-  - Flush on paragraph break (`\n\n`)
-  - Flush on timeout (500ms default)
-  - Flush on token limit (100 tokens default)
-  - Handle code blocks (wait for complete block)
-  - Show "Thinking..." indicator initially
-- [x] Handle NO_COLOR (plain text, no formatting)
-- [x] Add ITimeProvider for testable time
+- [x] Create `TerminalCapabilities` class
+  - Private constructor (use factory method)
+  - Static `Detect()` factory method
+  - Console.WindowWidth/Height with 80x24 fallback
+  - AnsiConsole.Profile.Capabilities for color/unicode
+  - Check `!Console.IsInputRedirected && !Console.IsOutputRedirected` for interactive
+  - Check NO_COLOR environment variable
 
 ### Phase 3: Mock Implementation ✅
 
-- [x] Create `MockStreamRenderer` for testing
-  - Record flush events with content
-  - Track timing and cancellation
+- [x] Create `MockTerminalCapabilities` for testing
+  - All properties settable via constructor/init
+  - Defaults: Width=80, Height=24, Interactive=true, Unicode=true
+  - ColorSystem defaults to TrueColor
+  - Factory methods: NoColor(), Narrow(), Wide(), NonInteractive()
 
 ### Phase 4: Tests ✅
 
-- [x] Unit tests for MockStreamRenderer (14 tests)
-- [x] Unit tests for SpectreStreamRenderer (18 tests)
-  - Paragraph break triggers flush
-  - Timeout triggers flush
-  - Code blocks rendered in panels
-  - Cancellation handled gracefully
+- [x] Unit tests for TerminalCapabilities.Detect() (10 tests)
+- [x] Unit tests for MockTerminalCapabilities (9 tests)
+- [x] Tests verify NO_COLOR, helper properties, default values
 
 ### Phase 5: Documentation ✅
 
-- [x] Update tui/SPECIFICATION.md REQ-019 checkboxes
-- [x] Update jobs-to-be-done.json
+- [x] Update tui/SPECIFICATION.md REQ-020 checkboxes
+- [x] Update jobs-to-be-done.json status
 
 ## Completed
 
-JTBD-030 implementation is complete with 29 new tests (420 total tests passing).
+JTBD-031 implementation complete with 19 new tests (439 total tests passing).
 
 ## Next Steps
 
 1. Commit changes
-2. Move to next priority task (JTBD-031: TUI Terminal Detection)
+2. Move to next priority task (JTBD-032: TUI Testing)

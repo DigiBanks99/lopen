@@ -244,8 +244,8 @@
     "requirement": "REQ-020",
     "description": "TUI Terminal Detection - TerminalCapabilities class",
     "priority": 31,
-    "status": "pending",
-    "notes": "Width/height/color detection, responsive layouts. Research complete."
+    "status": "done",
+    "notes": "Completed: ITerminalCapabilities, TerminalCapabilities.Detect(), MockTerminalCapabilities. Width/height/color/unicode/interactive detection with NO_COLOR support. 19 tests added (439 total)."
   },
   {
     "id": "JTBD-032",
