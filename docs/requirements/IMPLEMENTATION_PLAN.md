@@ -1,31 +1,30 @@
 # Implementation Plan
 
-> Current Focus: JTBD-041 Shell Tool ✅
+> ✅ This iteration complete - Tools feature set implemented
 
-## Overview
+## Completed This Iteration
 
-Added `lopen_run_command` shell tool to LopenTools with safety controls. This enables Copilot to execute commands for builds, tests, and other development tasks.
+### JTBD-040: Git Tools (REQ-023) ✅
+- `lopen_git_status` - Get git repository status
+- `lopen_git_diff` - Get git diff (with file path and staged options)
+- `lopen_git_log` - Get recent commits (with limit and format)
 
-## Completed: JTBD-041 Shell Tool (REQ-023)
+### JTBD-041: Shell Tool (REQ-023) ✅
+- `lopen_run_command` - Execute shell command with timeout
+- Cross-platform: bash on Linux/macOS, cmd on Windows
+- Captures stdout, stderr, exit code
+- Configurable timeout (default 30s, max 300s)
 
-- [x] Add `lopen_run_command` tool for executing shell commands
-- [x] Implement timeout for runaway commands (default 30s, max 300s)
-- [x] Capture both stdout and stderr
-- [x] Return exit code with output
-- [x] Cross-platform support (bash on Linux/macOS, cmd on Windows)
-- [x] Add 6 unit tests for shell execution
-- [x] Update copilot/SPECIFICATION.md to document new tool
+### JTBD-042: Write File Tool (REQ-023) ✅
+- `lopen_write_file` - Write content to file (creates parent directories)
+- `lopen_create_directory` - Create directory (including nested)
 
-## Previous Completed
-
-- JTBD-042: Write File Tool ✅ (9 tests)
-- JTBD-040: Git Tools ✅ (10 tests)
-
+## Total Tools: 10
 ## Total Tests: 562
 
 ## Next Priority Tasks
 
 | ID | Description | Priority | Notes |
 |----|-------------|----------|-------|
-| JTBD-038 | OAuth2 Device Flow | 38 | Requires GitHub OAuth app |
-| JTBD-039 | Secure Token Storage | 39 | Platform-specific security |
+| JTBD-038 | OAuth2 Device Flow | 38 | Requires GitHub OAuth app registration |
+| JTBD-039 | Secure Token Storage | 39 | Platform-specific (DPAPI/Keychain/libsecret) |
