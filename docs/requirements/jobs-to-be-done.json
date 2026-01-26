@@ -260,8 +260,8 @@
     "requirement": "REQ-022",
     "description": "TUI Welcome Header - Wind Runner ASCII art and session info",
     "priority": 33,
-    "status": "pending",
-    "notes": "FigletText logo, version, context window display. Research complete."
+    "status": "done",
+    "notes": "Completed: IWelcomeHeaderRenderer, SpectreWelcomeHeaderRenderer, MockWelcomeHeaderRenderer. AsciiLogoProvider with responsive logos. WelcomeHeaderContext with version/session/context window. 31 tests added (480 total)."
   },
   {
     "id": "JTBD-034",

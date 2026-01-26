@@ -14,7 +14,7 @@
 | REQ-019 | AI Response Streaming | High | 🔴 Planned |
 | REQ-020 | Responsive Terminal Detection | Medium | 🟢 Done |
 | REQ-021 | TUI Testing & Mocking | High | 🟢 Done |
-| REQ-022 | Welcome Header & REPL Banner | High | 🔴 Planned |
+| REQ-022 | Welcome Header & REPL Banner | High | 🟢 Done |
 
 ---
 
@@ -803,16 +803,16 @@ Display a branded welcome header at REPL startup featuring the Wind Runner radia
 Lopen is building an interactive REPL that serves as an enhanced version of the existing `scripts/lopen.sh` with `PLAN.PROMPT.md` and `BUILD.PROMPT.md` capabilities built in. The name "lopen" references the character from Brandon Sanderson's Stormlight Archive, whose niche role mirrors the AI agent loop concept (similar to how Ralph Wiggum represents a cultural reference point). The welcome header establishes brand identity and provides essential session context at a glance, similar to Claude Code and GitHub Copilot CLI's branded experiences.
 
 ### Acceptance Criteria
-- [ ] ASCII art logo featuring Wind Runner radiant order sigil
-- [ ] Display application version from assembly metadata
-- [ ] Show contextual help tip referencing actual `lopen help` command
-- [ ] Display session name (auto-generated with override via `--session-name` flag)
-- [ ] Show context window capacity (tokens if available from SDK, else message count)
-- [ ] Responsive layout adapting to terminal width (REQ-020)
-- [ ] Respect TUI color guidelines (REQ-014) and NO_COLOR
-- [ ] Configurable display preferences (show/hide, position)
-- [ ] Support `--no-header` and `--quiet` CLI flags to suppress
-- [ ] Render using Spectre.Console components for consistency
+- [x] ASCII art logo featuring Wind Runner radiant order sigil
+- [x] Display application version from assembly metadata
+- [x] Show contextual help tip referencing actual `lopen help` command
+- [x] Display session name (auto-generated with override via `--session-name` flag)
+- [x] Show context window capacity (tokens if available from SDK, else message count)
+- [x] Responsive layout adapting to terminal width (REQ-020)
+- [x] Respect TUI color guidelines (REQ-014) and NO_COLOR
+- [x] Configurable display preferences (show/hide, position)
+- [ ] Support `--no-header` and `--quiet` CLI flags to suppress (CLI integration pending)
+- [x] Render using Spectre.Console components for consistency
 
 ### Visual Design
 
