@@ -43,7 +43,7 @@ public class LopenToolsTests
     {
         var tools = LopenTools.GetAll();
 
-        tools.Count().ShouldBe(9);
+        tools.Count().ShouldBe(10);
         tools.Select(t => t.Name).ShouldContain("lopen_read_file");
         tools.Select(t => t.Name).ShouldContain("lopen_list_directory");
         tools.Select(t => t.Name).ShouldContain("lopen_get_cwd");
@@ -53,6 +53,7 @@ public class LopenToolsTests
         tools.Select(t => t.Name).ShouldContain("lopen_git_log");
         tools.Select(t => t.Name).ShouldContain("lopen_write_file");
         tools.Select(t => t.Name).ShouldContain("lopen_create_directory");
+        tools.Select(t => t.Name).ShouldContain("lopen_run_command");
     }
 
     [Fact]
@@ -442,6 +443,93 @@ public class LopenToolsTests
                 Directory.Delete(rootDir, true);
         }
     }
+
+    [Fact]
+    public void RunCommand_HasCorrectName()
+    {
+        var tool = LopenTools.RunCommand();
+
+        tool.Name.ShouldBe("lopen_run_command");
+    }
+
+    [Fact]
+    public async Task RunCommand_ExecutesSimpleCommand()
+    {
+        var tool = LopenTools.RunCommand();
+        var command = OperatingSystem.IsWindows() ? "echo hello" : "echo hello";
+
+        var args = new AIFunctionArguments { ["command"] = command };
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        var output = result!.ToString()!;
+        output.ShouldContain("hello");
+        output.ShouldContain("[exit code: 0]");
+    }
+
+    [Fact]
+    public async Task RunCommand_WithEmptyCommand_ReturnsError()
+    {
+        var tool = LopenTools.RunCommand();
+
+        var args = new AIFunctionArguments { ["command"] = "" };
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        result!.ToString()!.ShouldContain("Error");
+    }
+
+    [Fact]
+    public async Task RunCommand_CapturesStderr()
+    {
+        var tool = LopenTools.RunCommand();
+        var command = OperatingSystem.IsWindows() 
+            ? "echo error 1>&2" 
+            : "echo error >&2";
+
+        var args = new AIFunctionArguments { ["command"] = command };
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        var output = result!.ToString()!;
+        output.ShouldContain("error");
+        output.ShouldContain("[stderr]");
+    }
+
+    [Fact]
+    public async Task RunCommand_ReturnsExitCode()
+    {
+        var tool = LopenTools.RunCommand();
+        var command = OperatingSystem.IsWindows() 
+            ? "cmd /c exit 42" 
+            : "exit 42";
+
+        var args = new AIFunctionArguments { ["command"] = command };
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        result!.ToString()!.ShouldContain("[exit code: 42]");
+    }
+
+    [Fact]
+    public async Task RunCommand_WithWorkingDirectory_UsesDirectory()
+    {
+        var tool = LopenTools.RunCommand();
+        var tempDir = Path.GetTempPath();
+        var command = OperatingSystem.IsWindows() ? "cd" : "pwd";
+
+        var args = new AIFunctionArguments 
+        { 
+            ["command"] = command,
+            ["workingDirectory"] = tempDir
+        };
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        var output = result!.ToString()!;
+        // Normalize paths for comparison
+        output.ToLowerInvariant().ShouldContain(Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar).ToLowerInvariant());
+    }
 }
 
 public class CopilotSessionOptionsToolsTests
@@ -455,7 +543,7 @@ public class CopilotSessionOptionsToolsTests
             Tools = tools
         };
 
-        options.Tools.Count().ShouldBe(9);
+        options.Tools.Count().ShouldBe(10);
     }
 
     [Fact]

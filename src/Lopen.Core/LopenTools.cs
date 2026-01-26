@@ -64,6 +64,12 @@ public static class LopenTools
         AIFunctionFactory.Create(CreateDirectoryImpl, "lopen_create_directory", "Create a directory, including any parent directories");
 
     /// <summary>
+    /// Tool to run a shell command.
+    /// </summary>
+    public static AIFunction RunCommand() =>
+        AIFunctionFactory.Create(RunCommandImpl, "lopen_run_command", "Execute a shell command and return its output");
+
+    /// <summary>
     /// Gets all built-in Lopen tools.
     /// </summary>
     public static ICollection<AIFunction> GetAll() =>
@@ -76,7 +82,8 @@ public static class LopenTools
         GitDiff(),
         GitLog(),
         WriteFile(),
-        CreateDirectory()
+        CreateDirectory(),
+        RunCommand()
     ];
 
     // Tool implementations
@@ -264,6 +271,68 @@ public static class LopenTools
         catch (Exception ex)
         {
             return $"Error creating directory: {ex.Message}";
+        }
+    }
+
+    private static async Task<string> RunCommandImpl(
+        [Description("The command to execute")] string command,
+        [Description("Working directory (defaults to current directory)")] string? workingDirectory = null,
+        [Description("Timeout in seconds (default 30, max 300)")] int timeoutSeconds = 30)
+    {
+        if (string.IsNullOrEmpty(command))
+            return "Error: Command cannot be empty";
+
+        // Cap timeout at 5 minutes for safety
+        timeoutSeconds = Math.Min(Math.Max(timeoutSeconds, 1), 300);
+
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/bash",
+                Arguments = OperatingSystem.IsWindows() ? $"/c {command}" : $"-c \"{command.Replace("\"", "\\\"")}\"",
+                WorkingDirectory = string.IsNullOrEmpty(workingDirectory) ? Directory.GetCurrentDirectory() : workingDirectory,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(startInfo);
+            if (process == null)
+                return "Error: Failed to start process";
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+
+            try
+            {
+                var outputTask = process.StandardOutput.ReadToEndAsync(cts.Token);
+                var errorTask = process.StandardError.ReadToEndAsync(cts.Token);
+
+                await process.WaitForExitAsync(cts.Token);
+
+                var output = await outputTask;
+                var error = await errorTask;
+
+                var result = new System.Text.StringBuilder();
+                if (!string.IsNullOrEmpty(output))
+                    result.AppendLine(output.TrimEnd());
+                if (!string.IsNullOrEmpty(error))
+                    result.AppendLine($"[stderr]\n{error.TrimEnd()}");
+                
+                result.AppendLine($"[exit code: {process.ExitCode}]");
+
+                return result.ToString();
+            }
+            catch (OperationCanceledException)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                return $"Error: Command timed out after {timeoutSeconds} seconds";
+            }
+        }
+        catch (Exception ex)
+        {
+            return $"Error executing command: {ex.Message}";
         }
     }
 }

@@ -142,6 +142,7 @@ Built-in `LopenTools` class with:
 - `lopen_git_log` - Get recent git commits (with limit and format options)
 - `lopen_write_file` - Write content to a file (creates parent directories)
 - `lopen_create_directory` - Create a directory (including nested directories)
+- `lopen_run_command` - Execute shell command with timeout (captures stdout, stderr, exit code)
 
 `CopilotSessionOptions` extended with:
 - `Tools` - Custom AIFunction collection

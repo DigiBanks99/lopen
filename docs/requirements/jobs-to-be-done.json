@@ -324,8 +324,8 @@
     "requirement": "REQ-023",
     "description": "Shell Tool - Safe command execution with permission model",
     "priority": 41,
-    "status": "pending",
-    "notes": "Security-focused shell tool. Needs permission design."
+    "status": "done",
+    "notes": "Completed: lopen_run_command tool with timeout control (default 30s, max 300s). Captures stdout, stderr, exit code. 6 tests added (562 total)."
   },
   {
     "id": "JTBD-042",
