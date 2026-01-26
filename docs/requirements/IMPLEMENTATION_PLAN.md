@@ -1,56 +1,37 @@
 # Implementation Plan
 
-> Current Focus: JTBD-019 - Loop Command (REQ-030)
+> Current Focus: JTBD-025 - Verification Agent (REQ-036) ✅ COMPLETE
 
 ## Overview
 
-Implementing the `lopen loop` command - an autonomous development workflow that plans and builds features iteratively with minimal human intervention.
+Implemented the Verification Agent - a dedicated sub-agent for verifying task completion and quality gates before marking jobs as done.
 
 ## Workplan
 
-### Phase 1: Core Loop Infrastructure ✅
+### Phase 1: Core Verification Infrastructure ✅
 
-- [x] Create `LoopConfig` model in Lopen.Core
-- [x] Create `LoopConfigService` for loading/merging configs
-- [x] Create `LoopStateManager` for file-based state (jobs, plan, done file)
-- [x] Create `LoopOutputService` for streaming with phase indicators
-- [x] Create `LoopService` for orchestrating plan/build phases
+- [x] Create `VerificationResult` model in Lopen.Core
+- [x] Create `IVerificationService` interface
+- [x] Create `VerificationService` implementation
+- [x] Add verification prompt builder
+- [x] Create `MockVerificationService` for testing
 
-### Phase 2: Loop Command (REQ-030) ✅
+### Phase 2: Tests ✅
 
-- [x] Add `loop` command to Program.cs with `--auto` and `--config` options
-- [x] Implement interactive setup prompt (specification/plan/build choices)
-- [x] Add Ctrl+C handling for graceful exit
-- [x] Integrate with existing Copilot SDK
+- [x] Unit tests for VerificationResult model (5 tests)
+- [x] Unit tests for VerificationService (18 tests)
+- [x] Unit tests for MockVerificationService (9 tests)
 
-### Phase 3: Configuration (REQ-031) ✅
+### Phase 3: Documentation ✅
 
-- [x] Add `loop configure` subcommand
-- [x] Load user config from `~/.lopen/loop-config.json`
-- [x] Load project config from `.lopen/loop-config.json`
-- [x] Merge configs with project overriding user
-
-### Phase 4: Plan/Build Phases (REQ-032, REQ-033) ✅
-
-- [x] Implement plan phase (load PLAN.PROMPT.md, run Copilot)
-- [x] Implement build phase loop (iterate until done file)
-- [x] Iteration counter display
-- [x] Loop completion detection (lopen.loop.done)
-
-### Phase 5: Tests ✅
-
-- [x] Unit tests for LoopConfig (6 tests)
-- [x] Unit tests for LoopConfigService (9 tests)
-- [x] Unit tests for LoopStateManager (12 tests)
-- [x] Unit tests for LoopOutputService (8 tests)
-- [x] Unit tests for LoopService (10 tests)
+- [x] Update SPECIFICATION.md with completion status
+- [x] Update jobs-to-be-done.json
 
 ## Completed
 
-JTBD-019 implementation is complete with 35 new tests (248 total tests passing).
+JTBD-025 implementation is complete with 32 new tests (278 total tests passing).
 
 ## Next Steps
 
-1. Update jobs-to-be-done.json to mark JTBD-019 as done
-2. Commit changes
-3. Move to next priority task (JTBD-020: Loop Configuration enhancements or JTBD-026: TUI Spinners)
+1. Commit changes
+2. Move to next priority task (JTBD-026: TUI Spinners)

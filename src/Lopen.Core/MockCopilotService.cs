@@ -9,6 +9,7 @@ public class MockCopilotService : ICopilotService
     private readonly List<string> _models = ["gpt-5", "gpt-5.1", "claude-sonnet-4.5"];
     private int _sessionCounter;
     private bool _disposed;
+    private string? _configuredResponse;
 
     /// <summary>
     /// Whether the mock is available.
@@ -34,6 +35,14 @@ public class MockCopilotService : ICopilotService
     /// Number of sessions created.
     /// </summary>
     public int SessionsCreated => _sessionCounter;
+
+    /// <summary>
+    /// Set the response that all sessions will return.
+    /// </summary>
+    public void SetResponse(string? response)
+    {
+        _configuredResponse = response;
+    }
 
     /// <inheritdoc />
     public Task<bool> IsAvailableAsync(CancellationToken ct = default)
@@ -68,6 +77,15 @@ public class MockCopilotService : ICopilotService
         if (SessionFactory != null)
         {
             session = SessionFactory(options);
+        }
+        else if (_configuredResponse != null)
+        {
+            // Create session with configured response
+            var response = _configuredResponse;
+            session = new MockCopilotSession(
+                sessionId,
+                streamHandler: null,
+                sendHandler: _ => Task.FromResult<string?>(response));
         }
         else
         {
