@@ -41,9 +41,14 @@ public class SpectreStreamRenderer : IStreamRenderer
 
         var buffer = new StringBuilder();
         var tokenCount = 0;
+        var totalTokenCount = 0;
+        long bytesReceived = 0;
         var lastFlush = _timeProvider.UtcNow;
         var firstToken = true;
         var inCodeBlock = false;
+
+        // Start metrics collection if enabled
+        config.MetricsCollector?.StartRequest();
 
         // Show initial indicator
         if (config.ShowThinkingIndicator)
@@ -55,15 +60,22 @@ public class SpectreStreamRenderer : IStreamRenderer
         {
             await foreach (var token in tokenStream.WithCancellation(cancellationToken))
             {
-                // Clear thinking indicator on first token
-                if (firstToken && config.ShowThinkingIndicator)
+                // Record first token timing
+                if (firstToken)
                 {
-                    ClearThinkingIndicator();
+                    config.MetricsCollector?.RecordFirstToken();
+
+                    if (config.ShowThinkingIndicator)
+                    {
+                        ClearThinkingIndicator();
+                    }
                     firstToken = false;
                 }
 
                 buffer.Append(token);
                 tokenCount++;
+                totalTokenCount++;
+                bytesReceived += Encoding.UTF8.GetByteCount(token);
 
                 // Track code block state
                 var codeBlockMarkers = CountOccurrences(buffer.ToString(), "```");
@@ -95,6 +107,9 @@ public class SpectreStreamRenderer : IStreamRenderer
         }
         catch (OperationCanceledException)
         {
+            // Record completion before rethrowing
+            config.MetricsCollector?.RecordCompletion(totalTokenCount, bytesReceived);
+
             // Flush partial content on cancellation
             if (buffer.Length > 0)
             {
@@ -107,6 +122,44 @@ public class SpectreStreamRenderer : IStreamRenderer
         if (buffer.Length > 0)
         {
             FlushBuffer(buffer.ToString());
+        }
+
+        // Record completion and optionally display metrics
+        config.MetricsCollector?.RecordCompletion(totalTokenCount, bytesReceived);
+
+        if (config.ShowMetrics && config.MetricsCollector != null)
+        {
+            DisplayMetrics(config.MetricsCollector.GetLatestMetrics());
+        }
+    }
+
+    private void DisplayMetrics(ResponseMetrics? metrics)
+    {
+        if (metrics == null) return;
+
+        _console.WriteLine();
+        if (_useColors)
+        {
+            var ttft = metrics.TimeToFirstToken?.TotalMilliseconds ?? 0;
+            var ttftColor = metrics.MeetsFirstTokenTarget ? "green" : "yellow";
+            var total = metrics.TotalTime?.TotalMilliseconds ?? 0;
+            var tps = metrics.TokensPerSecond ?? 0;
+
+            _console.MarkupLine($"[dim]─── Metrics ───[/]");
+            _console.MarkupLine($"[dim]Time to first token:[/] [{ttftColor}]{ttft:F0}ms[/]");
+            _console.MarkupLine($"[dim]Total time:[/] [blue]{total:F0}ms[/]");
+            _console.MarkupLine($"[dim]Tokens:[/] {metrics.TokenCount} [dim]({tps:F1}/s)[/]");
+        }
+        else
+        {
+            var ttft = metrics.TimeToFirstToken?.TotalMilliseconds ?? 0;
+            var total = metrics.TotalTime?.TotalMilliseconds ?? 0;
+            var tps = metrics.TokensPerSecond ?? 0;
+
+            _console.WriteLine("--- Metrics ---");
+            _console.WriteLine($"Time to first token: {ttft:F0}ms");
+            _console.WriteLine($"Total time: {total:F0}ms");
+            _console.WriteLine($"Tokens: {metrics.TokenCount} ({tps:F1}/s)");
         }
     }
 

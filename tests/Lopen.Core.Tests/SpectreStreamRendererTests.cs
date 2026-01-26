@@ -259,6 +259,139 @@ public class SpectreStreamRendererTests
         fakeTime.UtcNow.ShouldBe(target);
     }
 
+    [Fact]
+    public async Task RenderStreamAsync_CollectsMetrics_WhenConfigured()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var metrics = new MockMetricsCollector();
+        var config = new StreamConfig
+        {
+            ShowThinkingIndicator = false,
+            MetricsCollector = metrics
+        };
+
+        // Act
+        await renderer.RenderStreamAsync(CreateTokenStream("Hello", " ", "World"), config);
+
+        // Assert
+        metrics.StartRequestCount.ShouldBe(1);
+        metrics.FirstTokenCount.ShouldBe(1);
+        metrics.CompletionCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task RenderStreamAsync_RecordsFirstTokenOnce()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var metrics = new MockMetricsCollector();
+        var config = new StreamConfig
+        {
+            ShowThinkingIndicator = false,
+            MetricsCollector = metrics
+        };
+
+        // Act
+        await renderer.RenderStreamAsync(CreateTokenStream("A", "B", "C", "D", "E"), config);
+
+        // Assert
+        metrics.FirstTokenCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task RenderStreamAsync_RecordsTokenCountAndBytes()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var metrics = new MetricsCollector();
+        var config = new StreamConfig
+        {
+            ShowThinkingIndicator = false,
+            MetricsCollector = metrics
+        };
+
+        // Act
+        await renderer.RenderStreamAsync(CreateTokenStream("Hello", " ", "World"), config);
+
+        // Assert
+        var result = metrics.GetLatestMetrics();
+        result.ShouldNotBeNull();
+        result.TokenCount.ShouldBe(3);
+        result.BytesReceived.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task RenderStreamAsync_RecordsMetricsOnCancellation()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var metrics = new MockMetricsCollector();
+        var config = new StreamConfig
+        {
+            ShowThinkingIndicator = false,
+            MetricsCollector = metrics
+        };
+        var cts = new CancellationTokenSource();
+        cts.CancelAfter(50);
+
+        // Act & Assert
+        await Should.ThrowAsync<OperationCanceledException>(async () =>
+        {
+            await renderer.RenderStreamAsync(CreateSlowTokenStream(), config, cts.Token);
+        });
+
+        // Metrics should still be recorded
+        metrics.CompletionCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task RenderStreamAsync_ShowsMetrics_WhenEnabled()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var metrics = new MetricsCollector();
+        var config = new StreamConfig
+        {
+            ShowThinkingIndicator = false,
+            MetricsCollector = metrics,
+            ShowMetrics = true
+        };
+
+        // Act
+        await renderer.RenderStreamAsync(CreateTokenStream("Test"), config);
+
+        // Assert
+        console.Output.ShouldContain("Metrics");
+        console.Output.ShouldContain("Time to first token");
+    }
+
+    [Fact]
+    public async Task RenderStreamAsync_HidesMetrics_WhenDisabled()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var metrics = new MetricsCollector();
+        var config = new StreamConfig
+        {
+            ShowThinkingIndicator = false,
+            MetricsCollector = metrics,
+            ShowMetrics = false
+        };
+
+        // Act
+        await renderer.RenderStreamAsync(CreateTokenStream("Test"), config);
+
+        // Assert
+        console.Output.ShouldNotContain("Metrics");
+    }
+
     private static async IAsyncEnumerable<string> CreateTokenStream(params string[] tokens)
     {
         foreach (var token in tokens)

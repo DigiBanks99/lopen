@@ -356,8 +356,8 @@
     "requirement": "NFR-001",
     "description": "Copilot Response Time Metrics - First response < 2s",
     "priority": 45,
-    "status": "pending",
-    "notes": "Unchecked item in platform/SPECIFICATION.md. Need measurement."
+    "status": "done",
+    "notes": "Completed: ResponseMetrics record, IMetricsCollector interface, MetricsCollector implementation, MockMetricsCollector for testing, StreamRenderer integration with ShowMetrics option. 45 tests added (780 total)."
   },
   {
     "id": "JTBD-046",

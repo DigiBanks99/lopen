@@ -16,6 +16,12 @@ public record StreamConfig
 
     /// <summary>Text to show while waiting for first token.</summary>
     public string ThinkingText { get; init; } = "⏳ Thinking...";
+
+    /// <summary>Optional metrics collector for timing data.</summary>
+    public IMetricsCollector? MetricsCollector { get; init; }
+
+    /// <summary>Whether to display metrics summary after stream completes.</summary>
+    public bool ShowMetrics { get; init; }
 }
 
 /// <summary>

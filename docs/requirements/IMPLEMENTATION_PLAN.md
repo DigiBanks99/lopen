@@ -1,23 +1,21 @@
 # Implementation Plan
 
-> ✅ This iteration complete - Token Refresh Handling implemented
+> ✅ This iteration complete - Copilot Response Time Metrics implemented
 
 ## Completed This Iteration
 
-### JTBD-043: Token Refresh Handling (REQ-003) ✅
-- Extended `TokenResponse` with `refresh_token`, `expires_in`, `refresh_token_expires_in` fields
-- Created `TokenInfo` record with expiry tracking and helper methods
-- Added `ITokenInfoStore` interface for refresh token storage
-- Updated `FileCredentialStore` and `SecureCredentialStore` to implement `ITokenInfoStore`
-- Added `RefreshTokenAsync()` to `IDeviceFlowAuth` and `DeviceFlowAuth`
-- Enhanced `AuthService` with auto-refresh logic (5-minute buffer before expiry)
-- Updated `MockDeviceFlowAuth` and `MockCredentialStore` for testing
-- 16 tests added (736 total)
+### JTBD-045: Copilot Response Time Metrics (NFR-001) ✅
+- Created `ResponseMetrics` record with timing calculations (TimeToFirstToken, TotalTime, TokensPerSecond)
+- Created `IMetricsCollector` interface for metrics collection
+- Implemented `MetricsCollector` with concurrent tracking of multiple requests
+- Created `MockMetricsCollector` for deterministic testing
+- Extended `StreamConfig` with `MetricsCollector` and `ShowMetrics` options
+- Integrated metrics collection into `SpectreStreamRenderer` and `MockStreamRenderer`
+- Added `MeetsFirstTokenTarget` property to check < 2s target
+- 45 tests added (780 total)
 
-## Total Tests: 736
+## Total Tests: 780
 
 ## Next Priority Tasks
 
-| ID | Description | Priority | Notes |
-|----|-------------|----------|-------|
-| JTBD-045 | Response Time Metrics | 45 | Copilot SDK metrics |
+All tasks complete! No pending items in jobs-to-be-done.json.

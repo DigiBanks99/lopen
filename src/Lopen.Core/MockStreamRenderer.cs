@@ -48,7 +48,13 @@ public class MockStreamRenderer : IStreamRenderer
 
         var buffer = new System.Text.StringBuilder();
         var tokenCount = 0;
+        var totalTokenCount = 0;
+        long bytesReceived = 0;
         var lastFlush = DateTime.UtcNow;
+        var firstToken = true;
+
+        // Start metrics collection if enabled
+        config.MetricsCollector?.StartRequest();
 
         if (config.ShowThinkingIndicator)
         {
@@ -59,11 +65,20 @@ public class MockStreamRenderer : IStreamRenderer
         {
             await foreach (var token in tokenStream.WithCancellation(cancellationToken))
             {
+                // Record first token timing
+                if (firstToken)
+                {
+                    config.MetricsCollector?.RecordFirstToken();
+                    firstToken = false;
+                }
+
                 _allTokens.Add(token);
                 OnToken?.Invoke(token);
 
                 buffer.Append(token);
                 tokenCount++;
+                totalTokenCount++;
+                bytesReceived += System.Text.Encoding.UTF8.GetByteCount(token);
 
                 // Track code block state
                 var inCodeBlock = CountOccurrences(buffer.ToString(), "```") % 2 == 1;
@@ -90,6 +105,7 @@ public class MockStreamRenderer : IStreamRenderer
         catch (OperationCanceledException)
         {
             WasCancelled = true;
+            config.MetricsCollector?.RecordCompletion(totalTokenCount, bytesReceived);
             if (buffer.Length > 0)
             {
                 RecordFlush(buffer + "...", FlushReason.Cancelled);
@@ -102,6 +118,9 @@ public class MockStreamRenderer : IStreamRenderer
         {
             RecordFlush(buffer.ToString(), FlushReason.EndOfStream);
         }
+
+        // Record completion
+        config.MetricsCollector?.RecordCompletion(totalTokenCount, bytesReceived);
     }
 
     private void RecordFlush(string content, FlushReason reason)

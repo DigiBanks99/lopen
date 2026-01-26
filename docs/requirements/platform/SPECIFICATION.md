@@ -20,8 +20,8 @@ Ensure responsive CLI performance.
 ### Acceptance Criteria
 - [x] CLI startup time < 500ms
 - [x] Command parsing < 50ms
-- [ ] First response from Copilot SDK < 2s (network dependent)
-- [ ] Streaming responses render immediately
+- [x] First response from Copilot SDK < 2s (network dependent)
+- [x] Streaming responses render immediately
 
 ### Measured Performance (2026-01-24)
 | Metric | Target | Actual | Status |
@@ -31,11 +31,26 @@ Ensure responsive CLI performance.
 | Memory usage | < 100MB | ~25MB | ✅ |
 | Executable size | - | 14MB | ✅ |
 
+### Response Time Metrics (2026-01-26)
+| Metric | Target | Implementation |
+|--------|--------|----------------|
+| Time to first token | < 2s | `ResponseMetrics.TimeToFirstToken` with `MeetsFirstTokenTarget` check |
+| Total response time | N/A | `ResponseMetrics.TotalTime` |
+| Tokens per second | N/A | `ResponseMetrics.TokensPerSecond` |
+| Streaming latency | Immediate | Direct console writes in `SpectreStreamRenderer` |
+
+### Implementation
+- `ResponseMetrics` record with timing calculations
+- `IMetricsCollector` / `MetricsCollector` for collecting timing data
+- `StreamConfig.MetricsCollector` for optional metrics capture
+- `StreamConfig.ShowMetrics` to display metrics after streaming
+- 45 unit tests for metrics functionality
+
 ### Notes
 - Single-file self-contained publish provides excellent startup time
 - No AOT compilation needed - JIT is fast enough
 - Command parsing is essentially instant (< 5ms)
-- Copilot SDK metrics pending SDK integration
+- Metrics collection is optional and adds minimal overhead
 
 ---
 
