@@ -32,6 +32,7 @@ lopen auth logout             # Clear stored credentials
 - [x] Clear error messages for auth failures
 - [x] Support for environment variable token override (`GITHUB_TOKEN`)
 - [x] OAuth2 device code flow
+- [x] Platform-specific secure storage (DPAPI/Keychain/libsecret)
 - [ ] Token refresh handling (future)
 
 ### Authentication Methods (Priority Order)

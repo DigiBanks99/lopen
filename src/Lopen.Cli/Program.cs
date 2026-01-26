@@ -6,7 +6,21 @@ var rootCommand = new RootCommand("Lopen - GitHub Copilot CLI");
 // Services
 var versionService = new VersionService(typeof(Program).Assembly);
 var helpService = new HelpService();
-var credentialStore = new FileCredentialStore();
+
+// Use secure credential storage with fallback to file-based storage
+ICredentialStore credentialStore;
+if (SecureCredentialStore.IsAvailable())
+{
+    credentialStore = new SecureCredentialStore();
+    // Migrate credentials from file storage if present
+    var fileStore = new FileCredentialStore();
+    await CredentialMigration.MigrateIfNeededAsync(credentialStore, fileStore);
+}
+else
+{
+    credentialStore = new FileCredentialStore();
+}
+
 var authService = new AuthService(credentialStore);
 var sessionStore = new FileSessionStore();
 var output = new ConsoleOutput();

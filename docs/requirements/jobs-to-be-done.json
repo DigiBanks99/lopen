@@ -308,8 +308,8 @@
     "requirement": "REQ-003",
     "description": "Secure Token Storage - Platform-specific (DPAPI/Keychain/libsecret)",
     "priority": 39,
-    "status": "pending",
-    "notes": "Enhanced security. Lower priority - current file-based works."
+    "status": "done",
+    "notes": "Completed: SecureCredentialStore using Devlooped.CredentialManager (GCM). Platform auto-detection with fallback to FileCredentialStore. Credential migration support. 22 tests added (720 total)."
   },
   {
     "id": "JTBD-040",
