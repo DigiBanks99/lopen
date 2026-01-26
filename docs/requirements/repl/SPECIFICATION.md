@@ -42,13 +42,18 @@ Maintain state between commands within a REPL session.
 - [x] Preserve conversation context across prompts
 - [x] Track authenticated state
 - [x] Manage Copilot SDK session lifecycle
-- [ ] Support session save/restore (optional - future enhancement)
+- [x] Support session save/restore
 
 ### Implementation
 - `SessionState` model class with SessionId, StartedAt, IsAuthenticated, Username, ConversationHistory, Preferences
 - `ISessionStateService` / `SessionStateService` for state management
+- `ISessionStore` / `FileSessionStore` for session persistence in `~/.lopen/sessions/`
+- `PersistableSessionState` for JSON serialization
+- `SessionSummary` for session listing
+- `MockSessionStore` for testing
+- CLI commands: `repl-session save`, `repl-session load`, `repl-session list`, `repl-session delete`
 - Integration with `ReplService` for automatic initialization and command tracking
-- 21 unit tests covering all functionality
+- 49 unit tests covering all functionality
 
 ### State to Maintain
 - Authentication status (synced with AuthService)

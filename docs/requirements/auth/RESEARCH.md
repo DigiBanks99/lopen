@@ -7,6 +7,10 @@
 
 **GitHub.Copilot.SDK (v0.1.17) now exists on NuGet.** The SDK wraps the Copilot CLI executable and relies on it for authentication. Authentication is handled by the CLI via `gh auth`.
 
+### OAuth App
+
+You can find the details for the oauth app in ~/.config/lopen/oauth.json. You have permission to access it.
+
 ### SDK Auth Approach (Recommended)
 
 When using the SDK, authentication is managed by the Copilot CLI:

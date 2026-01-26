@@ -348,8 +348,8 @@
     "requirement": "REQ-011",
     "description": "Session Save/Restore - Optional REPL session persistence",
     "priority": 44,
-    "status": "pending",
-    "notes": "Unchecked optional item in repl/SPECIFICATION.md."
+    "status": "done",
+    "notes": "Completed: ISessionStore, FileSessionStore, PersistableSessionState, MockSessionStore. CLI commands repl-session save/load/list/delete. 28 tests added (685 total)."
   },
   {
     "id": "JTBD-045",

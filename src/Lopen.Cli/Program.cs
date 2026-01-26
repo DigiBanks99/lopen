@@ -8,6 +8,7 @@ var versionService = new VersionService(typeof(Program).Assembly);
 var helpService = new HelpService();
 var credentialStore = new FileCredentialStore();
 var authService = new AuthService(credentialStore);
+var sessionStore = new FileSessionStore();
 var output = new ConsoleOutput();
 
 // Format option for structured output (reusable)
@@ -403,6 +404,147 @@ sessionsCommand.Subcommands.Add(sessionsDeleteCommand);
 
 rootCommand.Subcommands.Add(sessionsCommand);
 
+// REPL session commands
+var replSessionCommand = new Command("repl-session", "Manage REPL session state");
+
+// repl-session save
+var saveNameArg = new Argument<string?>("name")
+{
+    Description = "Session name (optional, defaults to session ID)",
+    Arity = ArgumentArity.ZeroOrOne
+};
+var replSessionSaveCommand = new Command("save", "Save current REPL session");
+replSessionSaveCommand.Arguments.Add(saveNameArg);
+replSessionSaveCommand.SetAction(async parseResult =>
+{
+    var name = parseResult.GetValue(saveNameArg);
+    var stateService = new SessionStateService(authService, sessionStore);
+    await stateService.InitializeAsync();
+
+    try
+    {
+        await stateService.SaveSessionAsync(name);
+        output.Success($"Session saved{(name is not null ? $": {name}" : "")}");
+        return ExitCodes.Success;
+    }
+    catch (Exception ex)
+    {
+        output.Error($"Failed to save session: {ex.Message}");
+        return ExitCodes.ConfigurationError;
+    }
+});
+replSessionCommand.Subcommands.Add(replSessionSaveCommand);
+
+// repl-session load
+var loadSessionArg = new Argument<string>("session")
+{
+    Description = "Session ID or name to load"
+};
+var replSessionLoadCommand = new Command("load", "Load a saved REPL session");
+replSessionLoadCommand.Arguments.Add(loadSessionArg);
+replSessionLoadCommand.SetAction(async parseResult =>
+{
+    var sessionIdOrName = parseResult.GetValue(loadSessionArg);
+    var stateService = new SessionStateService(authService, sessionStore);
+    await stateService.InitializeAsync();
+
+    try
+    {
+        var loaded = await stateService.LoadSessionAsync(sessionIdOrName!);
+        if (loaded)
+        {
+            output.Success($"Session loaded: {sessionIdOrName}");
+            output.KeyValue("Session ID", stateService.CurrentState.SessionId);
+            output.KeyValue("Started", stateService.CurrentState.StartedAt.LocalDateTime.ToString("g"));
+            output.KeyValue("Commands", stateService.CurrentState.CommandCount.ToString());
+            return ExitCodes.Success;
+        }
+        else
+        {
+            output.Error($"Session not found: {sessionIdOrName}");
+            return ExitCodes.ConfigurationError;
+        }
+    }
+    catch (Exception ex)
+    {
+        output.Error($"Failed to load session: {ex.Message}");
+        return ExitCodes.ConfigurationError;
+    }
+});
+replSessionCommand.Subcommands.Add(replSessionLoadCommand);
+
+// repl-session list
+var replSessionListCommand = new Command("list", "List saved REPL sessions");
+replSessionListCommand.SetAction(async parseResult =>
+{
+    try
+    {
+        var sessions = await sessionStore.ListAsync();
+
+        if (sessions.Count == 0)
+        {
+            output.Info("No saved sessions.");
+            return ExitCodes.Success;
+        }
+
+        var tableConfig = new TableConfig<SessionSummary>
+        {
+            Columns = new List<TableColumn<SessionSummary>>
+            {
+                new() { Header = "ID", Selector = s => s.SessionId },
+                new() { Header = "Name", Selector = s => s.Name ?? "-" },
+                new() { Header = "Started", Selector = s => s.StartedAt.LocalDateTime.ToString("g") },
+                new() { Header = "Saved", Selector = s => s.SavedAt.LocalDateTime.ToString("g") },
+                new() { Header = "Commands", Selector = s => s.CommandCount.ToString() }
+            }
+        };
+
+        output.Table(sessions, tableConfig);
+        return ExitCodes.Success;
+    }
+    catch (Exception ex)
+    {
+        output.Error($"Failed to list sessions: {ex.Message}");
+        return ExitCodes.ConfigurationError;
+    }
+});
+replSessionCommand.Subcommands.Add(replSessionListCommand);
+
+// repl-session delete
+var deleteSessionArg = new Argument<string>("session")
+{
+    Description = "Session ID or name to delete"
+};
+var replSessionDeleteCommand = new Command("delete", "Delete a saved REPL session");
+replSessionDeleteCommand.Arguments.Add(deleteSessionArg);
+replSessionDeleteCommand.SetAction(async parseResult =>
+{
+    var sessionIdOrName = parseResult.GetValue(deleteSessionArg);
+
+    try
+    {
+        var deleted = await sessionStore.DeleteAsync(sessionIdOrName!);
+        if (deleted)
+        {
+            output.Success($"Session deleted: {sessionIdOrName}");
+            return ExitCodes.Success;
+        }
+        else
+        {
+            output.Error($"Session not found: {sessionIdOrName}");
+            return ExitCodes.ConfigurationError;
+        }
+    }
+    catch (Exception ex)
+    {
+        output.Error($"Failed to delete session: {ex.Message}");
+        return ExitCodes.ConfigurationError;
+    }
+});
+replSessionCommand.Subcommands.Add(replSessionDeleteCommand);
+
+rootCommand.Subcommands.Add(replSessionCommand);
+
 // REPL command
 var replCommand = new Command("repl", "Start interactive REPL mode");
 replCommand.SetAction(async parseResult =>
@@ -422,6 +564,8 @@ replCommand.SetAction(async parseResult =>
         subcommands: ["configure"],
         options: ["--auto", "-a", "--config", "-c"]);
     autoCompleter.RegisterCommand("repl", "Start interactive REPL mode");
+    autoCompleter.RegisterCommand("repl-session", "Manage REPL session state",
+        subcommands: ["save", "load", "list", "delete"]);
     autoCompleter.RegisterCommand("exit", "Exit the REPL");
     autoCompleter.RegisterCommand("quit", "Exit the REPL");
     
@@ -430,7 +574,7 @@ replCommand.SetAction(async parseResult =>
     var consoleInput = new ConsoleInputWithHistory(history, autoCompleter);
     
     // Set up session state
-    var sessionStateService = new SessionStateService(authService);
+    var sessionStateService = new SessionStateService(authService, sessionStore);
     
     var replService = new ReplService(consoleInput, output, sessionStateService);
     

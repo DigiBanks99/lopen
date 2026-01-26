@@ -1,21 +1,21 @@
 # Implementation Plan
 
-> ✅ This iteration complete - Self-Testing Interactive Mode implemented
+> ✅ This iteration complete - Session Save/Restore implemented
 
 ## Completed This Iteration
 
-### JTBD-049: Self-Testing Interactive Mode (REQ-020-TEST) ✅
-- `IInteractiveTestSelector` interface with `SelectTests` method
-- `InteractiveTestSelection` record with Tests, Model, Cancelled properties
-- `SpectreInteractiveTestSelector` using MultiSelectionPrompt with grouped choices
-- `MockInteractiveTestSelector` for testing with fluent configuration
-- `--interactive` / `-i` flag in CLI command
-- Model selection with SelectionPrompt
-- Confirmation prompt before running tests
-- Terminal detection (falls back if not interactive)
-- 11 tests added
+### JTBD-044: Session Save/Restore (REQ-011) ✅
+- `ISessionStore` interface for session persistence
+- `FileSessionStore` implementing JSON file storage in `~/.lopen/sessions/`
+- `PersistableSessionState` model with FromSessionState/ToSessionState conversion
+- `SessionSummary` record for listing
+- `MockSessionStore` for testing
+- Extended `ISessionStateService` with SaveSessionAsync/LoadSessionAsync/DeleteSessionAsync/ListSessionsAsync
+- CLI commands: `repl-session save [name]`, `repl-session load <session>`, `repl-session list`, `repl-session delete <session>`
+- Auto-completion registered for new commands
+- 28 tests added
 
-## Total Tests: 657
+## Total Tests: 685
 
 ## Next Priority Tasks
 
@@ -24,4 +24,4 @@
 | JTBD-038 | OAuth2 Device Flow | 38 | Requires GitHub OAuth app registration |
 | JTBD-039 | Secure Token Storage | 39 | Platform-specific (DPAPI/Keychain/libsecret) |
 | JTBD-043 | Token Refresh Handling | 43 | Automatic token refresh |
-| JTBD-044 | Session Save/Restore | 44 | Optional REPL session persistence |
+| JTBD-045 | Response Time Metrics | 45 | Copilot SDK metrics |

@@ -90,6 +90,26 @@ public interface ISessionStateService
     /// Resets the session to a fresh state.
     /// </summary>
     Task ResetAsync();
+
+    /// <summary>
+    /// Saves the current session with an optional name.
+    /// </summary>
+    Task SaveSessionAsync(string? name = null);
+
+    /// <summary>
+    /// Loads a saved session by ID or name.
+    /// </summary>
+    Task<bool> LoadSessionAsync(string sessionIdOrName);
+
+    /// <summary>
+    /// Deletes a saved session by ID or name.
+    /// </summary>
+    Task<bool> DeleteSessionAsync(string sessionIdOrName);
+
+    /// <summary>
+    /// Lists all saved sessions.
+    /// </summary>
+    Task<IReadOnlyList<SessionSummary>> ListSessionsAsync();
 }
 
 /// <summary>
@@ -98,11 +118,17 @@ public interface ISessionStateService
 public class SessionStateService : ISessionStateService
 {
     private readonly IAuthService _authService;
+    private readonly ISessionStore? _sessionStore;
     private SessionState _state;
 
-    public SessionStateService(IAuthService authService)
+    public SessionStateService(IAuthService authService) : this(authService, null)
+    {
+    }
+
+    public SessionStateService(IAuthService authService, ISessionStore? sessionStore)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        _sessionStore = sessionStore;
         _state = new SessionState();
     }
 
@@ -151,5 +177,44 @@ public class SessionStateService : ISessionStateService
     public async Task ResetAsync()
     {
         await InitializeAsync();
+    }
+
+    public async Task SaveSessionAsync(string? name = null)
+    {
+        if (_sessionStore is null)
+            throw new InvalidOperationException("Session store not configured");
+
+        var persistable = PersistableSessionState.FromSessionState(_state, name);
+        await _sessionStore.SaveAsync(persistable);
+    }
+
+    public async Task<bool> LoadSessionAsync(string sessionIdOrName)
+    {
+        if (_sessionStore is null)
+            throw new InvalidOperationException("Session store not configured");
+
+        var persistable = await _sessionStore.LoadAsync(sessionIdOrName);
+        if (persistable is null)
+            return false;
+
+        _state = persistable.ToSessionState();
+        await RefreshAuthStatusAsync();
+        return true;
+    }
+
+    public async Task<bool> DeleteSessionAsync(string sessionIdOrName)
+    {
+        if (_sessionStore is null)
+            throw new InvalidOperationException("Session store not configured");
+
+        return await _sessionStore.DeleteAsync(sessionIdOrName);
+    }
+
+    public async Task<IReadOnlyList<SessionSummary>> ListSessionsAsync()
+    {
+        if (_sessionStore is null)
+            throw new InvalidOperationException("Session store not configured");
+
+        return await _sessionStore.ListAsync();
     }
 }
