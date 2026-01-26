@@ -9,7 +9,7 @@
 | REQ-014 | Output Formatting & Status Indicators | High | 🟢 Complete |
 | REQ-015 | Progress Indicators & Spinners | High | 🟢 Complete |
 | REQ-016 | Error Display & Correction Guidance | High | 🟢 Complete |
-| REQ-017 | Structured Data Display | Medium | 🟡 Partial |
+| REQ-017 | Structured Data Display | Medium | 🟢 Complete |
 | REQ-018 | Layout & Right-Side Panels | Medium | 🔴 Planned |
 | REQ-019 | AI Response Streaming | High | 🔴 Planned |
 | REQ-020 | Responsive Terminal Detection | Medium | 🔴 Planned |
@@ -266,8 +266,8 @@ public interface IErrorRenderer {
 Consistent display of structured data (lists, metadata, hierarchies) using appropriate Spectre.Console components.
 
 ### Acceptance Criteria
-- [x] Tables for list data (basic implementation exists)
-- [ ] Panels for metadata and grouped information
+- [x] Tables for list data (IDataRenderer, SpectreDataRenderer)
+- [x] Panels for metadata and grouped information (RenderMetadata)
 - [ ] Trees for hierarchical data
 - [ ] Responsive column widths
 - [ ] Sortable and filterable tables (future)

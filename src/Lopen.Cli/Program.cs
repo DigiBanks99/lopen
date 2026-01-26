@@ -352,14 +352,19 @@ sessionsListCommand.SetAction(async parseResult =>
             return ExitCodes.Success;
         }
 
-        output.Info($"Found {sessions.Count} session(s):");
-        foreach (var session in sessions)
+        var tableConfig = new TableConfig<CopilotSessionInfo>
         {
-            var summary = session.Summary ?? "(no summary)";
-            output.WriteLine($"  {session.SessionId}");
-            output.Muted($"    Modified: {session.ModifiedTime:g}");
-            output.Muted($"    Summary: {summary}");
-        }
+            Columns = new List<TableColumn<CopilotSessionInfo>>
+            {
+                new() { Header = "ID", Selector = s => s.SessionId },
+                new() { Header = "Modified", Selector = s => s.ModifiedTime.ToString("g") },
+                new() { Header = "Summary", Selector = s => s.Summary ?? "(no summary)" }
+            },
+            ShowRowCount = true,
+            RowCountFormat = "{0} session(s)"
+        };
+
+        output.Table(sessions, tableConfig);
         return ExitCodes.Success;
     }
     catch (Exception ex)

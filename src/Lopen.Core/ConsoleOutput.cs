@@ -213,4 +213,27 @@ public class ConsoleOutput
         var renderer = new SpectreErrorRenderer(_console);
         renderer.RenderValidationError(input, message, validOptions);
     }
+
+    /// <summary>
+    /// Render a table of items.
+    /// </summary>
+    /// <typeparam name="T">The type of items.</typeparam>
+    /// <param name="items">Items to display.</param>
+    /// <param name="config">Table configuration.</param>
+    public void Table<T>(IEnumerable<T> items, TableConfig<T> config)
+    {
+        var renderer = new SpectreDataRenderer(_console);
+        renderer.RenderTable(items, config);
+    }
+
+    /// <summary>
+    /// Render key-value metadata in a panel.
+    /// </summary>
+    /// <param name="data">Key-value pairs to display.</param>
+    /// <param name="title">Panel title.</param>
+    public void Metadata(IReadOnlyDictionary<string, string> data, string title)
+    {
+        var renderer = new SpectreDataRenderer(_console);
+        renderer.RenderMetadata(data, title);
+    }
 }

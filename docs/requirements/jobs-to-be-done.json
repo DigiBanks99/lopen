@@ -220,8 +220,8 @@
     "requirement": "REQ-017",
     "description": "TUI Structured Data - Tables for sessions list",
     "priority": 28,
-    "status": "pending",
-    "notes": "Spectre.Console Table with RoundedBorder(). Partial - needs enhancement."
+    "status": "done",
+    "notes": "Completed: IDataRenderer, SpectreDataRenderer, MockDataRenderer. RenderTable, RenderMetadata, RenderInfo methods. ConsoleOutput.Table/Metadata convenience. Sessions list command updated. 24 tests added (362 total)."
   },
   {
     "id": "JTBD-029",

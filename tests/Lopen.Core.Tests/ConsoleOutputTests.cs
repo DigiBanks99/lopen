@@ -169,4 +169,44 @@ public class ConsoleOutputTests
         console.Output.ShouldContain("--model xyz");
         console.Output.ShouldContain("gpt-4");
     }
+
+    [Fact]
+    public void Table_RendersItems()
+    {
+        var console = new TestConsole().Width(120);
+        var output = new ConsoleOutput(console);
+        var items = new[] { ("Alice", 25), ("Bob", 30) };
+        var config = new TableConfig<(string Name, int Age)>
+        {
+            Columns = new List<TableColumn<(string Name, int Age)>>
+            {
+                new() { Header = "Name", Selector = x => x.Name },
+                new() { Header = "Age", Selector = x => x.Age.ToString() }
+            },
+            ShowRowCount = false
+        };
+
+        output.Table(items, config);
+
+        console.Output.ShouldContain("Alice");
+        console.Output.ShouldContain("Bob");
+    }
+
+    [Fact]
+    public void Metadata_RendersKeyValuePairs()
+    {
+        var console = new TestConsole().Width(120);
+        var output = new ConsoleOutput(console);
+        var data = new Dictionary<string, string>
+        {
+            ["Status"] = "Ready",
+            ["Version"] = "1.0"
+        };
+
+        output.Metadata(data, "App Info");
+
+        console.Output.ShouldContain("App Info");
+        console.Output.ShouldContain("Status");
+        console.Output.ShouldContain("Ready");
+    }
 }
