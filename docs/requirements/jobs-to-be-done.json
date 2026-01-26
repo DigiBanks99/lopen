@@ -236,8 +236,8 @@
     "requirement": "REQ-019",
     "description": "TUI AI Streaming - Buffered paragraph rendering",
     "priority": 30,
-    "status": "pending",
-    "notes": "Buffer tokens, flush on paragraph breaks. Research complete."
+    "status": "done",
+    "notes": "Completed: IStreamRenderer, SpectreStreamRenderer, MockStreamRenderer. Buffering with timeout/token limit, code block handling. 29 tests added (420 total)."
   },
   {
     "id": "JTBD-031",

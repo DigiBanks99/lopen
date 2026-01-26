@@ -1,60 +1,56 @@
 # Implementation Plan
 
-> Current Focus: JTBD-029 - TUI Right-Side Panels (REQ-018) ✅ COMPLETE
+> Current Focus: JTBD-030 - TUI AI Streaming (REQ-019) ✅ COMPLETE
 
 ## Overview
 
-Implemented split-screen layouts with right-side task/status panels for enhanced context in interactive REPL mode. Uses Spectre.Console Layout with SplitColumns for 70/30 split and responsive fallback for narrow terminals.
+Implemented buffered paragraph rendering for AI streaming responses. Buffers tokens until paragraph break or timeout to reduce flicker and improve readability.
 
 ## Workplan
 
 ### Phase 1: Core Infrastructure ✅
 
-- [x] Create `ILayoutRenderer` interface in Lopen.Core
-  - `RenderSplitLayout(mainContent, sidePanel?, config)`
-  - `RenderTaskPanel(tasks)` for task list display
-  - `RenderContextPanel(data, title)` for session/context display
-- [x] Create `TaskItem` record for task list state (status enum, name)
-- [x] Create `TaskStatus` enum (Pending, InProgress, Completed, Failed)
-- [x] Create `SplitLayoutConfig` record for layout configuration
+- [x] Create `IStreamRenderer` interface in Lopen.Core
+  - `RenderStreamAsync(tokenStream, config, cancellationToken)`
+- [x] Create `StreamConfig` record for configuration (timeout, token limit)
 
 ### Phase 2: Spectre Implementation ✅
 
-- [x] Create `SpectreLayoutRenderer` with `IAnsiConsole` injection
-  - Detect terminal width via `_console.Profile.Width`
-  - Split layout when width >= 100 chars
-  - Fallback to full-width main content when narrow
-- [x] Implement 70/30 ratio split layout
-- [x] Handle NO_COLOR (ASCII borders, no colors)
+- [x] Create `SpectreStreamRenderer` with buffering logic
+  - Buffer tokens in StringBuilder
+  - Flush on paragraph break (`\n\n`)
+  - Flush on timeout (500ms default)
+  - Flush on token limit (100 tokens default)
+  - Handle code blocks (wait for complete block)
+  - Show "Thinking..." indicator initially
+- [x] Handle NO_COLOR (plain text, no formatting)
+- [x] Add ITimeProvider for testable time
 
 ### Phase 3: Mock Implementation ✅
 
-- [x] Create `MockLayoutRenderer` for testing
-  - Record all render calls (SplitLayoutCall, TaskPanelCall, ContextPanelCall)
-  - Store main content, panel content, width threshold
-- [x] Add Reset() method for test cleanup
+- [x] Create `MockStreamRenderer` for testing
+  - Record flush events with content
+  - Track timing and cancellation
 
-### Phase 4: ConsoleOutput Integration ✅
+### Phase 4: Tests ✅
 
-- [x] Add `SplitLayout(mainContent, sidePanel, config)` convenience method
-- [x] Add `TaskPanel(tasks)` convenience method
-- [x] Add `ContextPanel(data, title)` convenience method
+- [x] Unit tests for MockStreamRenderer (14 tests)
+- [x] Unit tests for SpectreStreamRenderer (18 tests)
+  - Paragraph break triggers flush
+  - Timeout triggers flush
+  - Code blocks rendered in panels
+  - Cancellation handled gracefully
 
-### Phase 5: Tests ✅
+### Phase 5: Documentation ✅
 
-- [x] Unit tests for MockLayoutRenderer (15 tests)
-- [x] Unit tests for SpectreLayoutRenderer with TestConsole (17 tests)
-
-### Phase 6: Documentation ✅
-
-- [x] Update tui/SPECIFICATION.md REQ-018 checkboxes
+- [x] Update tui/SPECIFICATION.md REQ-019 checkboxes
 - [x] Update jobs-to-be-done.json
 
 ## Completed
 
-JTBD-029 implementation is complete with 32 new tests (391 total tests passing).
+JTBD-030 implementation is complete with 29 new tests (420 total tests passing).
 
 ## Next Steps
 
 1. Commit changes
-2. Move to next priority task (JTBD-030: TUI AI Streaming)
+2. Move to next priority task (JTBD-031: TUI Terminal Detection)

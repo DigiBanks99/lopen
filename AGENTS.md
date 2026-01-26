@@ -61,9 +61,9 @@ dotnet run --project src/Lopen.Cli
 ## Project Status
 
 - **State**: Phase 4 - Quality & Enhancements
-- **Tests**: 391 tests passing
-- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts
-- **Next**: TUI AI Streaming (JTBD-030)
+- **Tests**: 420 tests passing
+- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts, TUI AI Streaming
+- **Next**: TUI Terminal Detection (JTBD-031)
 
 ## Key Dependencies
 
@@ -122,3 +122,4 @@ dotnet run --project src/Lopen.Cli
 - **TestConsole Width**: Use `new TestConsole().Width(120)` to avoid truncation in panel tests
 - **IDataRenderer Pattern**: Interface for tables/metadata; TableConfig<T> with columns and row count; SpectreDataRenderer/MockDataRenderer; use `console.Profile.Capabilities.Interactive` to detect table border style
 - **ILayoutRenderer Pattern**: Interface for split layouts; `_console.Profile.Width` for terminal width; SplitLayoutConfig for ratios; TaskItem/TaskStatus for task panels; RenderSplitLayout falls back to main-only on narrow terminals
+- **IStreamRenderer Pattern**: Interface for buffered streaming; FlushTimeoutMs/MaxTokensBeforeFlush config; ITimeProvider for testable time; flush on `\n\n`, timeout, or token limit; code blocks wait for complete ```` markers

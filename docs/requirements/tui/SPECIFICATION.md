@@ -460,11 +460,11 @@ AnsiConsole.Write(layout);
 Display Copilot SDK streaming responses with buffered paragraph rendering for optimal readability in REPL.
 
 ### Acceptance Criteria
-- [ ] Buffer streaming tokens into paragraphs
-- [ ] Render complete paragraphs (avoid char-by-char flicker)
-- [ ] Show subtle progress indicator during buffering
-- [ ] Maintain REPL prompt position after response
-- [ ] Support inline code blocks and formatting
+- [x] Buffer streaming tokens into paragraphs
+- [x] Render complete paragraphs (avoid char-by-char flicker)
+- [x] Show subtle progress indicator during buffering
+- [ ] Maintain REPL prompt position after response (future: Live display)
+- [x] Support inline code blocks and formatting
 
 ### Streaming Strategy: Static Chunks
 
