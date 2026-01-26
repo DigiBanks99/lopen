@@ -61,9 +61,9 @@ dotnet run --project src/Lopen.Cli
 ## Project Status
 
 - **State**: Phase 4 - Quality & Enhancements
-- **Tests**: 547 tests passing
-- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts, TUI AI Streaming, TUI Terminal Detection, TUI Welcome Header, Self-Testing, Quoted String Parsing, Git Tools
-- **Next**: OAuth2 Device Flow (JTBD-038) or Shell Tool (JTBD-041)
+- **Tests**: 562 tests passing
+- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts, TUI AI Streaming, TUI Terminal Detection, TUI Welcome Header, Self-Testing, Quoted String Parsing, Git Tools, File Tools, Shell Tool
+- **Next**: OAuth2 Device Flow (JTBD-038) or Platform Security (JTBD-039)
 
 ## Key Dependencies
 
@@ -128,3 +128,6 @@ dotnet run --project src/Lopen.Cli
 - **ASCII Art in C#**: Use `string.Join("\n", lines...)` instead of raw string literals when indentation varies; raw strings require consistent indentation on all lines including closing delimiter
 - **Spectre TestConsole Width**: Chain `.Width(n)` immediately after `new TestConsole()` to set width for responsive layout tests
 - **Self-Testing Pattern**: TestRunner with Parallel.ForEachAsync; CommandTestCase executes subprocess; ITestValidator strategy pattern; TestSuiteRegistry for test discovery; TestOutputService for rendering
+- **LopenTools Pattern**: Use AIFunctionFactory.Create(Impl, "name", "description"); implementations return error strings on failure; GetAll() returns all tools
+- **Cross-Platform Shell**: Use `OperatingSystem.IsWindows()` for shell detection; bash -c on Linux/macOS, cmd /c on Windows
+- **Process Timeout**: Use CancellationTokenSource with TimeSpan, WaitForExitAsync with token, Kill(entireProcessTree: true) on timeout
