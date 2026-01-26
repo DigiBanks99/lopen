@@ -177,4 +177,40 @@ public class ConsoleOutput
         var renderer = new SpectreProgressRenderer(_console, spinnerType);
         await renderer.ShowProgressAsync(status, async _ => await operation());
     }
+
+    /// <summary>
+    /// Write an error with a suggestion.
+    /// </summary>
+    public void ErrorWithSuggestion(string message, string suggestion)
+    {
+        var renderer = new SpectreErrorRenderer(_console);
+        renderer.RenderSimpleError(message, suggestion);
+    }
+
+    /// <summary>
+    /// Write an error in a bordered panel with suggestions.
+    /// </summary>
+    public void ErrorPanel(string title, string message, params string[] suggestions)
+    {
+        var renderer = new SpectreErrorRenderer(_console);
+        renderer.RenderPanelError(title, message, suggestions);
+    }
+
+    /// <summary>
+    /// Write a command not found error with suggestions.
+    /// </summary>
+    public void CommandNotFoundError(string command, params string[] suggestions)
+    {
+        var renderer = new SpectreErrorRenderer(_console);
+        renderer.RenderCommandNotFound(command, suggestions);
+    }
+
+    /// <summary>
+    /// Write a validation error with valid options.
+    /// </summary>
+    public void ValidationError(string input, string message, params string[] validOptions)
+    {
+        var renderer = new SpectreErrorRenderer(_console);
+        renderer.RenderValidationError(input, message, validOptions);
+    }
 }

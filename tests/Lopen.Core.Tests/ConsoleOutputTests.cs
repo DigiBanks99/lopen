@@ -118,4 +118,55 @@ public class ConsoleOutputTests
 
         result.ShouldBe("done");
     }
+
+    [Fact]
+    public void ErrorWithSuggestion_ShowsErrorAndSuggestion()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+
+        output.ErrorWithSuggestion("Auth failed", "lopen auth login");
+
+        console.Output.ShouldContain("Auth failed");
+        console.Output.ShouldContain("lopen auth login");
+    }
+
+    [Fact]
+    public void ErrorPanel_ShowsTitleAndMessage()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+
+        output.ErrorPanel("Config", "File not found", "Check path", "Create config");
+
+        // Panel header includes "Error: " prefix, so check for key content
+        console.Output.ShouldContain("File not found");
+        console.Output.ShouldContain("Check path");
+    }
+
+    [Fact]
+    public void CommandNotFoundError_ShowsCommandAndSuggestions()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+
+        output.CommandNotFoundError("chatr", "chat", "repl");
+
+        console.Output.ShouldContain("chatr");
+        console.Output.ShouldContain("chat");
+        console.Output.ShouldContain("Did you mean");
+    }
+
+    [Fact]
+    public void ValidationError_ShowsInputAndOptions()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+
+        output.ValidationError("--model xyz", "Invalid model", "gpt-4", "claude");
+
+        console.Output.ShouldContain("Invalid model");
+        console.Output.ShouldContain("--model xyz");
+        console.Output.ShouldContain("gpt-4");
+    }
 }

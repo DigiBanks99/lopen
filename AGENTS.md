@@ -61,9 +61,9 @@ dotnet run --project src/Lopen.Cli
 ## Project Status
 
 - **State**: Phase 4 - Quality & Enhancements
-- **Tests**: 303 tests passing
-- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners
-- **Next**: TUI Error Display (JTBD-027)
+- **Tests**: 338 tests passing
+- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display
+- **Next**: TUI Structured Data (JTBD-028)
 
 ## Key Dependencies
 
@@ -117,3 +117,6 @@ dotnet run --project src/Lopen.Cli
 - **Loop Command**: LoopService orchestrates plan/build phases; LoopConfigService merges user/project configs; LoopStateManager tracks lopen.loop.done file
 - **Config Merge Pattern**: Use record `with` expressions and MergeWith() for config precedence (defaults → user → project → custom)
 - **Spectre.Console Rule**: Use `new Rule(title)` for horizontal separators; ConsoleOutput.Rule() wraps for NO_COLOR support
+- **IErrorRenderer Pattern**: Interface-based error display; MockErrorRenderer for testing; SpectreErrorRenderer uses Panel for structured errors
+- **Spectre.Console Panels**: Use `new Panel(content) { Header = new PanelHeader("title"), Border = BoxBorder.Rounded }` for bordered messages
+- **TestConsole Width**: Use `new TestConsole().Width(120)` to avoid truncation in panel tests

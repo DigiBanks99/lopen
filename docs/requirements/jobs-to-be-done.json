@@ -212,8 +212,8 @@
     "requirement": "REQ-016",
     "description": "TUI Error Display - IErrorRenderer with suggestions",
     "priority": 27,
-    "status": "pending",
-    "notes": "Panel-based errors, 'Did you mean?' suggestions. Research complete."
+    "status": "done",
+    "notes": "Completed: IErrorRenderer interface, SpectreErrorRenderer, MockErrorRenderer. RenderSimpleError, RenderPanelError, RenderValidationError, RenderCommandNotFound, RenderError methods. ConsoleOutput convenience methods. 35 tests added (338 total)."
   },
   {
     "id": "JTBD-028",
