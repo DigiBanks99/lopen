@@ -7,7 +7,7 @@
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
 | REQ-014 | Output Formatting & Status Indicators | High | 🟢 Complete |
-| REQ-015 | Progress Indicators & Spinners | High | 🟡 Partial |
+| REQ-015 | Progress Indicators & Spinners | High | 🟢 Complete |
 | REQ-016 | Error Display & Correction Guidance | High | 🔴 Planned |
 | REQ-017 | Structured Data Display | Medium | 🟡 Partial |
 | REQ-018 | Layout & Right-Side Panels | Medium | 🔴 Planned |
@@ -110,11 +110,11 @@ Use Spectre.Console `Tree` component for hierarchical data, or manual indentatio
 Visual feedback for long-running operations using spinners (indeterminate) and progress bars (determinate).
 
 ### Acceptance Criteria
-- [ ] Spinners for Copilot SDK calls (network/AI operations)
+- [x] Spinners for Copilot SDK calls (network/AI operations)
 - [ ] Progress bars for batch operations with known count
-- [ ] Live-updating status text during operations
-- [ ] Spinner stops on completion/error with final status
-- [ ] Non-blocking progress in REPL mode
+- [x] Live-updating status text during operations
+- [x] Spinner stops on completion/error with final status
+- [x] Non-blocking progress in REPL mode
 
 ### Usage Guidelines
 

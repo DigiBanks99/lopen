@@ -61,9 +61,9 @@ dotnet run --project src/Lopen.Cli
 ## Project Status
 
 - **State**: Phase 4 - Quality & Enhancements
-- **Tests**: 248 tests passing
-- **Features**: CLI, REPL, Copilot Integration, Loop Command
-- **Next**: TUI Spinners (JTBD-026) or Verification Agent (JTBD-025)
+- **Tests**: 303 tests passing
+- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners
+- **Next**: TUI Error Display (JTBD-027)
 
 ## Key Dependencies
 
@@ -107,6 +107,8 @@ dotnet run --project src/Lopen.Cli
 - **Spectre.Console NO_COLOR**: Automatically respects `NO_COLOR` env var; no special code needed
 - **Spectre.Console Tables**: Use `new Table().RoundedBorder()` for session lists; `.AsciiBorder()` for accessibility
 - **Spectre.Console Spinners**: Use `AnsiConsole.Status().Spinner(Spinner.Known.Dots).StartAsync()` for async ops
+- **IProgressRenderer Pattern**: Interface-based spinner abstraction; MockProgressRenderer for testing; SpectreProgressRenderer for production
+- **Progress Context**: Use `IProgressContext.UpdateStatus()` to update spinner text mid-operation
 - **Shouldly vs FluentAssertions**: Shouldly has MIT license, simpler API, better error messages showing variable names
 - **Shouldly Patterns**: `.ShouldBe()`, `.ShouldContain()`, `Should.Throw<T>(action)` for exceptions, `.ShouldNotBeNull()` only for reference types
 - **Shouldly Collections**: Use `.ShouldBe(expected, ignoreOrder: true)` for unordered collection comparison, `.Count.ShouldBe(n)` (property not method)

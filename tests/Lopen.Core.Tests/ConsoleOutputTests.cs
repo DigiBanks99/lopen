@@ -77,4 +77,45 @@ public class ConsoleOutputTests
 
         console.Output.ShouldContain("Plain text");
     }
+
+    [Fact]
+    public async Task ShowStatusAsync_ExecutesOperation()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+        var executed = false;
+
+        await output.ShowStatusAsync("Working...", async () =>
+        {
+            await Task.Delay(1);
+            executed = true;
+        });
+
+        executed.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ShowStatusAsync_ReturnsResult()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+
+        var result = await output.ShowStatusAsync("Computing...", () => Task.FromResult(42));
+
+        result.ShouldBe(42);
+    }
+
+    [Fact]
+    public async Task ShowStatusAsync_WithSpinnerType_ExecutesOperation()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+
+        var result = await output.ShowStatusAsync(
+            "Processing...",
+            () => Task.FromResult("done"),
+            SpinnerType.Arc);
+
+        result.ShouldBe("done");
+    }
 }

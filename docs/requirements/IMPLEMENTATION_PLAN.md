@@ -1,37 +1,43 @@
 # Implementation Plan
 
-> Current Focus: JTBD-025 - Verification Agent (REQ-036) ✅ COMPLETE
+> Current Focus: JTBD-026 - TUI Spinners (REQ-015) ✅ COMPLETE
 
 ## Overview
 
-Implemented the Verification Agent - a dedicated sub-agent for verifying task completion and quality gates before marking jobs as done.
+Implemented progress indicators and spinners for long-running operations using Spectre.Console. This enables visual feedback for Copilot SDK calls, network requests, and other async operations.
 
 ## Workplan
 
-### Phase 1: Core Verification Infrastructure ✅
+### Phase 1: Core Infrastructure ✅
 
-- [x] Create `VerificationResult` model in Lopen.Core
-- [x] Create `IVerificationService` interface
-- [x] Create `VerificationService` implementation
-- [x] Add verification prompt builder
-- [x] Create `MockVerificationService` for testing
+- [x] Create `IProgressRenderer` interface in Lopen.Core
+- [x] Create `IProgressContext` interface for status updates
+- [x] Create `SpectreProgressRenderer` implementation
+- [x] Create `MockProgressRenderer` for testing
+- [x] Add `ShowStatusAsync` method to ConsoleOutput as convenience wrapper
 
-### Phase 2: Tests ✅
+### Phase 2: Integration ✅
 
-- [x] Unit tests for VerificationResult model (5 tests)
-- [x] Unit tests for VerificationService (18 tests)
-- [x] Unit tests for MockVerificationService (9 tests)
+- [x] Define `SpinnerType` enum (Dots, Arc, Line, SimpleDotsScrolling)
+- [x] Add NO_COLOR support (text-only fallback)
+- [x] Add cancellation token support
 
-### Phase 3: Documentation ✅
+### Phase 3: Tests ✅
 
-- [x] Update SPECIFICATION.md with completion status
+- [x] Unit tests for MockProgressRenderer (10 tests)
+- [x] Unit tests for SpectreProgressRenderer with TestConsole (10 tests)
+- [x] Integration test for ConsoleOutput.ShowStatusAsync (3 tests)
+
+### Phase 4: Documentation ✅
+
+- [x] Update tui/SPECIFICATION.md with completion status
 - [x] Update jobs-to-be-done.json
 
 ## Completed
 
-JTBD-025 implementation is complete with 32 new tests (278 total tests passing).
+JTBD-026 implementation is complete with 25 new tests (303 total tests passing).
 
 ## Next Steps
 
 1. Commit changes
-2. Move to next priority task (JTBD-026: TUI Spinners)
+2. Move to next priority task (JTBD-027: TUI Error Display)

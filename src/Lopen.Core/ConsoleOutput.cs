@@ -153,4 +153,28 @@ public class ConsoleOutput
             _console.Write(new Rule(title));
         }
     }
+
+    /// <summary>
+    /// Show a spinner while executing an async operation.
+    /// </summary>
+    public async Task<T> ShowStatusAsync<T>(
+        string status,
+        Func<Task<T>> operation,
+        SpinnerType spinnerType = SpinnerType.Dots)
+    {
+        var renderer = new SpectreProgressRenderer(_console, spinnerType);
+        return await renderer.ShowProgressAsync(status, async _ => await operation());
+    }
+
+    /// <summary>
+    /// Show a spinner while executing an async operation.
+    /// </summary>
+    public async Task ShowStatusAsync(
+        string status,
+        Func<Task> operation,
+        SpinnerType spinnerType = SpinnerType.Dots)
+    {
+        var renderer = new SpectreProgressRenderer(_console, spinnerType);
+        await renderer.ShowProgressAsync(status, async _ => await operation());
+    }
 }

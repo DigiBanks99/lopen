@@ -204,8 +204,8 @@
     "requirement": "REQ-015",
     "description": "TUI Spinners - Progress indicators for Copilot SDK calls",
     "priority": 26,
-    "status": "pending",
-    "notes": "Use AnsiConsole.Status().Spinner(). Research complete in tui/RESEARCH.md."
+    "status": "done",
+    "notes": "Completed: IProgressRenderer, SpectreProgressRenderer, MockProgressRenderer, ConsoleOutput.ShowStatusAsync. 25 tests added (303 total)."
   },
   {
     "id": "JTBD-027",
