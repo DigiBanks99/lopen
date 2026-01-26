@@ -61,9 +61,9 @@ dotnet run --project src/Lopen.Cli
 ## Project Status
 
 - **State**: Phase 4 - Quality & Enhancements
-- **Tests**: 200 tests passing
-- **Features**: CLI, REPL, Copilot Integration
-- **Next**: TUI Spinners (JTBD-019)
+- **Tests**: 248 tests passing
+- **Features**: CLI, REPL, Copilot Integration, Loop Command
+- **Next**: TUI Spinners (JTBD-026) or Verification Agent (JTBD-025)
 
 ## Key Dependencies
 
@@ -112,3 +112,6 @@ dotnet run --project src/Lopen.Cli
 - **Shouldly Collections**: Use `.ShouldBe(expected, ignoreOrder: true)` for unordered collection comparison, `.Count.ShouldBe(n)` (property not method)
 - **Argument Parsing**: For quoted strings, use state machine approach (not regex) following CommandLineToArgvW conventions
 - **OAuth Device Flow**: GitHub device flow doesn't require client_secret; poll with backoff per RFC 8628
+- **Loop Command**: LoopService orchestrates plan/build phases; LoopConfigService merges user/project configs; LoopStateManager tracks lopen.loop.done file
+- **Config Merge Pattern**: Use record `with` expressions and MergeWith() for config precedence (defaults → user → project → custom)
+- **Spectre.Console Rule**: Use `new Rule(title)` for horizontal separators; ConsoleOutput.Rule() wraps for NO_COLOR support

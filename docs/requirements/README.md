@@ -48,17 +48,17 @@
 | REQ-013 | Auto-completion | [repl](repl/SPECIFICATION.md) | 🟢 Complete |
 | REQ-014 | Modern TUI Patterns | [tui](tui/SPECIFICATION.md) | 🟢 Complete |
 
-### Phase 3 - Copilot Integration (Planned)
+### Phase 3 - Copilot Integration (Complete)
 
 | ID | Requirement | Module | Status |
 |----|-------------|--------|--------|
-| REQ-020 | Copilot SDK Integration | [copilot](copilot/SPECIFICATION.md) | 🔴 Not Started |
-| REQ-021 | Chat Command | [copilot](copilot/SPECIFICATION.md) | 🔴 Not Started |
-| REQ-022 | Streaming Responses | [copilot](copilot/SPECIFICATION.md) | 🔴 Not Started |
-| REQ-023 | Custom Tools | [copilot](copilot/SPECIFICATION.md) | 🔴 Not Started |
-| REQ-024 | Session Persistence | [copilot](copilot/SPECIFICATION.md) | 🔴 Not Started |
+| REQ-020 | Copilot SDK Integration | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
+| REQ-021 | Chat Command | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
+| REQ-022 | Streaming Responses | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
+| REQ-023 | Custom Tools | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
+| REQ-024 | Session Persistence | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
 
-### Phase 4 - The Lopen Loop (Planned)
+### Phase 4 - The Lopen Loop (In Progress)
 
 | ID | Requirement | Module | Status |
 |----|-------------|--------|--------|
@@ -69,6 +69,12 @@
 | REQ-034 | State Management | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
 | REQ-035 | Output Streaming | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
 | REQ-036 | Verification Agent | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
+
+### Phase 5 - Self-Testing (Planned)
+
+| ID | Requirement | Module | Status |
+|----|-------------|--------|--------|
+| REQ-020 | Self-Testing Command | [testing](testing/SPECIFICATION.md) | 🔴 Not Started |
 
 ### Non-Functional Requirements
 
@@ -87,7 +93,7 @@
 | CLI Framework | System.CommandLine (2.0.2) |
 | TUI | Spectre.Console (0.54.0) |
 | Auth | GitHub OAuth2 (device flow) |
-| Testing | xUnit + FluentAssertions + Verify |
+| Testing | xUnit + Shouldly + coverlet |
 | Logging | Serilog |
 
 > **Note**: The official GitHub Copilot SDK for .NET (`GitHub.Copilot.SDK` v0.1.17) is now available on NuGet. Phase 3 will integrate this SDK for AI-powered chat and agentic workflows.
@@ -109,5 +115,6 @@
 
 | Date | Change |
 |------|--------|
+| 2026-01-25 | Phase 3 complete, Phase 4 research complete, added Phase 5 Self-Testing |
 | 2026-01-24 | Phase 2 complete, added Phase 3 Copilot Integration requirements |
 | 2026-01-23 | Initial requirements, split into modules |

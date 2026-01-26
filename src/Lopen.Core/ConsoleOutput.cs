@@ -134,4 +134,23 @@ public class ConsoleOutput
             _console.WriteLine($"{key}: {value}");
         }
     }
+
+    /// <summary>
+    /// Write a horizontal rule with centered text.
+    /// </summary>
+    public void Rule(string? title = null)
+    {
+        if (string.IsNullOrEmpty(title))
+        {
+            _console.Write(new Rule());
+        }
+        else if (_useColors)
+        {
+            _console.Write(new Rule($"[bold cyan]{Markup.Escape(title)}[/]"));
+        }
+        else
+        {
+            _console.Write(new Rule(title));
+        }
+    }
 }

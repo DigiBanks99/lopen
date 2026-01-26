@@ -413,6 +413,9 @@ replCommand.SetAction(async parseResult =>
         options: ["--model", "-m", "--streaming", "-s", "--resume", "-r"]);
     autoCompleter.RegisterCommand("sessions", "Manage chat sessions",
         subcommands: ["list", "delete"]);
+    autoCompleter.RegisterCommand("loop", "Autonomous development workflow",
+        subcommands: ["configure"],
+        options: ["--auto", "-a", "--config", "-c"]);
     autoCompleter.RegisterCommand("repl", "Start interactive REPL mode");
     autoCompleter.RegisterCommand("exit", "Exit the REPL");
     autoCompleter.RegisterCommand("quit", "Exit the REPL");
@@ -434,6 +437,174 @@ replCommand.SetAction(async parseResult =>
     });
 });
 rootCommand.Subcommands.Add(replCommand);
+
+// Loop command
+var loopCommand = new Command("loop", "Autonomous development workflow");
+
+var loopAutoOption = new Option<bool>("--auto")
+{
+    Description = "Skip interactive setup, use defaults",
+    DefaultValueFactory = _ => false
+};
+loopAutoOption.Aliases.Add("-a");
+
+var loopConfigOption = new Option<string?>("--config")
+{
+    Description = "Path to custom config file"
+};
+loopConfigOption.Aliases.Add("-c");
+
+loopCommand.Options.Add(loopAutoOption);
+loopCommand.Options.Add(loopConfigOption);
+
+loopCommand.SetAction(async parseResult =>
+{
+    var auto = parseResult.GetValue(loopAutoOption);
+    var configPath = parseResult.GetValue(loopConfigOption);
+
+    // Create Copilot service
+    await using var copilotService = new CopilotService();
+
+    // Check authentication
+    try
+    {
+        var authStatus = await copilotService.GetAuthStatusAsync();
+        if (!authStatus.IsAuthenticated)
+        {
+            output.Error("Not authenticated. Run 'copilot auth login' first.");
+            return ExitCodes.AuthenticationError;
+        }
+    }
+    catch (Exception ex) when (ex is FileNotFoundException or InvalidOperationException)
+    {
+        output.Error($"Copilot CLI not available: {ex.Message}");
+        output.Muted("Install Copilot CLI: https://docs.github.com/en/copilot");
+        return ExitCodes.CopilotError;
+    }
+
+    // Load configuration
+    var configService = new LoopConfigService();
+    var config = await configService.LoadConfigAsync(configPath);
+
+    var stateManager = new LoopStateManager();
+    var loopOutput = new LoopOutputService(output);
+
+    bool skipPlan = false;
+    bool skipBuild = false;
+
+    if (!auto)
+    {
+        output.Info("Lopen Loop - Autonomous Development Workflow");
+        output.WriteLine();
+        output.WriteLine("Options:");
+        output.WriteLine("  1. Add specifications, then plan and build");
+        output.WriteLine("  2. Proceed to planning phase");
+        output.WriteLine("  3. Skip planning, start building");
+        output.Write("Select (1-3, default=2): ");
+
+        var choice = Console.ReadLine()?.Trim();
+        switch (choice)
+        {
+            case "1":
+                output.Info("Add specifications to docs/requirements/, then re-run loop.");
+                return ExitCodes.Success;
+            case "3":
+                skipPlan = true;
+                break;
+            case "2":
+            case "":
+            default:
+                // Default: plan then build
+                break;
+        }
+    }
+
+    var loopService = new LoopService(copilotService, stateManager, loopOutput, config);
+
+    using var cts = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) =>
+    {
+        e.Cancel = true;
+        cts.Cancel();
+    };
+
+    return await loopService.RunAsync(skipPlan, skipBuild, cts.Token);
+});
+
+// loop configure subcommand
+var configureCommand = new Command("configure", "Configure loop settings");
+
+var configModelOption = new Option<string?>("--model")
+{
+    Description = "AI model to use"
+};
+configModelOption.Aliases.Add("-m");
+
+var configPlanPromptOption = new Option<string?>("--plan-prompt")
+{
+    Description = "Path to plan prompt file"
+};
+
+var configBuildPromptOption = new Option<string?>("--build-prompt")
+{
+    Description = "Path to build prompt file"
+};
+
+var configResetOption = new Option<bool>("--reset")
+{
+    Description = "Reset configuration to defaults",
+    DefaultValueFactory = _ => false
+};
+
+configureCommand.Options.Add(configModelOption);
+configureCommand.Options.Add(configPlanPromptOption);
+configureCommand.Options.Add(configBuildPromptOption);
+configureCommand.Options.Add(configResetOption);
+
+configureCommand.SetAction(async parseResult =>
+{
+    var model = parseResult.GetValue(configModelOption);
+    var planPrompt = parseResult.GetValue(configPlanPromptOption);
+    var buildPrompt = parseResult.GetValue(configBuildPromptOption);
+    var reset = parseResult.GetValue(configResetOption);
+
+    var configService = new LoopConfigService();
+
+    if (reset)
+    {
+        await configService.ResetUserConfigAsync();
+        output.Success("Configuration reset to defaults.");
+        return ExitCodes.Success;
+    }
+
+    var config = await configService.LoadConfigAsync();
+
+    // Apply any specified options
+    if (!string.IsNullOrEmpty(model))
+    {
+        config = config with { Model = model };
+    }
+    if (!string.IsNullOrEmpty(planPrompt))
+    {
+        config = config with { PlanPromptPath = planPrompt };
+    }
+    if (!string.IsNullOrEmpty(buildPrompt))
+    {
+        config = config with { BuildPromptPath = buildPrompt };
+    }
+
+    await configService.SaveUserConfigAsync(config);
+    output.Success("Configuration saved.");
+    output.KeyValue("Model", config.Model);
+    output.KeyValue("Plan Prompt", config.PlanPromptPath);
+    output.KeyValue("Build Prompt", config.BuildPromptPath);
+    output.KeyValue("Stream", config.Stream.ToString());
+
+    return ExitCodes.Success;
+});
+
+loopCommand.Subcommands.Add(configureCommand);
+rootCommand.Subcommands.Add(loopCommand);
 
 // Set action for root command (when no subcommand given)
 rootCommand.SetAction(parseResult =>
