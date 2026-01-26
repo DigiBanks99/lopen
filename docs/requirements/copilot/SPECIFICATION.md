@@ -128,6 +128,7 @@ Enable custom tools that Copilot can invoke during conversations.
 - [x] Register tools with session configuration
 - [x] Handle tool invocations automatically
 - [x] Built-in tools: file operations (read, list, exists, cwd)
+- [x] Built-in tools: git operations (status, diff, log)
 
 ### Implementation
 
@@ -136,6 +137,9 @@ Built-in `LopenTools` class with:
 - `lopen_list_directory` - List directory entries
 - `lopen_get_cwd` - Get current working directory
 - `lopen_file_exists` - Check if file/directory exists
+- `lopen_git_status` - Get git repository status
+- `lopen_git_diff` - Get git diff (optional file path and staged flag)
+- `lopen_git_log` - Get recent git commits (with limit and format options)
 
 `CopilotSessionOptions` extended with:
 - `Tools` - Custom AIFunction collection

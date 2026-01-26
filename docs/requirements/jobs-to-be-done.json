@@ -316,8 +316,8 @@
     "requirement": "REQ-023",
     "description": "Git Tools - Add git status, diff, log tools",
     "priority": 40,
-    "status": "pending",
-    "notes": "Extend LopenTools with git commands. See copilot/RESEARCH.md."
+    "status": "done",
+    "notes": "Completed: lopen_git_status, lopen_git_diff, lopen_git_log tools added to LopenTools. 10 tests added (547 total)."
   },
   {
     "id": "JTBD-041",

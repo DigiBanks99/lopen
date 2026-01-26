@@ -43,11 +43,14 @@ public class LopenToolsTests
     {
         var tools = LopenTools.GetAll();
 
-        tools.Count().ShouldBe(4);
+        tools.Count().ShouldBe(7);
         tools.Select(t => t.Name).ShouldContain("lopen_read_file");
         tools.Select(t => t.Name).ShouldContain("lopen_list_directory");
         tools.Select(t => t.Name).ShouldContain("lopen_get_cwd");
         tools.Select(t => t.Name).ShouldContain("lopen_file_exists");
+        tools.Select(t => t.Name).ShouldContain("lopen_git_status");
+        tools.Select(t => t.Name).ShouldContain("lopen_git_diff");
+        tools.Select(t => t.Name).ShouldContain("lopen_git_log");
     }
 
     [Fact]
@@ -149,6 +152,129 @@ public class LopenToolsTests
         var jsonElement = (System.Text.Json.JsonElement)result!;
         jsonElement.GetBoolean().ShouldBeFalse();
     }
+
+    [Fact]
+    public void GitStatus_HasCorrectName()
+    {
+        var tool = LopenTools.GitStatus();
+
+        tool.Name.ShouldBe("lopen_git_status");
+    }
+
+    [Fact]
+    public void GitDiff_HasCorrectName()
+    {
+        var tool = LopenTools.GitDiff();
+
+        tool.Name.ShouldBe("lopen_git_diff");
+    }
+
+    [Fact]
+    public void GitLog_HasCorrectName()
+    {
+        var tool = LopenTools.GitLog();
+
+        tool.Name.ShouldBe("lopen_git_log");
+    }
+
+    [Fact]
+    public async Task GitStatus_InGitRepo_ReturnsStatus()
+    {
+        var tool = LopenTools.GitStatus();
+
+        var args = new AIFunctionArguments();
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        // In a git repo, should not return an error
+        result!.ToString()!.ShouldNotContain("fatal:");
+    }
+
+    [Fact]
+    public async Task GitStatus_WithInvalidPath_ReturnsError()
+    {
+        var tool = LopenTools.GitStatus();
+
+        var args = new AIFunctionArguments { ["path"] = "/nonexistent/invalid/path" };
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        result!.ToString()!.ShouldContain("Error");
+    }
+
+    [Fact]
+    public async Task GitDiff_InGitRepo_ReturnsDiff()
+    {
+        var tool = LopenTools.GitDiff();
+
+        var args = new AIFunctionArguments();
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        // The result is a JsonElement wrapping the string
+        var output = result is System.Text.Json.JsonElement je 
+            ? je.GetString() ?? je.ToString() 
+            : result!.ToString()!;
+        
+        // Should not return a fatal error
+        output.ShouldNotStartWith("Error:");
+    }
+
+    [Fact]
+    public async Task GitDiff_WithStagedFlag_Works()
+    {
+        var tool = LopenTools.GitDiff();
+
+        var args = new AIFunctionArguments { ["staged"] = true };
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        result!.ToString()!.ShouldNotContain("fatal:");
+    }
+
+    [Fact]
+    public async Task GitLog_InGitRepo_ReturnsCommits()
+    {
+        var tool = LopenTools.GitLog();
+
+        var args = new AIFunctionArguments();
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        // Should not return a fatal error and should have output
+        var output = result!.ToString()!;
+        output.ShouldNotContain("fatal:");
+    }
+
+    [Fact]
+    public async Task GitLog_WithLimit_RespectsLimit()
+    {
+        var tool = LopenTools.GitLog();
+
+        var args = new AIFunctionArguments { ["limit"] = 3 };
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        // Should have at most 3 lines (or could be less if fewer commits)
+        var output = result!.ToString()!;
+        output.ShouldNotContain("fatal:");
+    }
+
+    [Fact]
+    public async Task GitLog_WithFormat_UsesFormat()
+    {
+        var tool = LopenTools.GitLog();
+
+        var args = new AIFunctionArguments 
+        { 
+            ["limit"] = 1,
+            ["format"] = "short" 
+        };
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        result!.ToString()!.ShouldNotContain("fatal:");
+    }
 }
 
 public class CopilotSessionOptionsToolsTests
@@ -162,7 +288,7 @@ public class CopilotSessionOptionsToolsTests
             Tools = tools
         };
 
-        options.Tools.Count().ShouldBe(4);
+        options.Tools.Count().ShouldBe(7);
     }
 
     [Fact]
