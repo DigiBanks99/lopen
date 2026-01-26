@@ -300,8 +300,8 @@
     "requirement": "REQ-003",
     "description": "OAuth2 Device Flow - Browser-based authentication",
     "priority": 38,
-    "status": "pending",
-    "notes": "Requires GitHub OAuth app. Lower priority with SDK handling auth."
+    "status": "done",
+    "notes": "Completed: DeviceFlowAuth service, OAuthAppConfig loader, device code/polling flow. Auth login command integrates device flow. MockDeviceFlowAuth for testing. 13 tests added (698 total)."
   },
   {
     "id": "JTBD-039",

@@ -31,19 +31,32 @@ lopen auth logout             # Clear stored credentials
 - [x] Secure token storage (file-based with obfuscation)
 - [x] Clear error messages for auth failures
 - [x] Support for environment variable token override (`GITHUB_TOKEN`)
-- [ ] OAuth2 device code flow (requires OAuth app registration)
+- [x] OAuth2 device code flow
 - [ ] Token refresh handling (future)
 
 ### Authentication Methods (Priority Order)
 1. Environment variable (`GITHUB_TOKEN`) ✅
 2. Cached token from file storage ✅
-3. Device code flow (planned - requires OAuth app)
+3. Device code flow ✅
 
-### GitHub OAuth App Requirements
-Register at https://github.com/settings/developers:
-- **Application name**: Lopen CLI
-- **Device Flow**: Enabled
-- **Scopes required**: `copilot`, `read:user`
+### GitHub OAuth App Configuration
+OAuth app credentials stored in `~/.config/lopen/oauth.json`:
+```json
+{
+    "client-id": "<your-client-id>",
+    "client-secret": "<optional>",
+    "redirect-uris": ["http://127.0.0.1"]
+}
+```
+
+### Implementation
+- `IDeviceFlowAuth` interface for device flow authentication
+- `DeviceFlowAuth` service with `StartDeviceFlowAsync()` and `PollForTokenAsync()`
+- `OAuthAppConfig` record for OAuth app configuration
+- `DeviceCodeResponse` and `TokenResponse` for GitHub API responses
+- `DeviceFlowResult` for polling result
+- `MockDeviceFlowAuth` for testing
+- 13 unit tests covering device flow functionality
 
 ### Secure Storage Locations
 | Platform | Storage |

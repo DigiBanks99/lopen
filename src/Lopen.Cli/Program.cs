@@ -40,55 +40,102 @@ rootCommand.Subcommands.Add(versionCommand);
 
 // Auth command with subcommands
 var authCommand = new Command("auth", "Authentication commands");
+var deviceFlowAuth = new DeviceFlowAuth();
 
 // auth login
 var loginCommand = new Command("login", "Login to GitHub");
-loginCommand.SetAction(async parseResult =>
-{
-    var status = await authService.GetStatusAsync();
-    if (status.IsAuthenticated)
-    {
-        Console.WriteLine($"Already authenticated via {status.Source}");
-        return 0;
-    }
-
-    Console.WriteLine("To authenticate, set the GITHUB_TOKEN environment variable");
-    Console.WriteLine("or run: lopen auth login --token <your-token>");
-    Console.WriteLine();
-    Console.WriteLine("Get a token from: https://github.com/settings/tokens");
-    Console.WriteLine("Required scopes: copilot, read:user");
-    return 0;
-});
 
 var tokenOption = new Option<string?>("--token")
 {
     Description = "GitHub personal access token"
 };
 loginCommand.Options.Add(tokenOption);
+
 loginCommand.SetAction(async parseResult =>
 {
     var token = parseResult.GetValue(tokenOption);
+    
+    // If token provided, store it directly
     if (!string.IsNullOrEmpty(token))
     {
         await authService.StoreTokenAsync(token);
         output.Success("Token stored successfully.");
-        return 0;
+        return ExitCodes.Success;
     }
 
+    // Check if already authenticated
     var status = await authService.GetStatusAsync();
     if (status.IsAuthenticated)
     {
         output.Info($"Already authenticated via {status.Source}");
-        return 0;
+        return ExitCodes.Success;
     }
 
+    // Try device flow authentication
+    var config = deviceFlowAuth.GetConfig();
+    if (config is not null)
+    {
+        output.Info("Starting GitHub device authorization...");
+        
+        var deviceCode = await deviceFlowAuth.StartDeviceFlowAsync();
+        if (deviceCode is null)
+        {
+            output.Error("Failed to start device authorization.");
+            output.Muted("Fallback: Use --token option with a personal access token.");
+            return ExitCodes.AuthenticationError;
+        }
+
+        // Display user code and URL
+        output.WriteLine();
+        output.Info("Please visit the following URL in your browser:");
+        output.WriteLine($"  {deviceCode.VerificationUri}");
+        output.WriteLine();
+        output.Info("Enter this code:");
+        output.WriteLine($"  {deviceCode.UserCode}");
+        output.WriteLine();
+        output.Muted("Waiting for authorization... (press Ctrl+C to cancel)");
+
+        using var cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) => 
+        {
+            e.Cancel = true;
+            cts.Cancel();
+        };
+
+        try
+        {
+            var result = await deviceFlowAuth.PollForTokenAsync(deviceCode, cancellationToken: cts.Token);
+            
+            if (result.Success && result.AccessToken is not null)
+            {
+                await authService.StoreTokenAsync(result.AccessToken);
+                output.WriteLine();
+                output.Success("Successfully authenticated!");
+                return ExitCodes.Success;
+            }
+            else
+            {
+                output.WriteLine();
+                output.Error(result.Error ?? "Authentication failed.");
+                return ExitCodes.AuthenticationError;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            output.WriteLine();
+            output.Warning("Authentication cancelled.");
+            return ExitCodes.Cancelled;
+        }
+    }
+
+    // No OAuth config, fall back to token instructions
     output.Info("To authenticate, provide a token:");
     output.WriteLine("  lopen auth login --token <your-token>");
     output.WriteLine();
     output.Muted("Or set the GITHUB_TOKEN environment variable.");
     output.Muted("Get a token from: https://github.com/settings/tokens");
     output.Muted("Required scopes: copilot, read:user");
-    return 0;
+    return ExitCodes.Success;
 });
 authCommand.Subcommands.Add(loginCommand);
 
