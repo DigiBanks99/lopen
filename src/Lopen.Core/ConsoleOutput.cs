@@ -361,4 +361,15 @@ public class ConsoleOutput
         var renderer = new SpectreLayoutRenderer(_console);
         return renderer.RenderContextPanel(data, title);
     }
+
+    /// <summary>
+    /// Render a hierarchical tree structure.
+    /// </summary>
+    /// <param name="root">The root node of the tree.</param>
+    /// <param name="title">Optional title for the tree.</param>
+    public void Tree(TreeNode root, string? title = null)
+    {
+        var renderer = new SpectreTreeRenderer(_console);
+        renderer.RenderTree(root, title);
+    }
 }

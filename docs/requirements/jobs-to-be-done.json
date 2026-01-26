@@ -380,8 +380,8 @@
     "requirement": "REQ-017",
     "description": "TUI Tree Component - Hierarchical data display",
     "priority": 48,
-    "status": "pending",
-    "notes": "Unchecked item in tui/SPECIFICATION.md REQ-017."
+    "status": "done",
+    "notes": "Completed: TreeNode model, ITreeRenderer interface, SpectreTreeRenderer, MockTreeRenderer. ConsoleOutput.Tree() method. Max depth 5, truncation at 80 chars. 22 tests added (646 total)."
   },
   {
     "id": "JTBD-049",

@@ -303,7 +303,7 @@ Consistent display of structured data (lists, metadata, hierarchies) using appro
 ### Acceptance Criteria
 - [x] Tables for list data (IDataRenderer, SpectreDataRenderer)
 - [x] Panels for metadata and grouped information (RenderMetadata)
-- [ ] Trees for hierarchical data
+- [x] Trees for hierarchical data (ITreeRenderer, SpectreTreeRenderer)
 - [ ] Responsive column widths
 - [ ] Sortable and filterable tables (future)
 
@@ -368,6 +368,22 @@ var panel = new Panel(content)
 - Limit tree depth to 5 levels
 - Collapse long text (> 80 chars) with ellipsis
 - Provide expand/collapse for interactive mode (future)
+
+#### Tree Implementation
+
+```csharp
+// TreeNode model class for hierarchical data
+var root = new TreeNode("Project") { Icon = "📁" };
+root.Children.Add(new TreeNode("src"));
+root.Children.Add(new TreeNode("tests"));
+
+// ITreeRenderer interface with SpectreTreeRenderer/MockTreeRenderer
+var renderer = new SpectreTreeRenderer(console);
+renderer.RenderTree(root, "Directory Structure");
+
+// ConsoleOutput convenience method
+output.Tree(root, "My Tree");
+```
 
 ### Responsive Width Handling
 
