@@ -61,9 +61,9 @@ dotnet run --project src/Lopen.Cli
 ## Project Status
 
 - **State**: Phase 4 - Quality & Enhancements
-- **Tests**: 420 tests passing
-- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts, TUI AI Streaming
-- **Next**: TUI Terminal Detection (JTBD-031)
+- **Tests**: 480 tests passing
+- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts, TUI AI Streaming, TUI Terminal Detection, TUI Welcome Header
+- **Next**: Self-Testing Command (JTBD-034)
 
 ## Key Dependencies
 
@@ -123,3 +123,7 @@ dotnet run --project src/Lopen.Cli
 - **IDataRenderer Pattern**: Interface for tables/metadata; TableConfig<T> with columns and row count; SpectreDataRenderer/MockDataRenderer; use `console.Profile.Capabilities.Interactive` to detect table border style
 - **ILayoutRenderer Pattern**: Interface for split layouts; `_console.Profile.Width` for terminal width; SplitLayoutConfig for ratios; TaskItem/TaskStatus for task panels; RenderSplitLayout falls back to main-only on narrow terminals
 - **IStreamRenderer Pattern**: Interface for buffered streaming; FlushTimeoutMs/MaxTokensBeforeFlush config; ITimeProvider for testable time; flush on `\n\n`, timeout, or token limit; code blocks wait for complete ```` markers
+- **ITerminalCapabilities Pattern**: Interface for terminal detection; TerminalCapabilities.Detect() factory; MockTerminalCapabilities for tests; uses Console.WindowWidth/Height with 80x24 fallback, AnsiConsole.Profile.Capabilities for color/unicode
+- **IWelcomeHeaderRenderer Pattern**: Interface for REPL welcome header; WelcomeHeaderContext carries version/session/context info; ContextWindowInfo for token/message tracking; WelcomeHeaderPreferences for display options; responsive layouts based on terminal width
+- **ASCII Art in C#**: Use `string.Join("\n", lines...)` instead of raw string literals when indentation varies; raw strings require consistent indentation on all lines including closing delimiter
+- **Spectre TestConsole Width**: Chain `.Width(n)` immediately after `new TestConsole()` to set width for responsive layout tests
