@@ -116,11 +116,64 @@ public class ReplService
 
     /// <summary>
     /// Parse input line into args array.
-    /// Simple implementation - splits on whitespace.
-    /// TODO: Handle quoted strings for future enhancement.
+    /// Handles quoted strings following CommandLineToArgvW conventions:
+    /// - Whitespace separates arguments unless inside quotes
+    /// - Double quotes (" ") group arguments containing spaces
+    /// - Backslash escapes the next character (\" for literal quote)
+    /// - Empty quoted strings ("") produce empty string arguments
     /// </summary>
-    private static string[] ParseArgs(string input)
+    internal static string[] ParseArgs(string input)
     {
-        return input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return [];
+        }
+
+        var args = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var inQuotes = false;
+        var i = 0;
+
+        while (i < input.Length)
+        {
+            var c = input[i];
+
+            if (c == '\\' && i + 1 < input.Length)
+            {
+                // Backslash escapes the next character
+                current.Append(input[i + 1]);
+                i += 2;
+            }
+            else if (c == '"')
+            {
+                // Toggle quote mode
+                inQuotes = !inQuotes;
+                i++;
+            }
+            else if (char.IsWhiteSpace(c) && !inQuotes)
+            {
+                // Whitespace outside quotes ends current arg
+                if (current.Length > 0)
+                {
+                    args.Add(current.ToString());
+                    current.Clear();
+                }
+                i++;
+            }
+            else
+            {
+                // Regular character - add to current arg
+                current.Append(c);
+                i++;
+            }
+        }
+
+        // Add final argument if any
+        if (current.Length > 0)
+        {
+            args.Add(current.ToString());
+        }
+
+        return args.ToArray();
     }
 }

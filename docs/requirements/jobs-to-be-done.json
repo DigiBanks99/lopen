@@ -276,24 +276,24 @@
     "requirement": "REQ-020-TEST",
     "description": "Self-Testing Test Cases - Chat, REPL, Session suites",
     "priority": 35,
-    "status": "pending",
-    "notes": "Define test cases for T-CHAT-*, T-REPL-*, T-SESSION-*. Depends on JTBD-034."
+    "status": "done",
+    "notes": "Completed as part of JTBD-034. ChatTestSuite (2), AuthTestSuite (1), SessionTestSuite (1), CoreTestSuite (2)."
   },
   {
     "id": "JTBD-036",
     "requirement": "REQ-020-TEST",
     "description": "Self-Testing Validation - Keyword matching and result aggregation",
     "priority": 36,
-    "status": "pending",
-    "notes": "IValidator interface, result collection. Depends on JTBD-034."
+    "status": "done",
+    "notes": "Completed as part of JTBD-034. KeywordValidator, TestRunSummary, TestOutputService."
   },
   {
     "id": "JTBD-037",
     "requirement": "REQ-010",
     "description": "REPL Quoted String Parsing - CommandLineToArgvW-style",
     "priority": 37,
-    "status": "pending",
-    "notes": "TODO in ReplService.ParseArgs. Handle quoted arguments."
+    "status": "done",
+    "notes": "Completed: ParseArgs handles quoted strings, backslash escapes. 12 tests added (537 total)."
   },
   {
     "id": "JTBD-038",
@@ -404,79 +404,79 @@
     "requirement": "REQ-030",
     "description": "Loop Tests - Unit tests for LoopService",
     "priority": 51,
-    "status": "pending",
-    "notes": "Test loop orchestration with mocks. Depends on loop implementation."
+    "status": "done",
+    "notes": "Completed: LoopServiceTests.cs with tests for main/feature branch, skip phases, iteration."
   },
   {
     "id": "JTBD-052",
     "requirement": "REQ-031",
     "description": "Loop Config Tests - Tests for configuration loading",
     "priority": 52,
-    "status": "pending",
-    "notes": "Test config precedence. Depends on JTBD-020."
+    "status": "done",
+    "notes": "Completed: LoopConfigServiceTests.cs, LoopConfigTests.cs with config merge tests."
   },
   {
     "id": "JTBD-053",
     "requirement": "REQ-032",
     "description": "Plan Phase Tests - Tests for plan execution",
     "priority": 53,
-    "status": "pending",
-    "notes": "Test prompt loading and output. Depends on JTBD-021."
+    "status": "done",
+    "notes": "Completed as part of LoopServiceTests.cs."
   },
   {
     "id": "JTBD-054",
     "requirement": "REQ-033",
     "description": "Build Phase Tests - Tests for build loop",
     "priority": 54,
-    "status": "pending",
-    "notes": "Test iteration and completion. Depends on JTBD-022."
+    "status": "done",
+    "notes": "Completed as part of LoopServiceTests.cs."
   },
   {
     "id": "JTBD-055",
     "requirement": "REQ-034",
     "description": "Loop State Tests - Tests for state management",
     "priority": 55,
-    "status": "pending",
-    "notes": "Test file-based persistence. Depends on JTBD-023."
+    "status": "done",
+    "notes": "Completed: LoopStateManagerTests.cs with done file, jobs file tests."
   },
   {
     "id": "JTBD-056",
     "requirement": "REQ-036",
     "description": "Verification Tests - Tests for verification agent",
     "priority": 56,
-    "status": "pending",
-    "notes": "Test quality gate logic. Depends on JTBD-025."
+    "status": "done",
+    "notes": "Completed: VerificationServiceTests.cs, VerificationResultTests.cs, MockVerificationServiceTests.cs."
   },
   {
     "id": "JTBD-057",
     "requirement": "REQ-015",
     "description": "TUI Spinner Tests - Tests for progress indicators",
     "priority": 57,
-    "status": "pending",
-    "notes": "Use TestConsole to verify spinner output. Depends on JTBD-026."
+    "status": "done",
+    "notes": "Completed: SpectreProgressRendererTests.cs, MockProgressRendererTests.cs."
   },
   {
     "id": "JTBD-058",
     "requirement": "REQ-016",
     "description": "TUI Error Tests - Tests for error display",
     "priority": 58,
-    "status": "pending",
-    "notes": "Verify error panels and suggestions. Depends on JTBD-027."
+    "status": "done",
+    "notes": "Completed: SpectreErrorRendererTests.cs, MockErrorRendererTests.cs."
   },
   {
     "id": "JTBD-059",
     "requirement": "REQ-022",
     "description": "TUI Banner Tests - Tests for welcome header",
     "priority": 59,
-    "status": "pending",
-    "notes": "Test responsive header variants. Depends on JTBD-033."
+    "status": "done",
+    "notes": "Completed: SpectreWelcomeHeaderRendererTests.cs, MockWelcomeHeaderRendererTests.cs."
   },
   {
     "id": "JTBD-060",
     "requirement": "REQ-020",
     "description": "TUI Capability Tests - Tests for terminal detection",
     "priority": 60,
-    "status": "pending",
-    "notes": "Test width/color detection. Depends on JTBD-031."
+    "status": "done",
+    "notes": "Completed: TerminalCapabilitiesTests.cs, MockTerminalCapabilitiesTests.cs."
   }
 ]

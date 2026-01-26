@@ -284,4 +284,102 @@ public class ReplServiceTests
         // After running - should have new session
         repl.SessionState!.SessionId.ShouldNotBe(sessionIdBefore);
     }
+    
+    // ParseArgs tests
+    
+    [Fact]
+    public void ParseArgs_SimpleArguments()
+    {
+        var args = ReplService.ParseArgs("version --format json");
+        
+        args.ShouldBe(new[] { "version", "--format", "json" });
+    }
+    
+    [Fact]
+    public void ParseArgs_QuotedString()
+    {
+        var args = ReplService.ParseArgs("chat \"Hello world\"");
+        
+        args.ShouldBe(new[] { "chat", "Hello world" });
+    }
+    
+    [Fact]
+    public void ParseArgs_QuotedStringWithSpaces()
+    {
+        var args = ReplService.ParseArgs("chat \"What is 2 + 2?\" --model gpt-5");
+        
+        args.ShouldBe(new[] { "chat", "What is 2 + 2?", "--model", "gpt-5" });
+    }
+    
+    [Fact]
+    public void ParseArgs_MultipleQuotedStrings()
+    {
+        var args = ReplService.ParseArgs("echo \"first arg\" \"second arg\"");
+        
+        args.ShouldBe(new[] { "echo", "first arg", "second arg" });
+    }
+    
+    [Fact]
+    public void ParseArgs_EscapedQuote()
+    {
+        var args = ReplService.ParseArgs("chat \"He said \\\"hello\\\"\"");
+        
+        args.ShouldBe(new[] { "chat", "He said \"hello\"" });
+    }
+    
+    [Fact]
+    public void ParseArgs_EscapedBackslash()
+    {
+        var args = ReplService.ParseArgs("path \"C:\\\\Users\\\\test\"");
+        
+        args.ShouldBe(new[] { "path", "C:\\Users\\test" });
+    }
+    
+    [Fact]
+    public void ParseArgs_EmptyInput()
+    {
+        var args = ReplService.ParseArgs("");
+        
+        args.ShouldBeEmpty();
+    }
+    
+    [Fact]
+    public void ParseArgs_WhitespaceOnly()
+    {
+        var args = ReplService.ParseArgs("   ");
+        
+        args.ShouldBeEmpty();
+    }
+    
+    [Fact]
+    public void ParseArgs_MultipleSpaces()
+    {
+        var args = ReplService.ParseArgs("version   --format   json");
+        
+        args.ShouldBe(new[] { "version", "--format", "json" });
+    }
+    
+    [Fact]
+    public void ParseArgs_MixedQuotedAndUnquoted()
+    {
+        var args = ReplService.ParseArgs("cmd arg1 \"arg with space\" arg3");
+        
+        args.ShouldBe(new[] { "cmd", "arg1", "arg with space", "arg3" });
+    }
+    
+    [Fact]
+    public void ParseArgs_TabsAsSeparators()
+    {
+        var args = ReplService.ParseArgs("version\t--format\tjson");
+        
+        args.ShouldBe(new[] { "version", "--format", "json" });
+    }
+    
+    [Fact]
+    public void ParseArgs_QuotedAtStart()
+    {
+        var args = ReplService.ParseArgs("\"quoted command\" arg");
+        
+        args.ShouldBe(new[] { "quoted command", "arg" });
+    }
 }

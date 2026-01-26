@@ -61,9 +61,9 @@ dotnet run --project src/Lopen.Cli
 ## Project Status
 
 - **State**: Phase 4 - Quality & Enhancements
-- **Tests**: 525 tests passing
-- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts, TUI AI Streaming, TUI Terminal Detection, TUI Welcome Header, Self-Testing
-- **Next**: Self-Testing Test Cases (JTBD-035)
+- **Tests**: 537 tests passing
+- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts, TUI AI Streaming, TUI Terminal Detection, TUI Welcome Header, Self-Testing, Quoted String Parsing
+- **Next**: OAuth2 Device Flow (JTBD-038) or Git Tools (JTBD-040)
 
 ## Key Dependencies
 
