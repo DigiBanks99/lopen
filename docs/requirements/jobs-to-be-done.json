@@ -396,8 +396,8 @@
     "requirement": "REQ-020-TEST",
     "description": "Self-Testing JSON Output - CI/CD integration format",
     "priority": 50,
-    "status": "pending",
-    "notes": "JSON results for automation. Depends on JTBD-034."
+    "status": "done",
+    "notes": "Completed as part of JTBD-034. --format json option outputs structured JSON."
   },
   {
     "id": "JTBD-051",

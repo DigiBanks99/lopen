@@ -1,68 +1,32 @@
 # Implementation Plan
 
-> Current Focus: Phase 1 Complete - Ready for next task
+> Current Focus: Phase 4 Complete - Multiple tasks done
 
 ## Overview
 
-JTBD-034 Self-Testing Command has been implemented.
+JTBD-034 (Self-Testing), JTBD-035/036 (Test Cases/Validation), JTBD-037 (Quoted String Parsing), and JTBD-050-060 (various test tasks) completed.
 
-## Completed
+## Completed This Session
 
-- JTBD-031: TUI Terminal Detection ✅ (19 tests)
-- JTBD-032: TUI Testing ✅
-- JTBD-033: TUI Welcome Header ✅ (31 tests)
-- JTBD-034: Self-Testing Command ✅ (45 tests, 525 total)
+- JTBD-034: Self-Testing Command ✅ (45 tests)
+- JTBD-035: Self-Testing Test Cases ✅ (as part of 034)
+- JTBD-036: Self-Testing Validation ✅ (as part of 034)
+- JTBD-037: REPL Quoted String Parsing ✅ (12 tests)
+- JTBD-050: Self-Testing JSON Output ✅ (as part of 034)
+- JTBD-051-060: Various test tasks ✅ (already existed)
 
-## JTBD-034 Summary
+## Total Tests: 537
 
-### Files Created
+## Next Priority Tasks (Pending)
 
-```
-src/Lopen.Core/Testing/
-├── ITestCase.cs
-├── ITestValidator.cs
-├── KeywordValidator.cs
-├── CommandTestCase.cs
-├── TestContext.cs
-├── TestResult.cs
-├── TestRunner.cs
-├── TestRunSummary.cs
-├── TestOutputService.cs
-└── TestSuites/
-    ├── ChatTestSuite.cs
-    ├── AuthTestSuite.cs
-    ├── SessionTestSuite.cs
-    ├── CoreTestSuite.cs
-    └── TestSuiteRegistry.cs
+| ID | Description | Priority | Notes |
+|----|-------------|----------|-------|
+| JTBD-038 | OAuth2 Device Flow | 38 | Requires GitHub OAuth app |
+| JTBD-039 | Secure Token Storage | 39 | Platform-specific (DPAPI/Keychain) |
+| JTBD-040 | Git Tools | 40 | Extend LopenTools with git commands |
+| JTBD-041 | Shell Tool | 41 | Safe command execution |
+| JTBD-042 | Write File Tool | 42 | File creation with permissions |
 
-tests/Lopen.Core.Tests/Testing/
-├── KeywordValidatorTests.cs
-├── TestContextTests.cs
-├── TestResultTests.cs
-├── TestRunSummaryTests.cs
-├── TestSuiteRegistryTests.cs
-├── TestRunnerTests.cs
-└── TestOutputServiceTests.cs
-```
+## Remaining Lower Priority
 
-### CLI Command
-
-```bash
-lopen test self                    # Run all tests
-lopen test self --verbose          # Detailed output
-lopen test self --filter core      # Filter by pattern
-lopen test self --model gpt-5      # Override model
-lopen test self --format json      # JSON output
-lopen test self --timeout 60       # Custom timeout
-```
-
-### Test Suites
-
-- **core**: Version, Help commands (2 tests)
-- **auth**: Auth status (1 test)
-- **session**: Sessions list (1 test)
-- **chat**: Basic chat, greeting (2 tests)
-
-## Next Steps
-
-See `docs/requirements/jobs-to-be-done.json` for next priority task (JTBD-035: Self-Testing Test Cases).
+- JTBD-043-049: Token refresh, session persistence, metrics, TUI enhancements
