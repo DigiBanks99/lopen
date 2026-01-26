@@ -52,6 +52,18 @@ public static class LopenTools
         AIFunctionFactory.Create(GitLogImpl, "lopen_git_log", "Get recent git commit history");
 
     /// <summary>
+    /// Tool to write content to a file.
+    /// </summary>
+    public static AIFunction WriteFile() =>
+        AIFunctionFactory.Create(WriteFileImpl, "lopen_write_file", "Write content to a file, creating it if it doesn't exist");
+
+    /// <summary>
+    /// Tool to create a directory.
+    /// </summary>
+    public static AIFunction CreateDirectory() =>
+        AIFunctionFactory.Create(CreateDirectoryImpl, "lopen_create_directory", "Create a directory, including any parent directories");
+
+    /// <summary>
     /// Gets all built-in Lopen tools.
     /// </summary>
     public static ICollection<AIFunction> GetAll() =>
@@ -62,7 +74,9 @@ public static class LopenTools
         FileExists(),
         GitStatus(),
         GitDiff(),
-        GitLog()
+        GitLog(),
+        WriteFile(),
+        CreateDirectory()
     ];
 
     // Tool implementations
@@ -199,5 +213,57 @@ public static class LopenTools
             return $"Error: {error}";
 
         return string.IsNullOrEmpty(output) ? "(no output)" : output;
+    }
+
+    private static string WriteFileImpl(
+        [Description("Path to the file to write")] string path,
+        [Description("Content to write to the file")] string content)
+    {
+        if (string.IsNullOrEmpty(path))
+            return "Error: Path cannot be empty";
+
+        try
+        {
+            // Ensure parent directory exists
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllText(path, content);
+            return $"Successfully wrote {content.Length} characters to {path}";
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return $"Error: Permission denied: {path}";
+        }
+        catch (Exception ex)
+        {
+            return $"Error writing file: {ex.Message}";
+        }
+    }
+
+    private static string CreateDirectoryImpl([Description("Path of the directory to create")] string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return "Error: Path cannot be empty";
+
+        try
+        {
+            if (Directory.Exists(path))
+                return $"Directory already exists: {path}";
+
+            Directory.CreateDirectory(path);
+            return $"Successfully created directory: {path}";
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return $"Error: Permission denied: {path}";
+        }
+        catch (Exception ex)
+        {
+            return $"Error creating directory: {ex.Message}";
+        }
     }
 }

@@ -43,7 +43,7 @@ public class LopenToolsTests
     {
         var tools = LopenTools.GetAll();
 
-        tools.Count().ShouldBe(7);
+        tools.Count().ShouldBe(9);
         tools.Select(t => t.Name).ShouldContain("lopen_read_file");
         tools.Select(t => t.Name).ShouldContain("lopen_list_directory");
         tools.Select(t => t.Name).ShouldContain("lopen_get_cwd");
@@ -51,6 +51,8 @@ public class LopenToolsTests
         tools.Select(t => t.Name).ShouldContain("lopen_git_status");
         tools.Select(t => t.Name).ShouldContain("lopen_git_diff");
         tools.Select(t => t.Name).ShouldContain("lopen_git_log");
+        tools.Select(t => t.Name).ShouldContain("lopen_write_file");
+        tools.Select(t => t.Name).ShouldContain("lopen_create_directory");
     }
 
     [Fact]
@@ -275,6 +277,171 @@ public class LopenToolsTests
         result.ShouldNotBeNull();
         result!.ToString()!.ShouldNotContain("fatal:");
     }
+
+    [Fact]
+    public void WriteFile_HasCorrectName()
+    {
+        var tool = LopenTools.WriteFile();
+
+        tool.Name.ShouldBe("lopen_write_file");
+    }
+
+    [Fact]
+    public void CreateDirectory_HasCorrectName()
+    {
+        var tool = LopenTools.CreateDirectory();
+
+        tool.Name.ShouldBe("lopen_create_directory");
+    }
+
+    [Fact]
+    public async Task WriteFile_WithValidPath_WritesContent()
+    {
+        var tool = LopenTools.WriteFile();
+        var tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".txt");
+
+        try
+        {
+            var args = new AIFunctionArguments 
+            { 
+                ["path"] = tempFile,
+                ["content"] = "test content"
+            };
+            var result = await tool.InvokeAsync(args);
+
+            result.ShouldNotBeNull();
+            result!.ToString()!.ShouldContain("Successfully");
+            File.Exists(tempFile).ShouldBeTrue();
+            File.ReadAllText(tempFile).ShouldBe("test content");
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+                File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task WriteFile_WithEmptyPath_ReturnsError()
+    {
+        var tool = LopenTools.WriteFile();
+
+        var args = new AIFunctionArguments 
+        { 
+            ["path"] = "",
+            ["content"] = "test"
+        };
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        result!.ToString()!.ShouldContain("Error");
+    }
+
+    [Fact]
+    public async Task WriteFile_CreatesParentDirectories()
+    {
+        var tool = LopenTools.WriteFile();
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var tempFile = Path.Combine(tempDir, "subdir", "file.txt");
+
+        try
+        {
+            var args = new AIFunctionArguments 
+            { 
+                ["path"] = tempFile,
+                ["content"] = "nested content"
+            };
+            var result = await tool.InvokeAsync(args);
+
+            result.ShouldNotBeNull();
+            result!.ToString()!.ShouldContain("Successfully");
+            File.Exists(tempFile).ShouldBeTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task CreateDirectory_WithValidPath_CreatesDirectory()
+    {
+        var tool = LopenTools.CreateDirectory();
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+        try
+        {
+            var args = new AIFunctionArguments { ["path"] = tempDir };
+            var result = await tool.InvokeAsync(args);
+
+            result.ShouldNotBeNull();
+            result!.ToString()!.ShouldContain("Successfully");
+            Directory.Exists(tempDir).ShouldBeTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task CreateDirectory_WithExistingDirectory_ReturnsAlreadyExists()
+    {
+        var tool = LopenTools.CreateDirectory();
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var args = new AIFunctionArguments { ["path"] = tempDir };
+            var result = await tool.InvokeAsync(args);
+
+            result.ShouldNotBeNull();
+            result!.ToString()!.ShouldContain("already exists");
+        }
+        finally
+        {
+            Directory.Delete(tempDir);
+        }
+    }
+
+    [Fact]
+    public async Task CreateDirectory_WithEmptyPath_ReturnsError()
+    {
+        var tool = LopenTools.CreateDirectory();
+
+        var args = new AIFunctionArguments { ["path"] = "" };
+        var result = await tool.InvokeAsync(args);
+
+        result.ShouldNotBeNull();
+        result!.ToString()!.ShouldContain("Error");
+    }
+
+    [Fact]
+    public async Task CreateDirectory_CreatesNestedDirectories()
+    {
+        var tool = LopenTools.CreateDirectory();
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "nested", "dir");
+
+        try
+        {
+            var args = new AIFunctionArguments { ["path"] = tempDir };
+            var result = await tool.InvokeAsync(args);
+
+            result.ShouldNotBeNull();
+            result!.ToString()!.ShouldContain("Successfully");
+            Directory.Exists(tempDir).ShouldBeTrue();
+        }
+        finally
+        {
+            // Clean up the root temp directory
+            var rootDir = Path.GetDirectoryName(Path.GetDirectoryName(tempDir))!;
+            if (Directory.Exists(rootDir))
+                Directory.Delete(rootDir, true);
+        }
+    }
 }
 
 public class CopilotSessionOptionsToolsTests
@@ -288,7 +455,7 @@ public class CopilotSessionOptionsToolsTests
             Tools = tools
         };
 
-        options.Tools.Count().ShouldBe(7);
+        options.Tools.Count().ShouldBe(9);
     }
 
     [Fact]

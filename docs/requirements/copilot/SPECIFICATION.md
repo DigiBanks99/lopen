@@ -140,6 +140,8 @@ Built-in `LopenTools` class with:
 - `lopen_git_status` - Get git repository status
 - `lopen_git_diff` - Get git diff (optional file path and staged flag)
 - `lopen_git_log` - Get recent git commits (with limit and format options)
+- `lopen_write_file` - Write content to a file (creates parent directories)
+- `lopen_create_directory` - Create a directory (including nested directories)
 
 `CopilotSessionOptions` extended with:
 - `Tools` - Custom AIFunction collection

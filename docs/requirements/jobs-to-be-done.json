@@ -332,8 +332,8 @@
     "requirement": "REQ-023",
     "description": "Write File Tool - Add file creation/update capability",
     "priority": 42,
-    "status": "pending",
-    "notes": "Extend LopenTools with write_file. Needs permission model."
+    "status": "done",
+    "notes": "Completed: lopen_write_file and lopen_create_directory tools added. 9 tests added (556 total)."
   },
   {
     "id": "JTBD-043",
