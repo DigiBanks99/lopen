@@ -86,6 +86,7 @@ dotnet run --project src/Lopen.Cli
 
 ## Key Learnings
 
+- **Lopen Login**: You can find the session token in ~/.copilot/config.json under the copilot_tokens
 - **Copilot SDK Available**: `GitHub.Copilot.SDK` v0.1.17 on NuGet; wraps Copilot CLI via JSON-RPC, auth via `gh auth`
 - **Copilot CLI Required**: SDK spawns `copilot` CLI process; must be in PATH. Installed: v0.0.394
 - **SDK Patterns**: `CopilotClient` → `CopilotSession` → events (`AssistantMessageDeltaEvent` for streaming)

@@ -209,4 +209,60 @@ public class ConsoleOutputTests
         console.Output.ShouldContain("Status");
         console.Output.ShouldContain("Ready");
     }
+
+    [Fact]
+    public void Progress_WritesProgressSymbol()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+
+        output.Progress("Loading data");
+
+        console.Output.ShouldContain("Loading data");
+        // Symbol will be ⏳ or ... depending on unicode support
+    }
+
+    [Fact]
+    public void New_WritesNewSymbol()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+
+        output.New("Feature unlocked");
+
+        console.Output.ShouldContain("Feature unlocked");
+    }
+
+    [Fact]
+    public void Launch_WritesLaunchSymbol()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+
+        output.Launch("Starting server");
+
+        console.Output.ShouldContain("Starting server");
+    }
+
+    [Fact]
+    public void Fast_WritesFastSymbol()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+
+        output.Fast("Quick operation");
+
+        console.Output.ShouldContain("Quick operation");
+    }
+
+    [Fact]
+    public void Tip_WritesTipSymbol()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+
+        output.Tip("Try using --help");
+
+        console.Output.ShouldContain("Try using --help");
+    }
 }

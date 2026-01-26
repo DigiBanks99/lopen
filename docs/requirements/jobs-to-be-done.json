@@ -364,8 +364,8 @@
     "requirement": "REQ-014",
     "description": "TUI Emoji Support - Enhanced visual feedback symbols",
     "priority": 46,
-    "status": "pending",
-    "notes": "Unchecked item in tui/SPECIFICATION.md REQ-014."
+    "status": "done",
+    "notes": "Completed: StatusSymbol enum, ISymbolProvider, SymbolProvider with unicode fallback. ConsoleOutput.Progress/New/Launch/Fast/Tip methods. 25 tests added (587 total)."
   },
   {
     "id": "JTBD-047",

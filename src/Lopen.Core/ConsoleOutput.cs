@@ -97,6 +97,91 @@ public class ConsoleOutput
     }
 
     /// <summary>
+    /// Write a progress/in-progress message (⏳).
+    /// </summary>
+    public void Progress(string message)
+    {
+        var symbol = GetSymbolProvider().GetSymbol(StatusSymbol.Progress);
+        if (_useColors)
+        {
+            _console.MarkupLine($"[yellow]{symbol}[/] {Markup.Escape(message)}");
+        }
+        else
+        {
+            _console.WriteLine($"{symbol} {message}");
+        }
+    }
+
+    /// <summary>
+    /// Write a new/special message (✨).
+    /// </summary>
+    public void New(string message)
+    {
+        var symbol = GetSymbolProvider().GetSymbol(StatusSymbol.New);
+        if (_useColors)
+        {
+            _console.MarkupLine($"[magenta]{symbol}[/] {Markup.Escape(message)}");
+        }
+        else
+        {
+            _console.WriteLine($"{symbol} {message}");
+        }
+    }
+
+    /// <summary>
+    /// Write a launch/start message (🚀).
+    /// </summary>
+    public void Launch(string message)
+    {
+        var symbol = GetSymbolProvider().GetSymbol(StatusSymbol.Launch);
+        if (_useColors)
+        {
+            _console.MarkupLine($"[cyan]{symbol}[/] {Markup.Escape(message)}");
+        }
+        else
+        {
+            _console.WriteLine($"{symbol} {message}");
+        }
+    }
+
+    /// <summary>
+    /// Write a fast/important message (⚡).
+    /// </summary>
+    public void Fast(string message)
+    {
+        var symbol = GetSymbolProvider().GetSymbol(StatusSymbol.Fast);
+        if (_useColors)
+        {
+            _console.MarkupLine($"[yellow]{symbol}[/] {Markup.Escape(message)}");
+        }
+        else
+        {
+            _console.WriteLine($"{symbol} {message}");
+        }
+    }
+
+    /// <summary>
+    /// Write a tip/suggestion message (💡).
+    /// </summary>
+    public void Tip(string message)
+    {
+        var symbol = GetSymbolProvider().GetSymbol(StatusSymbol.Tip);
+        if (_useColors)
+        {
+            _console.MarkupLine($"[cyan]{symbol}[/] {Markup.Escape(message)}");
+        }
+        else
+        {
+            _console.WriteLine($"{symbol} {message}");
+        }
+    }
+
+    private SymbolProvider GetSymbolProvider()
+    {
+        return new SymbolProvider(TerminalCapabilities.Detect(_console));
+    }
+
+    /// <summary>
     /// Write a plain message.
     /// </summary>
     public void WriteLine(string message)
