@@ -35,6 +35,12 @@ public class TerminalCapabilities : ITerminalCapabilities
     /// <inheritdoc />
     public bool IsNarrowTerminal => Width < 60;
 
+    /// <inheritdoc />
+    public bool Supports256Colors => ColorSystem is ColorSystem.EightBit or ColorSystem.TrueColor;
+
+    /// <inheritdoc />
+    public bool SupportsTrueColor => ColorSystem == ColorSystem.TrueColor;
+
     private TerminalCapabilities(
         int width,
         int height,

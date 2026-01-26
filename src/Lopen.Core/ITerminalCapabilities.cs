@@ -51,4 +51,14 @@ public interface ITerminalCapabilities
     /// Whether the terminal is too narrow for complex layouts (&lt;60 chars).
     /// </summary>
     bool IsNarrowTerminal { get; }
+
+    /// <summary>
+    /// Whether the terminal supports 256 colors (8-bit color).
+    /// </summary>
+    bool Supports256Colors { get; }
+
+    /// <summary>
+    /// Whether the terminal supports TrueColor (24-bit RGB).
+    /// </summary>
+    bool SupportsTrueColor { get; }
 }

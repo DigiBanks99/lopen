@@ -35,6 +35,12 @@ public class MockTerminalCapabilities : ITerminalCapabilities
     /// <inheritdoc />
     public bool IsNarrowTerminal => Width < 60;
 
+    /// <inheritdoc />
+    public bool Supports256Colors => ColorSystem is ColorSystem.EightBit or ColorSystem.TrueColor;
+
+    /// <inheritdoc />
+    public bool SupportsTrueColor => ColorSystem == ColorSystem.TrueColor;
+
     /// <summary>
     /// Creates a mock with default values (80x24, TrueColor, interactive).
     /// </summary>
@@ -82,5 +88,21 @@ public class MockTerminalCapabilities : ITerminalCapabilities
     public static MockTerminalCapabilities NonInteractive() => new()
     {
         IsInteractive = false
+    };
+
+    /// <summary>
+    /// Creates a mock simulating a 16-color terminal.
+    /// </summary>
+    public static MockTerminalCapabilities SixteenColor() => new()
+    {
+        ColorSystem = ColorSystem.Standard
+    };
+
+    /// <summary>
+    /// Creates a mock simulating a 256-color terminal.
+    /// </summary>
+    public static MockTerminalCapabilities TwoFiftySixColor() => new()
+    {
+        ColorSystem = ColorSystem.EightBit
     };
 }

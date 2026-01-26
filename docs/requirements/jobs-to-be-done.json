@@ -372,8 +372,8 @@
     "requirement": "REQ-014",
     "description": "TUI Adaptive Color Depth - Detection and graceful degradation",
     "priority": 47,
-    "status": "pending",
-    "notes": "Unchecked item in tui/SPECIFICATION.md REQ-014."
+    "status": "done",
+    "notes": "Completed: ColorCategory enum, IColorProvider, ColorProvider with TrueColor/256/16 color support. ITerminalCapabilities.Supports256Colors/SupportsTrueColor properties. 37 tests added (624 total)."
   },
   {
     "id": "JTBD-048",

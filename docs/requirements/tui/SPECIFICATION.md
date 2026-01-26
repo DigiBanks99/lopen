@@ -50,7 +50,7 @@ Consistent output formatting with clear status indicators for all message types.
 - [x] NO_COLOR environment variable support
 - [x] ConsoleOutput helper with standard methods
 - [x] Emoji support for enhanced visual feedback (⏳ ✨ 🚀 ⚡ 💡)
-- [ ] Adaptive color depth detection
+- [x] Adaptive color depth detection
 
 ### Implemented Components
 
@@ -76,6 +76,27 @@ ConsoleOutput.Tip(message)      // 💡 Tip/suggestion
 // SymbolProvider detects unicode support via ITerminalCapabilities
 var provider = new SymbolProvider(capabilities);
 var symbol = provider.GetSymbol(StatusSymbol.Launch); // 🚀 or >> based on unicode support
+```
+
+#### ColorProvider
+```csharp
+// ColorCategory enum: Success, Error, Warning, Info, Muted, Highlight, Accent
+// IColorProvider interface with GetColor(ColorCategory) method
+// ColorProvider selects colors based on terminal color depth
+// Gracefully degrades: TrueColor → 256 → 16 colors
+var provider = new ColorProvider(capabilities);
+var color = provider.GetColor(ColorCategory.Success); // RGB(0,255,0) or Color.Green
+```
+
+#### Terminal Capabilities Color Depth
+```csharp
+// Additional properties on ITerminalCapabilities:
+capabilities.Supports256Colors  // true for EightBit or TrueColor
+capabilities.SupportsTrueColor  // true for TrueColor only
+
+// Mock factories for testing:
+MockTerminalCapabilities.SixteenColor()    // 16-color terminal
+MockTerminalCapabilities.TwoFiftySixColor() // 256-color terminal
 ```
 
 ### Color Palette
