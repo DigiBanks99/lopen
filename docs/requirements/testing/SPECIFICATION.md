@@ -32,18 +32,18 @@ lopen test self --format json             # Output results as JSON
 ```
 
 ### Acceptance Criteria
-- [ ] Tests all key commands: chat, repl, session list/delete
-- [ ] Uses gpt-5-mini by default to minimize costs
-- [ ] Validates responses contain expected keywords/patterns
-- [ ] Parallel test execution with aggregated results
-- [ ] Per-test logging with timestamps
-- [ ] Exit code 0 if all pass, 1 if any fail
-- [ ] Rich terminal output using Spectre.Console (tables, progress bars, panels)
-- [ ] Interactive mode for suite/test selection
-- [ ] Filter tests by name pattern
-- [ ] Configurable timeout per test
-- [ ] Model override via --model flag
-- [ ] JSON output format for CI/CD integration
+- [x] Tests all key commands: chat, repl, session list/delete
+- [x] Uses gpt-5-mini by default to minimize costs
+- [x] Validates responses contain expected keywords/patterns
+- [x] Parallel test execution with aggregated results
+- [ ] Per-test logging with timestamps (Phase 2)
+- [x] Exit code 0 if all pass, 1 if any fail
+- [x] Rich terminal output using Spectre.Console (tables, progress bars, panels)
+- [ ] Interactive mode for suite/test selection (Phase 2)
+- [x] Filter tests by name pattern
+- [x] Configurable timeout per test
+- [x] Model override via --model flag
+- [x] JSON output format for CI/CD integration
 
 ### Test Suites
 

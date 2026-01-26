@@ -268,8 +268,8 @@
     "requirement": "REQ-020-TEST",
     "description": "Self-Testing Command - lopen test self harness",
     "priority": 34,
-    "status": "pending",
-    "notes": "TestRunner with parallel execution. Research complete in testing/RESEARCH.md."
+    "status": "done",
+    "notes": "Completed: TestRunner, CommandTestCase, KeywordValidator, TestSuiteRegistry. CLI command with --verbose, --filter, --model, --format. 45 tests added (525 total)."
   },
   {
     "id": "JTBD-035",

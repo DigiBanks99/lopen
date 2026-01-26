@@ -61,9 +61,9 @@ dotnet run --project src/Lopen.Cli
 ## Project Status
 
 - **State**: Phase 4 - Quality & Enhancements
-- **Tests**: 480 tests passing
-- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts, TUI AI Streaming, TUI Terminal Detection, TUI Welcome Header
-- **Next**: Self-Testing Command (JTBD-034)
+- **Tests**: 525 tests passing
+- **Features**: CLI, REPL, Copilot Integration, Loop Command, TUI Spinners, TUI Error Display, TUI Structured Data, TUI Split Layouts, TUI AI Streaming, TUI Terminal Detection, TUI Welcome Header, Self-Testing
+- **Next**: Self-Testing Test Cases (JTBD-035)
 
 ## Key Dependencies
 
@@ -127,3 +127,4 @@ dotnet run --project src/Lopen.Cli
 - **IWelcomeHeaderRenderer Pattern**: Interface for REPL welcome header; WelcomeHeaderContext carries version/session/context info; ContextWindowInfo for token/message tracking; WelcomeHeaderPreferences for display options; responsive layouts based on terminal width
 - **ASCII Art in C#**: Use `string.Join("\n", lines...)` instead of raw string literals when indentation varies; raw strings require consistent indentation on all lines including closing delimiter
 - **Spectre TestConsole Width**: Chain `.Width(n)` immediately after `new TestConsole()` to set width for responsive layout tests
+- **Self-Testing Pattern**: TestRunner with Parallel.ForEachAsync; CommandTestCase executes subprocess; ITestValidator strategy pattern; TestSuiteRegistry for test discovery; TestOutputService for rendering

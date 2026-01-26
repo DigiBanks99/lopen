@@ -611,6 +611,122 @@ configureCommand.SetAction(async parseResult =>
 loopCommand.Subcommands.Add(configureCommand);
 rootCommand.Subcommands.Add(loopCommand);
 
+// Test command
+var testCommand = new Command("test", "Testing commands");
+
+// test self
+var testSelfCommand = new Command("self", "Run self-tests");
+
+var testVerboseOption = new Option<bool>("--verbose")
+{
+    Description = "Show detailed output per test",
+    DefaultValueFactory = _ => false
+};
+testVerboseOption.Aliases.Add("-v");
+
+var testFilterOption = new Option<string?>("--filter")
+{
+    Description = "Filter tests by pattern (matches ID, suite, or description)"
+};
+
+var testModelOption = new Option<string>("--model")
+{
+    Description = "AI model to use for tests",
+    DefaultValueFactory = _ => "gpt-5-mini"
+};
+testModelOption.Aliases.Add("-m");
+
+var testTimeoutOption = new Option<int>("--timeout")
+{
+    Description = "Per-test timeout in seconds",
+    DefaultValueFactory = _ => 30
+};
+testTimeoutOption.Aliases.Add("-t");
+
+var testFormatOption = new Option<string>("--format")
+{
+    Description = "Output format (text, json)",
+    DefaultValueFactory = _ => "text"
+};
+testFormatOption.Aliases.Add("-f");
+testFormatOption.AcceptOnlyFromAmong("text", "json");
+
+testSelfCommand.Options.Add(testVerboseOption);
+testSelfCommand.Options.Add(testFilterOption);
+testSelfCommand.Options.Add(testModelOption);
+testSelfCommand.Options.Add(testTimeoutOption);
+testSelfCommand.Options.Add(testFormatOption);
+
+testSelfCommand.SetAction(async parseResult =>
+{
+    var verbose = parseResult.GetValue(testVerboseOption);
+    var filter = parseResult.GetValue(testFilterOption);
+    var model = parseResult.GetValue(testModelOption);
+    var timeout = parseResult.GetValue(testTimeoutOption);
+    var format = parseResult.GetValue(testFormatOption);
+    
+    // Get tests (apply filter if specified)
+    var tests = string.IsNullOrEmpty(filter)
+        ? Lopen.Core.Testing.TestSuites.TestSuiteRegistry.GetAllTests().ToList()
+        : Lopen.Core.Testing.TestSuites.TestSuiteRegistry.FilterByPattern(filter).ToList();
+    
+    if (tests.Count == 0)
+    {
+        output.Warning("No tests match the specified filter.");
+        return ExitCodes.Success;
+    }
+    
+    var context = new Lopen.Core.Testing.TestContext
+    {
+        Model = model!,
+        Timeout = TimeSpan.FromSeconds(timeout),
+        Verbose = verbose
+    };
+    
+    var testOutput = new Lopen.Core.Testing.TestOutputService(output);
+    
+    // Display header (unless JSON output)
+    if (format != "json")
+    {
+        testOutput.DisplayHeader(model!, tests.Count);
+    }
+    
+    // Set up cancellation
+    using var cts = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) =>
+    {
+        e.Cancel = true;
+        cts.Cancel();
+    };
+    
+    // Run tests
+    var runner = new Lopen.Core.Testing.TestRunner();
+    var summary = await runner.RunTestsAsync(
+        tests,
+        context,
+        progressCallback: verbose && format != "json" ? result => testOutput.DisplayVerboseResult(result) : null,
+        cancellationToken: cts.Token);
+    
+    // Output results
+    if (format == "json")
+    {
+        Console.WriteLine(testOutput.FormatAsJson(summary));
+    }
+    else
+    {
+        if (!verbose)
+        {
+            testOutput.DisplayResults(summary);
+        }
+        testOutput.DisplaySummary(summary);
+    }
+    
+    return summary.AllPassed ? ExitCodes.Success : ExitCodes.GeneralError;
+});
+
+testCommand.Subcommands.Add(testSelfCommand);
+rootCommand.Subcommands.Add(testCommand);
+
 // Set action for root command (when no subcommand given)
 rootCommand.SetAction(parseResult =>
 {
