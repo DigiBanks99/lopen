@@ -252,8 +252,8 @@
     "requirement": "REQ-021",
     "description": "TUI Testing - ITuiRenderer interface and mocks",
     "priority": 32,
-    "status": "pending",
-    "notes": "MockTuiRenderer, TestConsole integration. Partial - IConsoleInput done."
+    "status": "done",
+    "notes": "Completed: Specialized interfaces (IProgressRenderer, IErrorRenderer, IDataRenderer, ILayoutRenderer, IStreamRenderer, ITerminalCapabilities) with Mock* implementations. TestConsole used throughout. IConsoleInput/IConsoleInputWithHistory for input testing."
   },
   {
     "id": "JTBD-033",

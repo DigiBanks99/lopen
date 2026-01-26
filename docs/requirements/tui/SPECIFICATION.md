@@ -13,7 +13,7 @@
 | REQ-018 | Layout & Right-Side Panels | Medium | 🔴 Planned |
 | REQ-019 | AI Response Streaming | High | 🔴 Planned |
 | REQ-020 | Responsive Terminal Detection | Medium | 🟢 Done |
-| REQ-021 | TUI Testing & Mocking | High | 🟡 Partial |
+| REQ-021 | TUI Testing & Mocking | High | 🟢 Done |
 | REQ-022 | Welcome Header & REPL Banner | High | 🔴 Planned |
 
 ---
@@ -632,10 +632,10 @@ Comprehensive testing infrastructure for TUI components with mockable interfaces
 
 ### Acceptance Criteria
 - [x] `IConsoleInput` interface for Console.ReadLine() abstraction (implemented)
-- [x] Spectre.Console.Testing.TestConsole for output validation (partial usage)
-- [ ] Create `ITuiRenderer` interface for all TUI operations
-- [ ] Mock implementations for unit tests
-- [ ] Snapshot testing for complex layouts
+- [x] Spectre.Console.Testing.TestConsole for output validation (used throughout)
+- [x] Specialized TUI interfaces for all operations (IProgressRenderer, IErrorRenderer, IDataRenderer, ILayoutRenderer, IStreamRenderer, ITerminalCapabilities)
+- [x] Mock implementations for unit tests (Mock*Renderer classes for all interfaces)
+- [ ] Snapshot testing for complex layouts (optional, low priority)
 - [ ] Integration tests with real Spectre.Console
 
 ### Testing Architecture
