@@ -33,6 +33,20 @@ var deviceFlowAuth = new DeviceFlowAuth();
 var authService = new AuthService(credentialStore, tokenInfoStore, deviceFlowAuth);
 var sessionStore = new FileSessionStore();
 var output = new ConsoleOutput();
+var welcomeHeaderRenderer = new SpectreWelcomeHeaderRenderer();
+
+// Helper to show welcome header
+void ShowWelcomeHeader()
+{
+    var context = new WelcomeHeaderContext
+    {
+        Version = versionService.GetVersion(),
+        SessionName = "",
+        ContextWindow = new ContextWindowInfo(),
+        Preferences = new WelcomeHeaderPreferences { ShowLogo = true, ShowTip = true }
+    };
+    welcomeHeaderRenderer.RenderWelcomeHeader(context);
+}
 
 // Helper to show security warning when not using secure storage
 void ShowSecureStorageWarningIfNeeded()
@@ -306,6 +320,12 @@ var resumeOption = new Option<string?>("--resume")
 };
 resumeOption.Aliases.Add("-r");
 
+var noHeaderChatOption = new Option<bool>("--no-header")
+{
+    Description = "Suppress welcome header",
+    DefaultValueFactory = _ => false
+};
+
 var promptArg = new Argument<string?>("prompt")
 {
     Description = "Single query (omit for interactive mode)",
@@ -315,6 +335,7 @@ var promptArg = new Argument<string?>("prompt")
 chatCommand.Options.Add(modelOption);
 chatCommand.Options.Add(streamingOption);
 chatCommand.Options.Add(resumeOption);
+chatCommand.Options.Add(noHeaderChatOption);
 chatCommand.Arguments.Add(promptArg);
 
 chatCommand.SetAction(async parseResult =>
@@ -322,6 +343,7 @@ chatCommand.SetAction(async parseResult =>
     var model = parseResult.GetValue(modelOption);
     var streaming = parseResult.GetValue(streamingOption);
     var resumeId = parseResult.GetValue(resumeOption);
+    var noHeader = parseResult.GetValue(noHeaderChatOption);
     var prompt = parseResult.GetValue(promptArg);
 
     // Create Copilot service
@@ -382,6 +404,10 @@ chatCommand.SetAction(async parseResult =>
     }
 
     // Interactive mode
+    if (!noHeader)
+    {
+        ShowWelcomeHeader();
+    }
     output.Info($"Chat session started (model: {model}). Type 'exit' or 'quit' to end.");
     output.Muted($"Session ID: {session.SessionId}");
 
@@ -638,8 +664,18 @@ rootCommand.Subcommands.Add(replSessionCommand);
 
 // REPL command
 var replCommand = new Command("repl", "Start interactive REPL mode");
+
+var noHeaderReplOption = new Option<bool>("--no-header")
+{
+    Description = "Suppress welcome header",
+    DefaultValueFactory = _ => false
+};
+replCommand.Options.Add(noHeaderReplOption);
+
 replCommand.SetAction(async parseResult =>
 {
+    var noHeader = parseResult.GetValue(noHeaderReplOption);
+    
     // Set up auto-completer with available commands
     var autoCompleter = new CommandAutoCompleter();
     autoCompleter.RegisterCommand("version", "Display version information", options: ["--format", "-f"]);
@@ -648,13 +684,14 @@ replCommand.SetAction(async parseResult =>
         subcommands: ["login", "logout", "status"], 
         options: ["--token"]);
     autoCompleter.RegisterCommand("chat", "Start AI chat session",
-        options: ["--model", "-m", "--streaming", "-s", "--resume", "-r"]);
+        options: ["--model", "-m", "--streaming", "-s", "--resume", "-r", "--no-header"]);
     autoCompleter.RegisterCommand("sessions", "Manage chat sessions",
         subcommands: ["list", "delete"]);
     autoCompleter.RegisterCommand("loop", "Autonomous development workflow",
         subcommands: ["configure"],
-        options: ["--auto", "-a", "--config", "-c"]);
-    autoCompleter.RegisterCommand("repl", "Start interactive REPL mode");
+        options: ["--auto", "-a", "--config", "-c", "--no-header"]);
+    autoCompleter.RegisterCommand("repl", "Start interactive REPL mode",
+        options: ["--no-header"]);
     autoCompleter.RegisterCommand("repl-session", "Manage REPL session state",
         subcommands: ["save", "load", "list", "delete"]);
     autoCompleter.RegisterCommand("exit", "Exit the REPL");
@@ -668,6 +705,12 @@ replCommand.SetAction(async parseResult =>
     var sessionStateService = new SessionStateService(authService, sessionStore);
     
     var replService = new ReplService(consoleInput, output, sessionStateService);
+    
+    // Show welcome header unless suppressed
+    if (!noHeader)
+    {
+        ShowWelcomeHeader();
+    }
     
     return await replService.RunAsync(async cmdArgs =>
     {
@@ -694,13 +737,21 @@ var loopConfigOption = new Option<string?>("--config")
 };
 loopConfigOption.Aliases.Add("-c");
 
+var noHeaderLoopOption = new Option<bool>("--no-header")
+{
+    Description = "Suppress welcome header",
+    DefaultValueFactory = _ => false
+};
+
 loopCommand.Options.Add(loopAutoOption);
 loopCommand.Options.Add(loopConfigOption);
+loopCommand.Options.Add(noHeaderLoopOption);
 
 loopCommand.SetAction(async parseResult =>
 {
     var auto = parseResult.GetValue(loopAutoOption);
     var configPath = parseResult.GetValue(loopConfigOption);
+    var noHeader = parseResult.GetValue(noHeaderLoopOption);
 
     // Create Copilot service
     await using var copilotService = new CopilotService();
@@ -732,6 +783,11 @@ loopCommand.SetAction(async parseResult =>
 
     bool skipPlan = false;
     bool skipBuild = false;
+
+    if (!noHeader)
+    {
+        ShowWelcomeHeader();
+    }
 
     if (!auto)
     {

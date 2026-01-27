@@ -1,25 +1,27 @@
 # Implementation Plan
 
-> ✅ This iteration complete - VerificationService integration
+> ✅ This iteration complete - Welcome Header Integration
 
 ## Completed This Iteration
+
+### JTBD-003 & JTBD-004: Welcome Header Integration (REQ-022) ✅
+- Created `SpectreWelcomeHeaderRenderer` instance in Program.cs
+- Added `--no-header` flag to chat, loop, and repl commands
+- Header displays at start of interactive modes (chat, repl, loop)
+- Updated auto-completer registration with new options
+- 3 CLI tests added (791 total)
 
 ### JTBD-002: Integrate VerificationService into Loop (REQ-036) ✅
 - Added `IVerificationService` as optional parameter to `LoopService` constructor
 - Added `VerifyAfterIteration` config option to `LoopConfig` (default: true)
-- Added `RunVerificationAsync()` method called after each build iteration
-- Added verification phase output ("VERIFY" header) to loop output
+- Verification runs after each build iteration when enabled
 - Updated `Program.cs` to create and pass `VerificationService` to loop
-- 4 tests added for verification integration (788 total)
 
 ### JTBD-001: Fix GCM Credential Store Fallback (BUG-AUTH-001) ✅
 - Enhanced `SecureCredentialStore.IsAvailable()` to detect unconfigured GCM on Linux
-- Added test operation (Get) to verify store is actually usable
-- Improved constructor with helpful error message pointing to GCM documentation
-- Added `usingSecureStorage` tracking in Program.cs
 - Shows security warning when falling back to file-based storage
 
-## Total Tests: 788
+## Total Tests: 791
 
 ## Next Priority Tasks
 

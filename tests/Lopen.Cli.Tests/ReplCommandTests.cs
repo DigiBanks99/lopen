@@ -33,6 +33,24 @@ public class ReplCommandTests
         output.StandardOutput.ShouldContain("repl");
     }
 
+    [Fact]
+    public void ReplCommand_Help_ShowsNoHeaderOption()
+    {
+        var output = RunCli(["repl", "--help"]);
+
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("--no-header");
+    }
+
+    [Fact]
+    public void LoopCommand_Help_ShowsNoHeaderOption()
+    {
+        var output = RunCli(["loop", "--help"]);
+
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("--no-header");
+    }
+
     private static CliOutput RunCli(string[] args)
     {
         var cliProjectPath = GetCliProjectPath();

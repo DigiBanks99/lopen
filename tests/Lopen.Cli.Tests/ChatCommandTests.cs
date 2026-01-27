@@ -63,6 +63,15 @@ public class ChatCommandTests
         output.StandardOutput.ShouldContain("AI");
     }
 
+    [Fact]
+    public void ChatCommand_Help_ShowsNoHeaderOption()
+    {
+        var output = RunCli(["chat", "--help"]);
+
+        output.ExitCode.ShouldBe(0);
+        output.StandardOutput.ShouldContain("--no-header");
+    }
+
     private static CliOutput RunCli(string[] args)
     {
         var cliProjectPath = GetCliProjectPath();

@@ -20,16 +20,16 @@
     "requirement": "REQ-022",
     "description": "TUI Welcome Header Integration - Display header on REPL/Chat/Loop start",
     "priority": 3,
-    "status": "open",
-    "notes": "Welcome header renderer exists but is not integrated into ReplService, chat command, or loop command. Add IWelcomeHeaderRenderer dependency and call before main loop."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Added SpectreWelcomeHeaderRenderer integration to chat, loop, and repl commands with --no-header flag to suppress. 3 tests added."
   },
   {
     "id": "JTBD-004",
     "requirement": "REQ-022",
     "description": "Add --no-header and --quiet CLI flags to suppress welcome header",
     "priority": 4,
-    "status": "open",
-    "notes": "CLI flags not defined in Program.cs. Add global options and pass to services."
+    "status": "done",
+    "notes": "Completed 2026-01-27: --no-header flags added to chat, loop, and repl commands. Merged with JTBD-003."
   },
   {
     "id": "JTBD-005",
