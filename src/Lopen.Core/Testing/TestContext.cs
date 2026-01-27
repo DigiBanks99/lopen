@@ -16,4 +16,10 @@ public sealed record TestContext
     
     /// <summary>Path to the lopen executable (default: "lopen").</summary>
     public string LopenPath { get; init; } = "lopen";
+
+    /// <summary>
+    /// Optional interactive prompt for tests requiring user interaction.
+    /// Null when running in non-interactive mode.
+    /// </summary>
+    public IInteractivePrompt? InteractivePrompt { get; init; }
 }

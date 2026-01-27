@@ -100,8 +100,8 @@
     "requirement": "REQ-020-TEST",
     "description": "T-AUTH-02 Interactive Device Auth Flow Test",
     "priority": 13,
-    "status": "open",
-    "notes": "Manual test for full OAuth + MFA flow validation. Add guided interactive test that walks through device auth and validates credential storage."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Added InteractiveTestCase class with IInteractivePrompt interface. Added SpectreInteractivePrompt for console interactions and MockInteractivePrompt for testing. T-AUTH-02 added to AuthTestSuite with 5-step guided flow. 20 tests added (909 total)."
   },
   {
     "id": "JTBD-014",
