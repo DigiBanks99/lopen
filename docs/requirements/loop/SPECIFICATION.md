@@ -71,13 +71,13 @@ lopen loop configure --reset  # Reset to defaults
 ### Acceptance Criteria
 - [x] Interactive mode asks for all configuration options
 - [x] Supports model selection (default: `claude-opus-4.5`)
-- [ ] Custom plan prompt template (default: `PLAN.PROMPT.md`)
-- [ ] Custom build prompt template (default: `BUILD.PROMPT.md`)
-- [ ] Allow all Copilot SDK operations flag (default: true)
-- [ ] Stream output flag (default: true)
-- [ ] Configuration persists in `~/.lopen/loop-config.json`
-- [ ] Supports project-level config (`.lopen/loop-config.json` in repo root)
-- [ ] Project config overrides user config
+- [x] Custom plan prompt template (default: `PLAN.PROMPT.md`)
+- [x] Custom build prompt template (default: `BUILD.PROMPT.md`)
+- [x] Allow all Copilot SDK operations flag (default: true)
+- [x] Stream output flag (default: true)
+- [x] Configuration persists in `~/.lopen/loop-config.json`
+- [x] Supports project-level config (`.lopen/loop-config.json` in repo root)
+- [x] Project config overrides user config
 
 ### Configuration Schema
 ```json
