@@ -60,8 +60,8 @@
     "requirement": "REQ-031",
     "description": "Loop Interactive Configuration - Add REPL-style config when no flags provided",
     "priority": 8,
-    "status": "open",
-    "notes": "lopen loop configure only accepts flags. Add interactive prompting when run without flags using Spectre.Console prompts."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Added SpectreInteractiveLoopConfigService with model selection, prompt paths, stream/allowAll/verify/autoCommit toggles. Interactive mode triggers when no flags and not in redirected input. 7 tests added (824 total)."
   },
   {
     "id": "JTBD-009",

@@ -69,8 +69,8 @@ lopen loop configure --reset  # Reset to defaults
 ```
 
 ### Acceptance Criteria
-- [ ] Interactive mode asks for all configuration options
-- [ ] Supports model selection (default: `claude-opus-4.5`)
+- [x] Interactive mode asks for all configuration options
+- [x] Supports model selection (default: `claude-opus-4.5`)
 - [ ] Custom plan prompt template (default: `PLAN.PROMPT.md`)
 - [ ] Custom build prompt template (default: `BUILD.PROMPT.md`)
 - [ ] Allow all Copilot SDK operations flag (default: true)

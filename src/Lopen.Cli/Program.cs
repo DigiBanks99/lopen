@@ -876,19 +876,40 @@ configureCommand.SetAction(async parseResult =>
     }
 
     var config = await configService.LoadConfigAsync();
-
-    // Apply any specified options
-    if (!string.IsNullOrEmpty(model))
+    
+    // If no flags provided and in interactive terminal, show interactive prompts
+    var noFlagsProvided = string.IsNullOrEmpty(model) && 
+                          string.IsNullOrEmpty(planPrompt) && 
+                          string.IsNullOrEmpty(buildPrompt);
+    
+    if (noFlagsProvided && !Console.IsInputRedirected)
     {
-        config = config with { Model = model };
+        var interactiveConfig = new SpectreInteractiveLoopConfigService();
+        var result = interactiveConfig.PromptForConfiguration(config);
+        
+        if (result.Cancelled)
+        {
+            output.Muted("Configuration cancelled.");
+            return ExitCodes.Success;
+        }
+        
+        config = result.Config!;
     }
-    if (!string.IsNullOrEmpty(planPrompt))
+    else
     {
-        config = config with { PlanPromptPath = planPrompt };
-    }
-    if (!string.IsNullOrEmpty(buildPrompt))
-    {
-        config = config with { BuildPromptPath = buildPrompt };
+        // Apply any specified options
+        if (!string.IsNullOrEmpty(model))
+        {
+            config = config with { Model = model };
+        }
+        if (!string.IsNullOrEmpty(planPrompt))
+        {
+            config = config with { PlanPromptPath = planPrompt };
+        }
+        if (!string.IsNullOrEmpty(buildPrompt))
+        {
+            config = config with { BuildPromptPath = buildPrompt };
+        }
     }
 
     await configService.SaveUserConfigAsync(config);
