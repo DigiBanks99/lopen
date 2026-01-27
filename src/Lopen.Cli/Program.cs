@@ -34,6 +34,7 @@ var authService = new AuthService(credentialStore, tokenInfoStore, deviceFlowAut
 var sessionStore = new FileSessionStore();
 var output = new ConsoleOutput();
 var welcomeHeaderRenderer = new SpectreWelcomeHeaderRenderer();
+var errorRenderer = new SpectreErrorRenderer();
 
 // Helper to show welcome header
 void ShowWelcomeHeader()
@@ -1064,4 +1065,23 @@ rootCommand.SetAction(parseResult =>
     return 0;
 });
 
-return rootCommand.Parse(args).Invoke();
+// Parse and check for errors before invoking
+var parseResult = rootCommand.Parse(args);
+
+if (parseResult.Errors.Any())
+{
+    // Get list of available commands for suggestions
+    var availableCommands = rootCommand.Subcommands.Select(c => c.Name).ToList();
+    var errorHandler = new CommandLineErrorHandler(errorRenderer, availableCommands);
+    
+    // Convert System.CommandLine errors to ParseErrorInfo
+    var errors = parseResult.Errors.Select(e => new ParseErrorInfo(e.Message));
+    var commandTokens = parseResult.Tokens
+        .Where(t => t.Type == System.CommandLine.Parsing.TokenType.Argument || 
+                    t.Type == System.CommandLine.Parsing.TokenType.Command)
+        .Select(t => t.Value);
+    
+    return errorHandler.HandleParseErrors(errors, commandTokens);
+}
+
+return parseResult.Invoke();

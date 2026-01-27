@@ -36,8 +36,8 @@
     "requirement": "REQ-016",
     "description": "System.CommandLine Error Integration - Route parser errors through IErrorRenderer",
     "priority": 5,
-    "status": "open",
-    "notes": "System.CommandLine errors bypass structured error renderer. Need custom error handler to use SpectreErrorRenderer for parser errors."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Added CommandLineErrorHandler class to route System.CommandLine parse errors through SpectreErrorRenderer. Includes unknown command detection with Levenshtein distance suggestions, option error handling, and context-aware help commands. 18 tests added (809 total)."
   },
   {
     "id": "JTBD-006",

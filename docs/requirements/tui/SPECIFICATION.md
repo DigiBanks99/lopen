@@ -218,7 +218,7 @@ Clear, actionable error messages with contextual correction guidance using Spect
 - [x] Contextual correction suggestions ("Did you mean...", "Try: lopen X")
 - [x] Error panels for complex/multi-line errors
 - [ ] Stack traces only in debug/verbose mode
-- [ ] Integration with System.CommandLine error handling
+- [x] Integration with System.CommandLine error handling
 
 ### Design Inspiration
 
