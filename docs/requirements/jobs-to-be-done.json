@@ -476,7 +476,7 @@
     "requirement": "REQ-031",
     "description": "Loop AllowAll Flag - Wire allowAll config to Copilot SDK session",
     "priority": 60,
-    "status": "open",
-    "notes": "Config property exists but never passed to CopilotSessionOptions. Minor wiring."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Added AllowAll property to CopilotSessionOptions. Wired LoopConfig.AllowAll through LoopService to both plan and build phase sessions. 3 tests added (855 total)."
   }
 ]

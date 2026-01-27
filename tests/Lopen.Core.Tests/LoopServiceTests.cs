@@ -263,4 +263,63 @@ public class LoopServiceTests : IDisposable
 
         _testConsole.Output.ShouldContain("verification failed");
     }
+
+    [Fact]
+    public async Task RunPlanPhaseAsync_PassesAllowAllToSession()
+    {
+        CopilotSessionOptions? capturedOptions = null;
+        _mockCopilotService.SessionFactory = options =>
+        {
+            capturedOptions = options;
+            return new MockCopilotSession("test", _ => AsyncEnumerable.Empty<string>(), null);
+        };
+
+        var configWithAllowAll = new LoopConfig { AllowAll = true };
+        var service = new LoopService(_mockCopilotService, _stateManager, _outputService, configWithAllowAll);
+
+        await service.RunPlanPhaseAsync();
+
+        capturedOptions.ShouldNotBeNull();
+        capturedOptions!.AllowAll.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task RunPlanPhaseAsync_PassesAllowAllFalseToSession()
+    {
+        CopilotSessionOptions? capturedOptions = null;
+        _mockCopilotService.SessionFactory = options =>
+        {
+            capturedOptions = options;
+            return new MockCopilotSession("test", _ => AsyncEnumerable.Empty<string>(), null);
+        };
+
+        var configWithAllowAllFalse = new LoopConfig { AllowAll = false };
+        var service = new LoopService(_mockCopilotService, _stateManager, _outputService, configWithAllowAllFalse);
+
+        await service.RunPlanPhaseAsync();
+
+        capturedOptions.ShouldNotBeNull();
+        capturedOptions!.AllowAll.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RunBuildPhaseAsync_PassesAllowAllToSession()
+    {
+        CopilotSessionOptions? capturedOptions = null;
+        _mockCopilotService.SessionFactory = options =>
+        {
+            capturedOptions = options;
+            return new MockCopilotSession("test", 
+                prompt => CreateDoneAndYieldChunk(), 
+                null);
+        };
+
+        var configWithAllowAll = new LoopConfig { AllowAll = true };
+        var service = new LoopService(_mockCopilotService, _stateManager, _outputService, configWithAllowAll);
+
+        await service.RunBuildPhaseAsync();
+
+        capturedOptions.ShouldNotBeNull();
+        capturedOptions!.AllowAll.ShouldBeTrue();
+    }
 }

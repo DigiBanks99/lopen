@@ -91,7 +91,8 @@ public class LoopService
             new CopilotSessionOptions
             {
                 Model = _config.Model,
-                Streaming = _config.Stream
+                Streaming = _config.Stream,
+                AllowAll = _config.AllowAll
             }, ct);
 
         // Stream prompt execution
@@ -138,7 +139,8 @@ public class LoopService
                 new CopilotSessionOptions
                 {
                     Model = _config.Model,
-                    Streaming = _config.Stream
+                    Streaming = _config.Stream,
+                    AllowAll = _config.AllowAll
                 }, ct);
 
             // Stream prompt execution
