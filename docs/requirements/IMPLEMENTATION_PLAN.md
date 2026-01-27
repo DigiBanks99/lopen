@@ -1,25 +1,24 @@
 # Implementation Plan
 
-> ✅ This iteration complete - Error Handling + Testing + Loop Config
+> ✅ This iteration complete - Multiple JTBD items
 
 ## Completed This Iteration
 
+### JTBD-059: Default Model Update (REQ-031) ✅
+- Updated LoopConfig.Model default from gpt-5 to claude-opus-4.5
+
 ### JTBD-008: Loop Interactive Configuration (REQ-031) ✅
-- Created `IInteractiveLoopConfigService` interface
-- Implemented `SpectreInteractiveLoopConfigService` with Spectre.Console prompts
-- Interactive mode triggers when no flags and `!Console.IsInputRedirected`
-- Prompts for: model, plan/build paths, stream, allowAll, verify, autoCommit
-- 7 unit tests added (824 total)
+- Created `SpectreInteractiveLoopConfigService` with Spectre.Console prompts
+- 7 unit tests added
 
 ### JTBD-007: Self-Testing Stack Traces (REQ-020-TEST) ✅
-- Modified `CommandTestCase.ExecuteAsync()` to include stack trace in verbose mode
-- 4 unit tests added
+- Stack trace in verbose mode, 4 tests added
 
 ### JTBD-006: Self-Testing Per-Test Timestamps (REQ-020-TEST) ✅
-- Added timestamp prefix [HH:mm:ss.fff] to `DisplayVerboseResult()`
+- Timestamp prefix [HH:mm:ss.fff] in verbose output
 
 ### JTBD-005: System.CommandLine Error Integration (REQ-016) ✅
-- Created `CommandLineErrorHandler` class with "Did you mean?" suggestions
+- CommandLineErrorHandler with "Did you mean?" suggestions, 18 tests
 
 ## Previously Completed
 
