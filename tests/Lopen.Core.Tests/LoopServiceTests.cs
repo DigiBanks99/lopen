@@ -162,4 +162,105 @@ public class LoopServiceTests : IDisposable
         result.ShouldBe(ExitCodes.Success);
         _testConsole.Output.ShouldContain("Loop cancelled");
     }
+
+    [Fact]
+    public async Task RunBuildPhaseAsync_WithVerification_CallsVerifyBuild()
+    {
+        var mockVerification = new MockVerificationService();
+        var configWithVerification = new LoopConfig { VerifyAfterIteration = true };
+
+        // Create done file before test to ensure only one iteration
+        _mockCopilotService.SessionFactory = options =>
+        {
+            return new MockCopilotSession("test", 
+                prompt => CreateDoneAndYieldChunk(), 
+                null);
+        };
+
+        var service = new LoopService(
+            _mockCopilotService, 
+            _stateManager, 
+            _outputService, 
+            configWithVerification, 
+            mockVerification);
+
+        await service.RunBuildPhaseAsync();
+
+        mockVerification.BuildVerificationCount.ShouldBeGreaterThan(0);
+        _testConsole.Output.ShouldContain("VERIFY");
+    }
+
+    private async IAsyncEnumerable<string> CreateDoneAndYieldChunk()
+    {
+        await _stateManager.CreateDoneFileAsync("done");
+        yield return "chunk";
+    }
+
+    [Fact]
+    public async Task RunBuildPhaseAsync_WithVerificationDisabled_DoesNotCallVerify()
+    {
+        var mockVerification = new MockVerificationService();
+        var configWithoutVerification = new LoopConfig { VerifyAfterIteration = false };
+
+        await _stateManager.CreateDoneFileAsync("done");
+
+        var service = new LoopService(
+            _mockCopilotService, 
+            _stateManager, 
+            _outputService, 
+            configWithoutVerification, 
+            mockVerification);
+
+        await service.RunBuildPhaseAsync();
+
+        mockVerification.BuildVerificationCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task RunBuildPhaseAsync_WithNoVerificationService_SkipsVerification()
+    {
+        var configWithVerification = new LoopConfig { VerifyAfterIteration = true };
+
+        await _stateManager.CreateDoneFileAsync("done");
+
+        // Pass null verification service
+        var service = new LoopService(
+            _mockCopilotService, 
+            _stateManager, 
+            _outputService, 
+            configWithVerification, 
+            verificationService: null);
+
+        // Should not throw even with verification enabled
+        await service.RunBuildPhaseAsync();
+
+        _testConsole.Output.ShouldNotContain("VERIFY");
+    }
+
+    [Fact]
+    public async Task RunBuildPhaseAsync_VerificationFails_ShowsWarning()
+    {
+        var mockVerification = new MockVerificationService();
+        mockVerification.SetResult(VerificationResult.Failed("Build failed: missing tests"));
+
+        var configWithVerification = new LoopConfig { VerifyAfterIteration = true };
+
+        _mockCopilotService.SessionFactory = options =>
+        {
+            return new MockCopilotSession("test", 
+                prompt => CreateDoneAndYieldChunk(), 
+                null);
+        };
+
+        var service = new LoopService(
+            _mockCopilotService, 
+            _stateManager, 
+            _outputService, 
+            configWithVerification, 
+            mockVerification);
+
+        await service.RunBuildPhaseAsync();
+
+        _testConsole.Output.ShouldContain("verification failed");
+    }
 }

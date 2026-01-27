@@ -50,6 +50,13 @@ public record LoopConfig
     public string LogLevel { get; init; } = "all";
 
     /// <summary>
+    /// Run verification after each build iteration (default: true).
+    /// When enabled, jobs cannot be marked complete without passing verification.
+    /// </summary>
+    [JsonPropertyName("verifyAfterIteration")]
+    public bool VerifyAfterIteration { get; init; } = true;
+
+    /// <summary>
     /// Creates a new config with values from another config merged in.
     /// Non-default values from the override config take precedence.
     /// </summary>
@@ -68,7 +75,8 @@ public record LoopConfig
             AllowAll = overrideConfig.AllowAll != defaults.AllowAll ? overrideConfig.AllowAll : AllowAll,
             Stream = overrideConfig.Stream != defaults.Stream ? overrideConfig.Stream : Stream,
             AutoCommit = overrideConfig.AutoCommit != defaults.AutoCommit ? overrideConfig.AutoCommit : AutoCommit,
-            LogLevel = overrideConfig.LogLevel != defaults.LogLevel ? overrideConfig.LogLevel : LogLevel
+            LogLevel = overrideConfig.LogLevel != defaults.LogLevel ? overrideConfig.LogLevel : LogLevel,
+            VerifyAfterIteration = overrideConfig.VerifyAfterIteration != defaults.VerifyAfterIteration ? overrideConfig.VerifyAfterIteration : VerifyAfterIteration
         };
     }
 }

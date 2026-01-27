@@ -9,6 +9,7 @@ public class LoopService
     private readonly LoopStateManager _stateManager;
     private readonly LoopOutputService _outputService;
     private readonly LoopConfig _config;
+    private readonly IVerificationService? _verificationService;
 
     /// <summary>
     /// Creates a new LoopService.
@@ -17,12 +18,14 @@ public class LoopService
         ICopilotService copilotService,
         LoopStateManager stateManager,
         LoopOutputService outputService,
-        LoopConfig config)
+        LoopConfig config,
+        IVerificationService? verificationService = null)
     {
         _copilotService = copilotService;
         _stateManager = stateManager;
         _outputService = outputService;
         _config = config;
+        _verificationService = verificationService;
     }
 
     /// <summary>
@@ -145,6 +148,13 @@ public class LoopService
             }
 
             _outputService.WriteLine();
+
+            // Run verification if enabled and service is available
+            if (_config.VerifyAfterIteration && _verificationService is not null)
+            {
+                await RunVerificationAsync(ct);
+            }
+
             _outputService.WriteIterationComplete();
 
             // Brief pause between iterations
@@ -152,5 +162,39 @@ public class LoopService
         }
 
         return ExitCodes.Success;
+    }
+
+    /// <summary>
+    /// Run verification to ensure build quality.
+    /// </summary>
+    private async Task RunVerificationAsync(CancellationToken ct)
+    {
+        _outputService.WritePhaseHeader("VERIFY");
+
+        try
+        {
+            // Verify build succeeds
+            var buildResult = await _verificationService!.VerifyBuildAsync(ct);
+            if (!buildResult.Complete)
+            {
+                _outputService.Warning("Build verification failed");
+                foreach (var issue in buildResult.Issues)
+                {
+                    _outputService.Muted($"  - {issue}");
+                }
+            }
+            else
+            {
+                _outputService.Success("Build verified");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _outputService.Warning($"Verification error: {ex.Message}");
+        }
     }
 }

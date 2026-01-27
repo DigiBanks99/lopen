@@ -728,6 +728,7 @@ loopCommand.SetAction(async parseResult =>
 
     var stateManager = new LoopStateManager();
     var loopOutput = new LoopOutputService(output);
+    var verificationService = new VerificationService(copilotService);
 
     bool skipPlan = false;
     bool skipBuild = false;
@@ -759,7 +760,7 @@ loopCommand.SetAction(async parseResult =>
         }
     }
 
-    var loopService = new LoopService(copilotService, stateManager, loopOutput, config);
+    var loopService = new LoopService(copilotService, stateManager, loopOutput, config, verificationService);
 
     using var cts = new CancellationTokenSource();
     Console.CancelKeyPress += (_, e) =>

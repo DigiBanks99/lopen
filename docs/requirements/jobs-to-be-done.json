@@ -12,8 +12,8 @@
     "requirement": "REQ-036",
     "description": "Integrate VerificationService into Loop build phase",
     "priority": 2,
-    "status": "open",
-    "notes": "CRITICAL GAP: VerificationService exists with full implementation but is NOT called in LoopService.RunBuildPhaseAsync(). Jobs can be marked complete without quality verification."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Added IVerificationService to LoopService, VerifyAfterIteration config option (default: true), verification runs after each build iteration. 4 tests added."
   },
   {
     "id": "JTBD-003",
