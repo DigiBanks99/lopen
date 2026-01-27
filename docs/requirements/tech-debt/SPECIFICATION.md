@@ -7,6 +7,8 @@
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
 | REQ-TD-001 | Move from FluentAssertions to Shouldly | High | ✅ Complete |
+| REQ-TD-002 | Documentation Sync - Update README.md status | Medium | 🔴 Open |
+| REQ-TD-003 | Specification Checkbox Sync - Update acceptance criteria | Medium | 🔴 Open |
 
 ---
 
@@ -64,5 +66,48 @@ Shouldly offers concise, readable assertions and human-friendly failure output w
 
 ## Other Tech Debt Tasks (Future)
 
-- REQ-TD-002: Audit and reduce reflection usage
-- REQ-TD-003: Remove deprecated APIs and update package references
+- REQ-TD-004: Audit and reduce reflection usage
+- REQ-TD-005: Remove deprecated APIs and update package references
+
+---
+
+## REQ-TD-002: Documentation Sync - Update README.md Status
+
+### Description
+
+Keep docs/requirements/README.md status indicators in sync with actual implementation status. When features are completed, update the status from 🔴 Not Started or 🟡 In Progress to 🟢 Complete.
+
+### Acceptance Criteria
+
+- [x] Phase 4 Loop status updated to Complete
+- [x] Phase 5 Testing status updated to Complete
+- [ ] All phase status indicators match actual implementation
+
+### Notes
+
+Discovered during JTBD audit 2026-01-27: README.md showed Loop Phase 4 as "Not Started" when it was fully implemented with tests.
+
+---
+
+## REQ-TD-003: Specification Checkbox Sync - Update Acceptance Criteria
+
+### Description
+
+Update unchecked acceptance criteria checkboxes in SPECIFICATION.md files when features are implemented. Many features show `- [ ]` (unchecked) when they should show `- [x]` (checked).
+
+### Affected Files
+
+- `docs/requirements/loop/SPECIFICATION.md` - ~40 criteria to update
+- `docs/requirements/tui/SPECIFICATION.md` - ~40 criteria to update
+- `docs/requirements/testing/SPECIFICATION.md` - ~5 criteria to update
+
+### Acceptance Criteria
+
+- [ ] All implemented features have checked boxes
+- [ ] Test case status columns show ✅ for passing tests
+
+### Notes
+
+Research agents created detailed gap analysis documents identifying which checkboxes need updating:
+- `docs/requirements/loop/IMPLEMENTATION_GAPS.md`
+- `docs/requirements/tui/GAP_ANALYSIS_SUMMARY.md`

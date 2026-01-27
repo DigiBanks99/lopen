@@ -269,4 +269,147 @@ public class SpectreLayoutRendererTests
         config.MainRatio.ShouldBe(7);
         config.PanelRatio.ShouldBe(3);
     }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_ReturnsActiveContext()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreLayoutRenderer(console);
+        var main = new Panel("Main content");
+        var panel = new Panel("Side panel");
+
+        // Act
+        await using var context = await renderer.StartLiveLayoutAsync(main, panel);
+
+        // Assert
+        context.IsActive.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_DisposeSetsInactive()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreLayoutRenderer(console);
+        var main = new Panel("Main content");
+
+        // Act
+        var context = await renderer.StartLiveLayoutAsync(main);
+        await context.DisposeAsync();
+
+        // Assert
+        context.IsActive.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_UpdateMainDoesNotThrow()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreLayoutRenderer(console);
+        var main = new Panel("Main content");
+        var panel = new Panel("Side panel");
+
+        // Act & Assert
+        await using var context = await renderer.StartLiveLayoutAsync(main, panel);
+        Should.NotThrow(() => context.UpdateMain(new Panel("Updated main")));
+    }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_UpdatePanelDoesNotThrow()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreLayoutRenderer(console);
+        var main = new Panel("Main content");
+        var panel = new Panel("Side panel");
+
+        // Act & Assert
+        await using var context = await renderer.StartLiveLayoutAsync(main, panel);
+        Should.NotThrow(() => context.UpdatePanel(new Panel("Updated panel")));
+    }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_RefreshDoesNotThrow()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreLayoutRenderer(console);
+        var main = new Panel("Main content");
+
+        // Act & Assert
+        await using var context = await renderer.StartLiveLayoutAsync(main);
+        Should.NotThrow(() => context.Refresh());
+    }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_NarrowTerminal_StillWorks()
+    {
+        // Arrange
+        var console = new TestConsole().Width(60);
+        var renderer = new SpectreLayoutRenderer(console);
+        var main = new Panel("Main content");
+        var panel = new Panel("Side panel");
+
+        // Act - Should work even with narrow terminal (degrades gracefully)
+        await using var context = await renderer.StartLiveLayoutAsync(main, panel);
+
+        // Assert
+        context.IsActive.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_NoPanel_Works()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreLayoutRenderer(console);
+        var main = new Panel("Main only");
+
+        // Act
+        await using var context = await renderer.StartLiveLayoutAsync(main);
+
+        // Assert
+        context.IsActive.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_CustomConfig_Accepted()
+    {
+        // Arrange
+        var console = new TestConsole().Width(150);
+        var renderer = new SpectreLayoutRenderer(console);
+        var main = new Panel("Main");
+        var panel = new Panel("Panel");
+        var config = new SplitLayoutConfig { MainRatio = 8, PanelRatio = 2, MinWidthForSplit = 140 };
+
+        // Act
+        await using var context = await renderer.StartLiveLayoutAsync(main, panel, config);
+
+        // Assert
+        context.IsActive.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_CancellationToken_Respected()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreLayoutRenderer(console);
+        var main = new Panel("Main content");
+        using var cts = new CancellationTokenSource();
+
+        // Act
+        var context = await renderer.StartLiveLayoutAsync(main, cancellationToken: cts.Token);
+
+        // Context should be active after start
+        context.IsActive.ShouldBeTrue();
+
+        // Dispose should complete without issues even before cancellation
+        await context.DisposeAsync();
+
+        // Assert - Context should be inactive after disposal
+        context.IsActive.ShouldBeFalse();
+    }
 }

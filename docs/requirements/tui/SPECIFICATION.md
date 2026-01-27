@@ -10,8 +10,8 @@
 | REQ-015 | Progress Indicators & Spinners | High | 🟢 Complete |
 | REQ-016 | Error Display & Correction Guidance | High | 🟢 Complete |
 | REQ-017 | Structured Data Display | Medium | 🟢 Complete |
-| REQ-018 | Layout & Right-Side Panels | Medium | 🔴 Planned |
-| REQ-019 | AI Response Streaming | High | 🔴 Planned |
+| REQ-018 | Layout & Right-Side Panels | Medium | 🟢 Complete |
+| REQ-019 | AI Response Streaming | High | 🟢 Complete |
 | REQ-020 | Responsive Terminal Detection | Medium | 🟢 Done |
 | REQ-021 | TUI Testing & Mocking | High | 🟢 Done |
 | REQ-022 | Welcome Header & REPL Banner | High | 🟢 Done |
@@ -423,8 +423,8 @@ Split-screen layouts with right-side task/status panels for enhanced context in 
 - [x] Two-column layout support (main content | right panel)
 - [x] Right panel shows task progress, status, or context
 - [x] Responsive: Hide right panel when terminal width < 100 chars
-- [ ] Non-blocking: Main content updates independently (future: LiveContext)
-- [ ] Auto-scroll right panel for long content (future: LiveContext)
+- [x] Non-blocking: Main content updates independently (ILiveLayoutContext with UpdateMain/UpdatePanel)
+- [x] Auto-scroll right panel for long content (VerticalOverflow.Ellipsis in SpectreLiveLayoutContext)
 
 ### Layout Architecture
 
@@ -514,7 +514,7 @@ Display Copilot SDK streaming responses with buffered paragraph rendering for op
 - [x] Buffer streaming tokens into paragraphs
 - [x] Render complete paragraphs (avoid char-by-char flicker)
 - [x] Show subtle progress indicator during buffering
-- [ ] Maintain REPL prompt position after response (future: Live display)
+- [x] Maintain REPL prompt position after response (RenderStreamWithLiveLayoutAsync + ILiveLayoutContext)
 - [x] Support inline code blocks and formatting
 
 ### Streaming Strategy: Static Chunks

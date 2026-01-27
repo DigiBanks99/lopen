@@ -230,4 +230,144 @@ public class MockLayoutRendererTests
         // Assert
         result.ShouldNotBeNull();
     }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_RecordsCall()
+    {
+        // Arrange
+        var renderer = new MockLayoutRenderer();
+        var main = new Text("Main");
+        var panel = new Text("Panel");
+
+        // Act
+        await using var context = await renderer.StartLiveLayoutAsync(main, panel);
+
+        // Assert
+        renderer.LiveLayoutCalls.Count.ShouldBe(1);
+        renderer.LiveLayoutCalls[0].InitialMain.ShouldBe(main);
+        renderer.LiveLayoutCalls[0].InitialPanel.ShouldBe(panel);
+    }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_ReturnsActiveContext()
+    {
+        // Arrange
+        var renderer = new MockLayoutRenderer();
+        var main = new Text("Main");
+
+        // Act
+        await using var context = await renderer.StartLiveLayoutAsync(main);
+
+        // Assert
+        context.IsActive.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task StartLiveLayoutAsync_SetsLastLiveContext()
+    {
+        // Arrange
+        var renderer = new MockLayoutRenderer();
+        var main = new Text("Main");
+
+        // Act
+        await using var context = await renderer.StartLiveLayoutAsync(main);
+
+        // Assert
+        renderer.LastLiveContext.ShouldNotBeNull();
+        renderer.LastLiveContext.ShouldBeSameAs(context);
+    }
+
+    [Fact]
+    public async Task MockLiveLayoutContext_RecordsMainUpdates()
+    {
+        // Arrange
+        var context = new MockLiveLayoutContext();
+        var content1 = new Text("Update 1");
+        var content2 = new Text("Update 2");
+
+        // Act
+        context.UpdateMain(content1);
+        context.UpdateMain(content2);
+
+        // Assert
+        context.MainUpdates.Count.ShouldBe(2);
+        context.MainUpdates[0].ShouldBe(content1);
+        context.MainUpdates[1].ShouldBe(content2);
+    }
+
+    [Fact]
+    public async Task MockLiveLayoutContext_RecordsPanelUpdates()
+    {
+        // Arrange
+        var context = new MockLiveLayoutContext();
+        var content = new Text("Panel update");
+
+        // Act
+        context.UpdatePanel(content);
+
+        // Assert
+        context.PanelUpdates.Count.ShouldBe(1);
+        context.PanelUpdates[0].ShouldBe(content);
+    }
+
+    [Fact]
+    public async Task MockLiveLayoutContext_CountsRefreshCalls()
+    {
+        // Arrange
+        var context = new MockLiveLayoutContext();
+
+        // Act
+        context.Refresh();
+        context.Refresh();
+        context.Refresh();
+
+        // Assert
+        context.RefreshCount.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task MockLiveLayoutContext_DisposeSetsInactive()
+    {
+        // Arrange
+        var context = new MockLiveLayoutContext();
+
+        // Act
+        await context.DisposeAsync();
+
+        // Assert
+        context.IsActive.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task MockLiveLayoutContext_UpdatesIgnoredAfterDispose()
+    {
+        // Arrange
+        var context = new MockLiveLayoutContext();
+
+        // Act
+        await context.DisposeAsync();
+        context.UpdateMain(new Text("Should be ignored"));
+        context.UpdatePanel(new Text("Should be ignored"));
+        context.Refresh();
+
+        // Assert
+        context.MainUpdates.Count.ShouldBe(0);
+        context.PanelUpdates.Count.ShouldBe(0);
+        context.RefreshCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Reset_ClearsLiveLayoutCallsAndContext()
+    {
+        // Arrange
+        var renderer = new MockLayoutRenderer();
+        await renderer.StartLiveLayoutAsync(new Text("Main"));
+
+        // Act
+        renderer.Reset();
+
+        // Assert
+        renderer.LiveLayoutCalls.Count.ShouldBe(0);
+        renderer.LastLiveContext.ShouldBeNull();
+    }
 }

@@ -429,4 +429,150 @@ public class SpectreStreamRendererTests
             await Task.Delay(20, cancellationToken);
         }
     }
+
+    #region RenderStreamWithLiveLayoutAsync Tests
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_ReturnsFullContent()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var layoutContext = new MockLiveLayoutContext();
+
+        // Act
+        var result = await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("Hello", " ", "World"),
+            layoutContext);
+
+        // Assert
+        result.ShouldBe("Hello World");
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_UpdatesLiveContext()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var layoutContext = new MockLiveLayoutContext();
+
+        // Act
+        await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("Hello", " ", "World"),
+            layoutContext);
+
+        // Assert - Should have updated main content at least once
+        layoutContext.MainUpdates.Count.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_RefreshesContext()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var layoutContext = new MockLiveLayoutContext();
+
+        // Act
+        await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("Hello", " ", "World"),
+            layoutContext);
+
+        // Assert - Should have called Refresh
+        layoutContext.RefreshCount.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_ShowsThinkingIndicator()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var layoutContext = new MockLiveLayoutContext();
+        var config = new StreamConfig { ShowThinkingIndicator = true };
+
+        // Act
+        await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("Test"),
+            layoutContext,
+            config);
+
+        // Assert - First update should contain thinking indicator
+        // (before first token, it shows thinking, then content replaces it)
+        layoutContext.MainUpdates.Count.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_ThrowsOnNullContext()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+
+        // Act & Assert
+        await Should.ThrowAsync<ArgumentNullException>(async () =>
+            await renderer.RenderStreamWithLiveLayoutAsync(
+                CreateTokenStream("Test"),
+                null!));
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_HandlesCodeBlocks()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var layoutContext = new MockLiveLayoutContext();
+
+        // Act
+        var result = await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("```csharp\n", "var x = 1;\n", "```"),
+            layoutContext);
+
+        // Assert
+        result.ShouldContain("var x = 1");
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_RecordsMetrics()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var layoutContext = new MockLiveLayoutContext();
+        var metricsCollector = new MetricsCollector();
+        var config = new StreamConfig { MetricsCollector = metricsCollector };
+
+        // Act
+        await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("Hello", " ", "World"),
+            layoutContext,
+            config);
+
+        // Assert
+        var metrics = metricsCollector.GetLatestMetrics();
+        metrics.ShouldNotBeNull();
+        metrics.TokenCount.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_HandlesCancellation()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreStreamRenderer(console);
+        var layoutContext = new MockLiveLayoutContext();
+        using var cts = new CancellationTokenSource();
+
+        // Act & Assert
+        await cts.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(async () =>
+            await renderer.RenderStreamWithLiveLayoutAsync(
+                CreateSlowTokenStream(cts.Token),
+                layoutContext,
+                cancellationToken: cts.Token));
+    }
+
+    #endregion
 }

@@ -3,6 +3,36 @@ using Spectre.Console.Rendering;
 namespace Lopen.Core;
 
 /// <summary>
+/// Context for managing live layout updates during streaming operations.
+/// Allows non-blocking updates to main content and side panel independently.
+/// </summary>
+public interface ILiveLayoutContext : IAsyncDisposable
+{
+    /// <summary>
+    /// Updates the main content area without blocking.
+    /// </summary>
+    /// <param name="content">The new main content to display.</param>
+    void UpdateMain(IRenderable content);
+
+    /// <summary>
+    /// Updates the side panel content without blocking.
+    /// </summary>
+    /// <param name="content">The new panel content to display.</param>
+    void UpdatePanel(IRenderable content);
+
+    /// <summary>
+    /// Refreshes the display to show current updates.
+    /// Call after making updates to reflect changes.
+    /// </summary>
+    void Refresh();
+
+    /// <summary>
+    /// Gets whether the live context is currently active.
+    /// </summary>
+    bool IsActive { get; }
+}
+
+/// <summary>
 /// Status of a task in a task list panel.
 /// </summary>
 public enum TaskStatus
@@ -84,4 +114,19 @@ public interface ILayoutRenderer
     /// Gets the current terminal width.
     /// </summary>
     int TerminalWidth { get; }
+
+    /// <summary>
+    /// Starts a live layout context for non-blocking updates during streaming.
+    /// Use within a using statement to properly dispose the live context.
+    /// </summary>
+    /// <param name="initialMain">Initial main content to display.</param>
+    /// <param name="initialPanel">Optional initial panel content.</param>
+    /// <param name="config">Layout configuration (optional).</param>
+    /// <param name="cancellationToken">Cancellation token to stop live updates.</param>
+    /// <returns>A live layout context for making updates.</returns>
+    Task<ILiveLayoutContext> StartLiveLayoutAsync(
+        IRenderable initialMain,
+        IRenderable? initialPanel = null,
+        SplitLayoutConfig? config = null,
+        CancellationToken cancellationToken = default);
 }

@@ -7,6 +7,7 @@ public class MockStreamRenderer : IStreamRenderer
 {
     private readonly List<FlushEvent> _flushEvents = new();
     private readonly List<string> _allTokens = new();
+    private readonly List<LiveLayoutCall> _liveLayoutCalls = new();
 
     /// <summary>
     /// Gets all flush events that occurred during rendering.
@@ -141,8 +142,77 @@ public class MockStreamRenderer : IStreamRenderer
     {
         _flushEvents.Clear();
         _allTokens.Clear();
+        _liveLayoutCalls.Clear();
         ThinkingIndicatorShown = false;
         WasCancelled = false;
+        LastLiveLayoutContext = null;
+    }
+
+    /// <inheritdoc />
+    public async Task<string> RenderStreamWithLiveLayoutAsync(
+        IAsyncEnumerable<string> tokenStream,
+        ILiveLayoutContext layoutContext,
+        StreamConfig? config = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(layoutContext);
+        config ??= new StreamConfig();
+
+        _liveLayoutCalls.Add(new LiveLayoutCall
+        {
+            LayoutContext = layoutContext,
+            Config = config
+        });
+        LastLiveLayoutContext = layoutContext;
+
+        var fullContent = new System.Text.StringBuilder();
+
+        if (config.ShowThinkingIndicator)
+        {
+            ThinkingIndicatorShown = true;
+        }
+
+        try
+        {
+            await foreach (var token in tokenStream.WithCancellation(cancellationToken))
+            {
+                _allTokens.Add(token);
+                OnToken?.Invoke(token);
+                fullContent.Append(token);
+
+                // Simulate refresh on each token for testing
+                if (layoutContext is MockLiveLayoutContext mockContext)
+                {
+                    mockContext.SimulateMainUpdate();
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            WasCancelled = true;
+            throw;
+        }
+
+        return fullContent.ToString();
+    }
+
+    /// <summary>
+    /// Gets all live layout calls.
+    /// </summary>
+    public IReadOnlyList<LiveLayoutCall> LiveLayoutCalls => _liveLayoutCalls.AsReadOnly();
+
+    /// <summary>
+    /// Gets the last used live layout context.
+    /// </summary>
+    public ILiveLayoutContext? LastLiveLayoutContext { get; private set; }
+
+    /// <summary>
+    /// Record of a live layout stream call.
+    /// </summary>
+    public record LiveLayoutCall
+    {
+        public ILiveLayoutContext? LayoutContext { get; init; }
+        public StreamConfig? Config { get; init; }
     }
 
     private static int CountOccurrences(string text, string pattern)

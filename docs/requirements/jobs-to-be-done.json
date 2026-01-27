@@ -84,16 +84,16 @@
     "requirement": "REQ-018",
     "description": "TUI Live Display - Non-blocking right panel updates during streaming",
     "priority": 11,
-    "status": "open",
-    "notes": "Currently panels are static. Need Spectre.Console Live display for concurrent main content and panel updates during streaming."
+    "status": "done",
+    "notes": "Completed 2026-01-27: ILiveLayoutContext interface with UpdateMain/UpdatePanel/Refresh, SpectreLiveLayoutContext using Spectre.Console Live display, MockLiveLayoutContext for testing. StartLiveLayoutAsync method on ILayoutRenderer. 13 tests added."
   },
   {
     "id": "JTBD-012",
     "requirement": "REQ-019",
     "description": "TUI Stream Prompt Position - Maintain REPL prompt after streaming response",
     "priority": 12,
-    "status": "open",
-    "notes": "After streaming response, prompt position isn't preserved. Need Live display integration for proper cursor management."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Added RenderStreamWithLiveLayoutAsync method to IStreamRenderer. Implemented in SpectreStreamRenderer with ILiveLayoutContext integration for non-blocking streaming updates. MockStreamRenderer updated with recording. 16 tests added (889 total)."
   },
   {
     "id": "JTBD-013",

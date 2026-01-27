@@ -58,23 +58,27 @@
 | REQ-023 | Custom Tools | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
 | REQ-024 | Session Persistence | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
 
-### Phase 4 - The Lopen Loop (In Progress)
+### Phase 4 - The Lopen Loop (Complete)
 
 | ID | Requirement | Module | Status |
 |----|-------------|--------|--------|
-| REQ-030 | Loop Command | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
-| REQ-031 | Loop Configuration | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
-| REQ-032 | Plan Phase | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
-| REQ-033 | Build Phase | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
-| REQ-034 | State Management | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
-| REQ-035 | Output Streaming | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
-| REQ-036 | Verification Agent | [loop](loop/SPECIFICATION.md) | 🔴 Not Started |
+| REQ-030 | Loop Command | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
+| REQ-031 | Loop Configuration | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
+| REQ-032 | Plan Phase | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
+| REQ-033 | Build Phase | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
+| REQ-034 | State Management | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
+| REQ-035 | Output Streaming | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
+| REQ-036 | Verification Agent | [loop](loop/SPECIFICATION.md) | 🟡 Partial |
 
-### Phase 5 - Self-Testing (Planned)
+> **Note**: REQ-036 Verification Agent service is implemented but not yet integrated into the build loop. See JTBD-002.
+
+### Phase 5 - Self-Testing (Complete)
 
 | ID | Requirement | Module | Status |
 |----|-------------|--------|--------|
-| REQ-020 | Self-Testing Command | [testing](testing/SPECIFICATION.md) | 🔴 Not Started |
+| REQ-020-TEST | Self-Testing Command | [testing](testing/SPECIFICATION.md) | 🟢 Complete |
+
+> **Note**: Minor enhancements pending: per-test timestamps (JTBD-006), stack traces in verbose mode (JTBD-007).
 
 ### Non-Functional Requirements
 
@@ -115,6 +119,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-01-27 | Comprehensive JTBD audit: identified 13 open items, updated Loop/Testing status to Complete |
 | 2026-01-25 | Phase 3 complete, Phase 4 research complete, added Phase 5 Self-Testing |
 | 2026-01-24 | Phase 2 complete, added Phase 3 Copilot Integration requirements |
 | 2026-01-23 | Initial requirements, split into modules |

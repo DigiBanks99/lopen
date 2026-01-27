@@ -137,4 +137,154 @@ public class SpectreLayoutRenderer : ILayoutRenderer
         TaskStatus.Failed => ("✗", "red"),
         _ => ("○", "dim")
     };
+
+    /// <inheritdoc />
+    public async Task<ILiveLayoutContext> StartLiveLayoutAsync(
+        IRenderable initialMain,
+        IRenderable? initialPanel = null,
+        SplitLayoutConfig? config = null,
+        CancellationToken cancellationToken = default)
+    {
+        config ??= new SplitLayoutConfig();
+        var context = new SpectreLiveLayoutContext(_console, initialMain, initialPanel, config);
+        await context.StartAsync(cancellationToken);
+        return context;
+    }
+}
+
+/// <summary>
+/// Live layout context using Spectre.Console's Live display.
+/// Enables non-blocking updates to main content and side panel.
+/// </summary>
+public sealed class SpectreLiveLayoutContext : ILiveLayoutContext
+{
+    private readonly IAnsiConsole _console;
+    private readonly SplitLayoutConfig _config;
+    private readonly Layout _layout;
+    private LiveDisplayContext? _liveContext;
+    private readonly TaskCompletionSource _startedTcs = new();
+    private CancellationTokenSource? _cts;
+    private Task? _displayTask;
+    private volatile bool _isActive;
+
+    internal SpectreLiveLayoutContext(
+        IAnsiConsole console,
+        IRenderable initialMain,
+        IRenderable? initialPanel,
+        SplitLayoutConfig config)
+    {
+        _console = console ?? throw new ArgumentNullException(nameof(console));
+        _config = config ?? new SplitLayoutConfig();
+
+        // Create layout based on terminal width and config
+        if (_console.Profile.Width >= _config.MinWidthForSplit && initialPanel != null)
+        {
+            _layout = new Layout("Root")
+                .SplitColumns(
+                    new Layout("Main").Ratio(_config.MainRatio),
+                    new Layout("Panel").Ratio(_config.PanelRatio)
+                );
+            _layout["Main"].Update(initialMain);
+            _layout["Panel"].Update(initialPanel);
+        }
+        else
+        {
+            _layout = new Layout("Root");
+            _layout.Update(initialMain);
+        }
+    }
+
+    /// <inheritdoc />
+    public bool IsActive => _isActive;
+
+    internal async Task StartAsync(CancellationToken cancellationToken)
+    {
+        _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        _displayTask = Task.Run(async () =>
+        {
+            await _console.Live(_layout)
+                .AutoClear(false)
+                .Overflow(VerticalOverflow.Ellipsis)
+                .StartAsync(async ctx =>
+                {
+                    _liveContext = ctx;
+                    _isActive = true;
+                    _startedTcs.TrySetResult();
+
+                    try
+                    {
+                        // Keep alive until disposed
+                        await Task.Delay(Timeout.Infinite, _cts.Token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected on dispose
+                    }
+                });
+        }, _cts.Token);
+
+        // Wait for the live context to be ready
+        await _startedTcs.Task;
+    }
+
+    /// <inheritdoc />
+    public void UpdateMain(IRenderable content)
+    {
+        if (!_isActive || _layout == null) return;
+
+        if (_layout["Main"] != null)
+        {
+            _layout["Main"].Update(content);
+        }
+        else
+        {
+            _layout.Update(content);
+        }
+    }
+
+    /// <inheritdoc />
+    public void UpdatePanel(IRenderable content)
+    {
+        if (!_isActive || _layout == null) return;
+
+        if (_layout["Panel"] != null)
+        {
+            _layout["Panel"].Update(content);
+        }
+    }
+
+    /// <inheritdoc />
+    public void Refresh()
+    {
+        if (_isActive)
+        {
+            _liveContext?.Refresh();
+        }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        _isActive = false;
+
+        if (_cts != null)
+        {
+            await _cts.CancelAsync();
+            _cts.Dispose();
+            _cts = null;
+        }
+
+        if (_displayTask != null)
+        {
+            try
+            {
+                await _displayTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected
+            }
+        }
+    }
 }

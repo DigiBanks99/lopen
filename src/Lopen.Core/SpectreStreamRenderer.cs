@@ -1,5 +1,6 @@
 using System.Text;
 using Spectre.Console;
+using Spectre.Console.Rendering;
 
 namespace Lopen.Core;
 
@@ -131,6 +132,128 @@ public class SpectreStreamRenderer : IStreamRenderer
         {
             DisplayMetrics(config.MetricsCollector.GetLatestMetrics());
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<string> RenderStreamWithLiveLayoutAsync(
+        IAsyncEnumerable<string> tokenStream,
+        ILiveLayoutContext layoutContext,
+        StreamConfig? config = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(layoutContext);
+        config ??= new StreamConfig();
+
+        var fullContent = new StringBuilder();
+        var buffer = new StringBuilder();
+        var tokenCount = 0;
+        var totalTokenCount = 0;
+        long bytesReceived = 0;
+        var lastFlush = _timeProvider.UtcNow;
+        var firstToken = true;
+        var inCodeBlock = false;
+
+        // Start metrics collection if enabled
+        config.MetricsCollector?.StartRequest();
+
+        // Show initial indicator in live context
+        if (config.ShowThinkingIndicator)
+        {
+            var thinkingContent = CreateMarkupRenderable(config.ThinkingText, dim: true);
+            layoutContext.UpdateMain(thinkingContent);
+            layoutContext.Refresh();
+        }
+
+        try
+        {
+            await foreach (var token in tokenStream.WithCancellation(cancellationToken))
+            {
+                // Record first token timing
+                if (firstToken)
+                {
+                    config.MetricsCollector?.RecordFirstToken();
+                    firstToken = false;
+                }
+
+                buffer.Append(token);
+                fullContent.Append(token);
+                tokenCount++;
+                totalTokenCount++;
+                bytesReceived += Encoding.UTF8.GetByteCount(token);
+
+                // Track code block state
+                var codeBlockMarkers = CountOccurrences(buffer.ToString(), "```");
+                inCodeBlock = codeBlockMarkers % 2 == 1;
+
+                // Don't flush mid-code-block
+                if (inCodeBlock)
+                {
+                    continue;
+                }
+
+                var timeSinceFlush = (_timeProvider.UtcNow - lastFlush).TotalMilliseconds;
+                var shouldFlush =
+                    token.Contains("\n\n") ||
+                    timeSinceFlush > config.FlushTimeoutMs ||
+                    tokenCount >= config.MaxTokensBeforeFlush;
+
+                if (shouldFlush && buffer.Length > 0)
+                {
+                    // Update live context with accumulated content
+                    var renderable = CreateContentRenderable(fullContent.ToString());
+                    layoutContext.UpdateMain(renderable);
+                    layoutContext.Refresh();
+
+                    buffer.Clear();
+                    tokenCount = 0;
+                    lastFlush = _timeProvider.UtcNow;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            config.MetricsCollector?.RecordCompletion(totalTokenCount, bytesReceived);
+
+            // Show partial content on cancellation
+            if (fullContent.Length > 0)
+            {
+                var renderable = CreateContentRenderable(fullContent + "...");
+                layoutContext.UpdateMain(renderable);
+                layoutContext.Refresh();
+            }
+            throw;
+        }
+
+        // Final update with complete content
+        if (fullContent.Length > 0)
+        {
+            var renderable = CreateContentRenderable(fullContent.ToString());
+            layoutContext.UpdateMain(renderable);
+            layoutContext.Refresh();
+        }
+
+        config.MetricsCollector?.RecordCompletion(totalTokenCount, bytesReceived);
+
+        return fullContent.ToString();
+    }
+
+    private IRenderable CreateMarkupRenderable(string text, bool dim = false)
+    {
+        if (_useColors && dim)
+        {
+            return new Markup($"[dim]{Markup.Escape(text)}[/]");
+        }
+        return new Text(text);
+    }
+
+    private IRenderable CreateContentRenderable(string content)
+    {
+        if (_useColors)
+        {
+            var formatted = FormatMarkdown(content);
+            return new Markup(formatted);
+        }
+        return new Text(content);
     }
 
     private void DisplayMetrics(ResponseMetrics? metrics)

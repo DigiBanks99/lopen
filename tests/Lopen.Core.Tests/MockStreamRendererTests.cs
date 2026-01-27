@@ -220,6 +220,128 @@ public class MockStreamRendererTests
         config.ThinkingText.ShouldBe("⏳ Thinking...");
     }
 
+    [Fact]
+    public void StreamConfig_LiveContextAndPromptTextDefaults()
+    {
+        // Arrange & Act
+        var config = new StreamConfig();
+
+        // Assert
+        config.LiveContext.ShouldBeNull();
+        config.PromptText.ShouldBe("lopen> ");
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_RecordsLiveLayoutCall()
+    {
+        // Arrange
+        var renderer = new MockStreamRenderer();
+        var layoutContext = new MockLiveLayoutContext();
+
+        // Act
+        await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("Hello", "World"),
+            layoutContext);
+
+        // Assert
+        renderer.LiveLayoutCalls.Count.ShouldBe(1);
+        renderer.LiveLayoutCalls[0].LayoutContext.ShouldBe(layoutContext);
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_ReturnsFullContent()
+    {
+        // Arrange
+        var renderer = new MockStreamRenderer();
+        var layoutContext = new MockLiveLayoutContext();
+
+        // Act
+        var result = await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("Hello", " ", "World"),
+            layoutContext);
+
+        // Assert
+        result.ShouldBe("Hello World");
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_SetsLastLiveContext()
+    {
+        // Arrange
+        var renderer = new MockStreamRenderer();
+        var layoutContext = new MockLiveLayoutContext();
+
+        // Act
+        await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("Test"),
+            layoutContext);
+
+        // Assert
+        renderer.LastLiveLayoutContext.ShouldBe(layoutContext);
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_SimulatesMainUpdates()
+    {
+        // Arrange
+        var renderer = new MockStreamRenderer();
+        var layoutContext = new MockLiveLayoutContext();
+
+        // Act
+        await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("A", "B", "C"),
+            layoutContext);
+
+        // Assert - Should have simulated one update per token
+        layoutContext.SimulatedMainUpdateCount.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_RecordsAllTokens()
+    {
+        // Arrange
+        var renderer = new MockStreamRenderer();
+        var layoutContext = new MockLiveLayoutContext();
+
+        // Act
+        await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("A", "B", "C"),
+            layoutContext);
+
+        // Assert
+        renderer.AllTokens.Count.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task RenderStreamWithLiveLayoutAsync_ThrowsOnNullContext()
+    {
+        // Arrange
+        var renderer = new MockStreamRenderer();
+
+        // Act & Assert
+        await Should.ThrowAsync<ArgumentNullException>(async () =>
+            await renderer.RenderStreamWithLiveLayoutAsync(
+                CreateTokenStream("Test"),
+                null!));
+    }
+
+    [Fact]
+    public async Task Reset_ClearsLiveLayoutData()
+    {
+        // Arrange
+        var renderer = new MockStreamRenderer();
+        await renderer.RenderStreamWithLiveLayoutAsync(
+            CreateTokenStream("Test"),
+            new MockLiveLayoutContext());
+
+        // Act
+        renderer.Reset();
+
+        // Assert
+        renderer.LiveLayoutCalls.Count.ShouldBe(0);
+        renderer.LastLiveLayoutContext.ShouldBeNull();
+    }
+
     private static async IAsyncEnumerable<string> CreateTokenStream(params string[] tokens)
     {
         foreach (var token in tokens)

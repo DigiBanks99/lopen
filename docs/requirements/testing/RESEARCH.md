@@ -2008,5 +2008,408 @@ Next steps: Begin implementation with Phase 1 (Core Infrastructure).
 
 ---
 
-**Document Complete**
+## Implementation Gap Analysis (January 26, 2025)
+
+### Current Implementation Status
+
+The Testing module has been **substantially implemented** with the following components in place:
+
+#### ✅ Completed Features
+
+1. **Core Architecture** (Phase 1)
+   - ✅ `ITestCase` interface with `TestId`, `Description`, `Suite`, `ExecuteAsync()`
+   - ✅ `TestRunner` with parallel execution using `Parallel.ForEachAsync`
+   - ✅ `CommandTestCase` for executing CLI commands via `System.Diagnostics.Process`
+   - ✅ `TestContext` with Model, Timeout, Verbose, LopenPath configuration
+   - ✅ `TestResult` with comprehensive execution metadata
+   - ✅ `TestRunSummary` with aggregated results and statistics
+   - ✅ `KeywordValidator` implementing `ITestValidator` for pattern matching
+   - ✅ `TestStatus` enum (Pass, Fail, Timeout, Error, Skipped)
+
+2. **Test Suites** (Phase 2)
+   - ✅ `TestSuiteRegistry` with suite management and filtering
+   - ✅ `CoreTestSuite` (T-CORE-01: version, T-CORE-02: help)
+   - ✅ `AuthTestSuite` (T-AUTH-01: auth status)
+   - ✅ `SessionTestSuite` (T-SESSION-01: list sessions)
+   - ✅ `ChatTestSuite` (T-CHAT-01: basic math, T-CHAT-02: greeting)
+
+3. **CLI Integration**
+   - ✅ `lopen test self` command in Program.cs
+   - ✅ `--verbose/-v` flag for detailed output
+   - ✅ `--filter` pattern matching (ID, suite, description)
+   - ✅ `--model/-m` override (default: gpt-5-mini)
+   - ✅ `--timeout/-t` per-test timeout configuration
+   - ✅ `--format/-f` for text/json output
+   - ✅ `--interactive/-i` for test selection
+   - ✅ Exit code 0 on success, 1 on failure
+
+4. **Output & UI** (Phase 3)
+   - ✅ `TestOutputService` using ConsoleOutput abstraction
+   - ✅ Header display with model and test count
+   - ✅ Table display for test results
+   - ✅ Summary panel with pass/fail counts
+   - ✅ Verbose output with per-test details
+   - ✅ JSON output format with full result serialization
+   - ✅ Status symbols (✓ ✗ ⏱ ⚠)
+
+5. **Interactive Mode**
+   - ✅ `IInteractiveTestSelector` interface
+   - ✅ `SpectreInteractiveTestSelector` with multi-select prompts
+   - ✅ `MockInteractiveTestSelector` for testing
+   - ✅ Suite and test selection UI
+   - ✅ Model confirmation
+
+6. **Error Handling**
+   - ✅ Timeout handling with `CancellationTokenSource`
+   - ✅ Exit code validation
+   - ✅ Exception catching with Error status
+   - ✅ Cancellation support (Ctrl+C)
+
+7. **Test Coverage**
+   - ✅ 60+ unit tests for Testing module components
+   - ✅ Tests for: KeywordValidator, TestRunner, TestOutputService, TestContext, TestResult, TestRunSummary, TestSuiteRegistry, InteractiveTestSelector
+
+#### 🟡 Partially Implemented / Missing Features
+
+Based on SPECIFICATION.md acceptance criteria marked incomplete (`- [ ]`):
+
+### 1. **Per-Test Logging with Timestamps** (Phase 2)
+   **Status:** ❌ NOT IMPLEMENTED  
+   **Specification Line:** Line 39 in SPECIFICATION.md
+   
+   **Current State:**
+   - `TestResult` has `StartTime` and `EndTime` properties (DateTimeOffset)
+   - Timestamps are captured but NOT displayed in output
+   - Verbose output shows: `✓ T-CHAT-01: Basic math question (1.2s)` 
+   - Missing: Actual timestamp display like `[2025-01-26 10:30:45.123]`
+   
+   **Required Changes:**
+   
+   ```csharp
+   // In TestOutputService.cs - DisplayVerboseResult method (line 81-103)
+   public void DisplayVerboseResult(TestResult result)
+   {
+       var statusSymbol = result.Status switch
+       {
+           TestStatus.Pass => "✓",
+           TestStatus.Fail => "✗",
+           TestStatus.Timeout => "⏱",
+           TestStatus.Error => "⚠",
+           _ => "-"
+       };
+       
+       // ADD TIMESTAMP
+       var timestamp = result.StartTime.ToString("yyyy-MM-dd HH:mm:ss.fff");
+       
+       // MODIFY OUTPUT LINE
+       _output.WriteLine($"[{timestamp}] {statusSymbol} {result.TestId}: {result.Description} ({result.Duration.TotalSeconds:F1}s)");
+       
+       // Rest remains same...
+   }
+   ```
+   
+   **Alternative Implementation:**
+   - Add `--show-timestamps` flag to control timestamp display
+   - Store per-test logs in temporary files (as mentioned in spec line 186)
+   - Display timestamps only in verbose mode
+   
+   **Estimated Effort:** 2-4 hours
+   
+   **Test Changes Needed:**
+   - Update `TestOutputServiceTests.DisplayVerboseResult_ShowsPassingTest` to verify timestamp format
+   - Add test for timestamp formatting edge cases
+
+---
+
+### 2. **T-AUTH-02: Interactive Device Auth Flow Test**
+   **Status:** ❌ NOT IMPLEMENTED  
+   **Specification Lines:** Lines 74, 150-169, 198 in SPECIFICATION.md
+   
+   **Current State:**
+   - Only T-AUTH-01 (auth status check) is implemented in `AuthTestSuite.cs`
+   - No interactive device flow test exists
+   - Interactive mode exists but only for test selection, not OAuth flow testing
+   
+   **Required Implementation:**
+   
+   The specification describes two modes for `--interactive`:
+   1. **Mode 1:** Interactive test selection (✅ IMPLEMENTED)
+   2. **Mode 2:** Interactive device auth flow testing (❌ MISSING)
+   
+   **Spec Requirements (Lines 161-169):**
+   ```
+   Mode 2: Interactive Device Auth Flow Testing (selected via menu or when no automated tests match)
+   1. Prompt user to clear existing authentication: `lopen auth logout`
+   2. Initiate device flow: `lopen auth login`
+   3. Guide user through OAuth device code flow
+   4. Prompt for MFA completion
+   5. Validate credential storage succeeds
+   6. Check for BUG-AUTH-001 (GCM credential store error)
+   7. Report success/failure with diagnostic information
+   ```
+   
+   **Implementation Approach:**
+   
+   **Option A: Add Manual Test Case Type**
+   ```csharp
+   // Create new test case type: InteractiveTestCase.cs
+   public sealed class InteractiveTestCase : ITestCase
+   {
+       public string TestId { get; }
+       public string Description { get; }
+       public string Suite { get; }
+       
+       private readonly Func<TestContext, CancellationToken, Task<TestResult>> _executeFunc;
+       
+       public async Task<TestResult> ExecuteAsync(TestContext context, CancellationToken ct)
+       {
+           return await _executeFunc(context, ct);
+       }
+   }
+   
+   // In AuthTestSuite.cs - Add T-AUTH-02
+   yield return new InteractiveTestCase(
+       testId: "T-AUTH-02",
+       description: "Interactive device auth flow",
+       suite: SuiteName,
+       executeFunc: async (context, ct) =>
+       {
+           // 1. Prompt to logout
+           Console.WriteLine("Step 1: Logging out...");
+           await RunCommand("lopen", ["auth", "logout"], ct);
+           
+           // 2. Initiate login
+           Console.WriteLine("Step 2: Initiating device flow...");
+           Console.WriteLine("Please follow the prompts to complete OAuth authentication.");
+           var (output, exitCode) = await RunCommand("lopen", ["auth", "login"], ct);
+           
+           // 3. Validate credential storage
+           Console.WriteLine("Step 3: Validating credentials...");
+           var (statusOutput, statusCode) = await RunCommand("lopen", ["auth", "status"], ct);
+           
+           bool success = statusOutput.Contains("Authenticated", StringComparison.OrdinalIgnoreCase);
+           
+           return new TestResult
+           {
+               TestId = "T-AUTH-02",
+               Suite = "auth",
+               Description = "Interactive device auth flow",
+               Status = success ? TestStatus.Pass : TestStatus.Fail,
+               Duration = TimeSpan.Zero, // Calculated elsewhere
+               StartTime = DateTimeOffset.Now,
+               EndTime = DateTimeOffset.Now,
+               ResponsePreview = statusOutput,
+               Error = success ? null : "Authentication failed or credentials not stored"
+           };
+       }
+   );
+   ```
+   
+   **Option B: Separate Interactive Mode Command**
+   ```bash
+   # Add dedicated command for manual auth testing
+   lopen test self --suite auth --interactive
+   
+   # Or specific flag
+   lopen test self --test-auth-flow
+   ```
+   
+   **Considerations:**
+   - Interactive tests cannot run in parallel with automated tests
+   - Should prompt user before executing (can't be automated in CI/CD)
+   - Needs clear UI guidance (Spectre.Console panels)
+   - Should validate BUG-AUTH-001 (GCM credential store error)
+   
+   **Estimated Effort:** 8-12 hours (includes UI design, error handling, testing)
+   
+   **Test Changes Needed:**
+   - Mock implementation for CI/CD testing
+   - Integration test that simulates interactive flow
+   - Document manual testing procedure
+
+---
+
+### 3. **Stack Traces Only in Debug/Verbose Mode**
+   **Status:** ⚠️ PARTIALLY IMPLEMENTED  
+   **Specification:** Implied by "verbose output" requirement
+   
+   **Current State:**
+   - Exception handling in `CommandTestCase.cs` line 99-104:
+     ```csharp
+     catch (Exception ex)
+     {
+         stopwatch.Stop();
+         return CreateResult(startTime, stopwatch.Elapsed, TestStatus.Error,
+             error: ex.Message);  // Only message, not stack trace
+     }
+     ```
+   - Only `ex.Message` is captured, not full stack trace
+   - No conditional logic based on verbose mode
+   
+   **Gap:**
+   - Stack traces are never captured or displayed
+   - Verbose mode doesn't change error detail level
+   
+   **Required Changes:**
+   
+   ```csharp
+   // In CommandTestCase.cs - ExecuteAsync method
+   catch (Exception ex)
+   {
+       stopwatch.Stop();
+       
+       // Capture full error details based on verbose mode
+       var errorMessage = context.Verbose 
+           ? $"{ex.Message}\n\nStack Trace:\n{ex.StackTrace}"
+           : ex.Message;
+       
+       return CreateResult(startTime, stopwatch.Elapsed, TestStatus.Error,
+           error: errorMessage);
+   }
+   ```
+   
+   **Alternative Approach:**
+   - Add `--debug` flag separate from `--verbose`
+   - Store full exception in TestResult (new property: `Exception? Exception`)
+   - Conditionally display in TestOutputService based on verbosity level
+   
+   **Implementation:**
+   ```csharp
+   // In TestResult.cs - Add new property
+   public Exception? Exception { get; init; }
+   
+   // In TestOutputService.cs - DisplayVerboseResult
+   if (result.Status == TestStatus.Error && context.Verbose)
+   {
+       if (result.Exception is not null)
+       {
+           _output.Muted($"  Exception: {result.Exception.GetType().Name}");
+           _output.Muted($"  Stack Trace:\n{result.Exception.StackTrace}");
+       }
+   }
+   ```
+   
+   **Estimated Effort:** 2-3 hours
+   
+   **Test Changes Needed:**
+   - Add test for verbose error output with stack trace
+   - Add test for non-verbose error output without stack trace
+
+---
+
+### Additional Observations
+
+#### 🎯 Architecture Strengths
+1. Clean separation of concerns (TestRunner, TestCase, Validator, OutputService)
+2. Good use of Command Pattern for test cases
+3. Strategy Pattern for validators (extensible)
+4. Proper async/await usage throughout
+5. Comprehensive test coverage (60+ tests)
+
+#### 🔧 Minor Improvements (Not in Spec)
+1. **Rate Limiting**: Specification mentions rate limiting (line 227) but not implemented
+   - Could use `SemaphoreSlim` to throttle concurrent test execution
+   
+2. **Test Logs Directory**: Spec mentions "temporary directory" for logs (line 186)
+   - Currently not creating or saving per-test logs to files
+   
+3. **REPL Tests**: Specification includes REPL test suite (T-REPL-01, T-REPL-02, T-REPL-03)
+   - Not implemented (would require process input/output simulation)
+   
+4. **Advanced Validation**: Research doc mentions regex and fuzzy matching
+   - Only keyword validation implemented (sufficient for Phase 1)
+
+#### 📊 Test Coverage Breakdown
+- ✅ KeywordValidator: 13 tests
+- ✅ TestRunner: 6 tests  
+- ✅ TestOutputService: 7 tests
+- ✅ TestContext: 2 tests
+- ✅ TestResult: 3 tests
+- ✅ TestRunSummary: 8 tests
+- ✅ TestSuiteRegistry: 6 tests
+- ✅ InteractiveTestSelector: 15 tests
+- **Total:** 60+ tests (good coverage)
+
+---
+
+### Priority Recommendations
+
+#### Priority 1: Per-Test Logging with Timestamps ⭐⭐⭐
+- **Effort:** Low (2-4 hours)
+- **Value:** High (completes acceptance criteria)
+- **Risk:** Low (simple string formatting)
+- **Action:** Modify `TestOutputService.DisplayVerboseResult()` to include timestamp prefix
+
+#### Priority 2: Stack Traces in Verbose Mode ⭐⭐
+- **Effort:** Low (2-3 hours)
+- **Value:** Medium (improves debugging experience)
+- **Risk:** Low (conditional display logic)
+- **Action:** Enhance exception handling in `CommandTestCase` and `TestOutputService`
+
+#### Priority 3: T-AUTH-02 Interactive Device Flow Test ⭐
+- **Effort:** High (8-12 hours)
+- **Value:** Medium (completes auth test suite, helps catch BUG-AUTH-001)
+- **Risk:** Medium (requires careful UX design, manual testing)
+- **Action:** Create `InteractiveTestCase` type and add to `AuthTestSuite`
+- **Note:** This is marked as "manual" in spec and may be intentionally deferred
+
+---
+
+### Updated Implementation Roadmap
+
+```diff
+### Phase 1: Core Infrastructure (Week 1)
+- [x] Implement `ITestCase` interface and base classes
+- [x] Implement `TestRunner` with parallel execution
+- [x] Implement `CliWrapProcessExecutor` (used System.Diagnostics.Process instead)
+- [x] Implement basic `KeywordValidator`
+- [x] Add Spectre.Console progress display
+
+### Phase 2: Test Definitions (Week 2)
+- [x] Define embedded test suites for chat, session, auth
+- [x] Implement test case factory (TestSuiteRegistry)
+- [x] Add test filtering logic
+- [x] Implement interactive mode with Spectre.Console
+- [ ] Add per-test logging with timestamps ⬅️ MISSING
+- [ ] Add T-AUTH-02 interactive device flow test ⬅️ MISSING
+
+### Phase 3: Advanced Features (Week 3)
+- [x] Add timeout and cancellation support
+- [x] Implement JSON output format
+- [ ] Implement Polly resilience policies (deferred)
+- [ ] Add structured logging with Serilog (deferred)
+- [ ] Stack traces in verbose/debug mode ⬅️ PARTIALLY IMPLEMENTED
+
+### Phase 4: Extensibility (Week 4)
+- [ ] Add YAML test definition loader (deferred)
+- [ ] Implement JSON schema validation (deferred)
+- [ ] Add custom validator plugin support (deferred)
+- [ ] Create user documentation (deferred)
+
+### Phase 5: Testing & Polish (Week 5)
+- [x] Unit tests for test harness (xUnit)
+- [ ] Integration tests with real lopen commands (partial)
+- [ ] CI/CD pipeline integration
+- [ ] Performance optimization
+```
+
+---
+
+### Conclusion
+
+The Testing module implementation is **~85% complete** relative to the specification acceptance criteria. The core functionality is solid and production-ready. The remaining work consists of:
+
+1. **Minor enhancement:** Add timestamps to verbose logging (2-4 hours)
+2. **Minor enhancement:** Improve stack trace display in verbose mode (2-3 hours)  
+3. **Optional manual test:** T-AUTH-02 interactive device flow (8-12 hours, may be intentionally deferred)
+
+**Recommendation:** Mark the two high-priority acceptance criteria as implemented:
+- `- [x] Per-test logging with timestamps` (after 2-hour fix)
+- `- [x] Stack traces only in debug/verbose mode` (after 2-hour fix)
+
+Leave T-AUTH-02 as Phase 2 / manual testing, as it requires human interaction and cannot be fully automated.
+
+---
+
+**Gap Analysis Complete - January 26, 2025**
 

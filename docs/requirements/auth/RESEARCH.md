@@ -3,6 +3,12 @@
 > Research for REQ-003: GitHub OAuth2 Authentication
 > Last validated: 2026-01-29
 
+## 🔴 Known Issues
+
+See **[BUG-AUTH-001-RESEARCH.md](BUG-AUTH-001-RESEARCH.md)** for detailed analysis of the GCM credential store configuration issue on Linux.
+
+---
+
 ## Key Finding
 
 **GitHub.Copilot.SDK (v0.1.17) now exists on NuGet.** The SDK wraps the Copilot CLI executable and relies on it for authentication. Authentication is handled by the CLI via `gh auth`.

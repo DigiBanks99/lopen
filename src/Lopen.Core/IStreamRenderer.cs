@@ -22,6 +22,18 @@ public record StreamConfig
 
     /// <summary>Whether to display metrics summary after stream completes.</summary>
     public bool ShowMetrics { get; init; }
+
+    /// <summary>
+    /// Optional live layout context for maintaining prompt position during streaming.
+    /// When provided, streaming updates go to the main area of the live layout.
+    /// </summary>
+    public ILiveLayoutContext? LiveContext { get; init; }
+
+    /// <summary>
+    /// When using LiveContext, the prompt text to show in the footer.
+    /// Default is "lopen> ".
+    /// </summary>
+    public string PromptText { get; init; } = "lopen> ";
 }
 
 /// <summary>
@@ -38,6 +50,21 @@ public interface IStreamRenderer
     /// <param name="cancellationToken">Cancellation token.</param>
     Task RenderStreamAsync(
         IAsyncEnumerable<string> tokenStream,
+        StreamConfig? config = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Render a token stream using a live layout context for prompt position maintenance.
+    /// The streaming content appears in the main area while the prompt stays visible.
+    /// </summary>
+    /// <param name="tokenStream">Async enumerable of tokens.</param>
+    /// <param name="layoutContext">Live layout context to use for rendering.</param>
+    /// <param name="config">Stream configuration (optional).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The complete streamed response text.</returns>
+    Task<string> RenderStreamWithLiveLayoutAsync(
+        IAsyncEnumerable<string> tokenStream,
+        ILiveLayoutContext layoutContext,
         StreamConfig? config = null,
         CancellationToken cancellationToken = default);
 }
