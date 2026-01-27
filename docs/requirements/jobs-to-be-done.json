@@ -356,7 +356,7 @@
     "requirement": "REQ-022",
     "description": "TUI Welcome Header - Wind Runner ASCII art and session info (renderer only)",
     "priority": 45,
-    "status": "done",
+    "status": "paritially done",
     "notes": "Completed: IWelcomeHeaderRenderer, SpectreWelcomeHeaderRenderer. Integration pending (JTBD-003)."
   },
   {
@@ -468,8 +468,8 @@
     "requirement": "REQ-031",
     "description": "Loop Default Model Config - Update from gpt-5 to claude-opus-4.5",
     "priority": 59,
-    "status": "open",
-    "notes": "LoopConfig.cs defaults to gpt-5 but spec says claude-opus-4.5. Minor config alignment."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Updated LoopConfig.Model default from gpt-5 to claude-opus-4.5 per spec. Updated affected tests."
   },
   {
     "id": "JTBD-060",

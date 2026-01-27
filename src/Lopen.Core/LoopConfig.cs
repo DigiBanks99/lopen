@@ -8,10 +8,10 @@ namespace Lopen.Core;
 public record LoopConfig
 {
     /// <summary>
-    /// AI model to use (default: gpt-5).
+    /// AI model to use (default: claude-opus-4.5).
     /// </summary>
     [JsonPropertyName("model")]
-    public string Model { get; init; } = "gpt-5";
+    public string Model { get; init; } = "claude-opus-4.5";
 
     /// <summary>
     /// Path to the plan prompt file (default: PLAN.PROMPT.md).

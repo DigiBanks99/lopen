@@ -31,7 +31,7 @@ public class LoopConfigServiceTests : IDisposable
 
         var config = await service.LoadConfigAsync();
 
-        config.Model.ShouldBe("gpt-5");
+        config.Model.ShouldBe("claude-opus-4.5");
         config.PlanPromptPath.ShouldBe("PLAN.PROMPT.md");
     }
 
@@ -141,6 +141,6 @@ public class LoopConfigServiceTests : IDisposable
         var service = new LoopConfigService(_userConfigPath, _projectConfigPath);
         var config = await service.LoadConfigAsync();
 
-        config.Model.ShouldBe("gpt-5"); // Falls back to defaults
+        config.Model.ShouldBe("claude-opus-4.5"); // Falls back to defaults
     }
 }

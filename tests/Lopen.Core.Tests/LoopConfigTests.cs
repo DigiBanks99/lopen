@@ -9,7 +9,7 @@ public class LoopConfigTests
     {
         var config = new LoopConfig();
 
-        config.Model.ShouldBe("gpt-5");
+        config.Model.ShouldBe("claude-opus-4.5");
         config.PlanPromptPath.ShouldBe("PLAN.PROMPT.md");
         config.BuildPromptPath.ShouldBe("BUILD.PROMPT.md");
         config.AllowAll.ShouldBeTrue();
