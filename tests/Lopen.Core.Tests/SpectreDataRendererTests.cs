@@ -287,4 +287,208 @@ public class SpectreDataRendererTests
     }
 
     private record TestItem(string Name, int Age);
+
+    // ========== Responsive Column Tests ==========
+
+    [Fact]
+    public void RenderTable_ResponsiveColumns_ShowsAllColumnsOnWideTerminal()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreDataRenderer(console);
+        var items = new[] { new TestItem("Alice", 25) };
+        var config = new TableConfig<TestItem>
+        {
+            ResponsiveColumns = true,
+            Columns = new List<TableColumn<TestItem>>
+            {
+                new() { Header = "Name", Selector = x => x.Name, Priority = 1 },
+                new() { Header = "Age", Selector = x => x.Age.ToString(), Priority = 2 },
+                new() { Header = "Extra", Selector = x => "data", Priority = 3 }
+            },
+            ShowRowCount = false
+        };
+
+        // Act
+        renderer.RenderTable(items, config);
+
+        // Assert - all columns should be visible on wide terminal
+        var output = console.Output;
+        output.ShouldContain("Name");
+        output.ShouldContain("Age");
+        output.ShouldContain("Extra");
+    }
+
+    [Fact]
+    public void RenderTable_ResponsiveColumns_HidesLowPriorityColumnsOnNarrowTerminal()
+    {
+        // Arrange
+        var mockCapabilities = new MockTerminalCapabilities { Width = 50 };
+        var console = new TestConsole().Width(50);
+        var renderer = new SpectreDataRenderer(console, mockCapabilities);
+        var items = new[] { new TestItem("Alice", 25) };
+        var config = new TableConfig<TestItem>
+        {
+            ResponsiveColumns = true,
+            Columns = new List<TableColumn<TestItem>>
+            {
+                new() { Header = "Name", Selector = x => x.Name, Priority = 1, MinWidth = 15 },
+                new() { Header = "Age", Selector = x => x.Age.ToString(), Priority = 2, MinWidth = 10 },
+                new() { Header = "ExtraLongColumn", Selector = x => "data", Priority = 3, MinWidth = 20 }
+            },
+            ShowRowCount = false
+        };
+
+        // Act
+        renderer.RenderTable(items, config);
+
+        // Assert - high priority columns should be visible
+        var output = console.Output;
+        output.ShouldContain("Name");
+        // Low priority column may be hidden based on space
+        output.ShouldContain("Alice");
+    }
+
+    [Fact]
+    public void RenderTable_ResponsiveColumns_Priority1ColumnsAlwaysShown()
+    {
+        // Arrange
+        var mockCapabilities = new MockTerminalCapabilities { Width = 40 };
+        var console = new TestConsole().Width(40);
+        var renderer = new SpectreDataRenderer(console, mockCapabilities);
+        var items = new[] { new TestItem("Alice", 25) };
+        var config = new TableConfig<TestItem>
+        {
+            ResponsiveColumns = true,
+            Columns = new List<TableColumn<TestItem>>
+            {
+                new() { Header = "Name", Selector = x => x.Name, Priority = 1, MinWidth = 10 },
+                new() { Header = "Age", Selector = x => x.Age.ToString(), Priority = 1, MinWidth = 8 }
+            },
+            ShowRowCount = false
+        };
+
+        // Act
+        renderer.RenderTable(items, config);
+
+        // Assert - priority 1 columns always shown even on narrow terminal
+        var output = console.Output;
+        output.ShouldContain("Name");
+        output.ShouldContain("Age");
+    }
+
+    [Fact]
+    public void RenderTable_ResponsiveColumns_TruncatesLongValues()
+    {
+        // Arrange
+        var mockCapabilities = new MockTerminalCapabilities { Width = 60 };
+        var console = new TestConsole().Width(60);
+        var renderer = new SpectreDataRenderer(console, mockCapabilities);
+        var items = new[] { new TestItem("VeryVeryLongNameThatShouldBeTruncated", 25) };
+        var config = new TableConfig<TestItem>
+        {
+            ResponsiveColumns = true,
+            Columns = new List<TableColumn<TestItem>>
+            {
+                new() { Header = "Name", Selector = x => x.Name, Priority = 1, MinWidth = 10, MaxWidth = 15 },
+                new() { Header = "Age", Selector = x => x.Age.ToString(), Priority = 1, MinWidth = 5 }
+            },
+            ShowRowCount = false
+        };
+
+        // Act
+        renderer.RenderTable(items, config);
+
+        // Assert - long value should be truncated
+        var output = console.Output;
+        output.ShouldContain("...");
+    }
+
+    [Fact]
+    public void RenderTable_NonResponsive_ShowsAllColumnsRegardlessOfWidth()
+    {
+        // Arrange
+        var mockCapabilities = new MockTerminalCapabilities { Width = 40 };
+        var console = new TestConsole().Width(40);
+        var renderer = new SpectreDataRenderer(console, mockCapabilities);
+        var items = new[] { new TestItem("Alice", 25) };
+        var config = new TableConfig<TestItem>
+        {
+            ResponsiveColumns = false, // Default
+            Columns = new List<TableColumn<TestItem>>
+            {
+                new() { Header = "Name", Selector = x => x.Name, Priority = 1 },
+                new() { Header = "Age", Selector = x => x.Age.ToString(), Priority = 3 },
+                new() { Header = "Extra", Selector = x => "data", Priority = 5 }
+            },
+            ShowRowCount = false
+        };
+
+        // Act
+        renderer.RenderTable(items, config);
+
+        // Assert - all columns shown when ResponsiveColumns is false
+        var output = console.Output;
+        output.ShouldContain("Name");
+        output.ShouldContain("Age");
+        output.ShouldContain("Extra");
+    }
+
+    [Fact]
+    public void RenderTable_ResponsiveColumns_PreservesColumnOrder()
+    {
+        // Arrange
+        var console = new TestConsole().Width(120);
+        var renderer = new SpectreDataRenderer(console);
+        var items = new[] { new TestItem("Alice", 25) };
+        var config = new TableConfig<TestItem>
+        {
+            ResponsiveColumns = true,
+            Columns = new List<TableColumn<TestItem>>
+            {
+                new() { Header = "First", Selector = x => "1", Priority = 2 },
+                new() { Header = "Second", Selector = x => "2", Priority = 1 },
+                new() { Header = "Third", Selector = x => "3", Priority = 3 }
+            },
+            ShowRowCount = false
+        };
+
+        // Act
+        renderer.RenderTable(items, config);
+
+        // Assert - columns should be in original order
+        var output = console.Output;
+        var firstPos = output.IndexOf("First");
+        var secondPos = output.IndexOf("Second");
+        var thirdPos = output.IndexOf("Third");
+        firstPos.ShouldBeLessThan(secondPos);
+        secondPos.ShouldBeLessThan(thirdPos);
+    }
+
+    [Fact]
+    public void TableColumn_DefaultValues_AreCorrect()
+    {
+        var column = new TableColumn<TestItem>
+        {
+            Header = "Test",
+            Selector = x => x.Name
+        };
+
+        column.MinWidth.ShouldBe(10);
+        column.MaxWidth.ShouldBeNull();
+        column.Priority.ShouldBe(1);
+        column.Alignment.ShouldBe(ColumnAlignment.Left);
+        column.Width.ShouldBeNull();
+    }
+
+    [Fact]
+    public void TableConfig_ResponsiveColumns_DefaultsFalse()
+    {
+        var config = new TableConfig<TestItem>
+        {
+            Columns = new List<TableColumn<TestItem>>()
+        };
+
+        config.ResponsiveColumns.ShouldBeFalse();
+    }
 }

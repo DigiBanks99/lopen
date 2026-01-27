@@ -10,16 +10,34 @@ namespace Lopen.Core;
 public class SpectreDataRenderer : IDataRenderer
 {
     private readonly IAnsiConsole _console;
+    private readonly ITerminalCapabilities? _terminalCapabilities;
     private readonly bool _useColors;
 
+    /// <summary>
+    /// Minimum terminal width for full table display.
+    /// Below this, columns may be hidden based on priority.
+    /// </summary>
+    private const int NarrowThreshold = 80;
+
+    /// <summary>
+    /// Border and padding overhead per column (approximate).
+    /// </summary>
+    private const int ColumnOverhead = 3;
+
     public SpectreDataRenderer()
-        : this(AnsiConsole.Console)
+        : this(AnsiConsole.Console, null)
     {
     }
 
     public SpectreDataRenderer(IAnsiConsole console)
+        : this(console, null)
+    {
+    }
+
+    public SpectreDataRenderer(IAnsiConsole console, ITerminalCapabilities? terminalCapabilities)
     {
         _console = console ?? throw new ArgumentNullException(nameof(console));
+        _terminalCapabilities = terminalCapabilities;
         _useColors = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NO_COLOR"));
     }
 
@@ -58,14 +76,21 @@ public class SpectreDataRenderer : IDataRenderer
             table.Expand();
         }
 
+        // Filter and configure columns based on responsive settings
+        var columnsToShow = config.ResponsiveColumns
+            ? GetResponsiveColumns(config.Columns)
+            : config.Columns;
+
         // Add columns
-        foreach (var column in config.Columns)
+        foreach (var column in columnsToShow)
         {
             var tableColumn = new TableColumn(column.Header);
 
-            if (column.Width.HasValue)
+            // Apply width based on responsive settings
+            var effectiveWidth = GetEffectiveWidth(column, config.ResponsiveColumns);
+            if (effectiveWidth.HasValue)
             {
-                tableColumn.Width(column.Width.Value);
+                tableColumn.Width(effectiveWidth.Value);
             }
 
             tableColumn.Alignment(ToJustify(column.Alignment));
@@ -75,8 +100,9 @@ public class SpectreDataRenderer : IDataRenderer
         // Add rows
         foreach (var item in itemList)
         {
-            var values = config.Columns
-                .Select(c => Markup.Escape(c.Selector(item)))
+            var values = columnsToShow
+                .Select(c => TruncateValue(c.Selector(item), GetEffectiveWidth(c, config.ResponsiveColumns)))
+                .Select(v => Markup.Escape(v))
                 .ToArray();
             table.AddRow(values);
         }
@@ -96,6 +122,99 @@ public class SpectreDataRenderer : IDataRenderer
                 _console.WriteLine(countMessage);
             }
         }
+    }
+
+    /// <summary>
+    /// Gets columns to display based on terminal width and column priorities.
+    /// </summary>
+    private IReadOnlyList<TableColumn<T>> GetResponsiveColumns<T>(IReadOnlyList<TableColumn<T>> columns)
+    {
+        var terminalWidth = GetTerminalWidth();
+        
+        // If terminal is wide enough, show all columns
+        if (terminalWidth >= NarrowThreshold)
+        {
+            return columns;
+        }
+
+        var columnList = columns.ToList();
+
+        // Start with priority 1 columns and add more until we run out of space
+        var result = new List<TableColumn<T>>();
+        var usedWidth = 0;
+        var borderOverhead = 4; // Left and right border
+
+        foreach (var column in columnList.OrderBy(c => c.Priority).ThenBy(c => columnList.IndexOf(c)))
+        {
+            var columnWidth = column.MinWidth + ColumnOverhead;
+            if (usedWidth + columnWidth + borderOverhead <= terminalWidth || column.Priority == 1)
+            {
+                result.Add(column);
+                usedWidth += columnWidth;
+            }
+        }
+
+        // Preserve original column order
+        return columns.Where(c => result.Contains(c)).ToList();
+    }
+
+    /// <summary>
+    /// Gets the effective width for a column based on responsive settings.
+    /// </summary>
+    private int? GetEffectiveWidth<T>(TableColumn<T> column, bool responsive)
+    {
+        // If fixed width is set, use it
+        if (column.Width.HasValue)
+        {
+            return column.Width.Value;
+        }
+
+        // If not responsive, no width constraint
+        if (!responsive)
+        {
+            return null;
+        }
+
+        var terminalWidth = GetTerminalWidth();
+
+        // For narrow terminals, use MaxWidth if set, otherwise use MinWidth
+        if (terminalWidth < NarrowThreshold && column.MaxWidth.HasValue)
+        {
+            return Math.Min(column.MaxWidth.Value, column.MinWidth + 10);
+        }
+
+        return column.MaxWidth;
+    }
+
+    /// <summary>
+    /// Truncates a value to fit within a maximum width.
+    /// </summary>
+    private static string TruncateValue(string value, int? maxWidth)
+    {
+        if (!maxWidth.HasValue || value.Length <= maxWidth.Value)
+        {
+            return value;
+        }
+
+        if (maxWidth.Value <= 3)
+        {
+            return value.Substring(0, maxWidth.Value);
+        }
+
+        return value.Substring(0, maxWidth.Value - 3) + "...";
+    }
+
+    /// <summary>
+    /// Gets the terminal width from capabilities or console profile.
+    /// </summary>
+    private int GetTerminalWidth()
+    {
+        if (_terminalCapabilities != null)
+        {
+            return _terminalCapabilities.Width;
+        }
+
+        return _console.Profile.Width;
     }
 
     public void RenderMetadata(IReadOnlyDictionary<string, string> data, string title)

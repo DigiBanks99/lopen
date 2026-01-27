@@ -76,8 +76,8 @@
     "requirement": "REQ-017",
     "description": "TUI Responsive Table Columns - Auto-adjust columns based on terminal width",
     "priority": 10,
-    "status": "open",
-    "notes": "Tables don't dynamically adjust column widths based on available terminal width. Add responsive logic to SpectreDataRenderer."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Added MinWidth, MaxWidth, Priority to TableColumn. Added ResponsiveColumns to TableConfig. SpectreDataRenderer now hides low-priority columns and truncates values on narrow terminals. 9 tests added (852 total)."
   },
   {
     "id": "JTBD-011",

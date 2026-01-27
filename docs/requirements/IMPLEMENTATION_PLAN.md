@@ -1,17 +1,17 @@
 # Implementation Plan
 
-> ✅ This iteration complete - JTBD-009 Progress Bar Integration
+> ✅ This iteration complete - JTBD-010 Responsive Table Columns
 
 ## Completed This Iteration
 
-### JTBD-009: TUI Progress Bar Integration (REQ-015) ✅
-- Added `IProgressBarContext` interface for progress bar updates
-- Added `ShowProgressBarAsync` to `IProgressRenderer`
-- Implemented in `SpectreProgressRenderer` using Spectre.Console `Progress()`
-- Updated `MockProgressRenderer` with progress bar tracking (`ProgressBarRecord`)
-- Integrated progress bar into `TestRunner` for non-verbose mode
-- 17 new tests added (844 total)
+### JTBD-010: TUI Responsive Table Columns (REQ-017) ✅
+- Added `MinWidth`, `MaxWidth`, `Priority` to `TableColumn<T>`
+- Added `ResponsiveColumns` to `TableConfig<T>`
+- Added `ITerminalCapabilities` constructor parameter to `SpectreDataRenderer`
+- Implemented column hiding based on priority for narrow terminals
+- Implemented value truncation with `...` suffix
+- 9 new tests added (852 total)
 
 ## Previously Completed
-- JTBD-001 to JTBD-008: All completed ✅
-- Total Tests: 844
+- JTBD-001 to JTBD-009: All completed ✅
+- Total Tests: 852

@@ -304,7 +304,7 @@ Consistent display of structured data (lists, metadata, hierarchies) using appro
 - [x] Tables for list data (IDataRenderer, SpectreDataRenderer)
 - [x] Panels for metadata and grouped information (RenderMetadata)
 - [x] Trees for hierarchical data (ITreeRenderer, SpectreTreeRenderer)
-- [ ] Responsive column widths
+- [x] Responsive column widths
 - [ ] Sortable and filterable tables (future)
 
 ### Component Selection Matrix

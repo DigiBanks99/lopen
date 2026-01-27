@@ -17,6 +17,18 @@ public record TableColumn<T>
 
     /// <summary>Optional fixed width for the column.</summary>
     public int? Width { get; init; }
+
+    /// <summary>Minimum width for responsive columns (default: 10).</summary>
+    public int MinWidth { get; init; } = 10;
+
+    /// <summary>Maximum width for responsive columns (null = unlimited).</summary>
+    public int? MaxWidth { get; init; }
+
+    /// <summary>
+    /// Column priority for responsive display.
+    /// 1 = highest priority (always shown), higher numbers = lower priority (may be hidden).
+    /// </summary>
+    public int Priority { get; init; } = 1;
 }
 
 /// <summary>
@@ -49,6 +61,12 @@ public record TableConfig<T>
 
     /// <summary>Format string for row count (use {0} for count).</summary>
     public string RowCountFormat { get; init; } = "{0} item(s)";
+
+    /// <summary>
+    /// Whether to enable responsive column widths based on terminal width.
+    /// When true, columns may be truncated or hidden based on available space.
+    /// </summary>
+    public bool ResponsiveColumns { get; init; } = false;
 }
 
 /// <summary>
