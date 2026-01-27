@@ -89,7 +89,14 @@ public sealed class TestOutputService
             _ => "-"
         };
         
-        _output.WriteLine($"{statusSymbol} {result.TestId}: {result.Description} ({result.Duration.TotalSeconds:F1}s)");
+        // Format timestamp as HH:mm:ss.fff for brevity
+        var timestamp = result.StartTime != default 
+            ? result.StartTime.ToString("HH:mm:ss.fff") 
+            : "";
+        
+        var prefix = string.IsNullOrEmpty(timestamp) ? "" : $"[{timestamp}] ";
+        
+        _output.WriteLine($"{prefix}{statusSymbol} {result.TestId}: {result.Description} ({result.Duration.TotalSeconds:F1}s)");
         
         if (result.Status != TestStatus.Pass && result.Error is not null)
         {
@@ -126,6 +133,8 @@ public sealed class TestOutputService
                 Description = r.Description,
                 Status = r.Status.ToString().ToLowerInvariant(),
                 DurationSeconds = r.Duration.TotalSeconds,
+                StartTime = r.StartTime != default ? r.StartTime : null,
+                EndTime = r.EndTime != default ? r.EndTime : null,
                 Input = r.Input,
                 ResponsePreview = r.ResponsePreview,
                 MatchedPattern = r.MatchedPattern,
@@ -196,6 +205,8 @@ internal sealed class TestResultJson
     public string Description { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
     public double DurationSeconds { get; init; }
+    public DateTimeOffset? StartTime { get; init; }
+    public DateTimeOffset? EndTime { get; init; }
     public string? Input { get; init; }
     public string? ResponsePreview { get; init; }
     public string? MatchedPattern { get; init; }

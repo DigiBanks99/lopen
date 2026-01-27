@@ -44,8 +44,8 @@
     "requirement": "REQ-020-TEST",
     "description": "Self-Testing Per-Test Logging - Add timestamps to test output",
     "priority": 6,
-    "status": "open",
-    "notes": "Timestamps are captured in TestResult but not displayed in output. Add timestamp prefix in TestOutputService.DisplayVerboseResult()."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Added timestamp prefix [HH:mm:ss.fff] to DisplayVerboseResult() output. Added start_time and end_time fields to JSON output. 4 tests added (813 total)."
   },
   {
     "id": "JTBD-007",

@@ -36,7 +36,7 @@ lopen test self --format json             # Output results as JSON
 - [x] Uses gpt-5-mini by default to minimize costs
 - [x] Validates responses contain expected keywords/patterns
 - [x] Parallel test execution with aggregated results
-- [ ] Per-test logging with timestamps (Phase 2)
+- [x] Per-test logging with timestamps (Phase 2)
 - [x] Exit code 0 if all pass, 1 if any fail
 - [x] Rich terminal output using Spectre.Console (tables, progress bars, panels)
 - [x] Interactive mode for suite/test selection

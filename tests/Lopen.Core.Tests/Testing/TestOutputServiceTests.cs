@@ -166,6 +166,121 @@ public class TestOutputServiceTests
         console.Output.ShouldContain("No match found");
     }
     
+    [Fact]
+    public void DisplayVerboseResult_ShowsTimestamp_WhenStartTimeIsSet()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+        var service = new TestOutputService(output);
+        
+        var startTime = new DateTimeOffset(2026, 1, 27, 14, 30, 15, 123, TimeSpan.Zero);
+        var result = new TestResult
+        {
+            TestId = "T-01",
+            Suite = "test",
+            Description = "Test with timestamp",
+            Status = TestStatus.Pass,
+            Duration = TimeSpan.FromSeconds(1),
+            StartTime = startTime,
+            EndTime = startTime.AddSeconds(1)
+        };
+        
+        service.DisplayVerboseResult(result);
+        
+        console.Output.ShouldContain("[14:30:15.123]");
+        console.Output.ShouldContain("T-01");
+    }
+    
+    [Fact]
+    public void DisplayVerboseResult_OmitsTimestamp_WhenStartTimeIsDefault()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+        var service = new TestOutputService(output);
+        
+        var result = new TestResult
+        {
+            TestId = "T-01",
+            Suite = "test",
+            Description = "Test without timestamp",
+            Status = TestStatus.Pass,
+            Duration = TimeSpan.FromSeconds(1)
+            // StartTime not set (default)
+        };
+        
+        service.DisplayVerboseResult(result);
+        
+        console.Output.ShouldNotContain("[");
+        console.Output.ShouldContain("✓ T-01");
+    }
+    
+    [Fact]
+    public void FormatAsJson_IncludesTimestamps_WhenProvided()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+        var service = new TestOutputService(output);
+        
+        var startTime = new DateTimeOffset(2026, 1, 27, 14, 30, 15, TimeSpan.Zero);
+        var summary = new TestRunSummary
+        {
+            StartTime = startTime,
+            EndTime = startTime.AddSeconds(5),
+            Model = "gpt-5-mini",
+            Results = new List<TestResult>
+            {
+                new()
+                {
+                    TestId = "T-01",
+                    Suite = "test",
+                    Description = "Test",
+                    Status = TestStatus.Pass,
+                    Duration = TimeSpan.FromSeconds(1),
+                    StartTime = startTime,
+                    EndTime = startTime.AddSeconds(1)
+                }
+            }
+        };
+        
+        var json = service.FormatAsJson(summary);
+        
+        json.ShouldContain("\"start_time\":");
+        json.ShouldContain("\"end_time\":");
+    }
+    
+    [Fact]
+    public void FormatAsJson_OmitsTimestamps_WhenNotProvided()
+    {
+        var console = new TestConsole();
+        var output = new ConsoleOutput(console);
+        var service = new TestOutputService(output);
+        
+        var summary = new TestRunSummary
+        {
+            StartTime = DateTimeOffset.Now,
+            EndTime = DateTimeOffset.Now.AddSeconds(1),
+            Model = "gpt-5-mini",
+            Results = new List<TestResult>
+            {
+                new()
+                {
+                    TestId = "T-01",
+                    Suite = "test",
+                    Description = "Test",
+                    Status = TestStatus.Pass,
+                    Duration = TimeSpan.FromSeconds(1)
+                    // StartTime and EndTime not set
+                }
+            }
+        };
+        
+        var json = service.FormatAsJson(summary);
+        
+        // WhenWritingNull should omit null timestamps
+        json.ShouldNotContain("\"start_time\":");
+        json.ShouldNotContain("\"end_time\":");
+    }
+    
     private static TestResult CreateResult(string testId, TestStatus status) => new()
     {
         TestId = testId,
