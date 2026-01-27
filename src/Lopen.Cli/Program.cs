@@ -10,11 +10,14 @@ var helpService = new HelpService();
 // Use secure credential storage with fallback to file-based storage
 ICredentialStore credentialStore;
 ITokenInfoStore tokenInfoStore;
+var usingSecureStorage = false;
+
 if (SecureCredentialStore.IsAvailable())
 {
     var secureStore = new SecureCredentialStore();
     credentialStore = secureStore;
     tokenInfoStore = secureStore;
+    usingSecureStorage = true;
     // Migrate credentials from file storage if present
     var fileStore = new FileCredentialStore();
     await CredentialMigration.MigrateIfNeededAsync(credentialStore, fileStore);
@@ -30,6 +33,26 @@ var deviceFlowAuth = new DeviceFlowAuth();
 var authService = new AuthService(credentialStore, tokenInfoStore, deviceFlowAuth);
 var sessionStore = new FileSessionStore();
 var output = new ConsoleOutput();
+
+// Helper to show security warning when not using secure storage
+void ShowSecureStorageWarningIfNeeded()
+{
+    if (!usingSecureStorage)
+    {
+        output.Warning("Secure credential storage not available.");
+        output.Muted("Credentials stored with basic encryption in ~/.lopen/credentials.json");
+        output.WriteLine();
+        if (OperatingSystem.IsLinux())
+        {
+            output.Muted("To configure secure storage, set GCM_CREDENTIAL_STORE:");
+            output.Muted("  export GCM_CREDENTIAL_STORE=cache         # in-memory (temporary)");
+            output.Muted("  export GCM_CREDENTIAL_STORE=secretservice # GUI required");
+            output.Muted("  export GCM_CREDENTIAL_STORE=gpg           # requires GPG/pass");
+            output.Muted("See: https://aka.ms/gcm/credstores");
+            output.WriteLine();
+        }
+    }
+}
 
 // Format option for structured output (reusable)
 var formatOption = new Option<string>("--format")
@@ -77,6 +100,7 @@ loginCommand.SetAction(async parseResult =>
     // If token provided, store it directly
     if (!string.IsNullOrEmpty(token))
     {
+        ShowSecureStorageWarningIfNeeded();
         await authService.StoreTokenAsync(token);
         output.Success("Token stored successfully.");
         return ExitCodes.Success;
@@ -127,8 +151,9 @@ loginCommand.SetAction(async parseResult =>
             
             if (result.Success && result.AccessToken is not null)
             {
-                await authService.StoreTokenAsync(result.AccessToken);
                 output.WriteLine();
+                ShowSecureStorageWarningIfNeeded();
+                await authService.StoreTokenAsync(result.AccessToken);
                 output.Success("Successfully authenticated!");
                 return ExitCodes.Success;
             }

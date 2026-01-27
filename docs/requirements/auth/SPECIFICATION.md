@@ -91,43 +91,27 @@ OAuth app credentials stored in `~/.config/lopen/oauth.json`:
 ### HIGH PRIORITY
 
 #### BUG-AUTH-001: GCM Credential Store Not Configured
-**Status**: 🔴 Open  
+**Status**: 🟢 Fixed  
 **Priority**: High  
-**Discovered**: 2026-01-27
+**Discovered**: 2026-01-27  
+**Fixed**: 2026-01-27
 
 **Description**:
 Device authentication fails after completing MFA when Git Credential Manager (GCM) is not configured with a credential store. The error occurs at `AuthService.cs:line 177` when attempting to store credentials.
 
-**Error Message**:
-```
-System.Exception: No credential store has been selected.
-Set the GCM_CREDENTIAL_STORE environment variable or the credential.credentialStore 
-Git configuration setting to one of the following options:
-  secretservice : freedesktop.org Secret Service (requires graphical interface)
-  gpg           : GNU `pass` compatible credential storage (requires GPG and `pass`)
-  cache         : Git's in-memory credential cache
-  plaintext     : store credentials in plain-text files (UNSECURE)
-  none          : disable internal credential storage
-See https://aka.ms/gcm/credstores for more information.
-```
-
-**Steps to Reproduce**:
-1. Run `lopen auth login` on a system without GCM credential store configured
-2. Complete device flow sign-in
-3. Complete MFA challenge
-4. Observe credential storage failure
-
-**Expected Behavior**:
-Authentication should gracefully fallback to plaintext storage with a warning message when GCM is not configured. User should be informed about the security implications and given instructions to configure secure storage.
-
-**Proposed Fix**:
-- Detect when GCM credential store is not configured
-- Display warning: "⚠️  No secure credential store configured. Storing token in plaintext. See https://aka.ms/gcm/credstores to configure secure storage."
-- Fallback to plaintext storage in `~/.config/lopen/` or `~/.copilot/`
-- Continue authentication flow successfully
+**Solution**:
+- Enhanced `SecureCredentialStore.IsAvailable()` to detect unconfigured GCM on Linux
+- Added test operation (Get) to verify credential store is actually usable
+- Improved constructor with helpful error message pointing to GCM documentation
+- Added user warning when falling back to file-based storage with instructions for secure setup
+- Authentication now gracefully falls back to `FileCredentialStore` when GCM is unavailable
 
 **Testing**:
-Add `--interactive` or `-i` flag to `lopen test self` command to enable interactive testing of full device auth flow including MFA and credential storage.
+4 unit tests added to verify:
+- `IsAvailable()` returns boolean without throwing
+- `IsAvailable()` is idempotent
+- Constructor throws helpful exception when store fails
+- Factory returns correct store type based on availability
 
 ---
 

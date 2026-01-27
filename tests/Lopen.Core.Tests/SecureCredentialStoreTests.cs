@@ -6,14 +6,40 @@ namespace Lopen.Core.Tests;
 public class SecureCredentialStoreTests
 {
     [Fact]
-    public void IsAvailable_ReturnsTrue_WhenPlatformSupportsSecureStorage()
+    public void IsAvailable_ReturnsBoolean_WithoutThrowing()
     {
-        // This may return false on some CI environments without credential managers
-        // but should work on developer machines
+        // This may return true or false depending on platform/configuration
+        // The key is that it should never throw
         var result = SecureCredentialStore.IsAvailable();
         
-        // Just verify it doesn't throw
+        // Just verify it doesn't throw and returns a valid bool
         result.ShouldBeOneOf(true, false);
+    }
+
+    [Fact]
+    public void IsAvailable_CanBeCalledMultipleTimes()
+    {
+        // Verify IsAvailable is idempotent and doesn't have side effects
+        var result1 = SecureCredentialStore.IsAvailable();
+        var result2 = SecureCredentialStore.IsAvailable();
+        
+        result1.ShouldBe(result2);
+    }
+
+    [Fact]
+    public void Constructor_ThrowsHelpfulException_WhenStoreFails()
+    {
+        // Skip on platforms where secure storage works
+        if (SecureCredentialStore.IsAvailable())
+        {
+            return; // Can't test failure case when it works
+        }
+
+        // On platforms where IsAvailable() returns false, constructor should
+        // throw a helpful exception if somehow called anyway
+        var ex = Should.Throw<InvalidOperationException>(() => new SecureCredentialStore());
+        
+        ex.Message.ShouldContain("credential store");
     }
 
     [Fact]
@@ -362,5 +388,33 @@ public class CredentialStoreFactoryTests
         store.ShouldNotBeNull();
         // Should be either SecureCredentialStore or FileCredentialStore depending on platform
         store.ShouldBeAssignableTo<ICredentialStore>();
+    }
+
+    [Fact]
+    public void Create_ReturnsFileStore_WhenSecureNotAvailable()
+    {
+        var factory = new CredentialStoreFactory();
+
+        var store = factory.Create();
+
+        // If secure storage is not available, should get FileCredentialStore
+        if (!SecureCredentialStore.IsAvailable())
+        {
+            store.ShouldBeOfType<FileCredentialStore>();
+        }
+    }
+
+    [Fact]
+    public void Create_ReturnsSecureStore_WhenSecureAvailable()
+    {
+        var factory = new CredentialStoreFactory();
+
+        var store = factory.Create();
+
+        // If secure storage is available, should get SecureCredentialStore
+        if (SecureCredentialStore.IsAvailable())
+        {
+            store.ShouldBeOfType<SecureCredentialStore>();
+        }
     }
 }

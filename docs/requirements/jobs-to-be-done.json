@@ -1,482 +1,482 @@
 [
   {
     "id": "JTBD-001",
-    "requirement": "PROJECT-SETUP",
-    "description": "Initialize .NET 10 solution with project structure (Lopen.Cli, Lopen.Core, tests)",
+    "requirement": "BUG-AUTH-001",
+    "description": "Fix GCM Credential Store fallback - Graceful fallback when GCM not configured on Linux",
     "priority": 1,
     "status": "done",
-    "notes": "Completed: Solution structure, System.CommandLine 2.0.2, Spectre.Console 0.54.0, xUnit, Shouldly. 200 tests pass."
+    "notes": "Completed 2026-01-27: Enhanced IsAvailable() to detect unconfigured GCM, added test operation, improved error messages, added user warning when using file-based fallback."
   },
   {
     "id": "JTBD-002",
+    "requirement": "REQ-036",
+    "description": "Integrate VerificationService into Loop build phase",
+    "priority": 2,
+    "status": "open",
+    "notes": "CRITICAL GAP: VerificationService exists with full implementation but is NOT called in LoopService.RunBuildPhaseAsync(). Jobs can be marked complete without quality verification."
+  },
+  {
+    "id": "JTBD-003",
+    "requirement": "REQ-022",
+    "description": "TUI Welcome Header Integration - Display header on REPL/Chat/Loop start",
+    "priority": 3,
+    "status": "open",
+    "notes": "Welcome header renderer exists but is not integrated into ReplService, chat command, or loop command. Add IWelcomeHeaderRenderer dependency and call before main loop."
+  },
+  {
+    "id": "JTBD-004",
+    "requirement": "REQ-022",
+    "description": "Add --no-header and --quiet CLI flags to suppress welcome header",
+    "priority": 4,
+    "status": "open",
+    "notes": "CLI flags not defined in Program.cs. Add global options and pass to services."
+  },
+  {
+    "id": "JTBD-005",
+    "requirement": "REQ-016",
+    "description": "System.CommandLine Error Integration - Route parser errors through IErrorRenderer",
+    "priority": 5,
+    "status": "open",
+    "notes": "System.CommandLine errors bypass structured error renderer. Need custom error handler to use SpectreErrorRenderer for parser errors."
+  },
+  {
+    "id": "JTBD-006",
+    "requirement": "REQ-020-TEST",
+    "description": "Self-Testing Per-Test Logging - Add timestamps to test output",
+    "priority": 6,
+    "status": "open",
+    "notes": "Timestamps are captured in TestResult but not displayed in output. Add timestamp prefix in TestOutputService.DisplayVerboseResult()."
+  },
+  {
+    "id": "JTBD-007",
+    "requirement": "REQ-020-TEST",
+    "description": "Self-Testing Stack Traces - Show full stack trace in verbose mode only",
+    "priority": 7,
+    "status": "open",
+    "notes": "Currently only shows ex.Message. Need to conditionally include stack trace when context.Verbose is true in CommandTestCase."
+  },
+  {
+    "id": "JTBD-008",
+    "requirement": "REQ-031",
+    "description": "Loop Interactive Configuration - Add REPL-style config when no flags provided",
+    "priority": 8,
+    "status": "open",
+    "notes": "lopen loop configure only accepts flags. Add interactive prompting when run without flags using Spectre.Console prompts."
+  },
+  {
+    "id": "JTBD-009",
+    "requirement": "REQ-015",
+    "description": "TUI Progress Bar Integration - Add progress bars for batch operations",
+    "priority": 9,
+    "status": "open",
+    "notes": "IProgressRenderer supports spinners but progress bars not integrated into any batch operations. Add to file processing or test execution."
+  },
+  {
+    "id": "JTBD-010",
+    "requirement": "REQ-017",
+    "description": "TUI Responsive Table Columns - Auto-adjust columns based on terminal width",
+    "priority": 10,
+    "status": "open",
+    "notes": "Tables don't dynamically adjust column widths based on available terminal width. Add responsive logic to SpectreDataRenderer."
+  },
+  {
+    "id": "JTBD-011",
+    "requirement": "REQ-018",
+    "description": "TUI Live Display - Non-blocking right panel updates during streaming",
+    "priority": 11,
+    "status": "open",
+    "notes": "Currently panels are static. Need Spectre.Console Live display for concurrent main content and panel updates during streaming."
+  },
+  {
+    "id": "JTBD-012",
+    "requirement": "REQ-019",
+    "description": "TUI Stream Prompt Position - Maintain REPL prompt after streaming response",
+    "priority": 12,
+    "status": "open",
+    "notes": "After streaming response, prompt position isn't preserved. Need Live display integration for proper cursor management."
+  },
+  {
+    "id": "JTBD-013",
+    "requirement": "REQ-020-TEST",
+    "description": "T-AUTH-02 Interactive Device Auth Flow Test",
+    "priority": 13,
+    "status": "open",
+    "notes": "Manual test for full OAuth + MFA flow validation. Add guided interactive test that walks through device auth and validates credential storage."
+  },
+  {
+    "id": "JTBD-014",
     "requirement": "REQ-001",
     "description": "Version Command - Display CLI version with --version flag",
-    "priority": 2,
+    "priority": 14,
     "status": "done",
     "notes": "Completed: `lopen version` subcommand with --format (text/json) option."
   },
   {
-    "id": "JTBD-003",
+    "id": "JTBD-015",
     "requirement": "REQ-002",
     "description": "Help/Commands List - --help/-h built-in + help subcommand",
-    "priority": 3,
+    "priority": 15,
     "status": "done",
     "notes": "Completed: `lopen help` subcommand with --format option and command argument."
   },
   {
-    "id": "JTBD-004",
+    "id": "JTBD-016",
     "requirement": "NFR-002",
     "description": "Cross-Platform build configuration - Windows, macOS, Linux targets",
-    "priority": 4,
+    "priority": 16,
     "status": "done",
     "notes": "Completed: Single-file, self-contained publish config. Linux-x64 tested (~13MB)."
   },
   {
-    "id": "JTBD-005",
+    "id": "JTBD-017",
     "requirement": "REQ-003",
     "description": "GitHub OAuth2 Authentication - Token storage and env var support",
-    "priority": 5,
+    "priority": 17,
     "status": "done",
     "notes": "Completed: AuthService with env var and file-based token storage."
   },
   {
-    "id": "JTBD-006",
+    "id": "JTBD-018",
     "requirement": "REQ-014",
     "description": "Modern TUI Patterns - Spectre.Console 0.54.0 integration",
-    "priority": 6,
+    "priority": 18,
     "status": "done",
     "notes": "Completed: ConsoleOutput helper with success/error/warning/info/muted styles. NO_COLOR support."
   },
   {
-    "id": "JTBD-007",
+    "id": "JTBD-019",
     "requirement": "REQ-010",
     "description": "REPL Mode - Interactive command loop",
-    "priority": 7,
+    "priority": 19,
     "status": "done",
     "notes": "Completed: ReplService with interactive loop, exit/quit commands, Ctrl+C handling."
   },
   {
-    "id": "JTBD-008",
+    "id": "JTBD-020",
     "requirement": "REQ-011",
     "description": "Session State Management - Maintain state between commands",
-    "priority": 8,
+    "priority": 20,
     "status": "done",
     "notes": "Completed: SessionState model, SessionStateService with auth integration."
   },
   {
-    "id": "JTBD-009",
+    "id": "JTBD-021",
     "requirement": "REQ-012",
     "description": "Command History - Up/Down navigation, persistent history",
-    "priority": 9,
+    "priority": 21,
     "status": "done",
     "notes": "Completed: CommandHistory with navigation, PersistentCommandHistory, full line editing."
   },
   {
-    "id": "JTBD-010",
+    "id": "JTBD-022",
     "requirement": "REQ-013",
     "description": "Auto-completion - Tab completion for commands",
-    "priority": 10,
+    "priority": 22,
     "status": "done",
     "notes": "Completed: CommandAutoCompleter with context-aware completion, Tab cycling."
   },
   {
-    "id": "JTBD-011",
+    "id": "JTBD-023",
     "requirement": "NFR-001",
     "description": "Performance optimization - Startup < 500ms",
-    "priority": 11,
+    "priority": 23,
     "status": "done",
     "notes": "Completed: Measured ~185ms cold start, ~50ms warm start. Exceeds targets."
   },
   {
-    "id": "JTBD-012",
+    "id": "JTBD-024",
     "requirement": "NFR-003",
     "description": "Accessibility - NO_COLOR support, exit codes, screen reader friendly",
-    "priority": 12,
+    "priority": 24,
     "status": "done",
     "notes": "Completed: ExitCodes class, NO_COLOR support, clear symbols."
   },
   {
-    "id": "JTBD-013",
+    "id": "JTBD-025",
     "requirement": "REQ-020",
     "description": "Copilot SDK Integration - CopilotService wrapper with streaming",
-    "priority": 13,
+    "priority": 25,
     "status": "done",
     "notes": "Completed: GitHub.Copilot.SDK v0.1.17. ICopilotService, CopilotSession, mock implementations."
   },
   {
-    "id": "JTBD-014",
+    "id": "JTBD-026",
     "requirement": "REQ-021",
     "description": "Chat Command - lopen chat with single-query and interactive modes",
-    "priority": 14,
+    "priority": 26,
     "status": "done",
     "notes": "Completed: lopen chat with --model, --streaming, --resume options."
   },
   {
-    "id": "JTBD-015",
+    "id": "JTBD-027",
     "requirement": "REQ-022",
     "description": "Streaming Responses - Real-time display via Channel pattern",
-    "priority": 15,
+    "priority": 27,
     "status": "done",
     "notes": "Completed: CopilotSession.StreamAsync with Ctrl+C cancellation."
   },
   {
-    "id": "JTBD-016",
+    "id": "JTBD-028",
     "requirement": "REQ-023",
     "description": "Custom Tools - AIFunctionFactory tools for file ops",
-    "priority": 16,
+    "priority": 28,
     "status": "done",
-    "notes": "Completed: LopenTools with read_file, list_directory, get_cwd, file_exists."
+    "notes": "Completed: LopenTools with read_file, list_directory, get_cwd, file_exists, git tools, shell, write file."
   },
   {
-    "id": "JTBD-017",
+    "id": "JTBD-029",
     "requirement": "REQ-024",
     "description": "Session Persistence - Save/resume/list/delete sessions",
-    "priority": 17,
+    "priority": 29,
     "status": "done",
     "notes": "Completed: lopen chat --resume, lopen sessions list/delete commands."
   },
   {
-    "id": "JTBD-018",
+    "id": "JTBD-030",
     "requirement": "REQ-TD-001",
     "description": "Migrate from FluentAssertions to Shouldly",
-    "priority": 18,
+    "priority": 30,
     "status": "done",
-    "notes": "Completed: All 200 tests migrated to Shouldly 4.3.0. MIT license."
+    "notes": "Completed: All tests migrated to Shouldly 4.3.0. MIT license."
   },
   {
-    "id": "JTBD-019",
+    "id": "JTBD-031",
     "requirement": "REQ-030",
     "description": "Loop Command - lopen loop CLI with --auto and --config flags",
-    "priority": 19,
+    "priority": 31,
     "status": "done",
-    "notes": "Completed: LoopService, LoopConfigService, LoopStateManager, LoopOutputService. 35 tests added (248 total)."
+    "notes": "Completed: LoopService, LoopConfigService, LoopStateManager, LoopOutputService. Tests pass."
   },
   {
-    "id": "JTBD-020",
+    "id": "JTBD-032",
     "requirement": "REQ-031",
     "description": "Loop Configuration - LoopConfigService with user/project config merge",
-    "priority": 20,
+    "priority": 32,
     "status": "done",
-    "notes": "Completed as part of JTBD-019. User/project config merge implemented with tests."
+    "notes": "Completed: User/project config merge implemented with tests."
   },
   {
-    "id": "JTBD-021",
+    "id": "JTBD-033",
     "requirement": "REQ-032",
     "description": "Plan Phase - Execute PLAN.PROMPT.md with Copilot SDK",
-    "priority": 21,
+    "priority": 33,
     "status": "done",
     "notes": "Completed: LoopService.RunPlanPhaseAsync() loads prompt and streams to Copilot SDK."
   },
   {
-    "id": "JTBD-022",
+    "id": "JTBD-034",
     "requirement": "REQ-033",
     "description": "Build Phase - Iterative job execution until lopen.loop.done",
-    "priority": 22,
+    "priority": 34,
     "status": "done",
     "notes": "Completed: LoopService.RunBuildPhaseAsync() loops until done file or Ctrl+C."
   },
   {
-    "id": "JTBD-023",
+    "id": "JTBD-035",
     "requirement": "REQ-034",
     "description": "Loop State Management - File-based state tracking",
-    "priority": 23,
+    "priority": 35,
     "status": "done",
     "notes": "Completed: LoopStateManager tracks done file, jobs file, plan file paths."
   },
   {
-    "id": "JTBD-024",
+    "id": "JTBD-036",
     "requirement": "REQ-035",
     "description": "Loop Output Streaming - Real-time console output with phase indicators",
-    "priority": 24,
+    "priority": 36,
     "status": "done",
     "notes": "Completed: LoopOutputService with WritePhaseHeader, WriteIterationComplete."
   },
   {
-    "id": "JTBD-025",
-    "requirement": "REQ-036",
-    "description": "Verification Agent - Dedicated sub-agent for quality checks",
-    "priority": 25,
-    "status": "done",
-    "notes": "Completed: IVerificationService, VerificationService, VerificationResult, MockVerificationService. 32 tests added (278 total)."
-  },
-  {
-    "id": "JTBD-026",
-    "requirement": "REQ-015",
-    "description": "TUI Spinners - Progress indicators for Copilot SDK calls",
-    "priority": 26,
-    "status": "done",
-    "notes": "Completed: IProgressRenderer, SpectreProgressRenderer, MockProgressRenderer, ConsoleOutput.ShowStatusAsync. 25 tests added (303 total)."
-  },
-  {
-    "id": "JTBD-027",
-    "requirement": "REQ-016",
-    "description": "TUI Error Display - IErrorRenderer with suggestions",
-    "priority": 27,
-    "status": "done",
-    "notes": "Completed: IErrorRenderer interface, SpectreErrorRenderer, MockErrorRenderer. RenderSimpleError, RenderPanelError, RenderValidationError, RenderCommandNotFound, RenderError methods. ConsoleOutput convenience methods. 35 tests added (338 total)."
-  },
-  {
-    "id": "JTBD-028",
-    "requirement": "REQ-017",
-    "description": "TUI Structured Data - Tables for sessions list",
-    "priority": 28,
-    "status": "done",
-    "notes": "Completed: IDataRenderer, SpectreDataRenderer, MockDataRenderer. RenderTable, RenderMetadata, RenderInfo methods. ConsoleOutput.Table/Metadata convenience. Sessions list command updated. 24 tests added (362 total)."
-  },
-  {
-    "id": "JTBD-029",
-    "requirement": "REQ-018",
-    "description": "TUI Right-Side Panels - Split layouts for task context",
-    "priority": 29,
-    "status": "done",
-    "notes": "Completed: ILayoutRenderer, SpectreLayoutRenderer, MockLayoutRenderer, TaskItem/TaskStatus enums. 32 tests added (391 total)."
-  },
-  {
-    "id": "JTBD-030",
-    "requirement": "REQ-019",
-    "description": "TUI AI Streaming - Buffered paragraph rendering",
-    "priority": 30,
-    "status": "done",
-    "notes": "Completed: IStreamRenderer, SpectreStreamRenderer, MockStreamRenderer. Buffering with timeout/token limit, code block handling. 29 tests added (420 total)."
-  },
-  {
-    "id": "JTBD-031",
-    "requirement": "REQ-020",
-    "description": "TUI Terminal Detection - TerminalCapabilities class",
-    "priority": 31,
-    "status": "done",
-    "notes": "Completed: ITerminalCapabilities, TerminalCapabilities.Detect(), MockTerminalCapabilities. Width/height/color/unicode/interactive detection with NO_COLOR support. 19 tests added (439 total)."
-  },
-  {
-    "id": "JTBD-032",
-    "requirement": "REQ-021",
-    "description": "TUI Testing - ITuiRenderer interface and mocks",
-    "priority": 32,
-    "status": "done",
-    "notes": "Completed: Specialized interfaces (IProgressRenderer, IErrorRenderer, IDataRenderer, ILayoutRenderer, IStreamRenderer, ITerminalCapabilities) with Mock* implementations. TestConsole used throughout. IConsoleInput/IConsoleInputWithHistory for input testing."
-  },
-  {
-    "id": "JTBD-033",
-    "requirement": "REQ-022",
-    "description": "TUI Welcome Header - Wind Runner ASCII art and session info",
-    "priority": 33,
-    "status": "done",
-    "notes": "Completed: IWelcomeHeaderRenderer, SpectreWelcomeHeaderRenderer, MockWelcomeHeaderRenderer. AsciiLogoProvider with responsive logos. WelcomeHeaderContext with version/session/context window. 31 tests added (480 total)."
-  },
-  {
-    "id": "JTBD-034",
-    "requirement": "REQ-020-TEST",
-    "description": "Self-Testing Command - lopen test self harness",
-    "priority": 34,
-    "status": "done",
-    "notes": "Completed: TestRunner, CommandTestCase, KeywordValidator, TestSuiteRegistry. CLI command with --verbose, --filter, --model, --format. 45 tests added (525 total)."
-  },
-  {
-    "id": "JTBD-035",
-    "requirement": "REQ-020-TEST",
-    "description": "Self-Testing Test Cases - Chat, REPL, Session suites",
-    "priority": 35,
-    "status": "done",
-    "notes": "Completed as part of JTBD-034. ChatTestSuite (2), AuthTestSuite (1), SessionTestSuite (1), CoreTestSuite (2)."
-  },
-  {
-    "id": "JTBD-036",
-    "requirement": "REQ-020-TEST",
-    "description": "Self-Testing Validation - Keyword matching and result aggregation",
-    "priority": 36,
-    "status": "done",
-    "notes": "Completed as part of JTBD-034. KeywordValidator, TestRunSummary, TestOutputService."
-  },
-  {
     "id": "JTBD-037",
-    "requirement": "REQ-010",
-    "description": "REPL Quoted String Parsing - CommandLineToArgvW-style",
+    "requirement": "REQ-036",
+    "description": "Verification Agent - Dedicated sub-agent for quality checks (service only)",
     "priority": 37,
     "status": "done",
-    "notes": "Completed: ParseArgs handles quoted strings, backslash escapes. 12 tests added (537 total)."
+    "notes": "Completed: IVerificationService, VerificationService, VerificationResult, MockVerificationService. Integration pending (JTBD-002)."
   },
   {
     "id": "JTBD-038",
-    "requirement": "REQ-003",
-    "description": "OAuth2 Device Flow - Browser-based authentication",
+    "requirement": "REQ-015",
+    "description": "TUI Spinners - Progress indicators for Copilot SDK calls",
     "priority": 38,
     "status": "done",
-    "notes": "Completed: DeviceFlowAuth service, OAuthAppConfig loader, device code/polling flow. Auth login command integrates device flow. MockDeviceFlowAuth for testing. 13 tests added (698 total)."
+    "notes": "Completed: IProgressRenderer, SpectreProgressRenderer, MockProgressRenderer."
   },
   {
     "id": "JTBD-039",
-    "requirement": "REQ-003",
-    "description": "Secure Token Storage - Platform-specific (DPAPI/Keychain/libsecret)",
+    "requirement": "REQ-016",
+    "description": "TUI Error Display - IErrorRenderer with suggestions",
     "priority": 39,
     "status": "done",
-    "notes": "Completed: SecureCredentialStore using Devlooped.CredentialManager (GCM). Platform auto-detection with fallback to FileCredentialStore. Credential migration support. 22 tests added (720 total)."
+    "notes": "Completed: SpectreErrorRenderer with RenderSimpleError, RenderPanelError, RenderValidationError."
   },
   {
     "id": "JTBD-040",
-    "requirement": "REQ-023",
-    "description": "Git Tools - Add git status, diff, log tools",
+    "requirement": "REQ-017",
+    "description": "TUI Structured Data - Tables and trees for sessions list",
     "priority": 40,
     "status": "done",
-    "notes": "Completed: lopen_git_status, lopen_git_diff, lopen_git_log tools added to LopenTools. 10 tests added (547 total)."
+    "notes": "Completed: IDataRenderer, SpectreDataRenderer, ITreeRenderer, SpectreTreeRenderer."
   },
   {
     "id": "JTBD-041",
-    "requirement": "REQ-023",
-    "description": "Shell Tool - Safe command execution with permission model",
+    "requirement": "REQ-018",
+    "description": "TUI Right-Side Panels - Split layouts for task context",
     "priority": 41,
     "status": "done",
-    "notes": "Completed: lopen_run_command tool with timeout control (default 30s, max 300s). Captures stdout, stderr, exit code. 6 tests added (562 total)."
+    "notes": "Completed: ILayoutRenderer, SpectreLayoutRenderer with RenderSplitLayout, RenderTaskPanel."
   },
   {
     "id": "JTBD-042",
-    "requirement": "REQ-023",
-    "description": "Write File Tool - Add file creation/update capability",
+    "requirement": "REQ-019",
+    "description": "TUI AI Streaming - Buffered paragraph rendering",
     "priority": 42,
     "status": "done",
-    "notes": "Completed: lopen_write_file and lopen_create_directory tools added. 9 tests added (556 total)."
+    "notes": "Completed: IStreamRenderer, SpectreStreamRenderer with buffering and code block handling."
   },
   {
     "id": "JTBD-043",
-    "requirement": "REQ-003",
-    "description": "Token Refresh Handling - Automatic token refresh",
+    "requirement": "REQ-020",
+    "description": "TUI Terminal Detection - TerminalCapabilities class",
     "priority": 43,
     "status": "done",
-    "notes": "Completed: TokenInfo record, ITokenInfoStore interface, RefreshTokenAsync in DeviceFlowAuth, AuthService auto-refresh with 5-min buffer. 16 tests added (736 total)."
+    "notes": "Completed: ITerminalCapabilities with width/height/color/unicode/interactive detection."
   },
   {
     "id": "JTBD-044",
-    "requirement": "REQ-011",
-    "description": "Session Save/Restore - Optional REPL session persistence",
+    "requirement": "REQ-021",
+    "description": "TUI Testing - Specialized interfaces and mocks",
     "priority": 44,
     "status": "done",
-    "notes": "Completed: ISessionStore, FileSessionStore, PersistableSessionState, MockSessionStore. CLI commands repl-session save/load/list/delete. 28 tests added (685 total)."
+    "notes": "Completed: All Mock* implementations for testing. TestConsole used throughout."
   },
   {
     "id": "JTBD-045",
-    "requirement": "NFR-001",
-    "description": "Copilot Response Time Metrics - First response < 2s",
+    "requirement": "REQ-022",
+    "description": "TUI Welcome Header - Wind Runner ASCII art and session info (renderer only)",
     "priority": 45,
     "status": "done",
-    "notes": "Completed: ResponseMetrics record, IMetricsCollector interface, MetricsCollector implementation, MockMetricsCollector for testing, StreamRenderer integration with ShowMetrics option. 45 tests added (780 total)."
+    "notes": "Completed: IWelcomeHeaderRenderer, SpectreWelcomeHeaderRenderer. Integration pending (JTBD-003)."
   },
   {
     "id": "JTBD-046",
-    "requirement": "REQ-014",
-    "description": "TUI Emoji Support - Enhanced visual feedback symbols",
+    "requirement": "REQ-020-TEST",
+    "description": "Self-Testing Command - lopen test self harness",
     "priority": 46,
     "status": "done",
-    "notes": "Completed: StatusSymbol enum, ISymbolProvider, SymbolProvider with unicode fallback. ConsoleOutput.Progress/New/Launch/Fast/Tip methods. 25 tests added (587 total)."
+    "notes": "Completed: TestRunner, CommandTestCase, KeywordValidator, TestSuiteRegistry with CLI."
   },
   {
     "id": "JTBD-047",
-    "requirement": "REQ-014",
-    "description": "TUI Adaptive Color Depth - Detection and graceful degradation",
+    "requirement": "REQ-020-TEST",
+    "description": "Self-Testing Interactive Mode - Suite/test selection UI",
     "priority": 47,
     "status": "done",
-    "notes": "Completed: ColorCategory enum, IColorProvider, ColorProvider with TrueColor/256/16 color support. ITerminalCapabilities.Supports256Colors/SupportsTrueColor properties. 37 tests added (624 total)."
+    "notes": "Completed: SpectreInteractiveTestSelector with --interactive/-i flag."
   },
   {
     "id": "JTBD-048",
-    "requirement": "REQ-017",
-    "description": "TUI Tree Component - Hierarchical data display",
+    "requirement": "REQ-010",
+    "description": "REPL Quoted String Parsing - CommandLineToArgvW-style",
     "priority": 48,
     "status": "done",
-    "notes": "Completed: TreeNode model, ITreeRenderer interface, SpectreTreeRenderer, MockTreeRenderer. ConsoleOutput.Tree() method. Max depth 5, truncation at 80 chars. 22 tests added (646 total)."
+    "notes": "Completed: ParseArgs handles quoted strings, backslash escapes."
   },
   {
     "id": "JTBD-049",
-    "requirement": "REQ-020-TEST",
-    "description": "Self-Testing Interactive Mode - Suite/test selection UI",
+    "requirement": "REQ-003",
+    "description": "OAuth2 Device Flow - Browser-based authentication",
     "priority": 49,
     "status": "done",
-    "notes": "Completed: IInteractiveTestSelector interface, SpectreInteractiveTestSelector with MultiSelectionPrompt, MockInteractiveTestSelector for testing. --interactive/-i flag. 11 tests added (657 total)."
+    "notes": "Completed: DeviceFlowAuth with device code/polling flow."
   },
   {
     "id": "JTBD-050",
-    "requirement": "REQ-020-TEST",
-    "description": "Self-Testing JSON Output - CI/CD integration format",
+    "requirement": "REQ-003",
+    "description": "Secure Token Storage - Platform-specific credential storage",
     "priority": 50,
     "status": "done",
-    "notes": "Completed as part of JTBD-034. --format json option outputs structured JSON."
+    "notes": "Completed: SecureCredentialStore with GCM. BUG-AUTH-001 affects Linux fallback (JTBD-001)."
   },
   {
     "id": "JTBD-051",
-    "requirement": "REQ-030",
-    "description": "Loop Tests - Unit tests for LoopService",
+    "requirement": "REQ-003",
+    "description": "Token Refresh Handling - Automatic token refresh",
     "priority": 51,
     "status": "done",
-    "notes": "Completed: LoopServiceTests.cs with tests for main/feature branch, skip phases, iteration."
+    "notes": "Completed: TokenInfo, RefreshTokenAsync, auto-refresh with 5-min buffer."
   },
   {
     "id": "JTBD-052",
-    "requirement": "REQ-031",
-    "description": "Loop Config Tests - Tests for configuration loading",
+    "requirement": "REQ-011",
+    "description": "Session Save/Restore - Optional REPL session persistence",
     "priority": 52,
     "status": "done",
-    "notes": "Completed: LoopConfigServiceTests.cs, LoopConfigTests.cs with config merge tests."
+    "notes": "Completed: ISessionStore, FileSessionStore with repl-session commands."
   },
   {
     "id": "JTBD-053",
-    "requirement": "REQ-032",
-    "description": "Plan Phase Tests - Tests for plan execution",
+    "requirement": "NFR-001",
+    "description": "Copilot Response Time Metrics - First response tracking",
     "priority": 53,
     "status": "done",
-    "notes": "Completed as part of LoopServiceTests.cs."
+    "notes": "Completed: ResponseMetrics, IMetricsCollector, StreamRenderer integration."
   },
   {
     "id": "JTBD-054",
-    "requirement": "REQ-033",
-    "description": "Build Phase Tests - Tests for build loop",
+    "requirement": "REQ-014",
+    "description": "TUI Emoji and Symbol Support - StatusSymbol, ISymbolProvider",
     "priority": 54,
     "status": "done",
-    "notes": "Completed as part of LoopServiceTests.cs."
+    "notes": "Completed: SymbolProvider with unicode fallback."
   },
   {
     "id": "JTBD-055",
-    "requirement": "REQ-034",
-    "description": "Loop State Tests - Tests for state management",
+    "requirement": "REQ-014",
+    "description": "TUI Adaptive Color Depth - ColorProvider with graceful degradation",
     "priority": 55,
     "status": "done",
-    "notes": "Completed: LoopStateManagerTests.cs with done file, jobs file tests."
+    "notes": "Completed: ColorProvider with TrueColor/256/16 color support."
   },
   {
     "id": "JTBD-056",
-    "requirement": "REQ-036",
-    "description": "Verification Tests - Tests for verification agent",
+    "requirement": "REQ-TD-002",
+    "description": "Update README.md Phase 4 status from Not Started to Complete",
     "priority": 56,
     "status": "done",
-    "notes": "Completed: VerificationServiceTests.cs, VerificationResultTests.cs, MockVerificationServiceTests.cs."
+    "notes": "Completed 2026-01-27: README.md showed Loop Phase 4 as 'Not Started' but implementation was complete. Status indicators updated."
   },
   {
     "id": "JTBD-057",
-    "requirement": "REQ-015",
-    "description": "TUI Spinner Tests - Tests for progress indicators",
+    "requirement": "REQ-TD-003",
+    "description": "Update SPECIFICATION.md checkboxes for implemented features",
     "priority": 57,
-    "status": "done",
-    "notes": "Completed: SpectreProgressRendererTests.cs, MockProgressRendererTests.cs."
+    "status": "open",
+    "notes": "Many acceptance criteria are implemented but unchecked. Update loop, tui, testing SPECIFICATION.md files. See gap analysis docs."
   },
   {
     "id": "JTBD-058",
-    "requirement": "REQ-016",
-    "description": "TUI Error Tests - Tests for error display",
+    "requirement": "REQ-030",
+    "description": "Loop Interactive Prompt Text - Match spec wording exactly",
     "priority": 58,
-    "status": "done",
-    "notes": "Completed: SpectreErrorRendererTests.cs, MockErrorRendererTests.cs."
+    "status": "open",
+    "notes": "Minor: Current prompt differs from spec. Optionally update to 'Do you need to add specifications, or shall we commence planning and building?'"
   },
   {
     "id": "JTBD-059",
-    "requirement": "REQ-022",
-    "description": "TUI Banner Tests - Tests for welcome header",
+    "requirement": "REQ-031",
+    "description": "Loop Default Model Config - Update from gpt-5 to claude-opus-4.5",
     "priority": 59,
-    "status": "done",
-    "notes": "Completed: SpectreWelcomeHeaderRendererTests.cs, MockWelcomeHeaderRendererTests.cs."
+    "status": "open",
+    "notes": "LoopConfig.cs defaults to gpt-5 but spec says claude-opus-4.5. Minor config alignment."
   },
   {
     "id": "JTBD-060",
-    "requirement": "REQ-020",
-    "description": "TUI Capability Tests - Tests for terminal detection",
+    "requirement": "REQ-031",
+    "description": "Loop AllowAll Flag - Wire allowAll config to Copilot SDK session",
     "priority": 60,
-    "status": "done",
-    "notes": "Completed: TerminalCapabilitiesTests.cs, MockTerminalCapabilitiesTests.cs."
+    "status": "open",
+    "notes": "Config property exists but never passed to CopilotSessionOptions. Minor wiring."
   }
 ]

@@ -18,8 +18,19 @@ public class SecureCredentialStore : ICredentialStore, ITokenInfoStore
 
     public SecureCredentialStore()
     {
-        // Create platform-specific store with "lopen" namespace
-        _store = CredentialManager.Create("lopen");
+        try
+        {
+            // Create platform-specific store with "lopen" namespace
+            _store = CredentialManager.Create("lopen");
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                "Failed to initialize secure credential store. " +
+                "On Linux, ensure GCM_CREDENTIAL_STORE is configured. " +
+                "See https://aka.ms/gcm/credstores for details.",
+                ex);
+        }
     }
 
     /// <summary>
@@ -119,18 +130,49 @@ public class SecureCredentialStore : ICredentialStore, ITokenInfoStore
     }
 
     /// <summary>
-    /// Checks if secure storage is available on this platform.
+    /// Checks if secure storage is available and properly configured on this platform.
+    /// Returns false if GCM is not installed OR if it's installed but not configured.
     /// </summary>
     public static bool IsAvailable()
     {
         try
         {
             // Try to create the store - this will fail if platform support is missing
-            var _ = CredentialManager.Create("lopen-test");
+            // or if GCM is not configured on Linux
+            var store = CredentialManager.Create("lopen-test");
+
+            // Try a test operation to ensure the store is actually usable
+            // This helps catch configuration issues that might not surface during Create()
+            try
+            {
+                // Attempt to get a non-existent credential to verify store access
+                _ = store.Get("lopen-test-service", "lopen-test-account");
+            }
+            catch (Exception ex)
+            {
+                // Check if this is a "not configured" error vs "not found" (expected)
+                if (ex.Message.Contains("credential store") ||
+                    ex.Message.Contains("GCM_CREDENTIAL_STORE"))
+                {
+                    return false;
+                }
+                // "Not found" or similar is expected - store is working
+            }
+
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            // Check if this is the "no credential store configured" error
+            if (ex.Message.Contains("No credential store has been selected") ||
+                ex.Message.Contains("credential store") ||
+                ex.Message.Contains("GCM_CREDENTIAL_STORE"))
+            {
+                // GCM is installed but not configured - not available
+                return false;
+            }
+
+            // Other errors (e.g., GCM not installed) also mean not available
             return false;
         }
     }

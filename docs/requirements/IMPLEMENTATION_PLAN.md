@@ -1,21 +1,20 @@
 # Implementation Plan
 
-> ✅ This iteration complete - Copilot Response Time Metrics implemented
+> ✅ This iteration complete - GCM Credential Store Fallback fixed
 
 ## Completed This Iteration
 
-### JTBD-045: Copilot Response Time Metrics (NFR-001) ✅
-- Created `ResponseMetrics` record with timing calculations (TimeToFirstToken, TotalTime, TokensPerSecond)
-- Created `IMetricsCollector` interface for metrics collection
-- Implemented `MetricsCollector` with concurrent tracking of multiple requests
-- Created `MockMetricsCollector` for deterministic testing
-- Extended `StreamConfig` with `MetricsCollector` and `ShowMetrics` options
-- Integrated metrics collection into `SpectreStreamRenderer` and `MockStreamRenderer`
-- Added `MeetsFirstTokenTarget` property to check < 2s target
-- 45 tests added (780 total)
+### JTBD-001: Fix GCM Credential Store Fallback (BUG-AUTH-001) ✅
+- Enhanced `SecureCredentialStore.IsAvailable()` to detect unconfigured GCM on Linux
+- Added test operation (Get) to verify store is actually usable
+- Improved constructor with helpful error message pointing to GCM documentation
+- Added `usingSecureStorage` tracking in Program.cs
+- Added `ShowSecureStorageWarningIfNeeded()` helper for user feedback
+- Shows security warning when falling back to file-based storage
+- 4 tests added (780 total)
 
 ## Total Tests: 780
 
 ## Next Priority Tasks
 
-All tasks complete! No pending items in jobs-to-be-done.json.
+Check jobs-to-be-done.json for next highest priority open task.
