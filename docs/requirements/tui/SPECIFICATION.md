@@ -854,7 +854,11 @@ Display a branded welcome header at REPL startup featuring the Wind Runner radia
 Lopen is building an interactive REPL that serves as an enhanced version of the existing `scripts/lopen.sh` with `PLAN.PROMPT.md` and `BUILD.PROMPT.md` capabilities built in. The name "lopen" references the character from Brandon Sanderson's Stormlight Archive, whose niche role mirrors the AI agent loop concept (similar to how Ralph Wiggum represents a cultural reference point). The welcome header establishes brand identity and provides essential session context at a glance, similar to Claude Code and GitHub Copilot CLI's branded experiences.
 
 ### Acceptance Criteria
-- [x] ASCII art logo featuring Wind Runner radiant order sigil
+
+- [ ] Show on REPL start
+- [ ] Show on Chat start
+- [ ] Show on Loop start
+- [x] ASCII art logo featuring the word Lopen
 - [x] Display application version from assembly metadata
 - [x] Show contextual help tip referencing actual `lopen help` command
 - [x] Display session name (auto-generated with override via `--session-name` flag)
@@ -870,23 +874,17 @@ Lopen is building an interactive REPL that serves as an enhanced version of the 
 #### Full Header (Terminal Width ≥ 100 chars)
 ```
 ╭─────────────────────────────────────────────────────────────────────────────╮
-│                         ⚡ Wind Runner Sigil ⚡                              │
 │                                                                             │
-│                              ▄▄▄▄▄▄▄▄▄                                      │
-│                           ▄▀▀         ▀▀▄                                   │
-│                         ▄▀   ▄▄▄▄▄▄▄    ▀▄                                  │
-│                        █   ▄▀▀     ▀▀▄   █                                  │
-│                       █   █  ⚡ W ⚡  █   █                                  │
-│                       █    ▀▄▄     ▄▄▀    █                                 │
-│                        ▀▄    ▀▀▀▀▀▀▀    ▄▀                                  │
-│                          ▀▄▄         ▄▄▀                                    │
-│                             ▀▀▀▀▀▀▀▀▀                                       │
+│                            ╻  ┏━┓┏━┓┏━╸┏┓╻                                  │
+│                            ┃  ┃ ┃┣━┛┣╸ ┃┗┫                                  │
+│                            ┗━╸┗━┛╹  ┗━╸╹ ╹                                  │
 │                                                                             │
-│                           lopen v1.0.0-alpha                                │
-│                    Interactive Copilot Agent Loop                           │
+│                             v1.0.0-alpha                                    │
+│                         Interactive Agent Loop                              │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ 💡 Tip: Type 'help' or 'lopen --help' for available commands               │
+├─────────────────────────────────────────────────────────────────────────────┤
 │ 📊 Session: lopen-2026-01-25-1923  |  Context: 2.4K/128K tokens  |  🟢     │
 ╰─────────────────────────────────────────────────────────────────────────────╯
 

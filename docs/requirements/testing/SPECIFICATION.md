@@ -25,7 +25,7 @@ Implement a `lopen test self` command that runs automated tests against the lope
 lopen test self                           # Run all test suites
 lopen test self --verbose                 # Show detailed output per test
 lopen test self --filter <pattern>        # Run tests matching pattern
-lopen test self --interactive             # Interactive suite/test selection
+lopen test self --interactive|-i          # Interactive suite/test selection OR interactive device auth flow test
 lopen test self --timeout <seconds>       # Override default timeout (30s)
 lopen test self --model <model>           # Override model (default: gpt-5-mini)
 lopen test self --format json             # Output results as JSON
@@ -71,6 +71,7 @@ lopen test self --format json             # Output results as JSON
 | Test ID | Description | Command | Expected Pattern |
 |---------|-------------|---------|------------------|
 | T-AUTH-01 | Check status | `lopen auth status` | "authenticated" or token info |
+| T-AUTH-02 | Interactive device flow | `lopen test self -i` (manual) | Complete full OAuth + MFA flow, validate credential storage |
 
 ### Validation Strategy
 
@@ -148,12 +149,23 @@ Running 11 tests across 4 suites...
 
 ### Interactive Mode
 
-When `--interactive` flag is used:
+When `--interactive` or `-i` flag is used:
+
+**Mode 1: Interactive Test Selection** (default when automated tests are available)
 1. Display available test suites with descriptions
 2. Prompt user to select suites (multi-select with checkboxes)
 3. For each selected suite, show tests and allow selection
 4. Ask the user to confirm the model
 5. Execute selected tests with confirmation
+
+**Mode 2: Interactive Device Auth Flow Testing** (selected via menu or when no automated tests match)
+1. Prompt user to clear existing authentication: `lopen auth logout`
+2. Initiate device flow: `lopen auth login`
+3. Guide user through OAuth device code flow
+4. Prompt for MFA completion
+5. Validate credential storage succeeds
+6. Check for BUG-AUTH-001 (GCM credential store error)
+7. Report success/failure with diagnostic information
 
 ### Filter Mode
 
@@ -183,6 +195,7 @@ Pattern matching for `--filter`:
 | TC-020-06 | Test failure | Exits with code 1 | ✅ |
 | TC-020-07 | `lopen test self --interactive` | Prompts for selection | ✅ |
 | TC-020-08 | `lopen test self --timeout 60` | Uses custom timeout | ✅ |
+| TC-020-09 | `lopen test self -i` (device auth) | Guides through full OAuth+MFA flow, validates credential storage | 🔵 Planned |
 
 ---
 

@@ -86,6 +86,51 @@ OAuth app credentials stored in `~/.config/lopen/oauth.json`:
 
 ---
 
+## Known Issues
+
+### HIGH PRIORITY
+
+#### BUG-AUTH-001: GCM Credential Store Not Configured
+**Status**: 🔴 Open  
+**Priority**: High  
+**Discovered**: 2026-01-27
+
+**Description**:
+Device authentication fails after completing MFA when Git Credential Manager (GCM) is not configured with a credential store. The error occurs at `AuthService.cs:line 177` when attempting to store credentials.
+
+**Error Message**:
+```
+System.Exception: No credential store has been selected.
+Set the GCM_CREDENTIAL_STORE environment variable or the credential.credentialStore 
+Git configuration setting to one of the following options:
+  secretservice : freedesktop.org Secret Service (requires graphical interface)
+  gpg           : GNU `pass` compatible credential storage (requires GPG and `pass`)
+  cache         : Git's in-memory credential cache
+  plaintext     : store credentials in plain-text files (UNSECURE)
+  none          : disable internal credential storage
+See https://aka.ms/gcm/credstores for more information.
+```
+
+**Steps to Reproduce**:
+1. Run `lopen auth login` on a system without GCM credential store configured
+2. Complete device flow sign-in
+3. Complete MFA challenge
+4. Observe credential storage failure
+
+**Expected Behavior**:
+Authentication should gracefully fallback to plaintext storage with a warning message when GCM is not configured. User should be informed about the security implications and given instructions to configure secure storage.
+
+**Proposed Fix**:
+- Detect when GCM credential store is not configured
+- Display warning: "⚠️  No secure credential store configured. Storing token in plaintext. See https://aka.ms/gcm/credstores to configure secure storage."
+- Fallback to plaintext storage in `~/.config/lopen/` or `~/.copilot/`
+- Continue authentication flow successfully
+
+**Testing**:
+Add `--interactive` or `-i` flag to `lopen test self` command to enable interactive testing of full device auth flow including MFA and credential storage.
+
+---
+
 ## Implementation Notes
 
 See [RESEARCH.md](RESEARCH.md) for detailed implementation guidance.
