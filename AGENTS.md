@@ -52,11 +52,12 @@ dotnet run --project src/Lopen.Cli
 
 ## Important
 
-1. **Requirements First**: Check `docs/requirements/README.md` before implementing features
-1. **100% Core Coverage**: All core business logic must have tests
-1. **POSIX Arguments**: Use `--long-flag` and `-s` short flags
-1. **Jobs Tracking**: See `docs/requirements/jobs-to-be-done.json` for prioritized tasks
-1. **Implementation Plan**: Current focus in `docs/requirements/IMPLEMENTATION_PLAN.md`
+1. Check `docs/requirements/README.md` before implementing features
+2. All core business logic must have tests
+3. Use `--long-flag` and `-s` short flags
+4. See `docs/requirements/jobs-to-be-done.json` for prioritized tasks
+5. Current focus in `docs/requirements/IMPLEMENTATION_PLAN.md`
+6. Avoid adding additional documentation that consume context. Stick to SPECIFICATION.md and RESEARCH.md
 
 ## CLI Patterns
 
