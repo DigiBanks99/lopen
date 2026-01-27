@@ -75,4 +75,7 @@ dotnet run --project src/Lopen.Cli
 - **Spectre.Console MultiSelectionPrompt**: Use `AddChoiceGroup()` for grouped selections, `.Select()` to pre-select items, `.Required()` to require at least one selection. Result is `List<T>` of selected items
 - **Spectre.Console SelectionPrompt**: Use for single-item selection; reorder choices to set default (first item is highlighted)
 - **Spectre.Console ConfirmationPrompt**: Use `DefaultValue = true` to set default, returns bool
+- **Spectre.Console TextPrompt**: Use `new TextPrompt<string>(text).DefaultValue(x).ShowDefaultValue(true)` for text input with defaults
 - **Terminal Detection**: Use `Console.IsInputRedirected` to check if running in interactive terminal before showing prompts
+- **System.CommandLine Error Handling**: Check `parseResult.Errors.Any()` before invoking; parse errors bypass command handlers
+- **Levenshtein Distance**: Useful for "Did you mean?" suggestions; allow distance ≤3 for similar commands
