@@ -68,8 +68,8 @@
     "requirement": "REQ-015",
     "description": "TUI Progress Bar Integration - Add progress bars for batch operations",
     "priority": 9,
-    "status": "open",
-    "notes": "IProgressRenderer supports spinners but progress bars not integrated into any batch operations. Add to file processing or test execution."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Added IProgressBarContext interface, ShowProgressBarAsync to IProgressRenderer, SpectreProgressRenderer with Spectre.Console Progress(). Integrated into TestRunner for non-verbose mode. 17 tests added (844 total)."
   },
   {
     "id": "JTBD-010",
@@ -357,7 +357,7 @@
     "description": "TUI Welcome Header - Wind Runner ASCII art and session info (renderer only)",
     "priority": 45,
     "status": "paritially done",
-    "notes": "Completed: IWelcomeHeaderRenderer, SpectreWelcomeHeaderRenderer. Integration pending (JTBD-003)."
+    "notes": "Completed: IWelcomeHeaderRenderer, SpectreWelcomeHeaderRenderer. Integration pending (JTBD-003). ASCII art does not match"
   },
   {
     "id": "JTBD-046",

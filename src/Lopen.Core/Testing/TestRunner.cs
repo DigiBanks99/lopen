@@ -8,14 +8,17 @@ namespace Lopen.Core.Testing;
 public sealed class TestRunner
 {
     private readonly int _maxParallelism;
+    private readonly IProgressRenderer? _progressRenderer;
     
     /// <summary>
     /// Creates a test runner.
     /// </summary>
     /// <param name="maxParallelism">Maximum number of concurrent tests (default: 4).</param>
-    public TestRunner(int maxParallelism = 4)
+    /// <param name="progressRenderer">Optional progress renderer for showing progress bar.</param>
+    public TestRunner(int maxParallelism = 4, IProgressRenderer? progressRenderer = null)
     {
         _maxParallelism = maxParallelism;
+        _progressRenderer = progressRenderer;
     }
     
     /// <summary>
@@ -36,19 +39,47 @@ public sealed class TestRunner
         var results = new ConcurrentBag<TestResult>();
         var startTime = DateTimeOffset.Now;
         
-        await Parallel.ForEachAsync(
-            testList,
-            new ParallelOptions
-            {
-                MaxDegreeOfParallelism = _maxParallelism,
-                CancellationToken = cancellationToken
-            },
-            async (test, ct) =>
-            {
-                var result = await test.ExecuteAsync(context, ct);
-                results.Add(result);
-                progressCallback?.Invoke(result);
-            });
+        // If progress renderer is available and no callback provided, use progress bar
+        if (_progressRenderer != null && progressCallback == null && testList.Count > 0)
+        {
+            await _progressRenderer.ShowProgressBarAsync(
+                "Running tests",
+                testList.Count,
+                async progressBar =>
+                {
+                    await Parallel.ForEachAsync(
+                        testList,
+                        new ParallelOptions
+                        {
+                            MaxDegreeOfParallelism = _maxParallelism,
+                            CancellationToken = cancellationToken
+                        },
+                        async (test, ct) =>
+                        {
+                            var result = await test.ExecuteAsync(context, ct);
+                            results.Add(result);
+                            progressBar.Increment();
+                            progressBar.UpdateDescription($"Running tests ({results.Count}/{testList.Count})");
+                        });
+                },
+                cancellationToken);
+        }
+        else
+        {
+            await Parallel.ForEachAsync(
+                testList,
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = _maxParallelism,
+                    CancellationToken = cancellationToken
+                },
+                async (test, ct) =>
+                {
+                    var result = await test.ExecuteAsync(context, ct);
+                    results.Add(result);
+                    progressCallback?.Invoke(result);
+                });
+        }
         
         var endTime = DateTimeOffset.Now;
         

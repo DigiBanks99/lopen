@@ -141,4 +141,119 @@ public class MockProgressRendererTests
 
         mock.StatusUpdates.ShouldBe(new[] { "Initial", "A", "B", "C" });
     }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_IncrementsProgressBarCallCount()
+    {
+        var mock = new MockProgressRenderer();
+
+        await mock.ShowProgressBarAsync("Processing items", 10, async ctx =>
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                ctx.Increment();
+            }
+        });
+
+        mock.ProgressBarCallCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_RecordsDescription()
+    {
+        var mock = new MockProgressRenderer();
+
+        await mock.ShowProgressBarAsync("Running tests", 5, ctx => Task.CompletedTask);
+
+        mock.ProgressBarCalls.Count.ShouldBe(1);
+        mock.ProgressBarCalls[0].Description.ShouldBe("Running tests");
+        mock.ProgressBarCalls[0].TotalCount.ShouldBe(5);
+    }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_RecordsIncrements()
+    {
+        var mock = new MockProgressRenderer();
+
+        await mock.ShowProgressBarAsync("Processing", 3, async ctx =>
+        {
+            ctx.Increment();
+            ctx.Increment();
+            ctx.Increment();
+        });
+
+        mock.ProgressBarCalls[0].Increments.Count.ShouldBe(3);
+        mock.ProgressBarCalls[0].CurrentValue.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_RecordsDescriptionUpdates()
+    {
+        var mock = new MockProgressRenderer();
+
+        await mock.ShowProgressBarAsync("Tasks", 2, async ctx =>
+        {
+            ctx.UpdateDescription("Task 1");
+            ctx.Increment();
+            ctx.UpdateDescription("Task 2");
+            ctx.Increment();
+        });
+
+        mock.ProgressBarCalls[0].DescriptionUpdates.ShouldBe(new[] { "Task 1", "Task 2" });
+    }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_SetsOperationExecuted()
+    {
+        var mock = new MockProgressRenderer();
+
+        await mock.ShowProgressBarAsync("Work", 1, ctx =>
+        {
+            ctx.Increment();
+            return Task.CompletedTask;
+        });
+
+        mock.OperationExecuted.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_ThrowsConfiguredException()
+    {
+        var mock = new MockProgressRenderer
+        {
+            ExceptionToThrow = new InvalidOperationException("Progress bar error")
+        };
+
+        await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await mock.ShowProgressBarAsync("Failing", 5, ctx => Task.CompletedTask)
+        );
+    }
+
+    [Fact]
+    public async Task Reset_ClearsProgressBarState()
+    {
+        var mock = new MockProgressRenderer();
+        await mock.ShowProgressBarAsync("Test", 5, ctx => Task.CompletedTask);
+
+        mock.Reset();
+
+        mock.ProgressBarCallCount.ShouldBe(0);
+        mock.ProgressBarCalls.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_MultipleIncrementAmounts()
+    {
+        var mock = new MockProgressRenderer();
+
+        await mock.ShowProgressBarAsync("Items", 10, async ctx =>
+        {
+            ctx.Increment(3);
+            ctx.Increment(5);
+            ctx.Increment(2);
+        });
+
+        mock.ProgressBarCalls[0].Increments.ShouldBe(new[] { 3, 5, 2 });
+        mock.ProgressBarCalls[0].CurrentValue.ShouldBe(10);
+    }
 }

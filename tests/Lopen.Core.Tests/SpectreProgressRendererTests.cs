@@ -142,4 +142,104 @@ public class SpectreProgressRendererTests
 
         executed.ShouldBeTrue();
     }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_ExecutesOperation()
+    {
+        var console = new TestConsole();
+        var renderer = new SpectreProgressRenderer(console);
+        var itemsProcessed = 0;
+
+        await renderer.ShowProgressBarAsync("Processing items", 5, async ctx =>
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                itemsProcessed++;
+                ctx.Increment();
+            }
+        });
+
+        itemsProcessed.ShouldBe(5);
+    }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_WithNoColor_ShowsTextOutput()
+    {
+        var originalNoColor = Environment.GetEnvironmentVariable("NO_COLOR");
+        try
+        {
+            Environment.SetEnvironmentVariable("NO_COLOR", "1");
+            var console = new TestConsole();
+            var renderer = new SpectreProgressRenderer(console);
+
+            await renderer.ShowProgressBarAsync("Processing", 10, async ctx =>
+            {
+                for (int i = 0; i < 10; i++)
+                {
+                    ctx.Increment();
+                }
+            });
+
+            console.Output.ShouldContain("Processing");
+            console.Output.ShouldContain("complete");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NO_COLOR", originalNoColor);
+        }
+    }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_ThrowsOnZeroCount()
+    {
+        var console = new TestConsole();
+        var renderer = new SpectreProgressRenderer(console);
+
+        await Should.ThrowAsync<ArgumentOutOfRangeException>(async () =>
+            await renderer.ShowProgressBarAsync("Test", 0, ctx => Task.CompletedTask));
+    }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_ThrowsOnNegativeCount()
+    {
+        var console = new TestConsole();
+        var renderer = new SpectreProgressRenderer(console);
+
+        await Should.ThrowAsync<ArgumentOutOfRangeException>(async () =>
+            await renderer.ShowProgressBarAsync("Test", -5, ctx => Task.CompletedTask));
+    }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_AllowsDescriptionUpdates()
+    {
+        var console = new TestConsole();
+        var renderer = new SpectreProgressRenderer(console);
+        var descriptions = new List<string>();
+
+        await renderer.ShowProgressBarAsync("Initial", 3, async ctx =>
+        {
+            ctx.UpdateDescription("Step 1");
+            descriptions.Add("Step 1");
+            ctx.Increment();
+            ctx.UpdateDescription("Step 2");
+            descriptions.Add("Step 2");
+            ctx.Increment();
+            ctx.UpdateDescription("Complete");
+            descriptions.Add("Complete");
+            ctx.Increment();
+        });
+
+        descriptions.ShouldBe(new[] { "Step 1", "Step 2", "Complete" });
+    }
+
+    [Fact]
+    public async Task ShowProgressBarAsync_PropagatesException()
+    {
+        var console = new TestConsole();
+        var renderer = new SpectreProgressRenderer(console);
+
+        await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await renderer.ShowProgressBarAsync("Failing", 5, ctx =>
+                throw new InvalidOperationException("Progress error")));
+    }
 }

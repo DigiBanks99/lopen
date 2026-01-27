@@ -35,6 +35,7 @@ var sessionStore = new FileSessionStore();
 var output = new ConsoleOutput();
 var welcomeHeaderRenderer = new SpectreWelcomeHeaderRenderer();
 var errorRenderer = new SpectreErrorRenderer();
+var progressRenderer = new SpectreProgressRenderer();
 
 // Helper to show welcome header
 void ShowWelcomeHeader()
@@ -1052,7 +1053,13 @@ testSelfCommand.SetAction(async parseResult =>
     }
     
     // Run tests
-    var runner = new Lopen.Core.Testing.TestRunner();
+    // Use progress bar in non-verbose mode when terminal is interactive
+    IProgressRenderer? testProgressRenderer = null;
+    if (!verbose && format != "json" && !Console.IsInputRedirected)
+    {
+        testProgressRenderer = progressRenderer;
+    }
+    var runner = new Lopen.Core.Testing.TestRunner(progressRenderer: testProgressRenderer);
     var summary = await runner.RunTestsAsync(
         tests,
         context,

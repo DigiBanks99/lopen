@@ -146,7 +146,7 @@ Visual feedback for long-running operations using spinners (indeterminate) and p
 
 ### Acceptance Criteria
 - [x] Spinners for Copilot SDK calls (network/AI operations)
-- [ ] Progress bars for batch operations with known count
+- [x] Progress bars for batch operations with known count
 - [x] Live-updating status text during operations
 - [x] Spinner stops on completion/error with final status
 - [x] Non-blocking progress in REPL mode

@@ -174,4 +174,122 @@ public class TestRunnerTests
             };
         }
     }
+    
+    [Fact]
+    public async Task RunTestsAsync_WithProgressRenderer_ShowsProgressBar()
+    {
+        var mockProgress = new MockProgressRenderer();
+        var runner = new TestRunner(progressRenderer: mockProgress);
+        var context = new TestContext();
+        
+        var tests = new List<ITestCase>
+        {
+            new FakeTestCase("T-01", TestStatus.Pass),
+            new FakeTestCase("T-02", TestStatus.Pass),
+            new FakeTestCase("T-03", TestStatus.Pass)
+        };
+        
+        await runner.RunTestsAsync(tests, context);
+        
+        mockProgress.ProgressBarCallCount.ShouldBe(1);
+        mockProgress.ProgressBarCalls[0].Description.ShouldBe("Running tests");
+        mockProgress.ProgressBarCalls[0].TotalCount.ShouldBe(3);
+    }
+    
+    [Fact]
+    public async Task RunTestsAsync_WithProgressRenderer_IncrementsForEachTest()
+    {
+        var mockProgress = new MockProgressRenderer();
+        var runner = new TestRunner(progressRenderer: mockProgress);
+        var context = new TestContext();
+        
+        var tests = new List<ITestCase>
+        {
+            new FakeTestCase("T-01", TestStatus.Pass),
+            new FakeTestCase("T-02", TestStatus.Pass),
+            new FakeTestCase("T-03", TestStatus.Fail)
+        };
+        
+        await runner.RunTestsAsync(tests, context);
+        
+        mockProgress.ProgressBarCalls[0].CurrentValue.ShouldBe(3);
+        mockProgress.ProgressBarCalls[0].Increments.Count.ShouldBe(3);
+    }
+    
+    [Fact]
+    public async Task RunTestsAsync_WithProgressRenderer_UpdatesDescription()
+    {
+        var mockProgress = new MockProgressRenderer();
+        var runner = new TestRunner(maxParallelism: 1, progressRenderer: mockProgress);
+        var context = new TestContext();
+        
+        var tests = new List<ITestCase>
+        {
+            new FakeTestCase("T-01", TestStatus.Pass),
+            new FakeTestCase("T-02", TestStatus.Pass)
+        };
+        
+        await runner.RunTestsAsync(tests, context);
+        
+        // Should have description updates showing progress
+        mockProgress.ProgressBarCalls[0].DescriptionUpdates.Count.ShouldBe(2);
+        mockProgress.ProgressBarCalls[0].DescriptionUpdates.ShouldContain("Running tests (1/2)");
+        mockProgress.ProgressBarCalls[0].DescriptionUpdates.ShouldContain("Running tests (2/2)");
+    }
+    
+    [Fact]
+    public async Task RunTestsAsync_WithProgressRenderer_DoesNotUseProgressBarWhenCallbackProvided()
+    {
+        var mockProgress = new MockProgressRenderer();
+        var runner = new TestRunner(progressRenderer: mockProgress);
+        var context = new TestContext();
+        var callbackResults = new List<TestResult>();
+        
+        var tests = new List<ITestCase>
+        {
+            new FakeTestCase("T-01", TestStatus.Pass),
+            new FakeTestCase("T-02", TestStatus.Pass)
+        };
+        
+        await runner.RunTestsAsync(tests, context, result => callbackResults.Add(result));
+        
+        // Progress bar should not be used when callback is provided
+        mockProgress.ProgressBarCallCount.ShouldBe(0);
+        callbackResults.Count.ShouldBe(2);
+    }
+    
+    [Fact]
+    public async Task RunTestsAsync_WithEmptyTests_DoesNotShowProgressBar()
+    {
+        var mockProgress = new MockProgressRenderer();
+        var runner = new TestRunner(progressRenderer: mockProgress);
+        var context = new TestContext();
+        
+        var tests = new List<ITestCase>();
+        
+        await runner.RunTestsAsync(tests, context);
+        
+        mockProgress.ProgressBarCallCount.ShouldBe(0);
+    }
+    
+    [Fact]
+    public async Task RunTestsAsync_WithProgressRenderer_StillAggregatesResults()
+    {
+        var mockProgress = new MockProgressRenderer();
+        var runner = new TestRunner(progressRenderer: mockProgress);
+        var context = new TestContext();
+        
+        var tests = new List<ITestCase>
+        {
+            new FakeTestCase("T-01", TestStatus.Pass),
+            new FakeTestCase("T-02", TestStatus.Fail),
+            new FakeTestCase("T-03", TestStatus.Pass)
+        };
+        
+        var summary = await runner.RunTestsAsync(tests, context);
+        
+        summary.Total.ShouldBe(3);
+        summary.Passed.ShouldBe(2);
+        summary.Failed.ShouldBe(1);
+    }
 }
