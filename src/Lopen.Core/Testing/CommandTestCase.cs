@@ -99,8 +99,11 @@ public sealed class CommandTestCase : ITestCase
         catch (Exception ex)
         {
             stopwatch.Stop();
+            var errorMessage = context.Verbose && ex.StackTrace is not null
+                ? $"{ex.Message}\n{ex.StackTrace}"
+                : ex.Message;
             return CreateResult(startTime, stopwatch.Elapsed, TestStatus.Error,
-                error: ex.Message);
+                error: errorMessage);
         }
     }
     

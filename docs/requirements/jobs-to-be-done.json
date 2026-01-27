@@ -52,8 +52,8 @@
     "requirement": "REQ-020-TEST",
     "description": "Self-Testing Stack Traces - Show full stack trace in verbose mode only",
     "priority": 7,
-    "status": "open",
-    "notes": "Currently only shows ex.Message. Need to conditionally include stack trace when context.Verbose is true in CommandTestCase."
+    "status": "done",
+    "notes": "Completed 2026-01-27: Modified CommandTestCase.ExecuteAsync() to conditionally include stack trace when context.Verbose is true. 4 tests added (817 total)."
   },
   {
     "id": "JTBD-008",
