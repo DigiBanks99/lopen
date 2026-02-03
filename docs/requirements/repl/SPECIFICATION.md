@@ -6,10 +6,10 @@
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| REQ-010 | REPL Mode | High | 🟢 Complete |
-| REQ-011 | Session State Management | High | 🟢 Complete |
-| REQ-012 | Command History | Medium | 🟢 Complete |
-| REQ-013 | Auto-completion | Medium | 🟢 Complete |
+| REQ-010 | REPL Mode | High | ⚪ Not Started |
+| REQ-011 | Session State Management | High | ⚪ Not Started |
+| REQ-012 | Command History | Medium | ⚪ Not Started |
+| REQ-013 | Auto-completion | Medium | ⚪ Not Started |
 
 ---
 
@@ -25,10 +25,10 @@ lopen                         # Default to REPL if no command
 ```
 
 ### Acceptance Criteria
-- [x] Starts interactive session
-- [x] Processes commands in a loop
-- [x] Graceful exit with `exit`, `quit`, or Ctrl+C
-- [x] Displays prompt indicating ready state
+- [ ] Starts interactive session
+- [ ] Processes commands in a loop
+- [ ] Graceful exit with `exit`, `quit`, or Ctrl+C
+- [ ] Displays prompt indicating ready state
 - [ ] Maintains context between commands (see REQ-011)
 
 ---
@@ -39,10 +39,10 @@ lopen                         # Default to REPL if no command
 Maintain state between commands within a REPL session.
 
 ### Acceptance Criteria
-- [x] Preserve conversation context across prompts
-- [x] Track authenticated state
-- [x] Manage Copilot SDK session lifecycle
-- [x] Support session save/restore
+- [ ] Preserve conversation context across prompts
+- [ ] Track authenticated state
+- [ ] Manage Copilot SDK session lifecycle
+- [ ] Support session save/restore
 
 ### Implementation
 - `SessionState` model class with SessionId, StartedAt, IsAuthenticated, Username, ConversationHistory, Preferences
@@ -70,10 +70,10 @@ Maintain state between commands within a REPL session.
 Remember and navigate through previously entered commands.
 
 ### Acceptance Criteria
-- [x] Up/Down arrow navigation through history
-- [x] Persistent history across REPL sessions
-- [x] History file location: `~/.lopen/history`
-- [x] Configurable history size (default: 1000)
+- [ ] Up/Down arrow navigation through history
+- [ ] Persistent history across REPL sessions
+- [ ] History file location: `~/.lopen/history`
+- [ ] Configurable history size (default: 1000)
 
 ### Implementation
 - `ICommandHistory` interface with navigation API (GetPrevious, GetNext, ResetPosition)
@@ -91,10 +91,10 @@ Remember and navigate through previously entered commands.
 Provide intelligent command completion suggestions.
 
 ### Acceptance Criteria
-- [x] Tab completion for commands
-- [x] Tab completion for subcommands
-- [x] Tab completion for common options
-- [x] Context-aware suggestions
+- [ ] Tab completion for commands
+- [ ] Tab completion for subcommands
+- [ ] Tab completion for common options
+- [ ] Context-aware suggestions
 
 ### Implementation
 - `IAutoCompleter` interface for completion providers

@@ -6,15 +6,15 @@
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| REQ-014 | Output Formatting & Status Indicators | High | 🟢 Complete |
-| REQ-015 | Progress Indicators & Spinners | High | 🟢 Complete |
-| REQ-016 | Error Display & Correction Guidance | High | 🟢 Complete |
-| REQ-017 | Structured Data Display | Medium | 🟢 Complete |
-| REQ-018 | Layout & Right-Side Panels | Medium | 🟢 Complete |
-| REQ-019 | AI Response Streaming | High | 🟢 Complete |
-| REQ-020 | Responsive Terminal Detection | Medium | 🟢 Done |
-| REQ-021 | TUI Testing & Mocking | High | 🟢 Done |
-| REQ-022 | Welcome Header & REPL Banner | High | 🟢 Done |
+| REQ-014 | Output Formatting & Status Indicators | High | ⚪ Not Started |
+| REQ-015 | Progress Indicators & Spinners | High | ⚪ Not Started |
+| REQ-016 | Error Display & Correction Guidance | High | ⚪ Not Started |
+| REQ-017 | Structured Data Display | Medium | ⚪ Not Started |
+| REQ-018 | Layout & Right-Side Panels | Medium | ⚪ Not Started |
+| REQ-019 | AI Response Streaming | High | ⚪ Not Started |
+| REQ-020 | Responsive Terminal Detection | Medium | ⚪ Not Started |
+| REQ-021 | TUI Testing & Mocking | High | ⚪ Not Started |
+| REQ-022 | Welcome Header & REPL Banner | High | ⚪ Not Started |
 
 ---
 
@@ -45,12 +45,12 @@
 Consistent output formatting with clear status indicators for all message types.
 
 ### Acceptance Criteria
-- [x] Colored output for different message types (Success, Error, Warning, Info, Muted)
-- [x] Unicode symbol support (✓ ✗ ⚠ ℹ)
-- [x] NO_COLOR environment variable support
-- [x] ConsoleOutput helper with standard methods
-- [x] Emoji support for enhanced visual feedback (⏳ ✨ 🚀 ⚡ 💡)
-- [x] Adaptive color depth detection
+- [ ] Colored output for different message types (Success, Error, Warning, Info, Muted)
+- [ ] Unicode symbol support (✓ ✗ ⚠ ℹ)
+- [ ] NO_COLOR environment variable support
+- [ ] ConsoleOutput helper with standard methods
+- [ ] Emoji support for enhanced visual feedback (⏳ ✨ 🚀 ⚡ 💡)
+- [ ] Adaptive color depth detection
 
 ### Implemented Components
 
@@ -145,11 +145,11 @@ Use Spectre.Console `Tree` component for hierarchical data, or manual indentatio
 Visual feedback for long-running operations using spinners (indeterminate) and progress bars (determinate).
 
 ### Acceptance Criteria
-- [x] Spinners for Copilot SDK calls (network/AI operations)
-- [x] Progress bars for batch operations with known count
-- [x] Live-updating status text during operations
-- [x] Spinner stops on completion/error with final status
-- [x] Non-blocking progress in REPL mode
+- [ ] Spinners for Copilot SDK calls (network/AI operations)
+- [ ] Progress bars for batch operations with known count
+- [ ] Live-updating status text during operations
+- [ ] Spinner stops on completion/error with final status
+- [ ] Non-blocking progress in REPL mode
 
 ### Usage Guidelines
 
@@ -214,11 +214,11 @@ await AnsiConsole.Progress()
 Clear, actionable error messages with contextual correction guidance using Spectre.Console rendering capabilities.
 
 ### Acceptance Criteria
-- [x] Structured error display with symbols and colors
-- [x] Contextual correction suggestions ("Did you mean...", "Try: lopen X")
-- [x] Error panels for complex/multi-line errors
-- [x] Stack traces only in debug/verbose mode
-- [x] Integration with System.CommandLine error handling
+- [ ] Structured error display with symbols and colors
+- [ ] Contextual correction suggestions ("Did you mean...", "Try: lopen X")
+- [ ] Error panels for complex/multi-line errors
+- [ ] Stack traces only in debug/verbose mode
+- [ ] Integration with System.CommandLine error handling
 
 ### Design Inspiration
 
@@ -301,10 +301,10 @@ public interface IErrorRenderer {
 Consistent display of structured data (lists, metadata, hierarchies) using appropriate Spectre.Console components.
 
 ### Acceptance Criteria
-- [x] Tables for list data (IDataRenderer, SpectreDataRenderer)
-- [x] Panels for metadata and grouped information (RenderMetadata)
-- [x] Trees for hierarchical data (ITreeRenderer, SpectreTreeRenderer)
-- [x] Responsive column widths
+- [ ] Tables for list data (IDataRenderer, SpectreDataRenderer)
+- [ ] Panels for metadata and grouped information (RenderMetadata)
+- [ ] Trees for hierarchical data (ITreeRenderer, SpectreTreeRenderer)
+- [ ] Responsive column widths
 - [ ] Sortable and filterable tables (future)
 
 ### Component Selection Matrix
@@ -420,11 +420,11 @@ if (terminalWidth < 60) {
 Split-screen layouts with right-side task/status panels for enhanced context in interactive REPL mode.
 
 ### Acceptance Criteria
-- [x] Two-column layout support (main content | right panel)
-- [x] Right panel shows task progress, status, or context
-- [x] Responsive: Hide right panel when terminal width < 100 chars
-- [x] Non-blocking: Main content updates independently (ILiveLayoutContext with UpdateMain/UpdatePanel)
-- [x] Auto-scroll right panel for long content (VerticalOverflow.Ellipsis in SpectreLiveLayoutContext)
+- [ ] Two-column layout support (main content | right panel)
+- [ ] Right panel shows task progress, status, or context
+- [ ] Responsive: Hide right panel when terminal width < 100 chars
+- [ ] Non-blocking: Main content updates independently (ILiveLayoutContext with UpdateMain/UpdatePanel)
+- [ ] Auto-scroll right panel for long content (VerticalOverflow.Ellipsis in SpectreLiveLayoutContext)
 
 ### Layout Architecture
 
@@ -511,11 +511,11 @@ AnsiConsole.Write(layout);
 Display Copilot SDK streaming responses with buffered paragraph rendering for optimal readability in REPL.
 
 ### Acceptance Criteria
-- [x] Buffer streaming tokens into paragraphs
-- [x] Render complete paragraphs (avoid char-by-char flicker)
-- [x] Show subtle progress indicator during buffering
-- [x] Maintain REPL prompt position after response (RenderStreamWithLiveLayoutAsync + ILiveLayoutContext)
-- [x] Support inline code blocks and formatting
+- [ ] Buffer streaming tokens into paragraphs
+- [ ] Render complete paragraphs (avoid char-by-char flicker)
+- [ ] Show subtle progress indicator during buffering
+- [ ] Maintain REPL prompt position after response (RenderStreamWithLiveLayoutAsync + ILiveLayoutContext)
+- [ ] Support inline code blocks and formatting
 
 ### Streaming Strategy: Static Chunks
 
@@ -598,11 +598,11 @@ Assistant: [content appears here]
 Automatic detection and adaptation to terminal capabilities (width, height, color depth, features).
 
 ### Acceptance Criteria
-- [x] Detect terminal width and adapt layouts
-- [x] Detect color support (16/256/RGB)
-- [x] Detect Unicode support
-- [x] Graceful fallback for limited terminals
-- [x] Respect NO_COLOR environment variable
+- [ ] Detect terminal width and adapt layouts
+- [ ] Detect color support (16/256/RGB)
+- [ ] Detect Unicode support
+- [ ] Graceful fallback for limited terminals
+- [ ] Respect NO_COLOR environment variable
 
 ### Detection Priority
 
@@ -682,10 +682,10 @@ public class TerminalCapabilities {
 Comprehensive testing infrastructure for TUI components with mockable interfaces and snapshot testing.
 
 ### Acceptance Criteria
-- [x] `IConsoleInput` interface for Console.ReadLine() abstraction (implemented)
-- [x] Spectre.Console.Testing.TestConsole for output validation (used throughout)
-- [x] Specialized TUI interfaces for all operations (IProgressRenderer, IErrorRenderer, IDataRenderer, ILayoutRenderer, IStreamRenderer, ITerminalCapabilities)
-- [x] Mock implementations for unit tests (Mock*Renderer classes for all interfaces)
+- [ ] `IConsoleInput` interface for Console.ReadLine() abstraction (implemented)
+- [ ] Spectre.Console.Testing.TestConsole for output validation (used throughout)
+- [ ] Specialized TUI interfaces for all operations (IProgressRenderer, IErrorRenderer, IDataRenderer, ILayoutRenderer, IStreamRenderer, ITerminalCapabilities)
+- [ ] Mock implementations for unit tests (Mock*Renderer classes for all interfaces)
 - [ ] Snapshot testing for complex layouts (optional, low priority)
 - [ ] Integration tests with real Spectre.Console
 
@@ -855,19 +855,19 @@ Lopen is building an interactive REPL that serves as an enhanced version of the 
 
 ### Acceptance Criteria
 
-- [x] Show on REPL start
-- [x] Show on Chat start
-- [x] Show on Loop start
-- [x] ASCII art logo featuring the word Lopen
-- [x] Display application version from assembly metadata
-- [x] Show contextual help tip referencing actual `lopen help` command
-- [x] Display session name (auto-generated with override via `--session-name` flag)
-- [x] Show context window capacity (tokens if available from SDK, else message count)
-- [x] Responsive layout adapting to terminal width (REQ-020)
-- [x] Respect TUI color guidelines (REQ-014) and NO_COLOR
-- [x] Configurable display preferences (show/hide, position)
-- [x] Support `--no-header` and `--quiet` CLI flags to suppress
-- [x] Render using Spectre.Console components for consistency
+- [ ] Show on REPL start
+- [ ] Show on Chat start
+- [ ] Show on Loop start
+- [ ] ASCII art logo featuring the word Lopen
+- [ ] Display application version from assembly metadata
+- [ ] Show contextual help tip referencing actual `lopen help` command
+- [ ] Display session name (auto-generated with override via `--session-name` flag)
+- [ ] Show context window capacity (tokens if available from SDK, else message count)
+- [ ] Responsive layout adapting to terminal width (REQ-020)
+- [ ] Respect TUI color guidelines (REQ-014) and NO_COLOR
+- [ ] Configurable display preferences (show/hide, position)
+- [ ] Support `--no-header` and `--quiet` CLI flags to suppress
+- [ ] Render using Spectre.Console components for consistency
 
 ### Visual Design
 
@@ -1120,43 +1120,43 @@ public class AsciiLogoProvider {
 
 ## Migration Plan
 
-### Phase 1: Foundation (Current → v1.1) ✅ COMPLETE
-- [x] Create `ITuiRenderer` interface
-- [x] Implement `SpectreTuiRenderer`
-- [x] Refactor existing `ConsoleOutput` to use renderer
-- [x] Add terminal capability detection (REQ-020)
-- [x] Create mock renderer for tests
-- [x] Implement welcome header (REQ-022 MVP)
-  - [x] ASCII logo provider with Wind Runner sigil
-  - [x] Version display from assembly
-  - [x] Session name handling (auto + override)
-  - [x] Context window capacity display
-  - [x] Responsive layout variants
-  - [x] CLI flags (--no-header, --quiet)
+### Phase 1: Foundation (Current → v1.1) ⏸️ COMPLETE
+- [ ] Create `ITuiRenderer` interface
+- [ ] Implement `SpectreTuiRenderer`
+- [ ] Refactor existing `ConsoleOutput` to use renderer
+- [ ] Add terminal capability detection (REQ-020)
+- [ ] Create mock renderer for tests
+- [ ] Implement welcome header (REQ-022 MVP)
+  - [ ] ASCII logo provider with Wind Runner sigil
+  - [ ] Version display from assembly
+  - [ ] Session name handling (auto + override)
+  - [ ] Context window capacity display
+  - [ ] Responsive layout variants
+  - [ ] CLI flags (--no-header, --quiet)
 
-### Phase 2: Error Handling (v1.1 → v1.2) ✅ COMPLETE
-- [x] Implement error panel rendering
-- [x] Add validation error display with context
-- [x] Integrate with System.CommandLine error handling
-- [x] Add suggestion engine for common errors
+### Phase 2: Error Handling (v1.1 → v1.2) ⏸️ COMPLETE
+- [ ] Implement error panel rendering
+- [ ] Add validation error display with context
+- [ ] Integrate with System.CommandLine error handling
+- [ ] Add suggestion engine for common errors
 
-### Phase 3: Progress & Streaming (v1.2 → v1.3) ✅ COMPLETE
-- [x] Implement spinner support for SDK calls
-- [x] Add progress bars for batch operations
-- [x] Implement streaming response buffering
-- [x] Add markdown formatting for responses
+### Phase 3: Progress & Streaming (v1.2 → v1.3) ⏸️ COMPLETE
+- [ ] Implement spinner support for SDK calls
+- [ ] Add progress bars for batch operations
+- [ ] Implement streaming response buffering
+- [ ] Add markdown formatting for responses
 
-### Phase 4: Advanced Layouts (v1.3 → v1.4) ✅ COMPLETE
-- [x] Implement split-screen layouts
-- [x] Add right-side task panel
-- [x] Create responsive layout system
-- [x] Add tree and panel components
+### Phase 4: Advanced Layouts (v1.3 → v1.4) ⏸️ COMPLETE
+- [ ] Implement split-screen layouts
+- [ ] Add right-side task panel
+- [ ] Create responsive layout system
+- [ ] Add tree and panel components
 
-### Phase 5: Polish & Testing (v1.4 → v2.0) ✅ COMPLETE
-- [x] Complete test coverage (100% for core)
+### Phase 5: Polish & Testing (v1.4 → v2.0) ⏸️ COMPLETE
+- [ ] Complete test coverage (100% for core)
 - [ ] Add snapshot tests for all layouts (optional, low priority)
-- [x] Performance optimization
-- [x] Documentation and examples
+- [ ] Performance optimization
+- [ ] Documentation and examples
 
 ---
 

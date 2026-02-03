@@ -6,11 +6,11 @@
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| REQ-020 | Copilot SDK Integration | Critical | 🟢 Complete |
-| REQ-021 | Chat Command | High | 🟢 Complete |
-| REQ-022 | Streaming Responses | High | 🟢 Complete |
-| REQ-023 | Custom Tools | Medium | 🟢 Complete |
-| REQ-024 | Session Persistence | Medium | 🟢 Complete |
+| REQ-020 | Copilot SDK Integration | Critical | ⚪ Not Started |
+| REQ-021 | Chat Command | High | ⚪ Not Started |
+| REQ-022 | Streaming Responses | High | ⚪ Not Started |
+| REQ-023 | Custom Tools | Medium | ⚪ Not Started |
+| REQ-024 | Session Persistence | Medium | ⚪ Not Started |
 
 ---
 
@@ -27,11 +27,11 @@ Integrate the official GitHub Copilot SDK (`GitHub.Copilot.SDK`) to enable AI-po
 
 ### Acceptance Criteria
 
-- [x] Add `GitHub.Copilot.SDK` NuGet package
-- [x] Create `ICopilotService` interface in Lopen.Core
-- [x] Implement `CopilotService` with SDK client management
-- [x] Handle connection to Copilot CLI server (JSON-RPC)
-- [x] Support session lifecycle management (create, use, dispose)
+- [ ] Add `GitHub.Copilot.SDK` NuGet package
+- [ ] Create `ICopilotService` interface in Lopen.Core
+- [ ] Implement `CopilotService` with SDK client management
+- [ ] Handle connection to Copilot CLI server (JSON-RPC)
+- [ ] Support session lifecycle management (create, use, dispose)
 
 ### Architecture
 
@@ -72,11 +72,11 @@ lopen chat --streaming         # Enable streaming (default)
 
 ### Acceptance Criteria
 
-- [x] `lopen chat` starts interactive chat session
-- [x] Single query mode with inline prompt argument
-- [x] Model selection via `--model` option
-- [x] Streaming enabled by default
-- [x] Graceful exit with `exit`, `quit`, or Ctrl+C
+- [ ] `lopen chat` starts interactive chat session
+- [ ] Single query mode with inline prompt argument
+- [ ] Model selection via `--model` option
+- [ ] Streaming enabled by default
+- [ ] Graceful exit with `exit`, `quit`, or Ctrl+C
 
 ### Test Cases
 
@@ -96,11 +96,11 @@ Display AI responses as they are generated, word by word.
 
 ### Acceptance Criteria
 
-- [x] Subscribe to `AssistantMessageDeltaEvent` events
-- [x] Write delta content immediately to console
-- [x] Handle `SessionIdleEvent` to finalize response
-- [x] Respect `NO_COLOR` for output styling
-- [x] Support cancellation via Ctrl+C
+- [ ] Subscribe to `AssistantMessageDeltaEvent` events
+- [ ] Write delta content immediately to console
+- [ ] Handle `SessionIdleEvent` to finalize response
+- [ ] Respect `NO_COLOR` for output styling
+- [ ] Support cancellation via Ctrl+C
 
 ### Implementation Pattern
 
@@ -124,11 +124,11 @@ Enable custom tools that Copilot can invoke during conversations.
 
 ### Acceptance Criteria
 
-- [x] Define tools using `Microsoft.Extensions.AI` pattern
-- [x] Register tools with session configuration
-- [x] Handle tool invocations automatically
-- [x] Built-in tools: file operations (read, list, exists, cwd)
-- [x] Built-in tools: git operations (status, diff, log)
+- [ ] Define tools using `Microsoft.Extensions.AI` pattern
+- [ ] Register tools with session configuration
+- [ ] Handle tool invocations automatically
+- [ ] Built-in tools: file operations (read, list, exists, cwd)
+- [ ] Built-in tools: git operations (status, diff, log)
 
 ### Implementation
 
@@ -169,10 +169,10 @@ Save and restore chat sessions across CLI invocations.
 
 ### Acceptance Criteria
 
-- [x] Save session state to `~/.lopen/sessions/`
-- [x] Resume sessions by ID
-- [x] List available sessions
-- [x] Delete old sessions
+- [ ] Save session state to `~/.lopen/sessions/`
+- [ ] Resume sessions by ID
+- [ ] List available sessions
+- [ ] Delete old sessions
 
 ### Command Signature
 

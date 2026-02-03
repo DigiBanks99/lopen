@@ -6,7 +6,7 @@
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| REQ-003 | GitHub OAuth2 Authentication | High | 🟢 Complete |
+| REQ-003 | GitHub OAuth2 Authentication | High | ⚪ Not Started |
 
 ---
 
@@ -28,17 +28,17 @@ lopen auth logout             # Clear stored credentials
 ```
 
 ### Acceptance Criteria
-- [x] Secure token storage (file-based with obfuscation)
-- [x] Clear error messages for auth failures
-- [x] Support for environment variable token override (`GITHUB_TOKEN`)
-- [x] OAuth2 device code flow
-- [x] Platform-specific secure storage (DPAPI/Keychain/libsecret)
-- [x] Token refresh handling (automatic refresh before expiry)
+- [ ] Secure token storage (file-based with obfuscation)
+- [ ] Clear error messages for auth failures
+- [ ] Support for environment variable token override (`GITHUB_TOKEN`)
+- [ ] OAuth2 device code flow
+- [ ] Platform-specific secure storage (DPAPI/Keychain/libsecret)
+- [ ] Token refresh handling (automatic refresh before expiry)
 
 ### Authentication Methods (Priority Order)
-1. Environment variable (`GITHUB_TOKEN`) ✅
-2. Cached token from file storage ✅
-3. Device code flow ✅
+1. Environment variable (`GITHUB_TOKEN`) ⏸️
+2. Cached token from file storage ⏸️
+3. Device code flow ⏸️
 
 ### GitHub OAuth App Configuration
 OAuth app credentials stored in `~/.config/lopen/oauth.json`:
@@ -91,7 +91,7 @@ OAuth app credentials stored in `~/.config/lopen/oauth.json`:
 ### HIGH PRIORITY
 
 #### BUG-AUTH-001: GCM Credential Store Not Configured
-**Status**: 🟢 Fixed  
+**Status**: ⚪ Open  
 **Priority**: High  
 **Discovered**: 2026-01-27  
 **Fixed**: 2026-01-27

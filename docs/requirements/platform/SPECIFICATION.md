@@ -6,9 +6,9 @@
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| NFR-001 | Performance | High | 🟢 Complete |
-| NFR-002 | Cross-Platform | High | 🟢 Complete |
-| NFR-003 | Accessibility | Medium | 🟢 Complete |
+| NFR-001 | Performance | High | ⚪ Not Started |
+| NFR-002 | Cross-Platform | High | ⚪ Not Started |
+| NFR-003 | Accessibility | Medium | ⚪ Not Started |
 
 ---
 
@@ -18,18 +18,18 @@
 Ensure responsive CLI performance.
 
 ### Acceptance Criteria
-- [x] CLI startup time < 500ms
-- [x] Command parsing < 50ms
-- [x] First response from Copilot SDK < 2s (network dependent)
-- [x] Streaming responses render immediately
+- [ ] CLI startup time < 500ms
+- [ ] Command parsing < 50ms
+- [ ] First response from Copilot SDK < 2s (network dependent)
+- [ ] Streaming responses render immediately
 
 ### Measured Performance (2026-01-24)
 | Metric | Target | Actual | Status |
 |--------|--------|--------|--------|
-| Cold start (single-file) | < 500ms | ~185ms | ✅ |
-| Warm start (REPL) | < 100ms | ~50ms | ✅ |
-| Memory usage | < 100MB | ~25MB | ✅ |
-| Executable size | - | 14MB | ✅ |
+| Cold start (single-file) | < 500ms | ~185ms | ⏸️ |
+| Warm start (REPL) | < 100ms | ~50ms | ⏸️ |
+| Memory usage | < 100MB | ~25MB | ⏸️ |
+| Executable size | - | 14MB | ⏸️ |
 
 ### Response Time Metrics (2026-01-26)
 | Metric | Target | Implementation |
@@ -60,21 +60,21 @@ Ensure responsive CLI performance.
 Support Windows, macOS, and Linux.
 
 ### Acceptance Criteria
-- [x] Windows 10+ support (RID: win-x64)
-- [x] macOS 11+ support (RID: osx-x64, osx-arm64)
-- [x] Linux (Ubuntu 20.04+, Debian 11+) support (RID: linux-x64)
-- [x] Single self-contained executable option
-- [x] ARM64 support where applicable
+- [ ] Windows 10+ support (RID: win-x64)
+- [ ] macOS 11+ support (RID: osx-x64, osx-arm64)
+- [ ] Linux (Ubuntu 20.04+, Debian 11+) support (RID: linux-x64)
+- [ ] Single self-contained executable option
+- [ ] ARM64 support where applicable
 
 ### Build Targets
 | Platform | RID | Architecture | Status |
 |----------|-----|--------------|--------|
-| Windows | win-x64 | x64 | ✅ Configured |
-| Windows | win-arm64 | ARM64 | ✅ Configured |
-| macOS | osx-x64 | x64 | ✅ Configured |
-| macOS | osx-arm64 | ARM64 (Apple Silicon) | ✅ Configured |
-| Linux | linux-x64 | x64 | ✅ Tested |
-| Linux | linux-arm64 | ARM64 | ✅ Configured |
+| Windows | win-x64 | x64 | ⏸️ Configured |
+| Windows | win-arm64 | ARM64 | ⏸️ Configured |
+| macOS | osx-x64 | x64 | ⏸️ Configured |
+| macOS | osx-arm64 | ARM64 (Apple Silicon) | ⏸️ Configured |
+| Linux | linux-x64 | x64 | ⏸️ Tested |
+| Linux | linux-arm64 | ARM64 | ⏸️ Configured |
 
 ### Publish Command
 ```bash
@@ -89,11 +89,11 @@ dotnet publish src/Lopen.Cli -c Release -r <RID> --self-contained -p:PublishSing
 Ensure CLI is accessible to all users.
 
 ### Acceptance Criteria
-- [x] Clear, readable output (Spectre.Console with styled messages)
-- [x] Proper exit codes (0 = success, non-zero = failure)
-- [x] Screen reader friendly output (text-based with symbols)
-- [x] Respect `NO_COLOR` environment variable
-- [x] Support for high contrast terminals (uses standard ANSI colors)
+- [ ] Clear, readable output (Spectre.Console with styled messages)
+- [ ] Proper exit codes (0 = success, non-zero = failure)
+- [ ] Screen reader friendly output (text-based with symbols)
+- [ ] Respect `NO_COLOR` environment variable
+- [ ] Support for high contrast terminals (uses standard ANSI colors)
 
 ### Implementation
 - `ExitCodes` class with standardized exit codes and descriptions

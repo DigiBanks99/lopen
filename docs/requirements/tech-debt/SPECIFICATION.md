@@ -6,9 +6,9 @@
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| REQ-TD-001 | Move from FluentAssertions to Shouldly | High | ✅ Complete |
-| REQ-TD-002 | Documentation Sync - Update README.md status | Medium | 🔴 Open |
-| REQ-TD-003 | Specification Checkbox Sync - Update acceptance criteria | Medium | 🔴 Open |
+| REQ-TD-001 | Move from FluentAssertions to Shouldly | High | ⚪ Not Started |
+| REQ-TD-002 | Documentation Sync - Update README.md status | Medium | ⚪ Not Started |
+| REQ-TD-003 | Specification Checkbox Sync - Update acceptance criteria | Medium | ⚪ Not Started |
 
 ---
 
@@ -75,12 +75,12 @@ Shouldly offers concise, readable assertions and human-friendly failure output w
 
 ### Description
 
-Keep docs/requirements/README.md status indicators in sync with actual implementation status. When features are completed, update the status from 🔴 Not Started or 🟡 In Progress to 🟢 Complete.
+Keep docs/requirements/README.md status indicators in sync with actual implementation status. When features are completed, update the status from 🔴 Not Started or 🟡 In Progress to ⚪ Not Started.
 
 ### Acceptance Criteria
 
-- [x] Phase 4 Loop status updated to Complete
-- [x] Phase 5 Testing status updated to Complete
+- [ ] Phase 4 Loop status updated to Complete
+- [ ] Phase 5 Testing status updated to Complete
 - [ ] All phase status indicators match actual implementation
 
 ### Notes
@@ -93,7 +93,7 @@ Discovered during JTBD audit 2026-01-27: README.md showed Loop Phase 4 as "Not S
 
 ### Description
 
-Update unchecked acceptance criteria checkboxes in SPECIFICATION.md files when features are implemented. Many features show `- [ ]` (unchecked) when they should show `- [x]` (checked).
+Update unchecked acceptance criteria checkboxes in SPECIFICATION.md files when features are implemented. Many features show `- [ ]` (unchecked) when they should show `- [ ]` (checked).
 
 ### Affected Files
 
@@ -104,7 +104,7 @@ Update unchecked acceptance criteria checkboxes in SPECIFICATION.md files when f
 ### Acceptance Criteria
 
 - [ ] All implemented features have checked boxes
-- [ ] Test case status columns show ✅ for passing tests
+- [ ] Test case status columns show ⏸️ for passing tests
 
 ### Notes
 

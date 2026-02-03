@@ -6,13 +6,13 @@
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| REQ-030 | Loop Command | High | 🟢 Complete |
-| REQ-031 | Loop Configuration | High | 🟢 Complete |
-| REQ-032 | Plan Phase | High | 🟢 Complete |
-| REQ-033 | Build Phase | High | 🟢 Complete |
-| REQ-034 | State Management | High | 🟢 Complete |
-| REQ-035 | Output Streaming | Medium | 🟢 Complete |
-| REQ-036 | Verification Agent | Medium | 🟢 Complete |
+| REQ-030 | Loop Command | High | ⚪ Not Started |
+| REQ-031 | Loop Configuration | High | ⚪ Not Started |
+| REQ-032 | Plan Phase | High | ⚪ Not Started |
+| REQ-033 | Build Phase | High | ⚪ Not Started |
+| REQ-034 | State Management | High | ⚪ Not Started |
+| REQ-035 | Output Streaming | Medium | ⚪ Not Started |
+| REQ-036 | Verification Agent | Medium | ⚪ Not Started |
 
 ---
 
@@ -29,12 +29,12 @@ lopen loop --config <path>    # Use custom config file
 ```
 
 ### Acceptance Criteria
-- [x] Starts with interactive prompt (text differs slightly from spec but functionality complete)
-- [x] Provides clear options for proceeding to plan phase or build phase
-- [x] Exits only on user interrupt (Ctrl+C / Cmd+C) or when `lopen.loop.done` file is created by agent
-- [x] Displays iteration count after each cycle
-- [x] Real-time streaming output from Copilot SDK
-- [x] Respects configuration from `loop configure` or `--config` flag
+- [ ] Starts with interactive prompt (text differs slightly from spec but functionality complete)
+- [ ] Provides clear options for proceeding to plan phase or build phase
+- [ ] Exits only on user interrupt (Ctrl+C / Cmd+C) or when `lopen.loop.done` file is created by agent
+- [ ] Displays iteration count after each cycle
+- [ ] Real-time streaming output from Copilot SDK
+- [ ] Respects configuration from `loop configure` or `--config` flag
 
 ### Implementation Notes
 - Uses Copilot SDK via `CopilotClient` and `CopilotSession`
@@ -45,11 +45,11 @@ lopen loop --config <path>    # Use custom config file
 ### Test Cases
 | ID | Description | Expected | Status |
 |----|-------------|----------|--------|
-| TC-030-01 | `lopen loop` | Prompts for specifications/planning choice | ✅ |
-| TC-030-02 | `lopen loop --auto` | Skips prompts, starts immediately | ✅ |
-| TC-030-03 | Loop with Ctrl+C | Gracefully exits loop | ✅ |
-| TC-030-04 | Loop iteration counter | Displays `Completed iteration N` | ✅ |
-| TC-030-05 | Loop completion file | Exits when `lopen.loop.done` exists | ✅ |
+| TC-030-01 | `lopen loop` | Prompts for specifications/planning choice | ⏸️ |
+| TC-030-02 | `lopen loop --auto` | Skips prompts, starts immediately | ⏸️ |
+| TC-030-03 | Loop with Ctrl+C | Gracefully exits loop | ⏸️ |
+| TC-030-04 | Loop iteration counter | Displays `Completed iteration N` | ⏸️ |
+| TC-030-05 | Loop completion file | Exits when `lopen.loop.done` exists | ⏸️ |
 
 ---
 
@@ -69,15 +69,15 @@ lopen loop configure --reset  # Reset to defaults
 ```
 
 ### Acceptance Criteria
-- [x] Interactive mode asks for all configuration options
-- [x] Supports model selection (default: `claude-opus-4.5`)
-- [x] Custom plan prompt template (default: `PLAN.PROMPT.md`)
-- [x] Custom build prompt template (default: `BUILD.PROMPT.md`)
-- [x] Allow all Copilot SDK operations flag (default: true)
-- [x] Stream output flag (default: true)
-- [x] Configuration persists in `~/.lopen/loop-config.json`
-- [x] Supports project-level config (`.lopen/loop-config.json` in repo root)
-- [x] Project config overrides user config
+- [ ] Interactive mode asks for all configuration options
+- [ ] Supports model selection (default: `claude-opus-4.5`)
+- [ ] Custom plan prompt template (default: `PLAN.PROMPT.md`)
+- [ ] Custom build prompt template (default: `BUILD.PROMPT.md`)
+- [ ] Allow all Copilot SDK operations flag (default: true)
+- [ ] Stream output flag (default: true)
+- [ ] Configuration persists in `~/.lopen/loop-config.json`
+- [ ] Supports project-level config (`.lopen/loop-config.json` in repo root)
+- [ ] Project config overrides user config
 
 ### Configuration Schema
 ```json
@@ -95,10 +95,10 @@ lopen loop configure --reset  # Reset to defaults
 ### Test Cases
 | ID | Description | Expected | Status |
 |----|-------------|----------|--------|
-| TC-031-01 | Configure interactively | Prompts for all options | ✅ |
-| TC-031-02 | Configure with flags | Sets specified options | ✅ |
-| TC-031-03 | Reset to defaults | Restores default configuration | ✅ |
-| TC-031-04 | Project config override | Project settings override user settings | ✅ |
+| TC-031-01 | Configure interactively | Prompts for all options | ⏸️ |
+| TC-031-02 | Configure with flags | Sets specified options | ⏸️ |
+| TC-031-03 | Reset to defaults | Restores default configuration | ⏸️ |
+| TC-031-04 | Project config override | Project settings override user settings | ⏸️ |
 
 ---
 
@@ -119,21 +119,21 @@ Executes `PLAN.PROMPT.md` (or configured alternative) once:
 8. Clean `lopen.loop.done` file if present
 
 ### Acceptance Criteria
-- [x] Runs Copilot SDK with plan prompt
-- [x] Outputs real-time streaming to console
-- [x] Creates/updates `docs/requirements/jobs-to-be-done.json`
-- [x] Updates/creates `docs/requirements/<module>/RESEARCH.md` as needed
-- [x] Removes `lopen.loop.done` if it exists
-- [x] Displays clear indication of plan phase completion
-- [x] Uses sub-agents (especially `research` agent) for analysis
+- [ ] Runs Copilot SDK with plan prompt
+- [ ] Outputs real-time streaming to console
+- [ ] Creates/updates `docs/requirements/jobs-to-be-done.json`
+- [ ] Updates/creates `docs/requirements/<module>/RESEARCH.md` as needed
+- [ ] Removes `lopen.loop.done` if it exists
+- [ ] Displays clear indication of plan phase completion
+- [ ] Uses sub-agents (especially `research` agent) for analysis
 
 ### Test Cases
 | ID | Description | Expected | Status |
 |----|-------------|----------|--------|
-| TC-032-01 | Plan phase execution | Runs copilot with plan prompt | ✅ |
-| TC-032-02 | Jobs file updated | `jobs-to-be-done.json` reflects new tasks | ✅ |
-| TC-032-03 | Research files created | RESEARCH.md files updated/created | ✅ |
-| TC-032-04 | Loop done removed | `lopen.loop.done` deleted at start | ✅ |
+| TC-032-01 | Plan phase execution | Runs copilot with plan prompt | ⏸️ |
+| TC-032-02 | Jobs file updated | `jobs-to-be-done.json` reflects new tasks | ⏸️ |
+| TC-032-03 | Research files created | RESEARCH.md files updated/created | ⏸️ |
+| TC-032-04 | Loop done removed | `lopen.loop.done` deleted at start | ⏸️ |
 
 ---
 
@@ -162,26 +162,26 @@ Loop executes `BUILD.PROMPT.md` (or configured alternative) until `lopen.loop.do
 14. If all complete, create `lopen.loop.done` and exit
 
 ### Acceptance Criteria
-- [x] Loops until `lopen.loop.done` exists or Ctrl+C
-- [x] Each iteration runs Copilot SDK with build prompt
-- [x] Real-time streaming output to console
-- [x] Iteration counter increments and displays
-- [x] Agent autonomously decides priorities and ordering
-- [x] Agent adds tasks to handle build/test failures
-- [x] Requires tests for feature completion
-- [x] Requires documentation (Divio model)
-- [x] Commits changes with conventional commit messages
-- [x] Creates `lopen.loop.done` when all jobs complete
+- [ ] Loops until `lopen.loop.done` exists or Ctrl+C
+- [ ] Each iteration runs Copilot SDK with build prompt
+- [ ] Real-time streaming output to console
+- [ ] Iteration counter increments and displays
+- [ ] Agent autonomously decides priorities and ordering
+- [ ] Agent adds tasks to handle build/test failures
+- [ ] Requires tests for feature completion
+- [ ] Requires documentation (Divio model)
+- [ ] Commits changes with conventional commit messages
+- [ ] Creates `lopen.loop.done` when all jobs complete
 
 ### Test Cases
 | ID | Description | Expected | Status |
 |----|-------------|----------|--------|
-| TC-033-01 | Build loop execution | Runs copilot repeatedly | ✅ |
-| TC-033-02 | Iteration counter | Shows "Completed iteration N" | ✅ |
-| TC-033-03 | Jobs completion | Creates `lopen.loop.done` when done | ✅ |
-| TC-033-04 | Failure handling | Adds failed builds/tests as tasks | ✅ |
-| TC-033-05 | Test requirement | Features must have tests | ✅ |
-| TC-033-06 | Documentation requirement | Features documented (Divio) | ✅ |
+| TC-033-01 | Build loop execution | Runs copilot repeatedly | ⏸️ |
+| TC-033-02 | Iteration counter | Shows "Completed iteration N" | ⏸️ |
+| TC-033-03 | Jobs completion | Creates `lopen.loop.done` when done | ⏸️ |
+| TC-033-04 | Failure handling | Adds failed builds/tests as tasks | ⏸️ |
+| TC-033-05 | Test requirement | Features must have tests | ⏸️ |
+| TC-033-06 | Documentation requirement | Features documented (Divio) | ⏸️ |
 
 ---
 
@@ -198,13 +198,13 @@ Track loop state, progress, and maintain context across iterations.
 - **Memory**: Future - see dedicated memory module specification
 
 ### Acceptance Criteria
-- [x] State persists between iterations via files
-- [x] Jobs-to-be-done tracks: id, requirement code, description, status, partial implementation
-- [x] Implementation plan tracks: current tasks, completion status
-- [x] Agent can read previous iteration state
-- [x] Agent updates state files each iteration
-- [x] Loop respects `lopen.loop.done` file presence
-- [x] State survives application restart (file-based)
+- [ ] State persists between iterations via files
+- [ ] Jobs-to-be-done tracks: id, requirement code, description, status, partial implementation
+- [ ] Implementation plan tracks: current tasks, completion status
+- [ ] Agent can read previous iteration state
+- [ ] Agent updates state files each iteration
+- [ ] Loop respects `lopen.loop.done` file presence
+- [ ] State survives application restart (file-based)
 
 ### Jobs-to-be-done Schema
 ```json
@@ -225,10 +225,10 @@ Track loop state, progress, and maintain context across iterations.
 ### Test Cases
 | ID | Description | Expected | Status |
 |----|-------------|----------|--------|
-| TC-034-01 | State persistence | State files updated each iteration | ✅ |
-| TC-034-02 | Jobs tracking | Jobs status reflects completion | ✅ |
-| TC-034-03 | Loop completion | Respects `lopen.loop.done` | ✅ |
-| TC-034-04 | Restart resilience | Can resume after restart | ✅ |
+| TC-034-01 | State persistence | State files updated each iteration | ⏸️ |
+| TC-034-02 | Jobs tracking | Jobs status reflects completion | ⏸️ |
+| TC-034-03 | Loop completion | Respects `lopen.loop.done` | ⏸️ |
+| TC-034-04 | Restart resilience | Can resume after restart | ⏸️ |
 
 ---
 
@@ -238,14 +238,14 @@ Track loop state, progress, and maintain context across iterations.
 Real-time visibility into agent actions without blocking progress.
 
 ### Acceptance Criteria
-- [x] Streams Copilot SDK responses to console in real-time
-- [x] Uses Spectre.Console for formatted output
-- [x] Displays phase indicators (PLAN / BUILD)
-- [x] Shows iteration counter clearly
-- [x] Indicates when agent is using sub-agents
-- [x] Displays file changes, commits as they happen
-- [x] Supports `NO_COLOR` environment variable
-- [x] Output allows user to see progress and decide when to interrupt
+- [ ] Streams Copilot SDK responses to console in real-time
+- [ ] Uses Spectre.Console for formatted output
+- [ ] Displays phase indicators (PLAN / BUILD)
+- [ ] Shows iteration counter clearly
+- [ ] Indicates when agent is using sub-agents
+- [ ] Displays file changes, commits as they happen
+- [ ] Supports `NO_COLOR` environment variable
+- [ ] Output allows user to see progress and decide when to interrupt
 
 ### Output Format
 ```
@@ -271,10 +271,10 @@ Completed iteration 2
 ### Test Cases
 | ID | Description | Expected | Status |
 |----|-------------|----------|--------|
-| TC-035-01 | Real-time streaming | Output appears as generated | ✅ |
-| TC-035-02 | Phase indicators | Shows PLAN/BUILD mode clearly | ✅ |
-| TC-035-03 | Iteration display | Shows iteration count after each | ✅ |
-| TC-035-04 | NO_COLOR support | Respects NO_COLOR env var | ✅ |
+| TC-035-01 | Real-time streaming | Output appears as generated | ⏸️ |
+| TC-035-02 | Phase indicators | Shows PLAN/BUILD mode clearly | ⏸️ |
+| TC-035-03 | Iteration display | Shows iteration count after each | ⏸️ |
+| TC-035-04 | NO_COLOR support | Respects NO_COLOR env var | ⏸️ |
 
 ---
 
@@ -293,21 +293,21 @@ Single sub-agent dedicated to verifying completion and quality.
 - Verify build succeeds after changes
 
 ### Acceptance Criteria
-- [x] Dedicated verification sub-agent invoked
-- [x] Checks test coverage and passage
-- [x] Validates documentation presence and format
-- [x] Verifies requirement code validity
-- [x] Confirms build success
-- [x] Reports verification status to loop
-- [x] Prevents jobs from being marked complete without verification
+- [ ] Dedicated verification sub-agent invoked
+- [ ] Checks test coverage and passage
+- [ ] Validates documentation presence and format
+- [ ] Verifies requirement code validity
+- [ ] Confirms build success
+- [ ] Reports verification status to loop
+- [ ] Prevents jobs from being marked complete without verification
 
 ### Test Cases
 | ID | Description | Expected | Status |
 |----|-------------|----------|--------|
-| TC-036-01 | Test verification | Ensures tests exist and pass | ✅ |
-| TC-036-02 | Documentation check | Validates Divio documentation | ✅ |
-| TC-036-03 | Requirement validation | Confirms requirement codes valid | ✅ |
-| TC-036-04 | Build verification | Ensures build succeeds | ✅ |
+| TC-036-01 | Test verification | Ensures tests exist and pass | ⏸️ |
+| TC-036-02 | Documentation check | Validates Divio documentation | ⏸️ |
+| TC-036-03 | Requirement validation | Confirms requirement codes valid | ⏸️ |
+| TC-036-04 | Build verification | Ensures build succeeds | ⏸️ |
 
 ---
 
