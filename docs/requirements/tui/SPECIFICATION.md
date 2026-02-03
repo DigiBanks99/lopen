@@ -8,6 +8,18 @@ Lopen is a full-screen terminal application (like neovim) that serves as a codin
 
 ---
 
+## Logo
+
+ASCII art logo:
+
+```
+╻  ┏━┓┏━┓┏━╸┏┓╻
+┃  ┃ ┃┣━┛┣╸ ┃┗┫
+┗━╸┗━┛╹  ┗━╸╹ ╹
+```
+
+---
+
 ## Layout Structure
 
 The TUI fills the entire terminal with three distinct zones:
