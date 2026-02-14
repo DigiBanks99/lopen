@@ -1,52 +1,63 @@
 ---
 name: core
-description: The core requirements of Lopen
+description: The core workflow and orchestration requirements of Lopen
 ---
 
 # Core Lopen Specification
 
 ## Overview
 
-Lopen is an intelligent coding assistant and agent team orchestrator that autonomously builds software modules from specifications. It is designed to be opinionated, efficient with token usage and premium API requests, and focused on providing users with clear visibility into progress without manual correlation of specifications, research, plans, and implementation.
+Lopen is an intelligent coding assistant and orchestrator that autonomously builds software modules from specifications. It drives the GitHub Copilot SDK in a structured loop, managing workflow state and context between iterations, replacing manual prompt engineering with a proper orchestration layer.
 
 ### Design Principles
 
-1. **Opinionated** - Makes sensible default decisions to avoid over-engineering generic solutions
-2. **Token Efficient** - Minimizes context window usage through intelligent document management
-3. **Cost Aware** - Tracks and displays token usage and premium API requests prominently
-4. **Autonomous** - Self-corrects failures and advances through workflow automatically
-5. **User Informed** - Correlates specifications, research, plans, and tasks automatically
-6. **Structured** - Follows a consistent 7-step process for module development
+1. **Opinionated** — Makes sensible default decisions to avoid over-engineering generic solutions
+2. **Autonomous** — Self-corrects failures and advances through workflow automatically
+3. **Re-entrant** — Assesses actual codebase state each iteration rather than trusting stale session data
+4. **User Informed** — Correlates specifications, research, plans, and tasks automatically
+5. **Structured** — Follows a consistent 7-step process for module development
+
+> Token efficiency, cost tracking, and model selection are concerns of the [LLM module](../llm/SPECIFICATION.md). Storage and persistence are concerns of the [Storage module](../storage/SPECIFICATION.md). Settings and defaults are concerns of the [Configuration module](../configuration/SPECIFICATION.md).
 
 ---
 
 ## Core Development Workflow
 
-Lopen guides users through a structured 7-step process for building modules:
+Lopen guides the LLM through a structured 7-step process for building modules. The workflow is **always** the 7 steps, but it is **re-entrant**: at each loop iteration, Lopen assesses where the project actually stands and enters at the correct step.
 
 ### The 7 Steps
 
-1. **Draft Specification** - User provides initial idea, Lopen conducts guided conversation to gather requirements
-2. **Determine Dependencies** - Identify what's needed to make the specification work
-3. **Identify Components** - Break down the module into logical components
-4. **Select Next Component** - Choose the next most important component to build
-5. **Break Into Tasks** - Decompose the component into achievable atomic tasks
-6. **Iterate Through Tasks** - Execute tasks, self-correct on failures, track progress
-7. **Repeat** - Return to step 4 until all components are complete
+1. **Draft Specification** — User provides initial idea, Lopen conducts guided conversation to gather requirements
+2. **Determine Dependencies** — Identify what's needed to make the specification work (libraries, APIs, other modules)
+3. **Identify Components** — Break down the module into logical components; assess existing codebase against the spec to determine what is already done, partially done, or missing
+4. **Select Next Component** — Choose the next most important component to build; re-assess codebase state to verify prior completion claims
+5. **Break Into Tasks** — Decompose the component into achievable atomic tasks
+6. **Iterate Through Tasks** — Execute tasks via the LLM, self-correct on failures, track progress
+7. **Repeat** — Return to step 4 until all components are complete
 
 ### The 3 Phases
 
-These steps are organized into three phases:
+- **Requirement Gathering** (Step 1) — Define what needs to be built
+- **Planning** (Steps 2–3) — Understand dependencies and architecture
+- **Building** (Steps 4–7) — Iteratively construct components
 
-- **Requirement Gathering** (Step 1) - Define what needs to be built
-- **Planning** (Steps 2-3) - Understand dependencies and architecture
-- **Building** (Steps 4-7) - Iteratively construct components
+### Re-entrant Assessment
+
+At each loop iteration, Lopen does **not** blindly trust session state. Instead:
+
+1. Reads the specification and session state (session state is a **hint**, not ground truth)
+2. Instructs the LLM to assess the actual codebase against the spec
+3. Determines the correct workflow step based on what actually exists
+4. May trigger additional research (web, security, architecture) during steps 3–4 if gaps are found
+5. Proceeds from the determined step forward
+
+This means if specifications change between iterations, Lopen detects drift and re-enters at the appropriate phase — no manual intervention required.
 
 ### Workflow Characteristics
 
 **Automatic Progression**: Lopen automatically advances through steps when completion criteria are met. No manual step transitions required.
 
-**Semi-Automatic Reviews**: At phase boundaries, Lopen may offer reviews (e.g., spec review after step 1). User confirms to proceed and lopen facilitates the review process.
+**Semi-Automatic Reviews**: At phase boundaries, Lopen may offer reviews (e.g., spec review after step 1). User confirms to proceed and Lopen facilitates the review process.
 
 **Component-by-Component**: In the Building phase, Lopen completes one component fully before moving to the next. User selects which component to tackle first.
 
@@ -58,7 +69,7 @@ These steps are organized into three phases:
 
 ### Intelligent Resource Tracking
 
-To minimize token usage and LLM overhead, Lopen includes an intelligent document management layer that operates in-process:
+To minimize token usage and LLM overhead, Lopen includes an intelligent document management layer that operates in-process. Documents are stored according to the [Storage module](../storage/SPECIFICATION.md) conventions.
 
 **Automatic Tracking**:
 
@@ -76,21 +87,20 @@ To minimize token usage and LLM overhead, Lopen includes an intelligent document
 **Section-Level Extraction**:
 
 - Document parser extracts relevant sections based on current context
-- LLM given clear guidance on where excerpts are stored
-- Lopen can give LLM tracking information
-- Significantly reduces context window usage
-- Example: When working on authentication, only `§ Authentication` sections provided
+- Only the sections relevant to the current task are injected into the LLM context
+- Lopen provides the LLM with tracking metadata (section locations, resource references)
+- Example: When working on authentication, only `§ Authentication` sections are provided
 
 **Programmatic Updates**:
 
-- Task completion updates plan document checkboxes without LLM
-- Component tracking of specification implementation in Lopen and not left to the LLM
-- Reduces need for LLM to manage document state
+- Task completion updates plan document checkboxes without invoking the LLM
+- Component status tracking is maintained by Lopen, not delegated to the LLM
+- Reduces unnecessary LLM token consumption for bookkeeping
 
 **Resource Correlation**:
 
-- System automatically correlates specifications to components to tasks
-- User sees relevant spec sections, research notes, and plan items for current task
+- System automatically correlates specifications → components → tasks
+- Current task context includes relevant spec sections, research notes, and plan items
 - No manual hunting through documents required
 
 ---
@@ -101,7 +111,7 @@ To minimize token usage and LLM overhead, Lopen includes an intelligent document
 
 Tasks are organized hierarchically:
 
-```sh
+```
 Module (e.g., authentication)
 ├─ Component (e.g., auth-module)
 │  ├─ Task (e.g., Implement JWT token validation)
@@ -116,10 +126,10 @@ Module (e.g., authentication)
 
 ### Task States
 
-- **○ Pending** - Not started
-- **▶ In Progress** - Currently being worked on
-- **✓ Complete** - Successfully completed
-- **✗ Failed** - Failed and blocked (rare - usually self-corrects)
+- **○ Pending** — Not started
+- **▶ In Progress** — Currently being worked on
+- **✓ Complete** — Successfully completed
+- **✗ Failed** — Failed and blocked (rare — usually self-corrects)
 
 ### Task Completion Criteria
 
@@ -147,77 +157,16 @@ Lopen is designed to autonomously recover from failures without blocking progres
 
 **User Intervention**: When patterns detected, user is asked if they want to continue or intervene manually.
 
-**Unattended Mode**: For fully autonomous operation, intervention prompts can be suppressed with `--unattended` flag.
+**Unattended Mode**: For fully autonomous operation, intervention prompts can be suppressed via [configuration](../configuration/SPECIFICATION.md).
 
 ### Failure Types
 
 | Type                       | Behavior                                 | User Action              |
 | -------------------------- | ---------------------------------------- | ------------------------ |
-| Single task failure        | Show inline, LLM self-corrects, continue | None - observe           |
+| Single task failure        | Show inline, LLM self-corrects, continue | None — observe           |
 | Repeated task failure (3+) | Prompt user to confirm continuation      | Confirm or intervene     |
 | Critical system error      | Block and require user action            | Recovery action required |
-| Minor warning              | Show inline, continue                    | None - informational     |
-
----
-
-## Token & Cost Management
-
-### Core Metrics
-
-Lopen treats token usage and premium API requests as **first-class metrics** visible throughout the application:
-
-**Context Window Usage**: `{used}/{total}` tokens displayed prominently (e.g., `2.4K/128K`)
-
-**Premium Request Counter**: Number of premium API calls made in current session (e.g., `🔥 23`)
-
-These metrics are **not Lopen-specific** - they apply to any workflow or module using the application.
-
-### Token Efficiency Strategies
-
-1. **Document Management Layer**: Section-level extraction reduces context sent to LLM
-2. **Programmatic Updates**: Routine document updates (checkboxes, status) handled in code
-3. **Progressive Context**: Only current task context loaded, not entire module history. Related docs are loaded as needed
-4. **Smart Caching**: Previously analyzed sections cached when possible
-5. **Minimal Prompts**: Structured prompts avoid unnecessary verbosity
-6. **Context Allocation**: Wherever possible, a new context window should be used and context to be loaded from Lopen memory or the file system
-
----
-
-## Session Management
-
-### Session Persistence
-
-Lopen automatically saves session state to enable resumption after interruption:
-
-**What's Persisted**:
-
-- Current phase and step in workflow
-- Module hierarchy with completion state
-- Component and task lists with progress
-- Active resource references (specs, research, plans)
-- Conversation history (configurable retention length)
-- Session metadata (timestamp, project, model used)
-
-**Storage Location**: Project-local directory (e.g., `.lopen/sessions/{session-id}.json`)
-
-**Storage Format**: Anything that is ideal for small context windows. Not necessarily human readable.
-
-**Storage Interact**: For Human flows, minimised storage files can be prettified to markdown, JSON, YAML or something similarly human readable.
-
-**Resume Behavior**:
-
-- On startup, Lopen checks for existing sessions
-- If found, offers to resume or start fresh
-- User can resume specific session by ID: `lopen --resume {id}`
-- Or force new session: `lopen --no-resume`
-
-### Session Lifecycle
-
-1. **Start**: Session created when workflow begins
-2. **Auto-Save**: State saved after each significant action (step complete, task done)
-3. **Interrupt**: Session preserved if Lopen closed or crashed
-4. **Resume**: User prompted to continue from last checkpoint
-5. **Complete**: Session archived when module fully built
+| Minor warning              | Show inline, continue                    | None — informational     |
 
 ---
 
@@ -229,7 +178,7 @@ Lopen automatically saves session state to enable resumption after interruption:
 
 **User Selection**: When multiple modules exist, user explicitly chooses which to work on next.
 
-**Context Isolation**: Each module has its own specifications, components, and tasks. Modules my reference other modules for which progressive disclosure is used to load context.
+**Context Isolation**: Each module has its own specifications, components, and tasks. Modules may reference other modules, for which progressive disclosure is used to load context.
 
 **Progress Tracking**: System tracks completion state of all modules in project.
 
@@ -240,7 +189,7 @@ When starting work:
 1. System scans project for module specifications
 2. Lists modules with current state (not started / in progress / complete)
 3. User selects module to work on
-4. Can switch modules mid-work (session saved)
+4. Can switch modules mid-work (session saved per [Storage module](../storage/SPECIFICATION.md))
 
 ---
 
@@ -252,16 +201,16 @@ These features support the core workflow but are not part of the 7-step process:
 
 **Purpose**: Gather information needed for informed implementation decisions.
 
-**When**: Research can occur during any phase, triggered by knowledge gaps.
+**When**: Research can occur during any phase, triggered by knowledge gaps. Steps 3–4 commonly trigger research when assessing the codebase reveals unknowns (e.g., security considerations, third-party API patterns, architectural decisions).
 
 **How**:
 
-- Lopen identifies need for research (e.g., "best practices for JWT tokens")
-- Conducts research using available tools
-- Creates research document with findings
+- Lopen identifies need for research (e.g., "best practices for JWT tokens", "security audit of auth flow")
+- Instructs the LLM to conduct research using available tools (web search, codebase analysis, documentation review)
+- Creates research document with findings at `docs/requirements/{module}/RESEARCH-{topic}.md` (see [Storage § Research Documents](../storage/SPECIFICATION.md#research-documents))
 - Links research to relevant specification sections
 
-**Display**: Research activities shown inline during workflow (see TUI spec for UI details).
+**Display**: Research activities shown inline during workflow (see [TUI Specification](../tui/SPECIFICATION.md) for UI details).
 
 **Summaries**: Research summaries provided at phase transitions.
 
@@ -273,17 +222,17 @@ These features support the core workflow but are not part of the 7-step process:
 
 **How**:
 
-- Lopen analyzes draft specification for gaps, ambiguities, conflicts
+- Lopen instructs the LLM to analyze the draft specification for gaps, ambiguities, and conflicts
 - Presents findings to user
 - User decides to revise spec, proceed as-is, or cancel
 
-**Trigger**: Semi-automatic - Lopen offers review, user confirms.
+**Trigger**: Semi-automatic — Lopen offers review, user confirms.
 
 ### Plan Refinement
 
 **Purpose**: Ensure implementation plan is achievable and well-structured.
 
-**When**: During Planning phase (steps 2-3).
+**When**: During Planning phase (steps 2–3).
 
 **How**:
 
@@ -291,10 +240,15 @@ These features support the core workflow but are not part of the 7-step process:
 - Creates markdown plan with checkboxes
 - User can review and adjust before Building begins
 
+---
+
 ## Notes
 
-This specification defines the **core behavior** of Lopen independent of user interface.
+This specification defines the **core workflow and orchestration behavior** of Lopen independent of user interface, LLM backend, storage mechanism, or configuration system.
 
 ## References
 
-- [TUI Specification](../tui/SPECIFICATION.md) - For UI-specific requirements (split-screen layout, progressive disclosure, visual design).
+- [LLM Specification](../llm/SPECIFICATION.md) — Copilot SDK integration, model selection, tool strategy, token tracking
+- [Storage Specification](../storage/SPECIFICATION.md) — Session persistence, document formats, `.lopen/` structure
+- [Configuration Specification](../configuration/SPECIFICATION.md) — User preferences, feature flags, model assignments
+- [TUI Specification](../tui/SPECIFICATION.md) — Terminal UI layout, progressive disclosure, visual design
