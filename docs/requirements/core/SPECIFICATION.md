@@ -16,8 +16,20 @@ Lopen is an intelligent coding assistant and orchestrator that autonomously buil
 3. **Re-entrant** — Assesses actual codebase state each iteration rather than trusting stale session data
 4. **User Informed** — Correlates specifications, research, plans, and tasks automatically
 5. **Structured** — Follows a consistent 7-step process for module development
+6. **Back-Pressure Aware** — Enforces quality, resource, and progress guardrails to prevent wasteful loops
 
 > Token efficiency, cost tracking, and model selection are concerns of the [LLM module](../llm/SPECIFICATION.md). Storage and persistence are concerns of the [Storage module](../storage/SPECIFICATION.md). Settings and defaults are concerns of the [Configuration module](../configuration/SPECIFICATION.md).
+
+---
+
+## Modules
+
+A **module** is a composable feature set that belongs together — an epic-level vertical slice. Each subfolder under `docs/requirements/` represents a module (e.g., `docs/requirements/auth/`, `docs/requirements/core/`).
+
+- Module names correspond to their directory names
+- Each module has a `SPECIFICATION.md` following the [Specification Pattern](#specification-pattern)
+- Code structure is not enforced by Lopen — it is defined within the module specification or left to the LLM
+- The user scopes work by selecting a module; within a module, the LLM has full autonomy over component identification, sequencing, and implementation approach
 
 ---
 
@@ -27,13 +39,13 @@ Lopen guides the LLM through a structured 7-step process for building modules. T
 
 ### The 7 Steps
 
-1. **Draft Specification** — User provides initial idea, Lopen conducts guided conversation to gather requirements
+1. **Draft Specification** — User provides initial idea, Lopen conducts guided conversation to gather requirements. The specification must follow the [Specification Pattern](#specification-pattern) including Acceptance Criteria
 2. **Determine Dependencies** — Identify what's needed to make the specification work (libraries, APIs, other modules)
-3. **Identify Components** — Break down the module into logical components; assess existing codebase against the spec to determine what is already done, partially done, or missing
-4. **Select Next Component** — Choose the next most important component to build; re-assess codebase state to verify prior completion claims
+3. **Identify Components** — Break down the module into logical C4 components; assess existing codebase against the spec to determine what is already done, partially done, or missing
+4. **Select Next Component** — LLM chooses the next component to build based on dependency order and progress; re-assesses codebase state to verify prior completion claims
 5. **Break Into Tasks** — Decompose the component into achievable atomic tasks
-6. **Iterate Through Tasks** — Execute tasks via the LLM, self-correct on failures, track progress
-7. **Repeat** — Return to step 4 until all components are complete
+6. **Iterate Through Tasks** — Execute tasks via the LLM, self-correct on failures, track progress, enforce [Back-Pressure](#back-pressure) guardrails
+7. **Repeat** — Return to step 4 until all components are complete and module [Acceptance Criteria](#acceptance-criteria) are satisfied
 
 ### The 3 Phases
 
@@ -41,27 +53,189 @@ Lopen guides the LLM through a structured 7-step process for building modules. T
 - **Planning** (Steps 2–3) — Understand dependencies and architecture
 - **Building** (Steps 4–7) — Iteratively construct components
 
+### Phase Transitions
+
+- **Requirement Gathering → Planning**: **Human-gated**. Specification completeness is the user's decision. Lopen may suggest gaps and highlight missing sections, but the user explicitly confirms the spec is ready to proceed. This is the only phase transition requiring user approval.
+- **Planning → Building**: Automated. Proceeds when the plan is structurally complete (all components identified, tasks broken down).
+- **Building → Complete**: Automated. Module is complete when all components are built and all [Acceptance Criteria](#acceptance-criteria) pass verification.
+
 ### Re-entrant Assessment
 
 At each loop iteration, Lopen does **not** blindly trust session state. Instead:
 
 1. Reads the specification and session state (session state is a **hint**, not ground truth)
-2. Instructs the LLM to assess the actual codebase against the spec
-3. Determines the correct workflow step based on what actually exists
-4. May trigger additional research (web, security, architecture) during steps 3–4 if gaps are found
-5. Proceeds from the determined step forward
+2. Checks the plan/task tree for claimed-complete items
+3. For claimed-complete items, performs targeted verification (checks specific files, tests, and artifacts mentioned)
+4. Uses the section cache and file modification timestamps to detect what changed since last iteration
+5. Feeds only the delta plus current task context to the LLM
+6. Determines the correct workflow step based on what actually exists
+7. May dispatch sub-agents for verification of complex claims (see [Oracle Verification](#oracle-verification))
+8. Proceeds from the determined step forward
 
-This means if specifications change between iterations, Lopen detects drift and re-enters at the appropriate phase — no manual intervention required.
+### Specification Drift Detection
+
+Lopen detects when specifications change between iterations:
+
+1. Hashes the content of each relevant SPECIFICATION.md section at every session save
+2. On resume or next iteration, compares hashes against the saved values
+3. If a spec section changed, flags the drift and reports it to the user
+4. Re-enters at the appropriate phase (e.g., if Acceptance Criteria changed, re-assess from step 3)
 
 ### Workflow Characteristics
 
-**Automatic Progression**: Lopen automatically advances through steps when completion criteria are met. No manual step transitions required.
+**Automatic Progression**: Lopen automatically advances through steps when completion criteria are met. No manual step transitions required (except the spec→plan human gate).
 
-**Semi-Automatic Reviews**: At phase boundaries, Lopen may offer reviews (e.g., spec review after step 1). User confirms to proceed and Lopen facilitates the review process.
-
-**Component-by-Component**: In the Building phase, Lopen completes one component fully before moving to the next. User selects which component to tackle first.
+**LLM-Driven Component Ordering**: Within a module, the LLM identifies components (C4 component level) and determines the build order. The user does not micro-manage component selection — they scope to a module and Lopen handles the rest.
 
 **Task-Level Iteration**: Within a component, tasks are completed sequentially with self-correction on failures.
+
+**Cross-Module Dependencies**: The LLM handles cross-module dependencies autonomously (e.g., creating stubs, interfaces, or building dependent modules as needed). Lopen does not enforce a build order across modules.
+
+---
+
+## Specification Pattern
+
+Every module specification (`SPECIFICATION.md`) must follow a canonical structure that Lopen can parse and enforce:
+
+### Required Sections
+
+```markdown
+---
+name: <module-name>
+description: <brief description>
+---
+
+# <Module Name> Specification
+
+## Overview
+High-level purpose and scope of the module.
+
+## [Domain-Specific Sections]
+One or more sections defining the module's behavior, data model,
+interfaces, and constraints. Structure varies per module.
+
+## Acceptance Criteria
+Machine-parseable quality gates that must pass before the module
+is considered complete. Written as a checkbox list.
+
+## Dependencies
+Other modules, libraries, APIs, or external systems this module requires.
+
+## Skills & Hooks
+Module-specific tools, skills, or hooks to register with Lopen.
+Defines verification commands, linters, or custom checks.
+
+## Notes
+Implementation notes, open questions, or caveats.
+
+## References
+Links to related specifications and external resources.
+```
+
+### Acceptance Criteria
+
+The `## Acceptance Criteria` section defines the conditions under which a module is considered complete. These are the module's quality gates — Lopen enforces them before marking a module as done.
+
+Acceptance criteria are written as a markdown checkbox list:
+
+```markdown
+## Acceptance Criteria
+
+- [ ] All public API endpoints return appropriate HTTP status codes
+- [ ] Unit test coverage exists for all public methods
+- [ ] Integration tests pass for the complete authentication flow
+- [ ] No unhandled exceptions in error paths
+- [ ] Security linting passes (e.g., OWASP checks for auth module)
+```
+
+**Enforcement**:
+
+- Lopen parses acceptance criteria programmatically
+- During the Building phase, acceptance criteria are verified at component and module completion boundaries
+- Verification uses a combination of tool call tracking, VCS hooks, and [Oracle Verification](#oracle-verification)
+- A module cannot be marked complete until all acceptance criteria are satisfied
+
+### Skills & Hooks
+
+The `## Skills & Hooks` section defines module-specific verification and tooling:
+
+```markdown
+## Skills & Hooks
+
+- **verify-build**: `dotnet build --no-restore`
+- **verify-tests**: `dotnet test --no-build`
+- **verify-lint**: `dotnet format --verify-no-changes`
+- **pre-commit**: Run all verify-* skills before committing
+```
+
+Lopen registers these as tools available to the LLM and enforces that relevant ones are invoked before marking tasks complete.
+
+---
+
+## Back-Pressure
+
+Back-pressure is Lopen's first-class mechanism for preventing wasteful, circular, or low-quality LLM behavior. It is the key differentiator between Lopen's orchestration and naive loop-and-retry approaches.
+
+### Category 1: Resource Limits
+
+Quantitative guardrails on token and premium request consumption.
+
+- **Budgets are per-module** — Each module has a configurable token and premium request budget, tracked across sessions
+- **Warning at 80%** — Lopen warns the user when 80% of the module budget is consumed
+- **Confirmation at 90%** — Lopen pauses and requires user confirmation to continue past 90%
+- **Rate limit recovery** — When the Copilot SDK returns a rate limit error (429), Lopen implements exponential backoff automatically and resumes when available
+- Budget thresholds are configurable via [Configuration](../configuration/SPECIFICATION.md)
+
+### Category 2: Progress Integrity
+
+Prevent churn, false completion claims, and circular behavior.
+
+- **Churn detection** — If the same task fails repeatedly (configurable threshold, default 3), Lopen escalates rather than retrying blindly
+- **False completion prevention** — When the LLM claims a task is complete, Lopen verifies through:
+  1. **Tool call tracking** — Lopen records which tools the LLM invoked. If a task requires running tests but the LLM never called the test runner, the completion claim is rejected
+  2. **VCS commit hooks** — Pre-commit hooks (linters, tests, formatters) that the LLM cannot bypass. Lopen helps set these up in the repository
+  3. **Oracle verification** — A cheap/fast model reviews the diff against the spec and validates correctness (see [Oracle Verification](#oracle-verification))
+- **Circular behavior detection** — Lopen tracks iteration patterns (e.g., same file read 3+ times, same command re-run without changes) and intervenes with corrective instructions
+
+### Category 3: Quality Gates
+
+Standards enforcement and best-practice validation.
+
+- **Module-level gates** — Defined in the spec's [Acceptance Criteria](#acceptance-criteria) section; enforced at module completion
+- **Component-level gates** — Derived from acceptance criteria; enforced at component completion
+- **Built-in defaults** — Lopen ships with default quality rules (e.g., "tests must exist for new code", "commit messages follow convention"). These apply unless overridden
+- **Repository setup** — Lopen helps the user set up their repository with quality infrastructure (hooks, linters, formatters) as part of the Planning phase
+
+### Category 4: Tool Discipline
+
+Prevent unnecessary tool invocations and shotgun debugging.
+
+- **Active intervention with soft limits** — Lopen monitors tool call patterns per iteration. When it detects waste (e.g., reading the same file repeatedly, running the same failing command without changes), it injects a corrective instruction into the next prompt
+- **Soft limits are configurable** — Default thresholds for tool call patterns (e.g., max 3 reads of the same file per iteration) can be adjusted via [Configuration](../configuration/SPECIFICATION.md)
+- **No hard blocks** — Lopen warns and corrects but does not hard-block tool calls. The LLM retains the ability to override if it has a legitimate reason
+
+### Global Skills
+
+Lopen defines global skills that encapsulate verification tool calls for the project:
+
+| Skill            | Purpose                                              |
+| ---------------- | ---------------------------------------------------- |
+| `verify-build`   | Run the project build and check for errors           |
+| `verify-tests`   | Run the test suite and report results                |
+| `verify-lint`    | Run linters/formatters and check for violations      |
+| `verify-commit`  | Ensure VCS hooks pass before committing              |
+
+These skills are always available. Lopen enforces that relevant skills are invoked before marking work complete. Module specs can define additional skills in their [Skills & Hooks](#skills--hooks) section.
+
+### Oracle Verification
+
+At task and component completion boundaries, Lopen may dispatch a cheap/fast model (e.g., gpt-5-mini, gpt-4o) as a sub-agent to:
+
+1. Review the diff produced by the primary LLM
+2. Validate the changes against the specification and acceptance criteria
+3. Report findings back to Lopen
+
+Oracle verification catches semantic errors that automated hooks miss. It runs in parallel with the primary workflow when possible to minimize latency. The oracle model is configurable via [Configuration](../configuration/SPECIFICATION.md).
 
 ---
 
@@ -145,6 +319,30 @@ If a task fails, the LLM attempts to self-correct. The task remains in "In Progr
 
 ---
 
+## Git Safety & Rollback
+
+Lopen uses Git as its safety net for destructive changes:
+
+### Auto-Commit per Task
+
+When `git.auto_commit` is enabled (default: `true`), Lopen instructs the LLM to commit after each task completion. Each commit is a rollback point with a conventional commit message.
+
+### Branch per Module
+
+Lopen creates a working branch for each module (e.g., `lopen/auth`, `lopen/storage`). This isolates module work from the main branch. The user merges when satisfied.
+
+### Revert Command
+
+When the LLM makes destructive changes that cannot be self-corrected:
+
+- `lopen revert` rolls back to the last known-good commit (the most recent task-completion commit)
+- The session state is updated to reflect the rollback
+- The LLM is informed of the rollback in the next iteration context
+
+See [CLI § lopen revert](../cli/SPECIFICATION.md) for command details.
+
+---
+
 ## Failure Handling & Self-Correction
 
 ### Philosophy
@@ -176,9 +374,11 @@ Lopen is designed to autonomously recover from failures without blocking progres
 
 **One Module at a Time**: Lopen completes the full 7-step workflow for one module before starting another.
 
-**User Selection**: When multiple modules exist, user explicitly chooses which to work on next.
+**User Scoping**: When multiple modules exist, the user explicitly chooses which module to work on. Within the module, the LLM has full autonomy over component ordering and implementation approach.
 
 **Context Isolation**: Each module has its own specifications, components, and tasks. Modules may reference other modules, for which progressive disclosure is used to load context.
+
+**Cross-Module Dependencies**: The LLM handles cross-module dependencies autonomously. It may create stubs, interfaces, or build dependent components as needed. Lopen does not enforce a build order across modules.
 
 **Progress Tracking**: System tracks completion state of all modules in project.
 
@@ -186,7 +386,7 @@ Lopen is designed to autonomously recover from failures without blocking progres
 
 When starting work:
 
-1. System scans project for module specifications
+1. System scans `docs/requirements/` subfolders for module specifications
 2. Lists modules with current state (not started / in progress / complete)
 3. User selects module to work on
 4. Can switch modules mid-work (session saved per [Storage module](../storage/SPECIFICATION.md))
@@ -201,7 +401,14 @@ These features support the core workflow but are not part of the 7-step process:
 
 **Purpose**: Gather information needed for informed implementation decisions.
 
-**When**: Research can occur during any phase, triggered by knowledge gaps. Steps 3–4 commonly trigger research when assessing the codebase reveals unknowns (e.g., security considerations, third-party API patterns, architectural decisions).
+**When**: Research is **Lopen-initiated** — triggered autonomously during spec analysis and codebase assessment (typically steps 3–4) when the LLM's assessment reveals unknowns. The user does not trigger research manually.
+
+**Triggers**:
+
+- During component identification (step 3), the LLM encounters an unfamiliar technology, pattern, or API
+- During codebase assessment, the LLM finds gaps between the spec and existing code that require investigation
+- During task execution (step 6), the LLM encounters an implementation problem it cannot resolve from existing context
+- Lopen recognizes these via the LLM's tool calls and response patterns (e.g., hedging language, repeated failures on the same problem)
 
 **How**:
 
