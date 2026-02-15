@@ -61,6 +61,13 @@ internal sealed class GitCliService : IGitService
         return result.StdOut;
     }
 
+    /// <inheritdoc />
+    public async Task<string?> GetCurrentCommitShaAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await RunGitAsync("rev-parse HEAD", cancellationToken).ConfigureAwait(false);
+        return result.Success ? result.StdOut.Trim() : null;
+    }
+
     private async Task<GitResult> RunGitAsync(string arguments, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Running: git {Arguments}", arguments);

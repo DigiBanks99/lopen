@@ -34,4 +34,8 @@ public sealed record SessionState
     /// <summary>The models used during this session.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? ModelsUsed { get; init; }
+
+    /// <summary>The commit SHA of the last task-completion auto-commit, used for revert.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LastTaskCompletionCommitSha { get; init; }
 }

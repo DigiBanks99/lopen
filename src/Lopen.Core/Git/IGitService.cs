@@ -42,4 +42,11 @@ public interface IGitService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The diff output.</returns>
     Task<string> GetDiffAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the current HEAD commit SHA.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The commit SHA, or null if no commits exist.</returns>
+    Task<string?> GetCurrentCommitShaAsync(CancellationToken cancellationToken = default);
 }

@@ -24,6 +24,8 @@ public static class ServiceCollectionExtensions
                 new GitCliService(
                     sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<GitCliService>>(),
                     projectRoot));
+            services.AddSingleton<IGitWorkflowService, GitWorkflowService>();
+            services.AddSingleton<IRevertService, RevertService>();
             services.AddSingleton<IModuleScanner>(sp =>
                 new ModuleScanner(
                     sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
