@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Lopen.Auth;
 using Lopen.Configuration;
 using Lopen.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddLopenConfiguration();
+builder.Services.AddLopenAuth();
 builder.Services.AddLopenCore();
 
 using var host = builder.Build();
