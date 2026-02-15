@@ -483,9 +483,9 @@
     "id": "JOB-061",
     "requirement_module": "core",
     "description": "Implement specification drift detection when spec sections change between iterations",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Drift detection identifies spec changes and flags to user"
+    "notes": "DriftDetector compares current spec sections against cached hashes using IContentHasher. Returns DriftResult records for modified, new, and removed sections. Filters by file path. Tests: 12 tests covering no-drift, modified, new, removed, empty cache, different paths, constructor validation."
   },
   {
     "id": "JOB-062",
@@ -531,9 +531,9 @@
     "id": "JOB-067",
     "requirement_module": "core",
     "description": "Implement back-pressure Category 2 (Progress Integrity): churn detection and false completion rejection",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Churn detection escalates; false completions rejected when required tool calls not made"
+    "notes": "ChurnDetectionGuardrail (Cat 2) detects repeated task failures. Warns at threshold-1, blocks at threshold (configurable, default 3). Uses IterationCount from GuardrailContext. Order=200, no short-circuit. Tests: 9 tests covering pass/warn/block, message content, order, threshold validation."
   },
   {
     "id": "JOB-068",
@@ -547,9 +547,9 @@
     "id": "JOB-069",
     "requirement_module": "core",
     "description": "Implement back-pressure Category 4 (Tool Discipline): corrective instructions for wasteful tool patterns",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Corrective instructions injected when wasteful tool patterns detected"
+    "notes": "ToolDisciplineGuardrail (Cat 4) monitors tool call counts. Warns above threshold (default 50), stronger warning above 2x threshold. Uses ToolCallCount from GuardrailContext. Order=400, no short-circuit (soft limits per spec). Tests: 9 tests."
   },
   {
     "id": "JOB-070",

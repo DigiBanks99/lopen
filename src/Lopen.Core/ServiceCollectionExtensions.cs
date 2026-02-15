@@ -33,6 +33,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<ISpecificationParser, MarkdigSpecificationParser>();
         services.AddSingleton<IContentHasher, XxHashContentHasher>();
+        services.AddSingleton<IDriftDetector, DriftDetector>();
         services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
 
         return services;
