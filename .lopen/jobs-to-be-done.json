@@ -83,9 +83,9 @@
     "id": "JOB-011",
     "requirement_module": "otel",
     "description": "Create OTEL module project (Lopen.Otel) and test project as cross-cutting concern (depends on Core)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 1,
-    "notes": "OpenTelemetry observability module"
+    "notes": "OpenTelemetry observability module - ActivitySources, Meter+instruments, DI registration with toggles, 54 tests"
   },
   {
     "id": "JOB-012",

@@ -1,17 +1,12 @@
 # Implementation Plan
 
-## Current Focus: JOB-009 — Core Module Foundation ✅
+## Current Focus: JOB-011 — OTEL Module Foundation ✅
 
-- [x] Update `Lopen.Core.csproj` with packages (Markdig, Stateless, System.IO.Hashing, Logging.Abstractions, Options) and `InternalsVisibleTo`
-- [x] Add project references to Configuration, Llm, Storage
-- [x] Update `Lopen.Core.Tests.csproj` with test dependencies
-- [x] Create enums: `WorkflowStep`, `WorkflowTrigger`, `WorkNodeState`
-- [x] Create records: `GuardrailResult` (Pass/Warn/Block), `GuardrailContext`, `CachedSection`, `DocumentSection`, `GitResult`
-- [x] Create exceptions: `GitException`, `InvalidStateTransitionException`
-- [x] Create interfaces: `IStateAssessor`, `IGuardrail`, `IGuardrailPipeline`, `IGitService`, `ISpecificationParser`, `IContentHasher`
-- [x] Create task hierarchy: `IWorkNode`, `WorkNode<T>`, `ModuleNode`, `ComponentNode`, `TaskNode`, `SubtaskNode`, `WorkNodeExtensions`
-- [x] Create implementations: `GitCliService` (stub), `MarkdigSpecificationParser`, `XxHashContentHasher`, `GuardrailPipeline`
-- [x] Update `ServiceCollectionExtensions` with all registrations
-- [x] Write 135 comprehensive tests (enums, records, exceptions, hierarchy, implementations, DI)
-- [x] Verify `dotnet build` (0 warnings, 0 errors), `dotnet test` (362 total), `dotnet format`
-- [x] Update `jobs-to-be-done.json`
+- [x] Add OpenTelemetry packages to `Directory.Packages.props` (v1.15.0)
+- [x] Upgrade `Microsoft.Extensions.*` packages from preview to stable 10.0.3
+- [x] Update `Lopen.Otel.csproj` with InternalsVisibleTo, packages, project reference
+- [x] Create `LopenTelemetryDiagnostics.cs` with 6 ActivitySources, 10 counters, 5 histograms, 2 gauges
+- [x] Create `ServiceCollectionExtensions.cs` with `AddLopenOtel()` — master toggle, per-signal toggles, conditional OTLP export
+- [x] Update `Lopen.Otel.Tests.csproj` with test dependencies
+- [x] Write 54 tests: diagnostics (instruments, spans, hierarchy), DI registration, toggles, OTLP export, env var precedence
+- [x] `dotnet build` (0 warnings, 0 errors), `dotnet test` (414 total, all pass)
