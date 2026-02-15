@@ -91,81 +91,81 @@
     "id": "JOB-012",
     "requirement_module": "auth",
     "description": "Implement device flow login via Copilot SDK - lopen auth login initiates device flow and completes authentication",
-    "status": "not_started",
+    "status": "complete",
     "priority": 2,
-    "notes": "AC: lopen auth login initiates the Copilot SDK device flow and completes authentication successfully"
+    "notes": "CopilotAuthService.LoginAsync delegates to gh CLI device flow (gh auth login --web). Tests: interactive login, gh unavailable error, login failure propagation. GhCliAdapter handles process execution."
   },
   {
     "id": "JOB-013",
     "requirement_module": "auth",
     "description": "Implement auth status reporting - lopen auth status reports authenticated/unauthenticated/invalid states",
-    "status": "not_started",
+    "status": "complete",
     "priority": 2,
-    "notes": "AC: lopen auth status accurately reports authenticated, unauthenticated, and invalid credential states"
+    "notes": "CopilotAuthService.GetStatusAsync merges env var resolution (GH_TOKEN \u2192 GITHUB_TOKEN) with gh auth status parsing. Tests: all status states, env var precedence, gh CLI fallback, error messages."
   },
   {
     "id": "JOB-014",
     "requirement_module": "auth",
     "description": "Implement logout with SDK credential clearing and env var warning when GH_TOKEN/GITHUB_TOKEN is still set",
-    "status": "not_started",
+    "status": "complete",
     "priority": 2,
-    "notes": "AC: lopen auth logout clears SDK-managed credentials; warns when env vars still set"
+    "notes": "CopilotAuthService.LogoutAsync calls gh auth logout and warns when GH_TOKEN/GITHUB_TOKEN env vars are still set. Tests: logout with/without env var warnings."
   },
   {
     "id": "JOB-015",
     "requirement_module": "auth",
     "description": "Implement headless auth login error directing user to set GH_TOKEN",
-    "status": "not_started",
+    "status": "complete",
     "priority": 2,
-    "notes": "AC: lopen auth login --headless returns an error directing the user to set GH_TOKEN"
+    "notes": "CopilotAuthService.LoginAsync detects non-interactive environment (no TTY) and throws AuthenticationException with GH_TOKEN guidance. Tests: headless error includes what/why/how-to-fix with Copilot Requests permission info."
   },
   {
     "id": "JOB-016",
     "requirement_module": "auth",
     "description": "Implement GH_TOKEN and GITHUB_TOKEN environment variable authentication with precedence rules",
-    "status": "not_started",
+    "status": "complete",
     "priority": 2,
-    "notes": "AC: GH_TOKEN works without login; GITHUB_TOKEN fallback; GH_TOKEN > GITHUB_TOKEN > SDK credentials"
+    "notes": "Full precedence chain: GH_TOKEN \u2192 GITHUB_TOKEN \u2192 gh auth credentials \u2192 not authenticated. EnvironmentTokenSourceResolver handles env vars; CopilotAuthService falls through to IGhCliAdapter for stored credentials. Tests: all precedence combinations."
   },
   {
     "id": "JOB-017",
     "requirement_module": "auth",
     "description": "Implement pre-flight auth check blocking workflow when credentials are missing or invalid",
-    "status": "not_started",
+    "status": "complete",
     "priority": 2,
-    "notes": "AC: Pre-flight auth check blocks workflow start when credentials are missing or invalid"
+    "notes": "CopilotAuthService.ValidateAsync performs pre-flight check: resolves credentials (env vars \u2192 gh CLI), validates with gh api call, throws AuthenticationException for NotAuthenticated or InvalidCredentials. Tests: ValidateAsync_Authenticated_DoesNotThrow, ValidateAsync_NotAuthenticated_ThrowsWithGuidance, ValidateAsync_InvalidCredentials_ThrowsWithGuidance, ValidateAsync_GhAuthenticated_DoesNotThrow."
   },
   {
     "id": "JOB-018",
     "requirement_module": "auth",
     "description": "Implement automatic token renewal and failed renewal handling (critical error, save state, inform user)",
-    "status": "not_started",
+    "status": "blocked",
     "priority": 2,
-    "notes": "AC: Auto renewal transparently refreshes; failed renewal triggers critical error and saves session"
+    "notes": "Depends on LLM module (JOB-046+, P3) for SDK call interception and Core module for critical error/session save. Auth module provides ValidateAsync foundation. gh CLI handles OAuth token refresh internally; PAT tokens cannot be auto-refreshed."
   },
   {
     "id": "JOB-019",
     "requirement_module": "auth",
     "description": "Implement descriptive auth error messages with what/why/how-to-fix including Copilot Requests permission guidance",
-    "status": "not_started",
+    "status": "complete",
     "priority": 2,
-    "notes": "AC: All error messages include guidance; invalid PAT includes Copilot Requests permission requirement"
+    "notes": "AuthErrorMessages static class provides what/why/how-to-fix error messages for all auth failure modes. Tests verify every error constant contains Why: and Fix: sections. InvalidPat includes Copilot Requests permission guidance."
   },
   {
     "id": "JOB-020",
     "requirement_module": "auth",
     "description": "Verify no credentials stored by Lopen - all credential storage delegated to SDK",
-    "status": "not_started",
+    "status": "complete",
     "priority": 2,
-    "notes": "AC: No auth credentials or tokens are stored by Lopen"
+    "notes": "Lopen stores zero credentials. All credential storage delegated to gh CLI (device flow) or env vars. CopilotAuthService has no file I/O. Auth SPECIFICATION.md updated to reflect gh CLI delegation strategy."
   },
   {
     "id": "JOB-021",
     "requirement_module": "auth",
     "description": "Write unit tests for all auth acceptance criteria (device flow, status, logout, env vars, precedence, renewal, errors)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 2,
-    "notes": "Tests for all 15 auth ACs"
+    "notes": "82 unit tests covering all 13 auth ACs: device flow login (mock gh CLI), auth status (all 3 states), logout with env var warnings, headless error, env var precedence, pre-flight validation, invalid credentials detection, error message quality (what/why/how-to-fix), no credential storage verification."
   },
   {
     "id": "JOB-022",

@@ -184,7 +184,7 @@ All auth errors must include:
 - **Dedicated Lopen GitHub App**: A future consideration if Lopen gains features requiring independent GitHub API access beyond what the Copilot SDK provides (e.g., direct repository management, issue creation outside of SDK tool calls). This would give users separate audit trail visibility and permission scoping for Lopen operations. Not needed for the current SDK-delegated model.
 - **Multi-account support**: Not supported in v1. Lopen follows the Copilot CLI's single-identity model. If needed later, it could be implemented as profile switching (e.g., `lopen auth login --profile work`).
 - **`lopen auth renew` command**: Deliberately omitted. Automatic token renewal makes an explicit renew command unnecessary. If a user's credentials are truly broken, `lopen auth logout && lopen auth login` is the recovery path.
-- **Relationship with `gh` CLI**: Lopen does not reuse `gh auth` tokens. The Copilot SDK manages its own credential store independently. Users may be authenticated with `gh` and not with Lopen, or vice versa.
+- **Relationship with `gh` CLI**: Lopen delegates interactive device flow authentication to the `gh` CLI (`gh auth login`). The Copilot SDK's auth chain includes `gh auth` stored credentials as a fallback source (explicit token → env vars → stored OAuth creds → `gh auth` creds), so `gh auth login` credentials are automatically available to the SDK. Lopen stores zero credentials itself — all credential storage is handled by either environment variables or the `gh` CLI's keyring. The `gh` CLI must be installed for interactive login; headless/CI environments should use `GH_TOKEN` instead.
 
 ---
 

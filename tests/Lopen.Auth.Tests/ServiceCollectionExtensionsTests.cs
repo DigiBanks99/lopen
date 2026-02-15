@@ -29,6 +29,21 @@ public class ServiceCollectionExtensionsTests
         var authService = provider.GetService<IAuthService>();
 
         Assert.NotNull(authService);
+        Assert.IsType<CopilotAuthService>(authService);
+    }
+
+    [Fact]
+    public void AddLopenAuth_RegistersIGhCliAdapter()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddLopenAuth();
+
+        using var provider = services.BuildServiceProvider();
+        var adapter = provider.GetService<IGhCliAdapter>();
+
+        Assert.NotNull(adapter);
+        Assert.IsType<GhCliAdapter>(adapter);
     }
 
     [Fact]

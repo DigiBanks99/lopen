@@ -10,7 +10,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddLopenAuth(this IServiceCollection services)
     {
         services.AddSingleton<ITokenSourceResolver, EnvironmentTokenSourceResolver>();
-        services.AddSingleton<IAuthService, StubAuthService>();
+        services.AddSingleton<IGhCliAdapter, GhCliAdapter>();
+        services.AddSingleton<IAuthService, CopilotAuthService>();
 
         return services;
     }
