@@ -38,4 +38,4 @@ Research documents for Lopen modules.
 
 ## TUI Module
 
-- [RESEARCH.md](tui/RESEARCH.md) — Spectre.Console, Terminal.Gui, split-screen layout, component architecture, syntax highlighting
+- [RESEARCH.md](tui/RESEARCH.md) — Spectre.Console, Spectre.Tui, split-screen layout, component architecture, syntax highlighting

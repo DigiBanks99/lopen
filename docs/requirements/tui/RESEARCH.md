@@ -77,61 +77,239 @@ Spectre.Console's `Layout` widget directly maps to the spec's split-screen desig
 
 ---
 
-## 2. Terminal.Gui vs Spectre.Console
+## 2. Spectre.Tui
 
-| Aspect | Spectre.Console | Terminal.Gui |
-|---|---|---|
-| **Version** | 0.54.0 (pre-release) | v2.0.0 (pre-release), v1.x stable |
-| **Paradigm** | Renderable widget tree written to console | Full GUI toolkit with event loop, views, windows |
-| **Layout** | `Layout` widget with Ratio/Size/MinSize | `Pos`/`Dim` computed layout, `TileView` for splits |
-| **Input** | `TextPrompt`, `SelectionPrompt` (blocking) | Full keyboard/mouse event system, `KeyDown`/`KeyUp` |
-| **Threading** | Not thread safe for interactive components | `MainLoop` with `Invoke()` for thread-safe updates |
-| **Live Update** | `AnsiConsole.Live()` for in-place rendering | Automatic redraw on state change |
-| **Styling** | Markup language `[bold red]text[/]` | `ColorScheme`, `Attribute` system |
-| **Maturity** | Widely adopted (14K+ dependent packages) | Smaller ecosystem, v2 is pre-release |
-| **Mouse** | Limited (prompts only) | Full mouse support, drag-and-drop |
-| **Custom Widgets** | Implement `IRenderable` | Subclass `View` |
-| **Modal Dialogs** | Not built-in (custom overlay) | `Dialog`, `MessageBox` built-in |
-| **Focus/Tab** | Not built-in | Built-in focus chain, tab navigation |
+**Repository**: [github.com/spectreconsole/spectre.tui](https://github.com/spectreconsole/spectre.tui)
+**Author**: Patrik Svensson (same author as Spectre.Console)
+**Current Version**: 0.0.0-preview.0.46 (NuGet, pre-release)
+**Target**: .NET 10.0 exclusively
+**License**: MIT
+**Depends on**: `Spectre.Console.Ansi` 0.54.1-alpha.0.37 (low-level ANSI abstraction, not Spectre.Console itself)
 
-### Terminal.Gui Strengths for Lopen
+Spectre.Tui is a **low-level, cell-based TUI framework** inspired by [Ratatui](https://ratatui.rs/) (Rust). It provides the foundational rendering layer for building full-screen terminal applications with double-buffered, diff-based rendering.
 
-- True event-driven architecture with `Application.Run()` main loop
-- Built-in focus management (Tab between panes matches spec's Tab shortcut)
-- `TileView` provides split-screen with draggable splitter
-- `Dialog` and `MessageBox` for modals (confirmation, error, session resume)
-- `KeyDown`/`KeyUp` events for complex keyboard shortcuts
-- `TextView` for multi-line editable text input (prompt area)
-- Thread-safe UI updates via `Application.Invoke()`
+### Architecture
 
-### Spectre.Console Strengths for Lopen
+**Immediate-mode rendering**: Unlike Spectre.Console's retained-mode `IRenderable` tree, Spectre.Tui uses an immediate-mode pattern where widgets draw directly into a cell buffer each frame.
 
-- Superior text rendering quality (markup, colors, box-drawing)
-- `Layout` with named sections and proportional sizing
-- `Tree` widget maps directly to task hierarchy
-- `Panel` with rounded borders matches spec mockups exactly
-- Spinner/Progress widgets for async feedback
-- The spec explicitly names Spectre.Console as the intended library
-- Much larger community and ecosystem
+```
+┌──────────────────────────────────────────────────┐
+│                    Game Loop                      │
+│                                                   │
+│  Terminal → Renderer → Buffer (front/back)        │
+│                ↓                                  │
+│         RenderContext                             │
+│                ↓                                  │
+│    IWidget / IStatefulWidget<T>                   │
+│         draw into cells                           │
+│                ↓                                  │
+│         Buffer.Diff() → minimal ANSI writes       │
+└──────────────────────────────────────────────────┘
+```
 
-### Recommendation
+**Double-buffered renderer**: The `Renderer` maintains two `Buffer` instances (front/back). Each frame, widgets render into the current buffer, the renderer diffs against the previous buffer, and only changed cells are written to the terminal. Buffers swap after each frame.
 
-The spec states: "The TUI is built on Spectre.Console (or equivalent .NET terminal UI library)." **Terminal.Gui is the better fit for Lopen's requirements**, despite the spec's preference for Spectre.Console. The reasons:
+**Terminal abstraction**: Platform-specific `ITerminal` implementations (`WindowsTerminal`, `UnixTerminal`) handle raw terminal I/O. Created via `Terminal.Create()` which auto-detects the platform. Requires ANSI support.
 
-1. **Concurrent input + display**: Lopen needs the prompt area to accept input while the activity area updates in real-time. Spectre.Console's `Live` display is explicitly not compatible with prompts.
-2. **Focus management**: Tab to switch between panes requires a focus system.
-3. **Modal dialogs**: Session resume, confirmation, error modals are first-class in Terminal.Gui.
-4. **Keyboard shortcuts**: `Ctrl+P`, `Alt+Enter`, number keys all need event-driven handling.
+### Core Types
 
-However, a **hybrid approach** is most pragmatic — see Section 10.
+**IWidget** — Stateless widget interface:
+```csharp
+public interface IWidget
+{
+    void Render(RenderContext context);
+}
+```
+
+**IStatefulWidget\<TState\>** — Widget with external state (separation of concerns):
+```csharp
+public interface IStatefulWidget<in TState>
+{
+    void Render(RenderContext context, TState state);
+}
+```
+
+**RenderContext** — Provides the drawing surface for a widget. Supports sub-area rendering via `context.Render(widget, area)` which creates a clipped child context. Key methods:
+- `SetString(x, y, text, style, maxWidth)` — Write styled text with grapheme-aware width handling
+- `SetLine(x, y, textLine, maxWidth)` — Write a `TextLine` (multiple styled spans)
+- `SetSymbol(x, y, char/Rune)` — Write a single character
+- `SetStyle(x, y, style)` / `SetStyle(area, style)` — Apply styling
+- `SetForeground(x, y, color)` / `SetBackground(x, y, color)` — Direct color control
+- `GetCell(x, y)` — Access individual buffer cells
+- `Render(widget, area)` — Render a child widget into a sub-area (with viewport clipping)
+
+**Cell** — Individual terminal cell with `Symbol` (string, Unicode-aware), `Style` (foreground, background, decoration). Supports `Bold`, `Italic`, `Underline`, `Strikethrough` decorations.
+
+**Renderer** — Manages the render loop with configurable FPS:
+```csharp
+using var terminal = Terminal.Create();
+var renderer = new Renderer(terminal);
+renderer.SetTargetFps(60);
+
+while (running)
+{
+    renderer.Draw((ctx, elapsed) =>
+    {
+        // Render widgets into the context
+        ctx.Render(new BoxWidget(Color.Red));
+        ctx.Render(contentWidget, innerArea);
+    });
+
+    // Handle input
+    if (Console.KeyAvailable)
+    {
+        var key = Console.ReadKey(true).Key;
+        // Process input...
+    }
+}
+```
+
+**Terminal modes**:
+- `FullscreenMode` — Alternate screen buffer, hidden cursor (standard full-screen TUI)
+- `InlineMode(height)` — Renders in a fixed-height region within the scrollback (like a progress bar). Supports dynamic height changes via `SetHeight()`.
+
+### Built-in Widgets
+
+| Widget | Description |
+|---|---|
+| `BoxWidget` | Bordered rectangle with configurable `Border` style (Rounded, Double, etc.) and color |
+| `ClearWidget` | Fills area with a character + style (background fill) |
+| `ListWidget<T>` | Scrollable, selectable list with highlight symbol, wrap-around, and keyboard navigation. Ported from Ratatui's list algorithm |
+
+### Text System
+
+- `TextSpan` — Styled text segment (`Text` + `Style`)
+- `TextLine` — Collection of `TextSpan`s with optional line-level `Style`
+- `Text` — Multi-line text content, parsed from Spectre.Console markup syntax (e.g., `[red]Hello[/]`)
+- `StringBuffer` — Efficient string building for text construction
+
+### Primitives
+
+- `Rectangle` — Area with `X`, `Y`, `Width`, `Height` plus `Inflate()`, `Intersect()`, `Contains()`, `IsEmpty`
+- `Position` — `X`, `Y` coordinate
+- `Size` — `Width`, `Height`
+
+### Input Handling
+
+Spectre.Tui does **not** provide a built-in input/event system. Input is handled via raw `Console.ReadKey(intercept: true)` in the application's game loop (see Sandbox example). This is by design — the framework is a rendering layer, not a full application framework.
+
+### Testing
+
+The repo includes `Spectre.Tui.Testing` and `Spectre.Tui.Tests` projects using `Verify.Xunit` + `Spectre.Verify.Extensions` for snapshot testing. Tests verify rendered buffer output against approved snapshots.
 
 ### Relevance to Lopen
 
-The choice between these libraries is the most consequential architectural decision for the TUI module. The hybrid approach (Terminal.Gui for structure/input, Spectre.Console renderables for content) gives the best of both worlds.
+Spectre.Tui solves Spectre.Console's fundamental limitation: it provides a proper game-loop rendering architecture with double-buffered diff-based output, eliminating the `Live` + `Prompt` incompatibility. The immediate-mode, cell-level rendering gives full control over layout and composition. However, it is **early-stage** (preview, limited widgets, no layout/tree/table/progress equivalents yet) and requires building higher-level components from scratch.
 
 ---
 
-## 3. Split-Screen Layout
+## 3. Spectre.Tui vs Spectre.Console
+
+| Aspect | Spectre.Console | Spectre.Tui |
+|---|---|---|
+| **Version** | 0.54.0 (pre-release, 0.49.1 stable) | 0.0.0-preview.0.46 |
+| **Maturity** | Widely adopted (14K+ dependents) | Early preview, ~30 NuGet downloads |
+| **Target** | .NET Standard 2.0, net8-10 | .NET 10.0 only |
+| **Paradigm** | Retained-mode renderable tree | Immediate-mode cell buffer (Ratatui-style) |
+| **Rendering** | Write `IRenderable` → ANSI output | Double-buffered `Cell[]` → diff → minimal ANSI |
+| **Layout** | `Layout` with Ratio/Size/MinSize | Manual `Rectangle` calculation |
+| **Widgets** | Layout, Panel, Table, Tree, Prompt, Progress, Spinner, Live | Box, Clear, List (early set) |
+| **Input** | Blocking `TextPrompt` / `SelectionPrompt` | No built-in input (raw `Console.ReadKey` loop) |
+| **Live + Input** | **Incompatible** — `Live` blocks prompts | **Compatible** — render loop + input polling coexist naturally |
+| **Threading** | Not thread safe for interactive components | Single-threaded game loop (thread-safe by design) |
+| **Focus** | Not built-in | Not built-in (app responsibility) |
+| **Text Styling** | `[bold red]text[/]` markup → `IRenderable` | `TextSpan`/`TextLine` with `Style` records; `Text` parses Spectre markup |
+| **Terminal Modes** | Standard console output | Fullscreen (alt screen) and Inline (scrollback region) |
+| **FPS Control** | N/A (refresh on demand) | Configurable target FPS via `Renderer.SetTargetFps()` |
+| **Custom Widgets** | Implement `IRenderable` | Implement `IWidget` / `IStatefulWidget<T>` |
+| **Dependency** | Standalone | Depends on `Spectre.Console.Ansi` |
+| **Testing** | `Spectre.Console.Testing` (`TestConsole`) | `Spectre.Tui.Testing` (snapshot verification) |
+
+### Spectre.Console Strengths
+
+- **Rich, mature widget library**: Layout, Panel, Table, Tree, Progress, Spinner, Prompt — all production-ready
+- **Broad .NET support**: .NET Standard 2.0 through .NET 10
+- **Large ecosystem**: 14K+ dependent packages, extensive community documentation
+- **Markup language**: Familiar `[bold red]text[/]` syntax
+- **Immediate utility**: High-level widgets can build complex UIs quickly
+
+### Spectre.Console Limitations for Lopen
+
+- **Live + Prompt incompatibility**: Cannot accept text input while updating the display
+- **No event loop**: Must build a custom render/input loop
+- **No focus management**: Tab-switching between panes requires custom implementation
+- **Full-redraw model**: `ctx.Refresh()` redraws the entire layout (internal diff helps, but no selective invalidation)
+
+### Spectre.Tui Strengths
+
+- **Same ecosystem**: Built by the same author (Patrik Svensson), uses `Spectre.Console.Ansi` — natural evolution
+- **Proper TUI architecture**: Double-buffered, diff-based rendering designed for full-screen apps
+- **Concurrent input + display**: Game loop pattern naturally supports polling input while rendering
+- **Full control**: Cell-level rendering gives precise control over every pixel
+- **Fullscreen + Inline modes**: Alt-screen for full TUI, inline mode for embedded rendering
+- **Stateful widgets**: `IStatefulWidget<TState>` separates rendering from state management
+- **FPS-controlled rendering**: Built-in frame rate management
+- **Auto-resize**: Renderer detects terminal size changes and re-renders automatically
+- **Compatible text system**: Parses Spectre.Console markup syntax (`[red]text[/]`)
+
+### Spectre.Tui Limitations
+
+- **Very early stage**: Only Box, Clear, and List widgets available
+- **Missing high-level widgets**: No Layout, Panel, Table, Tree, Progress, Spinner equivalents
+- **No layout system**: Manual `Rectangle` calculations for positioning
+- **No focus management**: Must be implemented by the application
+- **No keyboard routing**: Raw `Console.ReadKey` polling only
+- **.NET 10 only**: Narrow target (acceptable for Lopen which targets .NET 10)
+- **No documentation**: README is minimal; only the Sandbox example demonstrates usage
+- **May change at any time**: The README explicitly warns about breaking changes
+
+### Recommendation
+
+**Use Spectre.Tui as the rendering foundation**, building higher-level components on top of it. The rationale:
+
+1. **Architectural fit**: Spectre.Tui's game-loop + double-buffered rendering is the correct architecture for Lopen's requirements (concurrent input + live display). This is the exact problem that Spectre.Console cannot solve.
+2. **Same ecosystem**: Same author, same org, compatible markup syntax. As Spectre.Tui matures, it will likely gain first-party widgets that match Spectre.Console's quality.
+3. **Lopen as early adopter**: Lopen targets .NET 10 already. Building on Spectre.Tui means contributing to the ecosystem and getting native support as the library matures.
+4. **Build what's missing**: The missing widgets (layout splitting, panels, trees, progress) can be implemented as Lopen-specific `IWidget` implementations, potentially contributed upstream.
+
+The alternative (Spectre.Console + custom input thread) requires fighting the library's design. Spectre.Tui's design aligns with what Lopen needs.
+
+### Relevance to Lopen
+
+Spectre.Tui eliminates the need for a hybrid approach with a third-party framework. It provides the low-level rendering architecture that Spectre.Console lacks, while remaining in the same ecosystem. The trade-off is building higher-level widgets, which is manageable given Lopen's specific UI needs.
+
+---
+
+## 4. Split-Screen Layout
+
+### Spectre.Tui Approach
+
+Calculate split regions as `Rectangle` values and render widgets into sub-areas:
+
+```csharp
+renderer.Draw((ctx, elapsed) =>
+{
+    var screen = ctx.Viewport;
+    int headerHeight = 4;
+    int promptHeight = 3;
+    int bodyHeight = screen.Height - headerHeight - promptHeight;
+
+    // Adjustable ratio: 60/40 default, range 50/50 to 80/20
+    int activityPercent = Math.Clamp(state.SplitPercent, 50, 80);
+    int activityWidth = (int)(screen.Width * activityPercent / 100.0);
+    int contextWidth = screen.Width - activityWidth;
+
+    var headerArea = new Rectangle(0, 0, screen.Width, headerHeight);
+    var activityArea = new Rectangle(0, headerHeight, activityWidth, bodyHeight);
+    var contextArea = new Rectangle(activityWidth, headerHeight, contextWidth, bodyHeight);
+    var promptArea = new Rectangle(0, headerHeight + bodyHeight, screen.Width, promptHeight);
+
+    ctx.Render(headerWidget, headerArea);
+    ctx.Render(activityWidget, activityArea);
+    ctx.Render(contextWidget, contextArea);
+    ctx.Render(promptWidget, promptArea);
+});
+```
 
 ### Spectre.Console Approach
 
@@ -142,59 +320,20 @@ var layout = new Layout("Root")
         new Layout("Body"),
         new Layout("PromptArea").Size(3));
 
-// Adjustable ratio: 60/40 default, range 50/50 to 80/20
-int activityRatio = 3;
-int contextRatio = 2;
-
 layout["Body"].SplitColumns(
-    new Layout("Activity").Ratio(activityRatio).MinimumSize(40),
-    new Layout("Context").Ratio(contextRatio).MinimumSize(20));
+    new Layout("Activity").Ratio(3).MinimumSize(40),
+    new Layout("Context").Ratio(2).MinimumSize(20));
 ```
 
-To change ratios dynamically, rebuild the `SplitColumns` call with new ratio values and call `ctx.Refresh()` within a `Live` context.
-
-### Terminal.Gui Approach
-
-```csharp
-var tileView = new TileView(2)  // 2 tiles = left/right split
-{
-    X = 0, Y = 3,  // Below header
-    Width = Dim.Fill(),
-    Height = Dim.Fill(3),  // Leave room for prompt
-    Orientation = Orientation.Vertical,
-};
-
-// Set initial split at 60%
-tileView.SetSplitterPos(0, Pos.Percent(60));
-
-// Content goes in tiles
-tileView.Tiles.ElementAt(0).ContentView.Add(activityView);
-tileView.Tiles.ElementAt(1).ContentView.Add(contextView);
-```
-
-Terminal.Gui's `TileView` provides a draggable splitter by default. To enforce the 50%–80% range from the spec, constrain in the `SplitterMoved` event.
-
-### Pure Custom Approach
-
-For maximum control, calculate column widths from `Console.WindowWidth`:
-
-```csharp
-void RecalculateLayout(int activityPercent)
-{
-    activityPercent = Math.Clamp(activityPercent, 50, 80);
-    int totalWidth = Console.WindowWidth;
-    int activityWidth = (int)(totalWidth * activityPercent / 100.0);
-    int contextWidth = totalWidth - activityWidth - 1; // 1 for border
-}
-```
+Spectre.Console's `Layout` is more declarative but requires `Live` display for updates, which conflicts with input handling.
 
 ### Relevance to Lopen
 
-The spec requires "ratio adjustable from 50/50 to 80/20". Both libraries support this. Terminal.Gui's `TileView` adds user-draggable splitters as a bonus. Spectre.Console's `Layout` is simpler but requires manual ratio management.
+The spec requires "ratio adjustable from 50/50 to 80/20". With Spectre.Tui, layout is explicit `Rectangle` math — more verbose but fully controllable. A `LayoutHelper` utility can encapsulate the split calculations to keep widget code clean.
 
 ---
 
-## 4. Progressive Disclosure
+## 5. Progressive Disclosure
 
 ### Pattern: Collapsible Activity Entries
 
@@ -213,44 +352,34 @@ Each tool call in the activity area has two states:
    ...
 ```
 
-### Implementation with Spectre.Console Tree
+### Implementation with Spectre.Tui
 
 ```csharp
 public class ActivityEntry
 {
     public string Summary { get; init; }
-    public IRenderable DetailContent { get; init; }
+    public string[] DetailLines { get; init; }
     public bool IsExpanded { get; set; }
     public bool IsCurrentAction { get; set; }
 
-    public IRenderable Render()
+    public int GetHeight() => IsExpanded ? 1 + DetailLines.Length : 1;
+
+    public void Render(RenderContext ctx, int y, int width)
     {
         var prefix = IsExpanded ? "▼" : "●";
-        if (!IsExpanded)
-            return new Markup($"{prefix} {Summary}");
+        var style = IsCurrentAction
+            ? new Style(foreground: Color.Yellow, decoration: Decoration.Bold)
+            : Style.Plain;
 
-        var rows = new Rows(
-            new Markup($"{prefix} {Summary}"),
-            new Padder(DetailContent, new Padding(3, 0, 0, 0)));
-        return rows;
-    }
-}
-```
+        ctx.SetString(0, y, $"{prefix} {Summary}", style, width);
 
-### Implementation with Terminal.Gui
-
-```csharp
-public class CollapsibleView : View
-{
-    private bool _expanded;
-    private View _summaryView;
-    private View _detailView;
-
-    public void Toggle()
-    {
-        _expanded = !_expanded;
-        _detailView.Visible = _expanded;
-        SetNeedsLayout();
+        if (IsExpanded)
+        {
+            for (int i = 0; i < DetailLines.Length; i++)
+            {
+                ctx.SetString(3, y + 1 + i, DetailLines[i], Style.Plain, width - 3);
+            }
+        }
     }
 }
 ```
@@ -268,72 +397,68 @@ Progressive disclosure is central to the activity area. The data model should tr
 
 ---
 
-## 5. Real-Time Updates
+## 6. Real-Time Updates
 
-### Spectre.Console Live Display
+### Spectre.Tui Render Loop
 
-```csharp
-await AnsiConsole.Live(layout)
-    .Overflow(VerticalOverflow.Crop)
-    .Cropping(VerticalOverflowCropping.Top)
-    .StartAsync(async ctx =>
-    {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            // Update only the sections that changed
-            layout["Activity"].Update(RenderActivityPane(state));
-            layout["Context"].Update(RenderContextPane(state));
-            layout["TopPanel"].Update(RenderTopPanel(state));
-
-            ctx.Refresh();  // Redraws entire layout
-            await Task.Delay(100, cancellationToken);
-        }
-    });
-```
-
-**Key limitation**: `ctx.Refresh()` redraws the *entire* layout — there is no partial region update. However, Spectre.Console uses diff-based rendering internally to minimize actual terminal writes, so performance is generally acceptable.
-
-### Terminal.Gui Approach
+Spectre.Tui's architecture inherently supports real-time updates. The renderer's `Draw` callback is invoked every frame:
 
 ```csharp
-// Thread-safe update from background task
-Application.Invoke(() =>
+renderer.SetTargetFps(60);
+
+while (running)
 {
-    activityView.Text = newContent;
-    contextView.SetNeedsDisplay();
-    // Only the dirty views get redrawn
-});
+    renderer.Draw((ctx, elapsed) =>
+    {
+        // Always renders current state — no explicit refresh needed
+        ctx.Render(headerWidget, headerArea);
+        ctx.Render(activityWidget, activityArea);
+        ctx.Render(contextWidget, contextArea);
+        ctx.Render(promptWidget, promptArea);
+    });
+
+    // Input polling — naturally interleaved with rendering
+    while (Console.KeyAvailable)
+    {
+        var key = Console.ReadKey(intercept: true);
+        ProcessKey(key, state);
+    }
+}
 ```
 
-Terminal.Gui has true partial redraw — only views marked dirty are re-rendered.
+**Key advantage**: The double-buffered diff ensures only changed cells are written to the terminal, so rendering the full layout every frame is efficient. No explicit dirty-tracking or partial refresh is needed.
 
-### Hybrid: Background State + Render Loop
+### Background Updates
+
+For async state changes (e.g., agent actions streaming in from a background task):
 
 ```csharp
+// State is updated from background tasks
+// The render loop reads the latest state each frame
 public class TuiState
 {
-    // Observable state that triggers renders
-    public event Action StateChanged;
-
-    private string _currentAction;
+    // Thread-safe observable state
+    private volatile string _currentAction;
     public string CurrentAction
     {
         get => _currentAction;
-        set { _currentAction = value; StateChanged?.Invoke(); }
+        set => _currentAction = value;
     }
-}
 
-// In render loop
-state.StateChanged += () => ctx.Refresh();
+    // Use ConcurrentQueue for streaming activity entries
+    public ConcurrentQueue<ActivityEntry> PendingEntries { get; } = new();
+}
 ```
+
+The render loop drains the queue and renders — no `Invoke()` or dispatcher needed since the render loop is single-threaded and reads state at a defined point each frame.
 
 ### Relevance to Lopen
 
-The TUI must update the activity area as agent actions stream in, the context panel as tasks complete, and the top panel as token counts change — all while the prompt area remains responsive. This rules out simple `Live` display alone and points toward either Terminal.Gui or a custom render loop with raw console input.
+The TUI must update the activity area as agent actions stream in, the context panel as tasks complete, and the top panel as token counts change — all while the prompt area remains responsive. Spectre.Tui's game-loop architecture handles this naturally: background tasks update shared state, and the render loop picks up changes on the next frame.
 
 ---
 
-## 6. Keyboard Input Handling
+## 7. Keyboard Input Handling
 
 ### The Core Challenge
 
@@ -342,102 +467,79 @@ Lopen needs simultaneous:
 - **Keyboard shortcuts** (`Ctrl+P`, `Alt+Enter`, `Tab`, `1-9`)
 - **Navigation** (scroll activity area, expand/collapse entries)
 
-### Spectre.Console Limitation
+### Spectre.Tui Approach
 
-Spectre.Console prompts are **blocking** — they take over the console until the user submits. There is no way to have a `TextPrompt` running while `Live` display updates the screen. This is the fundamental incompatibility.
-
-### Terminal.Gui Solution
-
-```csharp
-// All keyboard events flow through the event system
-var promptView = new TextField()
-{
-    X = 0, Y = Pos.AnchorEnd(3),
-    Width = Dim.Fill(),
-};
-
-// Global key bindings
-Application.AddKeyBinding(Key.P.WithCtrl, () =>
-{
-    PauseAgent();
-    return true;
-});
-
-Application.AddKeyBinding(Key.Tab, () =>
-{
-    FocusNextPane();
-    return true;
-});
-
-// Alt+Enter for newline in multi-line prompt
-promptView.KeyDown += (sender, e) =>
-{
-    if (e.KeyEvent.Key == (Key.Enter | Key.AltMask))
-    {
-        InsertNewline();
-        e.Handled = true;
-    }
-};
-
-// Number keys for resource access (when prompt not focused)
-Application.KeyDown += (sender, e) =>
-{
-    if (!promptView.HasFocus && e.KeyEvent.Key >= Key.D1 && e.KeyEvent.Key <= Key.D9)
-    {
-        var resourceIndex = (int)(e.KeyEvent.Key - Key.D1);
-        OpenResource(resourceIndex);
-        e.Handled = true;
-    }
-};
-```
-
-### Raw Console.ReadKey Approach
-
-If avoiding Terminal.Gui, implement a custom input loop:
+Input is handled via `Console.ReadKey` in the game loop. A custom input handler routes keys based on focus state:
 
 ```csharp
 public class InputHandler
 {
     private readonly StringBuilder _inputBuffer = new();
+    private FocusedPane _focusedPane = FocusedPane.Prompt;
 
-    public async Task RunAsync(CancellationToken ct)
+    public void ProcessKey(ConsoleKeyInfo key, TuiState state)
     {
-        while (!ct.IsCancellationRequested)
+        // Global shortcuts (work regardless of focus)
+        if (key.Modifiers.HasFlag(ConsoleModifiers.Control) && key.Key == ConsoleKey.P)
         {
-            if (Console.KeyAvailable)
-            {
-                var key = Console.ReadKey(intercept: true);
-                HandleKey(key);
-            }
-            await Task.Delay(16, ct); // ~60fps polling
+            state.TogglePause();
+            return;
+        }
+
+        if (key.Key == ConsoleKey.Tab)
+        {
+            _focusedPane = _focusedPane.Next();
+            return;
+        }
+
+        // Focus-specific handling
+        switch (_focusedPane)
+        {
+            case FocusedPane.Prompt:
+                HandlePromptInput(key, state);
+                break;
+            case FocusedPane.Activity:
+                HandleActivityInput(key, state);
+                break;
+            case FocusedPane.Context:
+                HandleContextInput(key, state);
+                break;
         }
     }
 
-    private void HandleKey(ConsoleKeyInfo key)
+    private void HandlePromptInput(ConsoleKeyInfo key, TuiState state)
     {
-        if (key.Modifiers.HasFlag(ConsoleModifiers.Control) && key.Key == ConsoleKey.P)
-            OnPauseRequested?.Invoke();
-        else if (key.Modifiers.HasFlag(ConsoleModifiers.Alt) && key.Key == ConsoleKey.Enter)
+        if (key.Modifiers.HasFlag(ConsoleModifiers.Alt) && key.Key == ConsoleKey.Enter)
             _inputBuffer.AppendLine();
         else if (key.Key == ConsoleKey.Enter)
-            OnSubmit?.Invoke(_inputBuffer.ToString());
-        else if (key.Key == ConsoleKey.Tab)
-            OnFocusChange?.Invoke();
-        else if (key.Key >= ConsoleKey.D1 && key.Key <= ConsoleKey.D9 && !_isPromptFocused)
-            OnResourceSelected?.Invoke((int)key.Key - (int)ConsoleKey.D0);
-        else
+        {
+            state.SubmitPrompt(_inputBuffer.ToString());
+            _inputBuffer.Clear();
+        }
+        else if (key.Key == ConsoleKey.Backspace && _inputBuffer.Length > 0)
+            _inputBuffer.Remove(_inputBuffer.Length - 1, 1);
+        else if (!char.IsControl(key.KeyChar))
             _inputBuffer.Append(key.KeyChar);
+    }
+
+    private void HandleActivityInput(ConsoleKeyInfo key, TuiState state)
+    {
+        if (key.Key == ConsoleKey.UpArrow) state.ScrollActivityUp();
+        else if (key.Key == ConsoleKey.DownArrow) state.ScrollActivityDown();
+        else if (key.Key == ConsoleKey.Enter) state.ToggleExpandEntry();
+        else if (key.Key >= ConsoleKey.D1 && key.Key <= ConsoleKey.D9)
+            state.OpenResource((int)key.Key - (int)ConsoleKey.D0);
     }
 }
 ```
 
 ### Relevance to Lopen
 
-The keyboard handling requirements are complex enough to justify either Terminal.Gui's event system or a custom input handler. Raw `Console.ReadKey` works but requires implementing cursor movement, delete, history, etc. from scratch.
+The keyboard handling requirements require building a custom input routing layer on top of `Console.ReadKey`. This is more work than a full application framework's event system but gives complete control over key routing. A `InputHandler` class with focus-aware dispatch is manageable for Lopen's defined shortcut set.
 
 ---
 
-## 7. Component Architecture
+## 8. Component Architecture
 
 ### Design Principles (from spec)
 
@@ -445,185 +547,180 @@ The keyboard handling requirements are complex enough to justify either Terminal
 2. All external dependencies behind interfaces that can be stubbed
 3. Each component self-registers with the gallery
 
-### Interface-Based Architecture
+### Interface-Based Architecture with Spectre.Tui
 
 ```csharp
-// All TUI components implement this interface
-public interface ITuiComponent
+// Lopen TUI component interface built on Spectre.Tui's IWidget
+public interface ITuiComponent : IWidget
 {
     string Name { get; }
     string Description { get; }
-    IRenderable Render(RenderContext context);
+    IEnumerable<StubScenario> GetStubScenarios();
+}
+
+// Stateful variant
+public interface IStatefulTuiComponent<in TState> : IStatefulWidget<TState>
+{
+    string Name { get; }
+    string Description { get; }
     IEnumerable<StubScenario> GetStubScenarios();
 }
 
 // Stub scenario for gallery
 public record StubScenario(string Name, object State);
-
-// Render context provides terminal dimensions and theme
-public record RenderContext(int Width, int Height, Theme Theme);
 ```
 
 ### State Injection Pattern
 
 ```csharp
-// Data model for the context panel
 public record ContextPanelState(
     TaskInfo CurrentTask,
     IReadOnlyList<ComponentInfo> Components,
     IReadOnlyList<ResourceInfo> ActiveResources);
 
-// Component renders from state, never fetches
-public class ContextPanelComponent : ITuiComponent
+public class ContextPanelWidget : IStatefulTuiComponent<ContextPanelState>
 {
     public string Name => "Context Panel";
+    public string Description => "Task hierarchy and context display";
 
-    public IRenderable Render(RenderContext ctx)
+    public void Render(RenderContext context, ContextPanelState state)
     {
-        // Pure function: state in, renderable out
-        return BuildPanel(_state);
+        // Render border
+        context.Render(new BoxWidget(Color.Grey));
+        var inner = context.Viewport.Inflate(-1, -1);
+
+        // Render task tree into inner area
+        RenderTaskTree(context, inner, state.CurrentTask);
     }
 
-    // Gallery stub scenarios
-    public IEnumerable<StubScenario> GetStubScenarios() => new[]
-    {
-        new StubScenario("Empty", new ContextPanelState(null, [], [])),
-        new StubScenario("In Progress", CreateInProgressState()),
-        new StubScenario("Completed", CreateCompletedState()),
-        new StubScenario("Error", CreateErrorState()),
-    };
+    public IEnumerable<StubScenario> GetStubScenarios() =>
+    [
+        new("Empty", new ContextPanelState(null, [], [])),
+        new("In Progress", CreateInProgressState()),
+        new("Completed", CreateCompletedState()),
+        new("Error", CreateErrorState()),
+    ];
 }
 ```
 
-### Gallery Auto-Registration
+### Gallery
 
 ```csharp
-// Components discovered via reflection or DI
+// Components discovered via DI
+services.AddTransient<IStatefulTuiComponent<ContextPanelState>, ContextPanelWidget>();
+// ... etc
+
+// Gallery runs each component with its stub scenarios using Spectre.Tui's renderer
 public class ComponentGallery
 {
-    private readonly IEnumerable<ITuiComponent> _components;
-
-    public ComponentGallery(IEnumerable<ITuiComponent> components)
+    public void Run(ITuiComponent component, StubScenario scenario)
     {
-        _components = components;
-    }
+        using var terminal = Terminal.Create();
+        var renderer = new Renderer(terminal);
+        renderer.SetTargetFps(30);
 
-    public void Run()
-    {
-        var selection = AnsiConsole.Prompt(
-            new SelectionPrompt<ITuiComponent>()
-                .Title("Select a component to preview:")
-                .AddChoices(_components)
-                .UseConverter(c => c.Name));
+        var running = true;
+        while (running)
+        {
+            renderer.Draw((ctx, elapsed) =>
+            {
+                ctx.Render(component);
+            });
 
-        // Show selected component with stub data
-        PreviewComponent(selection);
+            if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Q)
+                running = false;
+        }
     }
 }
-
-// DI registration
-services.AddTransient<ITuiComponent, TopPanelComponent>();
-services.AddTransient<ITuiComponent, ActivityPanelComponent>();
-services.AddTransient<ITuiComponent, ContextPanelComponent>();
-services.AddTransient<ITuiComponent, PromptAreaComponent>();
-// ... auto-discovered via assembly scanning
 ```
 
 ### Testability
 
 ```csharp
 [Fact]
-public void ContextPanel_WithEmptyState_RendersPlaceholder()
+public async Task ContextPanel_WithEmptyState_RendersPlaceholder()
 {
-    var component = new ContextPanelComponent();
+    // Use Spectre.Tui.Testing for snapshot verification
+    var widget = new ContextPanelWidget();
     var state = new ContextPanelState(null, [], []);
-    component.SetState(state);
 
-    var renderable = component.Render(new RenderContext(80, 24, Theme.Default));
-
-    // Use Spectre.Console's test console for snapshot testing
-    var console = new TestConsole();
-    console.Write(renderable);
-    Verify(console.Output);
+    // Render into a test buffer and verify snapshot
+    await Verify(RenderToString(widget, state, width: 80, height: 24));
 }
 ```
 
 ### Relevance to Lopen
 
-The spec requires every component to work in the `lopen test tui` gallery with mock data. The `ITuiComponent` interface + `StubScenario` pattern satisfies both the gallery requirement and the testability requirement. DI registration ensures new components automatically appear in the gallery.
+The spec requires every component to work in the `lopen test tui` gallery with mock data. The `IStatefulTuiComponent<T>` interface built on Spectre.Tui's `IStatefulWidget<T>` provides both gallery support and testability. DI registration ensures new components automatically appear in the gallery.
 
 ---
 
-## 8. Syntax Highlighting
+## 9. Syntax Highlighting
 
 ### Options for Terminal Syntax Highlighting
 
 | Library | Approach | Languages | Size |
 |---|---|---|---|
-| Spectre.Console Markup | Manual `[color]...[/]` tags | N/A (manual) | 0 (built-in) |
-| Spectre.Console.Json | Built-in JSON highlighting | JSON only | Tiny |
+| Spectre.Tui TextSpan styling | Manual `Style` per span | N/A (manual) | 0 (built-in) |
+| Spectre.Tui Text markup | `[red]text[/]` parsed to styled spans | N/A (manual) | 0 (built-in) |
 | TextMateSharp | VS Code TextMate grammars | 50+ languages | ~5MB with grammars |
 | Custom regex-based | Pattern matching per language | Configurable | Small |
 
-### Spectre.Console Markup (Simplest)
+### Spectre.Tui TextSpan (Simplest)
 
 ```csharp
-// Manual highlighting for diff output
-public static Markup HighlightDiff(string diff)
+// Manual highlighting for diff output using TextLine/TextSpan
+public TextLine HighlightDiffLine(string line)
 {
-    var lines = diff.Split('\n').Select(line =>
-    {
-        if (line.StartsWith('+'))
-            return $"[green]{Markup.Escape(line)}[/]";
-        if (line.StartsWith('-'))
-            return $"[red]{Markup.Escape(line)}[/]";
-        if (line.StartsWith("@@"))
-            return $"[cyan]{Markup.Escape(line)}[/]";
-        return Markup.Escape(line);
-    });
-    return new Markup(string.Join("\n", lines));
+    if (line.StartsWith('+'))
+        return new TextLine(new TextSpan(line, new Style(foreground: Color.Green)));
+    if (line.StartsWith('-'))
+        return new TextLine(new TextSpan(line, new Style(foreground: Color.Red)));
+    if (line.StartsWith("@@"))
+        return new TextLine(new TextSpan(line, new Style(foreground: Color.Cyan)));
+    return new TextLine(new TextSpan(line));
 }
 ```
 
-### TextMateSharp (Full VS Code Quality)
+### TextMateSharp → Spectre.Tui Spans
 
 ```csharp
-// TextMateSharp provides VS Code-quality highlighting
-var registryOptions = new RegistryOptions(ThemeName.DarkPlus);
-var registry = new Registry(registryOptions);
+// TextMateSharp tokenizes → convert to TextSpan list
 var grammar = registry.LoadGrammar(registryOptions.GetScopeByLanguageId("csharp"));
-
-// Tokenize and convert to Spectre markup
 var result = grammar.TokenizeLine(codeLine, null);
-foreach (var token in result.Tokens)
+
+var spans = result.Tokens.Select(token =>
 {
-    var foreground = GetColorFromScope(token.Scopes);
-    // Build Spectre Markup string with colors
-}
+    var color = GetColorFromScope(token.Scopes);
+    var text = codeLine[token.StartIndex..token.EndIndex];
+    return new TextSpan(text, new Style(foreground: color));
+});
+
+return new TextLine(spans.ToArray());
 ```
 
 ### Recommended Approach for Lopen
 
-1. **Diff highlighting**: Custom regex — diffs have simple, well-defined syntax (`+`, `-`, `@@`)
-2. **Code blocks**: TextMateSharp for accurate syntax highlighting when displaying file contents or code snippets in the activity area and resource viewer
-3. **JSON**: `Spectre.Console.Json` for any JSON output
+1. **Diff highlighting**: Custom `TextSpan` styling — diffs have simple, well-defined syntax
+2. **Code blocks**: TextMateSharp for accurate syntax highlighting, output as `TextLine` collections
+3. **JSON**: Custom regex or TextMateSharp with JSON grammar
 
 ### Relevance to Lopen
 
-The spec requires "syntax highlighting in code blocks" and "diff viewer with syntax highlighting." Diff highlighting is straightforward with regex. For code blocks shown in the activity area and resource viewer, TextMateSharp provides VS Code-quality highlighting. The cost is a ~5MB grammar dependency, which is acceptable for a developer tool.
+The spec requires "syntax highlighting in code blocks" and "diff viewer with syntax highlighting." Spectre.Tui's `TextSpan`/`TextLine` system maps directly to tokenized syntax output. TextMateSharp provides VS Code-quality highlighting. The cost is a ~5MB grammar dependency, which is acceptable for a developer tool.
 
 ---
 
-## 9. Recommended NuGet Packages
+## 10. Recommended NuGet Packages
 
 ### Core Packages
 
 | Package | Version | Purpose |
 |---|---|---|
-| `Spectre.Console` | 0.54.0 | Rich console rendering (Layout, Panel, Table, Tree, Markup, Live) |
+| `Spectre.Tui` | 0.0.0-preview.0.46 | Cell-based TUI rendering (Renderer, Widget, Buffer, Terminal) |
+| `Spectre.Console` | 0.54.0 | Rich console output for non-TUI paths (CLI help, error output, etc.) |
 | `Spectre.Console.Json` | 0.54.0 | JSON syntax highlighting |
-| `Spectre.Console.Cli` | 0.53.1 | CLI command parsing (used by CLI module, shared dependency) |
-| `Terminal.Gui` | 2.0.0 | Full-screen TUI framework (event loop, input, focus management) |
+| `Spectre.Console.Cli` | 0.53.1 | CLI command parsing (used by CLI module) |
 
 ### Syntax Highlighting
 
@@ -636,158 +733,133 @@ The spec requires "syntax highlighting in code blocks" and "diff viewer with syn
 
 | Package | Version | Purpose |
 |---|---|---|
-| `Spectre.Console.Testing` | 0.54.0 | `TestConsole` for snapshot-testing Spectre renderables |
-| `Verify.Xunit` / `Verify.NUnit` | latest | Snapshot/approval testing for rendered output |
-
-### Optional / Evaluation
-
-| Package | Purpose | Notes |
-|---|---|---|
-| `Consolonia` | Avalonia-based TUI framework | Alternative to Terminal.Gui, heavier |
-| `Pastel` | Simple ANSI string coloring | If avoiding Spectre markup for some paths |
+| `Spectre.Tui.Testing` | 0.0.0-preview.0.46 | Snapshot testing for Spectre.Tui widgets |
+| `Verify.Xunit` | latest | Snapshot/approval testing framework |
 
 ### Relevance to Lopen
 
-The core stack is `Spectre.Console` + `Terminal.Gui`. Both are actively maintained, target .NET 8+, and are used in production by major projects. `TextMateSharp` adds code highlighting. `Spectre.Console.Testing` enables the snapshot testing pattern needed for the component gallery's test coverage.
+The core rendering stack is `Spectre.Tui` for the full-screen TUI. `Spectre.Console` is retained for non-TUI output (CLI help text, error messages, etc.) and as a fallback for rich content formatting. `TextMateSharp` adds code highlighting. `Spectre.Tui.Testing` enables snapshot testing for the component gallery.
 
 ---
 
-## 10. Implementation Approach
+## 11. Implementation Approach
 
-### Recommended: Hybrid Architecture
+### Recommended: Spectre.Tui with Custom Widget Layer
 
-Use **Terminal.Gui for the application shell** (event loop, input handling, focus management, window structure) and **Spectre.Console for content rendering** within Terminal.Gui views.
+Build the full-screen TUI on **Spectre.Tui's rendering engine**, implementing Lopen-specific higher-level widgets (layout splitting, panels, tree view, prompt area) as `IWidget`/`IStatefulWidget<T>` implementations.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                    Terminal.Gui Layer                      │
-│  Application.Run() → event loop, keyboard, focus, layout │
+│                 Spectre.Tui Renderer                      │
+│  Terminal → double-buffered cells → diff → ANSI output    │
 │                                                           │
-│  ┌─────────────────────────┐  ┌────────────────────────┐ │
-│  │   ActivityView (View)   │  │  ContextView (View)    │ │
-│  │  ┌───────────────────┐  │  │  ┌──────────────────┐  │ │
-│  │  │ Spectre.Console   │  │  │  │ Spectre.Console  │  │ │
-│  │  │ Layout, Panel,    │  │  │  │ Tree, Table,     │  │ │
-│  │  │ Markup, Live      │  │  │  │ Panel, Markup    │  │ │
-│  │  └───────────────────┘  │  │  └──────────────────┘  │ │
-│  └─────────────────────────┘  └────────────────────────┘ │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │              Lopen Widget Layer                      │  │
+│  │                                                     │  │
+│  │  ┌─────────────────────┐  ┌──────────────────────┐  │  │
+│  │  │  ActivityWidget     │  │  ContextWidget       │  │  │
+│  │  │  (scrollable list   │  │  (tree view,         │  │  │
+│  │  │   with progressive  │  │   resource list,     │  │  │
+│  │  │   disclosure)       │  │   task hierarchy)    │  │  │
+│  │  └─────────────────────┘  └──────────────────────┘  │  │
+│  │                                                     │  │
+│  │  ┌─────────────────────────────────────────────┐    │  │
+│  │  │  PromptWidget (text input with cursor)      │    │  │
+│  │  └─────────────────────────────────────────────┘    │  │
+│  └─────────────────────────────────────────────────────┘  │
 │                                                           │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │              PromptView (TextView)                  │   │
-│  │           Native Terminal.Gui text editing           │   │
-│  └────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │  InputHandler (Console.ReadKey → focus-aware routing) │  │
+│  └─────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Why Hybrid
+### Why Spectre.Tui
 
-1. **Terminal.Gui** solves the hard problems: concurrent input + display, focus management, keyboard routing, modal dialogs, thread-safe updates
-2. **Spectre.Console** solves the pretty problems: rich markup, trees, tables, panels, spinners, progress bars
-3. Avoids writing a custom event loop, input handler, focus chain, and modal system from scratch
-4. The spec's Spectre.Console preference is preserved — all visible content uses Spectre renderables
+1. **Correct architecture**: Game-loop + double-buffered rendering is the right pattern for Lopen's concurrent input + display requirement
+2. **Same ecosystem**: Same author as Spectre.Console, compatible markup, shared `Spectre.Console.Ansi` foundation
+3. **Full control**: Cell-level rendering gives precise control over every aspect of the display
+4. **No bridging needed**: Unlike a hybrid approach, there's no impedance mismatch between two libraries
+5. **Future-proof**: As Spectre.Tui matures, Lopen benefits from new widgets without architectural changes
 
-### Bridge: Rendering Spectre in Terminal.Gui
+### What Must Be Built
 
-Create a custom `View` that renders Spectre `IRenderable` objects into Terminal.Gui's drawing model:
+Since Spectre.Tui only provides Box, Clear, and List widgets, Lopen must implement:
 
-```csharp
-public class SpectreView : View
-{
-    private IRenderable _content;
+1. **LayoutWidget** — Split-screen layout calculator (Rectangle partitioning)
+2. **PanelWidget** — Bordered panel with title, wrapping BoxWidget
+3. **TreeWidget** — Hierarchical display with collapse/expand
+4. **ScrollableWidget** — Scrollable viewport for long content
+5. **PromptWidget** — Text input with cursor, history, and multiline support
+6. **ProgressWidget** — Progress indicator / spinner
+7. **StatusBarWidget** — Top panel with token counts, model info, session status
 
-    public void SetContent(IRenderable renderable)
-    {
-        _content = renderable;
-        SetNeedsDisplay();
-    }
-
-    public override void OnDrawContent(Rectangle viewport)
-    {
-        if (_content == null) return;
-
-        // Render Spectre content to ANSI string
-        var console = new StringConsole(viewport.Width);
-        console.Write(_content);
-
-        // Write ANSI output into Terminal.Gui's drawing surface
-        DrawAnsiString(console.Output, viewport);
-    }
-}
-```
-
-### Alternative: Pure Spectre.Console with Custom Input
-
-If the hybrid approach proves too complex, use Spectre.Console alone with a custom input thread:
+### Application Loop
 
 ```csharp
-// Two concurrent tasks
-var renderTask = RunRenderLoop(layout, state, cts.Token);
-var inputTask = RunInputLoop(state, cts.Token);
-await Task.WhenAll(renderTask, inputTask);
+using var terminal = Terminal.Create();
+var renderer = new Renderer(terminal);
+renderer.SetTargetFps(60);
 
-async Task RunRenderLoop(Layout layout, TuiState state, CancellationToken ct)
+var state = new TuiState();
+var input = new InputHandler();
+var layout = new LayoutHelper();
+
+while (!state.ShouldExit)
 {
-    await AnsiConsole.Live(layout).StartAsync(async ctx =>
+    renderer.Draw((ctx, elapsed) =>
     {
-        while (!ct.IsCancellationRequested)
-        {
-            layout["Activity"].Update(RenderActivity(state));
-            layout["Context"].Update(RenderContext(state));
-            ctx.Refresh();
-            await Task.Delay(50, ct);
-        }
+        var regions = layout.Calculate(ctx.Viewport, state.SplitPercent);
+
+        ctx.Render(new HeaderWidget(), regions.Header, state.Header);
+        ctx.Render(new ActivityWidget(), regions.Activity, state.Activity);
+        ctx.Render(new ContextWidget(), regions.Context, state.Context);
+        ctx.Render(new PromptWidget(), regions.Prompt, state.Prompt);
     });
-}
 
-async Task RunInputLoop(TuiState state, CancellationToken ct)
-{
-    while (!ct.IsCancellationRequested)
+    while (Console.KeyAvailable)
     {
-        if (Console.KeyAvailable)
-        {
-            var key = Console.ReadKey(intercept: true);
-            ProcessKey(key, state);
-        }
-        await Task.Delay(16, ct);
+        input.ProcessKey(Console.ReadKey(intercept: true), state);
     }
 }
 ```
-
-This is simpler but requires implementing cursor rendering, text editing, and focus management manually.
 
 ### Component Lifecycle
 
 ```
 Startup
   ├─ Parse CLI flags (--no-welcome, --no-logo, --resume)
-  ├─ Initialize DI container with ITuiComponent registrations
+  ├─ Initialize DI container with widget registrations
+  ├─ Create Terminal + Renderer
   ├─ Check for existing session → show Resume Modal or Landing Page
-  └─ Enter main workspace
-       ├─ TopPanelComponent renders header
-       ├─ ActivityPanelComponent renders left pane
-       ├─ ContextPanelComponent renders right pane
-       ├─ PromptAreaComponent handles input
-       └─ Render loop: state changes → component re-renders → display refresh
+  └─ Enter main loop
+       ├─ renderer.Draw() each frame
+       │    ├─ Calculate layout regions
+       │    ├─ Render each widget with current state
+       │    └─ Diff + flush (automatic)
+       └─ Process input between frames
 ```
 
 ### Recommended Phasing
 
-1. **Phase 1**: Prototype with pure Spectre.Console + custom input to validate the rendering approach
-2. **Phase 2**: If input complexity grows unmanageable, introduce Terminal.Gui shell
-3. **Phase 3**: Build component gallery (`lopen test tui`) with stub data scenarios
-4. **Phase 4**: Integration with core, LLM, and storage modules
+1. **Phase 1**: Core rendering — LayoutWidget, PanelWidget, BoxWidget wrappers, basic text rendering
+2. **Phase 2**: Input — PromptWidget with cursor, InputHandler with focus routing, keyboard shortcuts
+3. **Phase 3**: Content widgets — ActivityWidget with progressive disclosure, ContextWidget with tree view
+4. **Phase 4**: Component gallery (`lopen test tui`) with stub data scenarios
+5. **Phase 5**: Integration with core, LLM, and storage modules
 
 ### Relevance to Lopen
 
-The hybrid approach balances the spec's Spectre.Console preference with Terminal.Gui's architectural advantages. Starting with pure Spectre.Console + custom input for the prototype keeps things simple while leaving the Terminal.Gui escape hatch open. The component architecture (Section 7) is library-agnostic — the `ITuiComponent` interface works with either approach.
+Building on Spectre.Tui provides a clean, single-library architecture with the correct rendering paradigm. The trade-off is implementing higher-level widgets, but this gives Lopen exactly the components it needs without carrying unused framework weight. The component architecture (Section 8) ensures each widget is testable and gallery-ready.
 
 ---
 
 ## References
 
+- [Spectre.Tui GitHub](https://github.com/spectreconsole/spectre.tui)
+- [Spectre.Tui NuGet](https://www.nuget.org/packages/Spectre.Tui)
 - [Spectre.Console Documentation](https://spectreconsole.net)
 - [Spectre.Console GitHub](https://github.com/spectreconsole/spectre.console)
-- [Terminal.Gui v2 Documentation](https://gui-cs.github.io/Terminal.GuiV2Docs)
-- [Terminal.Gui GitHub](https://github.com/gui-cs/Terminal.Gui)
+- [Ratatui](https://ratatui.rs/) — Rust TUI framework that inspired Spectre.Tui's architecture
 - [TextMateSharp GitHub](https://github.com/nicknacknow/TextMateSharp)
 - [CSharpRepl](https://github.com/waf/CSharpRepl) — Example of Spectre.Console + REPL input handling
