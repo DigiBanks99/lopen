@@ -43,3 +43,4 @@ core, llm, storage, configuration, cli, auth, tui, otel — each under `docs/req
 4. The Copilot SDK package is `GitHub.Copilot.SDK` (NuGet, technical preview)
 5. CLI parsing uses `System.CommandLine`
 6. TUI uses Spectre.Tui (cell-based rendering, Ratatui-inspired) with Spectre.Console for non-TUI output
+7. Run a sub-agent with model gpt-5-mini to verify that all the acceptance criteria have been met before marking a task as done. Be clear on what task was done and where to find the acceptance criteria
