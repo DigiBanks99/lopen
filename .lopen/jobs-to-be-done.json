@@ -59,9 +59,9 @@
     "id": "JOB-008",
     "requirement_module": "llm",
     "description": "Create LLM module project (Lopen.Llm) and test project with ILlmService interface (depends on Auth)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 1,
-    "notes": "Depends on Auth module for Copilot SDK credentials"
+    "notes": "AC: LLM module builds, 74 tests pass. Interfaces: ILlmService, IModelSelector, ITokenTracker, IToolRegistry, IPromptBuilder, IOracleVerifier. Value types: WorkflowPhase, VerificationScope, TokenUsage, SessionTokenMetrics, OracleVerdict, ModelFallbackResult, LlmInvocationResult, LopenToolDefinition, LlmException. Implementations: StubLlmService, DefaultModelSelector, InMemoryTokenTracker. Wired into Program.cs."
   },
   {
     "id": "JOB-009",

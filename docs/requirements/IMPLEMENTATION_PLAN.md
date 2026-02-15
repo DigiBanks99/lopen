@@ -1,26 +1,38 @@
 # Implementation Plan
 
-## Current Focus: JOB-007 — Storage Module Foundation ✅
+## Current Focus: JOB-008 — LLM Module Foundation ✅
 
-- [x] Update `Lopen.Storage.csproj` with package references (`DI.Abstractions`, `Logging.Abstractions`) and `InternalsVisibleTo`
-- [x] Update `Lopen.Storage.Tests.csproj` with needed package references (`DI`, `Logging`, `Logging.Abstractions`)
-- [x] Create `IFileSystem` interface (abstraction over file I/O for testability: `CreateDirectory`, `FileExists`, `DirectoryExists`, `ReadAllTextAsync`, `WriteAllTextAsync`, `GetFiles`, `GetDirectories`, `MoveFile`, `DeleteFile`, `CreateSymlink`, `GetSymlinkTarget`, `GetLastWriteTimeUtc`)
-- [x] Create `PhysicalFileSystem` internal sealed implementation wrapping `System.IO`
-- [x] Create `SessionId` value object with `Parse`, `Generate` static methods (`{module}-YYYYMMDD-{counter}` format), `Module`, `Date`, `Counter` properties
-- [x] Create `ISessionManager` interface (`CreateSessionAsync`, `GetLatestSessionIdAsync`, `LoadSessionStateAsync`, `SaveSessionStateAsync`, `ListSessionsAsync`, `SetLatestAsync`)
-- [x] Create `SessionState` record (Phase, Step, Module, Component, TaskHierarchy, Metadata with timestamps)
-- [x] Create `SessionMetrics` record (PerIterationTokens, CumulativeTokens, PremiumRequestCount)
-- [x] Create `StorageException` for storage-specific failures (disk full, corrupted state)
-- [x] Create `StoragePaths` static helper (resolves `.lopen/`, `sessions/`, `modules/`, `cache/` paths relative to a project root)
-- [x] Create `SessionManager` internal sealed implementation using `IFileSystem` and `ILogger`
-- [x] Create `ServiceCollectionExtensions` with `AddLopenStorage()` method
-- [x] Wire Storage module into `Program.cs` (`AddLopenStorage`)
-- [x] Add project reference from `Lopen.csproj` to `Lopen.Storage`
-- [x] Write unit tests for `SessionId` (22 tests — parse, generate, format, counter, equality, roundtrip)
-- [x] Write unit tests for `StoragePaths` (14 tests — all path resolution methods)
-- [x] Write unit tests for `PhysicalFileSystem` (11 tests — integration tests with temp directory)
-- [x] Write unit tests for `SessionManager` (19 tests — create, load, save, list, latest symlink, atomic writes)
-- [x] Write unit tests for `ServiceCollectionExtensions` (3 tests — registers services, singletons, fluent return)
-- [x] Write unit tests for `StorageException` (4 tests — constructors, properties, inheritance)
-- [x] Verify `dotnet build` and `dotnet test` pass (77 storage tests, 154 total)
+- [x] Update `Lopen.Llm.csproj` with package references (`DI.Abstractions`, `Logging.Abstractions`, `Options`) and `InternalsVisibleTo`
+- [x] Update `Lopen.Llm.Tests.csproj` with needed package references (`DI`, `Logging`, `Logging.Abstractions`, `Options`)
+- [x] Create `WorkflowPhase` enum (RequirementGathering, Planning, Building, Research)
+- [x] Create `VerificationScope` enum (Task, Component, Module)
+- [x] Create `TokenUsage` record (InputTokens, OutputTokens, TotalTokens, ContextWindowSize, IsPremiumRequest)
+- [x] Create `SessionTokenMetrics` record (PerIterationTokens list, CumulativeInputTokens, CumulativeOutputTokens, PremiumRequestCount)
+- [x] Create `OracleVerdict` record (Passed bool, Gaps string list, Scope VerificationScope)
+- [x] Create `ModelFallbackResult` record (SelectedModel, WasFallback, OriginalModel)
+- [x] Create `LlmInvocationResult` record (Output string, TokenUsage, ToolCallsMade int, IsComplete bool)
+- [x] Create `LopenToolDefinition` record (Name, Description, ParameterSchema, AvailableInPhases)
+- [x] Create `LlmException` for LLM-specific failures (auth failure, rate limit, model unavailable)
+- [x] Create `ILlmService` interface (InvokeAsync with prompt/model/tools, returns LlmInvocationResult)
+- [x] Create `IModelSelector` interface (SelectModel with WorkflowPhase, returns ModelFallbackResult)
+- [x] Create `ITokenTracker` interface (RecordUsage, GetSessionMetrics, ResetSession)
+- [x] Create `IToolRegistry` interface (GetToolsForPhase with WorkflowPhase, RegisterTool, GetAllTools)
+- [x] Create `IPromptBuilder` interface (BuildSystemPrompt with workflow state parameters)
+- [x] Create `IOracleVerifier` interface (VerifyAsync with scope/evidence/criteria, returns OracleVerdict)
+- [x] Create `StubLlmService` internal sealed implementation (throws LlmException "Copilot SDK integration pending")
+- [x] Create `DefaultModelSelector` internal sealed implementation (reads from LopenOptions.Models, returns configured model per phase)
+- [x] Create `InMemoryTokenTracker` internal sealed implementation (tracks metrics in memory)
+- [x] Create `ServiceCollectionExtensions` with `AddLopenLlm()` method
+- [x] Add project reference from `Lopen.Llm` to `Lopen.Configuration` (for LopenOptions)
+- [x] Wire LLM module into `Program.cs` (`AddLopenLlm`)
+- [x] Add project reference from `Lopen.csproj` to `Lopen.Llm`
+- [x] Write unit tests for `WorkflowPhase` enum
+- [x] Write unit tests for `VerificationScope` enum
+- [x] Write unit tests for value records (TokenUsage, SessionTokenMetrics, OracleVerdict, ModelFallbackResult, LlmInvocationResult, LopenToolDefinition)
+- [x] Write unit tests for `LlmException` (constructors, properties, inheritance)
+- [x] Write unit tests for `DefaultModelSelector` (per-phase selection, fallback when model empty)
+- [x] Write unit tests for `InMemoryTokenTracker` (record usage, get metrics, reset, cumulative tracking, premium count)
+- [x] Write unit tests for `StubLlmService` (throws LlmException on invocation)
+- [x] Write unit tests for `ServiceCollectionExtensions` (registers services, singletons, fluent return)
+- [x] Verify `dotnet build` and `dotnet test` pass (74 LLM tests, 227 total)
 - [x] Run `dotnet format --verify-no-changes`
