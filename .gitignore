@@ -22,4 +22,5 @@ coverage/
 Thumbs.db
 
 # Lopen
+.lopen/
 lopen.loop.done

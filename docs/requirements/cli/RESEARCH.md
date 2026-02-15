@@ -9,19 +9,19 @@
 
 ### Package & Version
 
-| Property       | Value                              |
-| -------------- | ---------------------------------- |
-| NuGet Package  | `System.CommandLine`               |
-| Latest Version | `2.0.0-beta4.22272.1` (prerelease) |
-| Status         | **Beta** — no GA release exists    |
-| Repository     | `dotnet/command-line-api`          |
+| Property       | Value                         |
+| -------------- | ----------------------------- |
+| NuGet Package  | `System.CommandLine`          |
+| Latest Version | `2.0.3` (stable GA)          |
+| Status         | **Stable** — GA since 2025   |
+| Repository     | `dotnet/command-line-api`     |
 
-Despite the beta status, `System.CommandLine` is the official Microsoft CLI parsing library and is widely used in production .NET tools. The API surface is stable enough for adoption with the caveat of potential breaking changes on upgrades.
+`System.CommandLine` is the official Microsoft CLI parsing library. It reached GA with version 2.0.0 and the API surface is stable. Note: the GA release introduced significant breaking changes from the beta4 API (see below).
 
 ### Installation
 
 ```sh
-dotnet add package System.CommandLine --prerelease
+dotnet add package System.CommandLine
 ```
 
 ### Basic Usage
@@ -31,35 +31,38 @@ using System.CommandLine;
 
 var rootCommand = new RootCommand("Lopen - GitHub Copilot CLI agent");
 
-var headlessOption = new Option<bool>("--headless", "Run without TUI");
-headlessOption.AddAlias("-q");
-
-rootCommand.AddOption(headlessOption);
-
-rootCommand.SetHandler((bool headless) =>
+var headlessOption = new Option<bool>("--headless", "-q")
 {
-    // Entry point logic
-}, headlessOption);
+    Description = "Run without TUI"
+};
 
-return await rootCommand.InvokeAsync(args);
+rootCommand.Options.Add(headlessOption);
+
+rootCommand.SetAction((parseResult) =>
+{
+    bool headless = parseResult.GetValue(headlessOption);
+    // Entry point logic
+});
+
+return rootCommand.Parse(args).Invoke();
 ```
 
 ### Handler Model
 
-Handlers bind parsed options/arguments to method parameters via `SetHandler`. For complex scenarios, use `InvocationContext`:
+Handlers bind parsed options/arguments to method parameters via `SetAction`. Use `ParseResult` to access parsed values, and `CancellationToken` for async handlers:
 
 ```csharp
-command.SetHandler((InvocationContext context) =>
+command.SetAction(async (parseResult, cancellationToken) =>
 {
-    var model = context.ParseResult.GetValueForOption(modelOption);
-    var ct = context.GetCancellationToken(); // supports Ctrl+C
-    context.ExitCode = 0;
+    var model = parseResult.GetValue(modelOption);
+    // cancellationToken is triggered by Ctrl+C
+    return 0; // exit code
 });
 ```
 
 ### Relevance to Lopen
 
-System.CommandLine maps directly to the CLI specification's command structure. It supports subcommands, global options, aliases, help generation, and exit codes out of the box. The `InvocationContext` provides `CancellationToken` which is essential for TUI cleanup on Ctrl+C.
+System.CommandLine maps directly to the CLI specification's command structure. It supports subcommands, global options (via `Recursive = true`), aliases, help generation, version display, and exit codes out of the box. Async `SetAction` handlers receive a `CancellationToken` which is essential for TUI cleanup on Ctrl+C.
 
 ---
 
@@ -74,14 +77,15 @@ lopen/
 ├── Directory.Packages.props       # Central Package Management
 ├── global.json                    # Pin .NET 10.0 SDK
 ├── src/
-│   ├── Lopen.Cli/                 # CLI entry point (executable)
+│   ├── Lopen/                     # CLI entry point (executable)
 │   ├── Lopen.Core/                # Workflow orchestration
 │   ├── Lopen.Llm/                 # Copilot SDK integration
 │   ├── Lopen.Storage/             # Session persistence
 │   ├── Lopen.Configuration/       # Settings resolution
 │   ├── Lopen.Auth/                # GitHub authentication
 │   ├── Lopen.Tui/                 # Terminal UI (Spectre.Console)
-│   └── Lopen.Otel/                # OpenTelemetry integration
+│   ├── Lopen.Otel/                # OpenTelemetry integration
+│   └── Lopen.AppHost/             # Aspire AppHost for local development
 ├── tests/
 │   ├── Lopen.Cli.Tests/
 │   ├── Lopen.Core.Tests/
@@ -91,7 +95,7 @@ lopen/
 
 ### Key Conventions
 
-- **Thin CLI, fat libraries** — `Lopen.Cli` is command definitions + DI wiring only. All logic lives in library projects.
+- **Thin CLI, fat libraries** — `Lopen` (the CLI project) is command definitions + DI wiring only. All logic lives in library projects.
 - **1:1 module mapping** — Each `docs/requirements/<module>/` maps to a `src/Lopen.<Module>/` project.
 - **Central Package Management** — `Directory.Packages.props` at root for NuGet version consistency.
 - **`Microsoft.NET.Sdk`** — Use the standard SDK (not `Microsoft.NET.Sdk.Web`) for CLI apps.
@@ -99,7 +103,7 @@ lopen/
 ### Project File
 
 ```xml
-<!-- src/Lopen.Cli/Lopen.Cli.csproj -->
+<!-- src/Lopen/Lopen.csproj -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -113,7 +117,7 @@ lopen/
 ### CLI Project Internal Structure
 
 ```
-src/Lopen.Cli/
+src/Lopen/
 ├── Program.cs                     # Entry point, host builder
 ├── Commands/
 │   ├── RootCommand.cs             # lopen [options]
@@ -136,7 +140,7 @@ src/Lopen.Cli/
 │   └── Config/
 │       ├── ConfigCommand.cs       # lopen config (parent)
 │       └── ShowCommand.cs         # lopen config show
-└── Lopen.Cli.csproj
+└── Lopen.csproj
 ```
 
 ### Relevance to Lopen
@@ -153,10 +157,10 @@ The project-per-module approach mirrors the existing `docs/requirements/` struct
 var rootCommand = new RootCommand("Lopen");
 
 // Phase commands (top-level)
-rootCommand.AddCommand(new Command("spec", "Run requirement gathering"));
-rootCommand.AddCommand(new Command("plan", "Run planning phase"));
-rootCommand.AddCommand(new Command("build", "Run building phase"));
-rootCommand.AddCommand(new Command("revert", "Rollback to last good commit"));
+rootCommand.Subcommands.Add(new Command("spec", "Run requirement gathering"));
+rootCommand.Subcommands.Add(new Command("plan", "Run planning phase"));
+rootCommand.Subcommands.Add(new Command("build", "Run building phase"));
+rootCommand.Subcommands.Add(new Command("revert", "Rollback to last good commit"));
 ```
 
 ### Nested Subcommands
@@ -166,24 +170,24 @@ For `auth` and `session` which have their own sub-hierarchy:
 ```csharp
 // auth login | auth status | auth logout
 var authCommand = new Command("auth", "Authentication management");
-authCommand.AddCommand(new Command("login", "Authenticate with GitHub"));
-authCommand.AddCommand(new Command("status", "Check authentication state"));
-authCommand.AddCommand(new Command("logout", "Clear credentials"));
-rootCommand.AddCommand(authCommand);
+authCommand.Subcommands.Add(new Command("login", "Authenticate with GitHub"));
+authCommand.Subcommands.Add(new Command("status", "Check authentication state"));
+authCommand.Subcommands.Add(new Command("logout", "Clear credentials"));
+rootCommand.Subcommands.Add(authCommand);
 
 // session list | session show | session resume | session delete | session prune
 var sessionCommand = new Command("session", "Session management");
-sessionCommand.AddCommand(new Command("list", "List all sessions"));
-sessionCommand.AddCommand(new Command("show", "Show session details"));
-sessionCommand.AddCommand(new Command("resume", "Resume a session"));
-sessionCommand.AddCommand(new Command("delete", "Delete a session"));
-sessionCommand.AddCommand(new Command("prune", "Remove old sessions"));
-rootCommand.AddCommand(sessionCommand);
+sessionCommand.Subcommands.Add(new Command("list", "List all sessions"));
+sessionCommand.Subcommands.Add(new Command("show", "Show session details"));
+sessionCommand.Subcommands.Add(new Command("resume", "Resume a session"));
+sessionCommand.Subcommands.Add(new Command("delete", "Delete a session"));
+sessionCommand.Subcommands.Add(new Command("prune", "Remove old sessions"));
+rootCommand.Subcommands.Add(sessionCommand);
 
 // config show
 var configCommand = new Command("config", "Configuration inspection");
-configCommand.AddCommand(new Command("show", "Display resolved config"));
-rootCommand.AddCommand(configCommand);
+configCommand.Subcommands.Add(new Command("show", "Display resolved config"));
+rootCommand.Subcommands.Add(configCommand);
 ```
 
 ### Command-Specific Options
@@ -192,91 +196,127 @@ Options can be scoped to specific commands. For example, `session show --format`
 
 ```csharp
 var showCommand = new Command("show", "Show session details");
-var formatOption = new Option<string>("--format", "Output format (md, json, yaml)");
-formatOption.SetDefaultValue("md");
-showCommand.AddOption(formatOption);
+var formatOption = new Option<string>("--format")
+{
+    Description = "Output format (md, json, yaml)",
+    DefaultValueFactory = _ => "md"
+};
+showCommand.Options.Add(formatOption);
 
-var sessionIdArg = new Argument<string?>("session-id", "Session ID (latest if omitted)");
-sessionIdArg.SetDefaultValue(null);
-showCommand.AddArgument(sessionIdArg);
+var sessionIdArg = new Argument<string?>("session-id")
+{
+    Description = "Session ID (latest if omitted)",
+    Arity = ArgumentArity.ZeroOrOne
+};
+showCommand.Arguments.Add(sessionIdArg);
 ```
 
 ### Relevance to Lopen
 
-Every command in the CLI specification maps to a `Command` instance. Nested commands (`auth login`, `session list`, `config show`) use `AddCommand()` on parent commands. This gives automatic `--help` generation at every level.
+Every command in the CLI specification maps to a `Command` instance. Nested commands (`auth login`, `session list`, `config show`) use `Subcommands.Add()` on parent commands. This gives automatic `--help` generation at every level.
 
 ---
 
 ## 4. Global Flags
 
-### AddGlobalOption
+### Recursive Option (Global)
 
-`RootCommand.AddGlobalOption()` makes an option available to **all** subcommands automatically:
+Setting `Recursive = true` on an option makes it available to **all** subcommands automatically:
 
 ```csharp
 var rootCommand = new RootCommand("Lopen");
 
 // Global options from CLI specification
-var headlessOption = new Option<bool>("--headless", "Run without TUI; output to stdout");
-headlessOption.AddAlias("-q");
-rootCommand.AddGlobalOption(headlessOption);
+var headlessOption = new Option<bool>("--headless", "-q")
+{
+    Description = "Run without TUI; output to stdout",
+    Recursive = true
+};
+rootCommand.Options.Add(headlessOption);
 
-var quietOption = new Option<bool>("--quiet", "Alias for --headless");
-rootCommand.AddGlobalOption(quietOption);
+var quietOption = new Option<bool>("--quiet")
+{
+    Description = "Alias for --headless",
+    Recursive = true
+};
+rootCommand.Options.Add(quietOption);
 
-var promptOption = new Option<string?>("--prompt", "Inject instructions for the LLM");
-promptOption.AddAlias("-p");
-rootCommand.AddGlobalOption(promptOption);
+var promptOption = new Option<string?>("--prompt", "-p")
+{
+    Description = "Inject instructions for the LLM",
+    Recursive = true
+};
+rootCommand.Options.Add(promptOption);
 
-var modelOption = new Option<string?>("--model", "Override model for all phases");
-rootCommand.AddGlobalOption(modelOption);
+var modelOption = new Option<string?>("--model")
+{
+    Description = "Override model for all phases",
+    Recursive = true
+};
+rootCommand.Options.Add(modelOption);
 
-var unattendedOption = new Option<bool>("--unattended", "Suppress intervention prompts");
-rootCommand.AddGlobalOption(unattendedOption);
+var unattendedOption = new Option<bool>("--unattended")
+{
+    Description = "Suppress intervention prompts",
+    Recursive = true
+};
+rootCommand.Options.Add(unattendedOption);
 
-var resumeOption = new Option<string?>("--resume", "Resume a specific session");
-rootCommand.AddGlobalOption(resumeOption);
+var resumeOption = new Option<string?>("--resume")
+{
+    Description = "Resume a specific session",
+    Recursive = true
+};
+rootCommand.Options.Add(resumeOption);
 
-var noResumeOption = new Option<bool>("--no-resume", "Force a new session");
-rootCommand.AddGlobalOption(noResumeOption);
+var noResumeOption = new Option<bool>("--no-resume")
+{
+    Description = "Force a new session",
+    Recursive = true
+};
+rootCommand.Options.Add(noResumeOption);
 
-var maxIterationsOption = new Option<int?>("--max-iterations", "Max loop iterations before pausing");
-rootCommand.AddGlobalOption(maxIterationsOption);
+var maxIterationsOption = new Option<int?>("--max-iterations")
+{
+    Description = "Max loop iterations before pausing",
+    Recursive = true
+};
+rootCommand.Options.Add(maxIterationsOption);
 ```
 
 ### Accessing Global Options in Handlers
 
 ```csharp
-specCommand.SetHandler((InvocationContext context) =>
+specCommand.SetAction((parseResult) =>
 {
-    bool headless = context.ParseResult.GetValueForOption(headlessOption);
-    string? prompt = context.ParseResult.GetValueForOption(promptOption);
-    string? model = context.ParseResult.GetValueForOption(modelOption);
+    bool headless = parseResult.GetValue(headlessOption);
+    string? prompt = parseResult.GetValue(promptOption);
+    string? model = parseResult.GetValue(modelOption);
 
-    // All global options are accessible from any subcommand handler
+    // All recursive options are accessible from any subcommand handler
 });
 ```
 
 ### Applicability Constraints
 
-The specification notes that some global flags don't apply to all commands (e.g., `--prompt` is not applicable to `auth`). System.CommandLine does not enforce this — validation must be done in the handler or via middleware:
+The specification notes that some global flags don't apply to all commands (e.g., `--prompt` is not applicable to `auth`). System.CommandLine does not enforce this — validation must be done in the handler or via a custom validator:
 
 ```csharp
 // Option: validate in handler
-authLoginCommand.SetHandler((InvocationContext ctx) =>
+authLoginCommand.SetAction((parseResult) =>
 {
-    if (ctx.ParseResult.GetValueForOption(promptOption) is not null)
+    if (parseResult.GetValue(promptOption) is not null)
     {
-        ctx.Console.Error.Write("--prompt is not applicable to auth commands");
-        ctx.ExitCode = 1;
-        return;
+        Console.Error.Write("--prompt is not applicable to auth commands");
+        return 1;
     }
+    return 0;
 });
 ```
 
 ### Relevance to Lopen
 
-All global flags from the specification (`--headless`, `--quiet`, `--prompt`, `--model`, `--unattended`, `--resume`, `--no-resume`, `--max-iterations`) map to `AddGlobalOption()`. Applicability constraints (e.g., `--prompt` not valid for `auth`) need explicit validation.
+All global flags from the specification (`--headless`, `--quiet`, `--prompt`, `--model`, `--unattended`, `--resume`, `--no-resume`, `--max-iterations`) map to options with `Recursive = true`. Applicability constraints (e.g., `--prompt` not valid for `auth`) need explicit validation. `RootCommand` automatically provides `--help` and `--version`.
 
 ---
 
@@ -302,49 +342,49 @@ All global flags from the specification (`--headless`, `--quiet`, `--prompt`, `-
 ### Setting Exit Codes in System.CommandLine
 
 ```csharp
-// Via InvocationContext (preferred)
-command.SetHandler((InvocationContext context) =>
+// Via return value from SetAction (preferred)
+command.SetAction((parseResult) =>
 {
-    context.ExitCode = 0; // or 1, or 2
+    return 0; // or 1, or 2
 });
 
 // Via return value from Main
-static async Task<int> Main(string[] args)
+static int Main(string[] args)
 {
     var root = BuildRootCommand();
-    return await root.InvokeAsync(args);
-    // InvokeAsync returns the handler's ExitCode
+    return root.Parse(args).Invoke();
+    // Invoke() returns the handler's exit code
 }
 ```
 
 ### Exception-to-Exit-Code Mapping
 
 ```csharp
-command.SetHandler(async (InvocationContext context) =>
+command.SetAction(async (parseResult, cancellationToken) =>
 {
     try
     {
-        await RunWorkflowAsync(context);
-        context.ExitCode = 0;
+        await RunWorkflowAsync(parseResult, cancellationToken);
+        return 0;
     }
     catch (UserInterventionRequiredException)
     {
-        context.ExitCode = 2;
+        return 2;
     }
     catch (OperationCanceledException)
     {
-        context.ExitCode = 130;
+        return 130;
     }
     catch (Exception)
     {
-        context.ExitCode = 1;
+        return 1;
     }
 });
 ```
 
 ### Relevance to Lopen
 
-Use `return await root.InvokeAsync(args)` from `Main` to propagate exit codes. Map domain exceptions to exit codes in each handler. The `ExitCode = 2` case only applies in headless + unattended mode when the failure threshold is reached.
+Use `return root.Parse(args).Invoke()` from `Main` to propagate exit codes. Map domain exceptions to exit codes in each handler. The exit code `2` only applies in headless + unattended mode when the failure threshold is reached.
 
 ---
 
@@ -429,17 +469,18 @@ The `IOutputRenderer` abstraction (or similar) is the key architectural decision
 
 | Package                         | Purpose                                          | Version Note    |
 | ------------------------------- | ------------------------------------------------ | --------------- |
-| `System.CommandLine`            | CLI parsing, subcommands, options, help           | `2.0.0-beta4` (prerelease) |
-| `System.CommandLine.Hosting`    | Bridges System.CommandLine ↔ Generic Host DI      | `0.4.0-alpha` (prerelease) |
-| `Microsoft.Extensions.Hosting`  | DI container, configuration, logging              | Stable          |
-| `Microsoft.Extensions.Options`  | Strongly-typed configuration binding              | Stable          |
+| `System.CommandLine`            | CLI parsing, subcommands, options, help           | `2.0.3` (stable GA) |
+| `Microsoft.Extensions.Hosting`  | DI container, configuration, logging              | `10.0.3` (stable) |
+| `Microsoft.Extensions.Options`  | Strongly-typed configuration binding              | `10.0.3` (stable) |
+
+> **Note:** `System.CommandLine.Hosting` (the bridge between System.CommandLine and Generic Host) is deprecated. Wire up DI directly using `Microsoft.Extensions.Hosting` and pass the `IServiceProvider` into command handlers via closure or a custom command base class.
 
 ### TUI Packages
 
 | Package                    | Purpose                                    | Version Note |
 | -------------------------- | ------------------------------------------ | ------------ |
-| `Spectre.Console`          | Rich terminal rendering (tables, progress) | Stable       |
-| `Spectre.Console.Json`     | JSON syntax highlighting in terminal       | Stable       |
+| `Spectre.Console`          | Rich terminal rendering (tables, progress) | `0.54.0` (stable) |
+| `Spectre.Console.Json`     | JSON syntax highlighting in terminal       | `0.54.0` (stable) |
 
 > **Note:** `Spectre.Console.Cli` is a separate CLI parsing library from Spectre. We are **not** using it — System.CommandLine handles CLI parsing. We only use `Spectre.Console` for rendering.
 
@@ -461,7 +502,7 @@ The `IOutputRenderer` abstraction (or similar) is the key architectural decision
 
 ### Relevance to Lopen
 
-The `System.CommandLine` + `System.CommandLine.Hosting` combination provides CLI parsing with full DI support. Spectre.Console handles TUI rendering only (not CLI parsing). The `Microsoft.Extensions.Hosting` stack provides the DI container, configuration, and logging infrastructure that all modules plug into.
+The `System.CommandLine` package (now GA) provides CLI parsing with full DI support via manual wiring. The deprecated `System.CommandLine.Hosting` bridge package is no longer needed — build a `HostApplicationBuilder`, configure services, and pass the `IServiceProvider` into handlers. Spectre.Console handles TUI rendering only (not CLI parsing). The `Microsoft.Extensions.Hosting` stack provides the DI container, configuration, and logging infrastructure that all modules plug into.
 
 ---
 
@@ -472,12 +513,12 @@ The `System.CommandLine` + `System.CommandLine.Hosting` combination provides CLI
 ```sh
 # Create solution and projects
 dotnet new sln -n lopen
-dotnet new console -n Lopen.Cli -o src/Lopen.Cli
+dotnet new console -n Lopen -o src/Lopen
 dotnet new classlib -n Lopen.Core -o src/Lopen.Core
 
-dotnet sln add src/Lopen.Cli
+dotnet sln add src/Lopen
 dotnet sln add src/Lopen.Core
-dotnet add src/Lopen.Cli reference src/Lopen.Core
+dotnet add src/Lopen reference src/Lopen.Core
 ```
 
 ### Step 2: Pin the SDK
@@ -501,10 +542,9 @@ dotnet add src/Lopen.Cli reference src/Lopen.Core
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
-    <PackageVersion Include="System.CommandLine.Hosting" Version="0.4.0-alpha.22272.1" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0-preview.4.25258.110" />
-    <PackageVersion Include="Spectre.Console" Version="0.50.0" />
+    <PackageVersion Include="System.CommandLine" Version="2.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
+    <PackageVersion Include="Spectre.Console" Version="0.54.0" />
   </ItemGroup>
 </Project>
 ```
@@ -528,23 +568,19 @@ dotnet add src/Lopen.Cli reference src/Lopen.Core
 
 ```csharp
 using System.CommandLine;
-using System.CommandLine.Builder;
-using System.CommandLine.Hosting;
-using System.CommandLine.Parsing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-var runner = new CommandLineBuilder(new LopenRootCommand())
-    .UseHost(_ => Host.CreateDefaultBuilder(args), host =>
-    {
-        host.ConfigureServices((context, services) =>
-        {
-            // Register module services
-        });
-    })
-    .UseDefaults()
-    .Build();
+// Build the DI container
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddSingleton</* module services */>();
 
-return await runner.InvokeAsync(args);
+using var host = builder.Build();
+
+// Build the CLI command tree
+var rootCommand = new LopenRootCommand(host.Services);
+
+return rootCommand.Parse(args).Invoke();
 ```
 
 ### Step 6: Command Registration Pattern
@@ -554,34 +590,35 @@ Each command is a self-contained class:
 ```csharp
 public class LopenRootCommand : RootCommand
 {
-    public LopenRootCommand() : base("Lopen - GitHub Copilot workflow agent")
+    public LopenRootCommand(IServiceProvider services)
+        : base("Lopen - GitHub Copilot workflow agent")
     {
-        // Global options
-        AddGlobalOption(GlobalOptions.Headless);
-        AddGlobalOption(GlobalOptions.Prompt);
-        AddGlobalOption(GlobalOptions.Model);
-        AddGlobalOption(GlobalOptions.Unattended);
-        AddGlobalOption(GlobalOptions.Resume);
-        AddGlobalOption(GlobalOptions.NoResume);
-        AddGlobalOption(GlobalOptions.MaxIterations);
+        // Global options (Recursive = true makes them available to all subcommands)
+        Options.Add(GlobalOptions.Headless);
+        Options.Add(GlobalOptions.Prompt);
+        Options.Add(GlobalOptions.Model);
+        Options.Add(GlobalOptions.Unattended);
+        Options.Add(GlobalOptions.Resume);
+        Options.Add(GlobalOptions.NoResume);
+        Options.Add(GlobalOptions.MaxIterations);
 
         // Phase commands
-        AddCommand(new SpecCommand());
-        AddCommand(new PlanCommand());
-        AddCommand(new BuildCommand());
+        Subcommands.Add(new SpecCommand(services));
+        Subcommands.Add(new PlanCommand(services));
+        Subcommands.Add(new BuildCommand(services));
 
         // Utility commands
-        AddCommand(new AuthCommand());
-        AddCommand(new SessionCommand());
-        AddCommand(new RevertCommand());
-        AddCommand(new ConfigCommand());
+        Subcommands.Add(new AuthCommand(services));
+        Subcommands.Add(new SessionCommand(services));
+        Subcommands.Add(new RevertCommand(services));
+        Subcommands.Add(new ConfigCommand(services));
     }
 }
 ```
 
 ### Build Order
 
-1. **Lopen.Cli** — Command definitions, `Program.cs`, DI wiring (this module)
+1. **Lopen** — Command definitions, `Program.cs`, DI wiring (this module)
 2. **Lopen.Core** — Workflow orchestration (depends on specification)
 3. **Lopen.Auth** — Authentication (early dependency — needed for LLM calls)
 4. **Lopen.Configuration** — Settings resolution
