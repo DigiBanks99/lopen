@@ -475,9 +475,9 @@
     "id": "JOB-060",
     "requirement_module": "core",
     "description": "Implement re-entrant assessment determining current workflow step from actual codebase state",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Re-entrant assessment uses codebase state, not stale session data"
+    "notes": "CodebaseStateAssessor reads filesystem and spec checkboxes for actual codebase state. Persisted step is a hint, not ground truth. Tests: 16 tests."
   },
   {
     "id": "JOB-061",
@@ -491,17 +491,17 @@
     "id": "JOB-062",
     "requirement_module": "core",
     "description": "Implement phase transitions: Req Gathering\u2192Planning requires user confirmation (human gate)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Requirement Gathering \u2192 Planning transition requires explicit user confirmation"
+    "notes": "PhaseTransitionController implements human gate via ApproveSpecification/ResetApproval. IsRequirementGatheringToPlanningApproved starts false. Tests: 12 tests."
   },
   {
     "id": "JOB-063",
     "requirement_module": "core",
     "description": "Implement automatic phase transitions: Planning\u2192Building (plan complete) and Building\u2192Complete (all ACs pass)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Planning\u2192Building auto when plan complete; Building\u2192Complete auto when all ACs pass"
+    "notes": "PhaseTransitionController.CanAutoTransitionToBuilding/ToComplete implement auto transitions when conditions met. Tests: 12 tests (shared with JOB-062)."
   },
   {
     "id": "JOB-064",
@@ -579,9 +579,9 @@
     "id": "JOB-073",
     "requirement_module": "core",
     "description": "Implement failure handling: inline single failures with self-correction, user intervention at threshold, critical errors block",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Single failures inline; repeated failures prompt user; critical errors block execution"
+    "notes": "FailureHandler with configurable threshold. Single failures SelfCorrect, repeated PromptUser, critical Block, warnings SelfCorrect. ResetFailureCount on success. Tests: 19 tests."
   },
   {
     "id": "JOB-074",
