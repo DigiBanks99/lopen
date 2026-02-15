@@ -138,6 +138,10 @@ internal sealed class CopilotLlmService : ILlmService
     /// </summary>
     internal static bool IsPremiumModel(string model)
     {
+        // gpt-5-mini and similar -mini variants are standard-tier, not premium
+        if (model.Contains("-mini", StringComparison.OrdinalIgnoreCase))
+            return false;
+
         return model.Contains("opus", StringComparison.OrdinalIgnoreCase)
             || model.Contains("gpt-5", StringComparison.OrdinalIgnoreCase)
             || model.Contains("o3", StringComparison.OrdinalIgnoreCase)

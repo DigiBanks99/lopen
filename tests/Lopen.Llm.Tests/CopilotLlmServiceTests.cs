@@ -136,7 +136,7 @@ public class CopilotLlmServiceTests
     [InlineData("claude-opus-4.6", true)]
     [InlineData("claude-opus-4.5", true)]
     [InlineData("gpt-5", true)]
-    [InlineData("gpt-5-mini", true)]
+    [InlineData("gpt-5-mini", false)]
     [InlineData("o3-pro", true)]
     [InlineData("o1", true)]
     [InlineData("claude-sonnet-4", false)]

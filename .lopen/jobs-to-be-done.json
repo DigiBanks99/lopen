@@ -451,9 +451,9 @@
     "id": "JOB-057",
     "requirement_module": "llm",
     "description": "Write unit tests for all LLM acceptance criteria (auth, context, tools, oracle, model selection, metrics, budget)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "Tests for all 14 LLM ACs"
+    "notes": "LlmAcceptanceCriteriaTests.cs: 22 tests covering all 14 ACs (AC1-AC14). Also fixed JOB-101 (IsPremiumModel bug for -mini variants). Total LLM tests: 254."
   },
   {
     "id": "JOB-058",
@@ -798,5 +798,13 @@
     "status": "not_started",
     "priority": 5,
     "notes": "AC: OTLP conditional export; aspire run integration; individual signal toggles; env var precedence; performance verification; tests for all 17 OTEL ACs"
+  },
+  {
+    "id": "JOB-101",
+    "requirement_module": "llm",
+    "description": "Fix IsPremiumModel to exclude -mini model variants (gpt-5-mini should not be premium)",
+    "status": "complete",
+    "priority": 3,
+    "notes": "Bug: IsPremiumModel matched gpt-5-mini as premium because it contains 'gpt-5'. Fixed by checking for '-mini' suffix first. gpt-5-mini is a standard-tier model per GitHub billing. Fixed in JOB-057 implementation."
   }
 ]
