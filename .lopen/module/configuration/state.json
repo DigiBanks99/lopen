@@ -1,39 +1,33 @@
 {
-  "module": "configuration",
-  "description": "Configuration loading, validation, and budget enforcement",
-  "status": "in_progress",
-  "components": {
-    "options_model": {
-      "status": "complete",
-      "implementation": "LopenOptions + nested option classes",
-      "tests": "LopenOptionsTests",
-      "jobs": ["JOB-026"]
+    "module": "configuration",
+    "description": "Configuration management with layered resolution and validation",
+    "status": "complete",
+    "components": {
+        "options": {
+            "status": "complete",
+            "implementation": "LopenOptions + OracleOptions + ToolDisciplineOptions + ModelAssignments + BudgetOptions",
+            "tests": "LopenOptionsTests, LopenOptionsValidatorTests",
+            "jobs": ["JOB-020", "JOB-021", "JOB-023"]
+        },
+        "layered_resolution": {
+            "status": "complete",
+            "implementation": "LayeredConfigurationBuilder",
+            "tests": "LayeredConfigurationTests",
+            "jobs": ["JOB-022"]
+        },
+        "budget_enforcer": {
+            "status": "complete",
+            "implementation": "BudgetEnforcer",
+            "tests": "BudgetEnforcerTests (24 tests)",
+            "jobs": ["JOB-028"]
+        },
+        "config_passthrough": {
+            "status": "complete",
+            "implementation": "OracleOptions → OracleVerifier, ToolDisciplineOptions → ToolDisciplineGuardrail",
+            "tests": "ToolDisciplineGuardrailTests (21 tests), OracleVerifierTests (30 tests)",
+            "jobs": ["JOB-029"],
+            "notes": "Oracle model passthrough via DI singleton. Tool discipline passthrough via ToolDisciplineGuardrail constructor from options."
+        }
     },
-    "options_validator": {
-      "status": "complete",
-      "implementation": "LopenOptionsValidator",
-      "tests": "LopenOptionsValidatorTests",
-      "jobs": ["JOB-026"]
-    },
-    "configuration_builder": {
-      "status": "complete",
-      "implementation": "LopenConfigurationBuilder",
-      "tests": "LopenConfigurationBuilderTests",
-      "jobs": ["JOB-026"]
-    },
-    "configuration_diagnostics": {
-      "status": "complete",
-      "implementation": "ConfigurationDiagnostics",
-      "tests": "ConfigurationDiagnosticsTests",
-      "jobs": ["JOB-027"]
-    },
-    "budget_enforcer": {
-      "status": "complete",
-      "implementation": "BudgetEnforcer + BudgetStatus + BudgetCheckResult",
-      "tests": "BudgetEnforcerTests (24 tests)",
-      "jobs": ["JOB-028"],
-      "notes": "Enforces token_budget_per_module and premium_request_budget. 4 statuses: Ok, Warning, ConfirmationRequired, Exceeded. Custom thresholds supported."
-    }
-  },
-  "last_updated": "2026-02-15T18:00:00Z"
+    "last_updated": "2026-02-15T18:30:00Z"
 }

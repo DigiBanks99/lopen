@@ -1,3 +1,4 @@
+using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
@@ -38,6 +39,15 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IContentHasher, XxHashContentHasher>();
         services.AddSingleton<IDriftDetector, DriftDetector>();
         services.AddSingleton<ISectionExtractor, SectionExtractor>();
+
+        // Register guardrails
+        services.AddSingleton<IGuardrail>(sp =>
+        {
+            var options = sp.GetService<ToolDisciplineOptions>();
+            return options is not null
+                ? new ToolDisciplineGuardrail(options)
+                : new ToolDisciplineGuardrail();
+        });
         services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
 
         return services;

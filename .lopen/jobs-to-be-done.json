@@ -227,9 +227,9 @@
     "id": "JOB-029",
     "requirement_module": "configuration",
     "description": "Implement oracle model and tool discipline configuration passthrough to LLM module",
-    "status": "blocked",
+    "status": "done",
     "priority": 2,
-    "notes": "OracleOptions and ToolDisciplineOptions registered as injectable singletons with correct defaults. Actual passthrough to LLM module depends on LLM service implementation (P3 JOB-046+)."
+    "notes": "Oracle passthrough already complete via OracleVerifier. Tool discipline passthrough implemented: ToolDisciplineGuardrail accepts ToolDisciplineOptions, GuardrailContext extended with FileReadCounts/CommandRetryCounts, DI registration wired. 12 new tests (21 total). AC verified."
   },
   {
     "id": "JOB-030",
