@@ -443,9 +443,9 @@
     "id": "JOB-056",
     "requirement_module": "llm",
     "description": "Implement context window budget enforcement with lower-priority section truncation/summarization",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Context window budget respected; lower-priority sections truncated or summarized"
+    "notes": "ContextBudgetManager selects high-priority sections and truncates/omits lower-priority ones to fit token budget. EstimateTokens uses 4 chars/token heuristic. Truncated sections get suffix marker. Tests: 12 tests covering fit, truncation, omission, order, edge cases."
   },
   {
     "id": "JOB-057",
@@ -539,9 +539,9 @@
     "id": "JOB-068",
     "requirement_module": "core",
     "description": "Implement back-pressure Category 3 (Quality Gates): acceptance criteria enforced at module/component completion",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Quality gates enforce ACs at completion boundaries"
+    "notes": "QualityGateGuardrail (Cat 3) enforces oracle verification at completion boundaries. Takes injectable predicates for isCompletionBoundary and hasPassingVerification. Blocks if at boundary without verification. Order=300, short-circuits. Tests: 10 tests."
   },
   {
     "id": "JOB-069",
