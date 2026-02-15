@@ -24,3 +24,4 @@ IMPORTANT:
 - Run a sub-agent with model gpt-5-mini to verify that all the acceptance criteria have been met before marking a task as done. Be clear on what task was done and where to find the acceptance criteria.
 - Run all tests.
 - Verify the features added by running the application and using the features where possible.
+- If you find a bug, create a new job to be done for the bug fix and prioritize it accordingly. Do not just fix the bug without tracking it as a job to be done.
