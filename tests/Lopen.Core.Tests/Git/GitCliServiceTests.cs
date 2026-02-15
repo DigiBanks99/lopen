@@ -6,52 +6,66 @@ namespace Lopen.Core.Tests.Git;
 
 public class GitCliServiceTests
 {
-    private readonly GitCliService _service = new(NullLogger<GitCliService>.Instance);
+    private readonly GitCliService _service = new(NullLogger<GitCliService>.Instance, Directory.GetCurrentDirectory());
 
     [Fact]
-    public async Task CommitAllAsync_ThrowsGitException()
+    public async Task GetDiffAsync_ReturnsString()
     {
-        var ex = await Assert.ThrowsAsync<GitException>(() =>
-            _service.CommitAllAsync("test commit"));
+        var result = await _service.GetDiffAsync();
 
-        Assert.Equal("git commit", ex.Command);
-        Assert.Contains("pending", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.NotNull(result);
     }
 
     [Fact]
-    public async Task CreateBranchAsync_ThrowsGitException()
+    public async Task GetLastCommitDateAsync_ReturnsDateOrNull()
     {
-        var ex = await Assert.ThrowsAsync<GitException>(() =>
-            _service.CreateBranchAsync("lopen/auth"));
+        var result = await _service.GetLastCommitDateAsync();
 
-        Assert.Equal("git checkout -b", ex.Command);
+        // In a git repo, this should return a date; in a non-git context, null
+        // We just verify it doesn't throw
+        Assert.True(result is null || result.Value.Year > 2000);
     }
 
     [Fact]
-    public async Task ResetToCommitAsync_ThrowsGitException()
+    public async Task CommitAllAsync_NullMessage_Throws()
     {
-        var ex = await Assert.ThrowsAsync<GitException>(() =>
-            _service.ResetToCommitAsync("abc123"));
-
-        Assert.Equal("git reset", ex.Command);
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _service.CommitAllAsync(null!));
     }
 
     [Fact]
-    public async Task GetLastCommitDateAsync_ThrowsGitException()
+    public async Task CommitAllAsync_EmptyMessage_Throws()
     {
-        var ex = await Assert.ThrowsAsync<GitException>(() =>
-            _service.GetLastCommitDateAsync());
-
-        Assert.Equal("git log", ex.Command);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.CommitAllAsync(""));
     }
 
     [Fact]
-    public async Task GetDiffAsync_ThrowsGitException()
+    public async Task CreateBranchAsync_NullName_Throws()
     {
-        var ex = await Assert.ThrowsAsync<GitException>(() =>
-            _service.GetDiffAsync());
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _service.CreateBranchAsync(null!));
+    }
 
-        Assert.Equal("git diff", ex.Command);
+    [Fact]
+    public async Task ResetToCommitAsync_NullSha_Throws()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _service.ResetToCommitAsync(null!));
+    }
+
+    [Fact]
+    public void Constructor_NullLogger_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => new GitCliService(null!, "/tmp"));
+    }
+
+    [Fact]
+    public void Constructor_NullWorkingDirectory_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => new GitCliService(NullLogger<GitCliService>.Instance, null!));
     }
 
     [Fact]

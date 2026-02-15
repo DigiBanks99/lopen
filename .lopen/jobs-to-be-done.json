@@ -459,9 +459,9 @@
     "id": "JOB-058",
     "requirement_module": "core",
     "description": "Implement module scanner that identifies all module specifications in docs/requirements/",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Lopen scans docs/requirements/ and correctly identifies all module specifications"
+    "notes": "ModuleScanner scans docs/requirements/ directories via IFileSystem. Returns ModuleInfo records with Name, SpecificationPath, HasSpecification. Registered in DI via AddLopenCore(projectRoot). Tests: 10 tests covering empty dir, with/without spec, multiple modules, constructor validation."
   },
   {
     "id": "JOB-059",
@@ -507,9 +507,9 @@
     "id": "JOB-064",
     "requirement_module": "core",
     "description": "Implement task hierarchy (Module \u2192 Component \u2192 Task \u2192 Subtask) with state transitions (Pending \u2192 In Progress \u2192 Complete/Failed)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: 4-level task hierarchy with defined state transitions"
+    "notes": "Already implemented: WorkNode<TChild> composite tree (ModuleNode\u2192ComponentNode\u2192TaskNode\u2192SubtaskNode), WorkNodeState enum (Pending\u2192InProgress\u2192Complete/Failed with retry), WorkNodeExtensions (Descendants, Leaves, ComputeAggregateState). Tests: 31 tests in 5 test files."
   },
   {
     "id": "JOB-065",
@@ -523,9 +523,9 @@
     "id": "JOB-066",
     "requirement_module": "core",
     "description": "Implement back-pressure Category 1 (Resource Limits): warn at threshold, pause at confirmation threshold",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Resource limits with warning and pause thresholds"
+    "notes": "ResourceLimitGuardrail implements IGuardrail. Checks premium request count vs budget with configurable warn (default 80%) and block (default 90%) thresholds. Short-circuits on block. Order=100. Tests: 16 tests covering pass/warn/block, messages, thresholds, constructor validation."
   },
   {
     "id": "JOB-067",
@@ -555,9 +555,9 @@
     "id": "JOB-070",
     "requirement_module": "core",
     "description": "Implement git auto-commit on task completion and branch-per-module (lopen/{module}) creation",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": 3,
-    "notes": "AC: Git auto-commit after each task when enabled; branch per module creates working branches"
+    "notes": "GitCliService replaces stubs with real Process-based git CLI execution. Implements CommitAllAsync (add -A + commit), CreateBranchAsync (checkout -b), ResetToCommitAsync (reset --hard), GetLastCommitDateAsync (log), GetDiffAsync. IO exceptions wrapped in GitException. Tests: 9 tests. REMAINING: auto-commit orchestration (depends on workflow engine JOB-059)."
   },
   {
     "id": "JOB-071",
@@ -571,9 +571,9 @@
     "id": "JOB-072",
     "requirement_module": "core",
     "description": "Implement document management (section extraction for context) and programmatic updates without LLM invocation",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Section extraction for LLM context; programmatic updates happen without LLM"
+    "notes": "Already implemented: MarkdigSpecificationParser for section extraction + XxHashContentHasher for drift detection + NEW MarkdownUpdater for programmatic checkbox toggling and status updates. Tests: 26 existing + 14 new MarkdownUpdater tests = 40 document tests total."
   },
   {
     "id": "JOB-073",

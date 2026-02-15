@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Lopen.Core.Git;
@@ -8,42 +9,95 @@ namespace Lopen.Core.Git;
 internal sealed class GitCliService : IGitService
 {
     private readonly ILogger<GitCliService> _logger;
+    private readonly string _workingDirectory;
 
-    public GitCliService(ILogger<GitCliService> logger)
+    public GitCliService(ILogger<GitCliService> logger, string workingDirectory)
     {
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
+        _workingDirectory = workingDirectory;
     }
 
     /// <inheritdoc />
-    public Task<GitResult> CommitAllAsync(string message, CancellationToken cancellationToken = default)
+    public async Task<GitResult> CommitAllAsync(string message, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Git commit: {Message}", message);
-        throw new GitException("Git CLI integration pending.", "git commit");
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        var addResult = await RunGitAsync("add -A", cancellationToken).ConfigureAwait(false);
+        if (!addResult.Success)
+            return addResult;
+
+        return await RunGitAsync($"commit -m \"{message.Replace("\"", "\\\"")}\"", cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public Task<GitResult> CreateBranchAsync(string branchName, CancellationToken cancellationToken = default)
+    public async Task<GitResult> CreateBranchAsync(string branchName, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Git create branch: {BranchName}", branchName);
-        throw new GitException("Git CLI integration pending.", "git checkout -b");
+        ArgumentException.ThrowIfNullOrWhiteSpace(branchName);
+        return await RunGitAsync($"checkout -b {branchName}", cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public Task<GitResult> ResetToCommitAsync(string commitSha, CancellationToken cancellationToken = default)
+    public async Task<GitResult> ResetToCommitAsync(string commitSha, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Git reset to: {CommitSha}", commitSha);
-        throw new GitException("Git CLI integration pending.", "git reset");
+        ArgumentException.ThrowIfNullOrWhiteSpace(commitSha);
+        return await RunGitAsync($"reset --hard {commitSha}", cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public Task<DateTimeOffset?> GetLastCommitDateAsync(CancellationToken cancellationToken = default)
+    public async Task<DateTimeOffset?> GetLastCommitDateAsync(CancellationToken cancellationToken = default)
     {
-        throw new GitException("Git CLI integration pending.", "git log");
+        var result = await RunGitAsync("log -1 --format=%aI", cancellationToken).ConfigureAwait(false);
+
+        if (!result.Success || string.IsNullOrWhiteSpace(result.StdOut))
+            return null;
+
+        return DateTimeOffset.TryParse(result.StdOut.Trim(), out var date) ? date : null;
     }
 
     /// <inheritdoc />
-    public Task<string> GetDiffAsync(CancellationToken cancellationToken = default)
+    public async Task<string> GetDiffAsync(CancellationToken cancellationToken = default)
     {
-        throw new GitException("Git CLI integration pending.", "git diff");
+        var result = await RunGitAsync("diff", cancellationToken).ConfigureAwait(false);
+        return result.StdOut;
+    }
+
+    private async Task<GitResult> RunGitAsync(string arguments, CancellationToken cancellationToken)
+    {
+        _logger.LogDebug("Running: git {Arguments}", arguments);
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = "git",
+            Arguments = arguments,
+            WorkingDirectory = _workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+
+        try
+        {
+            using var process = Process.Start(psi)
+                ?? throw new GitException("Failed to start git process.", $"git {arguments}");
+
+            var stdout = await process.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            var stderr = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+            var result = new GitResult(process.ExitCode, stdout, stderr);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("git {Arguments} failed (exit {Code}): {StdErr}", arguments, result.ExitCode, stderr);
+            }
+
+            return result;
+        }
+        catch (Exception ex) when (ex is not GitException and not OperationCanceledException)
+        {
+            throw new GitException($"Failed to execute git {arguments}", $"git {arguments}", ex);
+        }
     }
 }

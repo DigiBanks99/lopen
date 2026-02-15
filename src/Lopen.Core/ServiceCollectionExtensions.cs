@@ -1,6 +1,7 @@
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
+using Lopen.Core.Workflow;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Lopen.Core;
@@ -13,9 +14,23 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registers Core module services with the dependency injection container.
     /// </summary>
-    public static IServiceCollection AddLopenCore(this IServiceCollection services)
+    /// <param name="services">The service collection.</param>
+    /// <param name="projectRoot">The project root directory for git and module scanning.</param>
+    public static IServiceCollection AddLopenCore(this IServiceCollection services, string? projectRoot = null)
     {
-        services.AddSingleton<IGitService, GitCliService>();
+        if (!string.IsNullOrWhiteSpace(projectRoot))
+        {
+            services.AddSingleton<IGitService>(sp =>
+                new GitCliService(
+                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<GitCliService>>(),
+                    projectRoot));
+            services.AddSingleton<IModuleScanner>(sp =>
+                new ModuleScanner(
+                    sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
+                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ModuleScanner>>(),
+                    projectRoot));
+        }
+
         services.AddSingleton<ISpecificationParser, MarkdigSpecificationParser>();
         services.AddSingleton<IContentHasher, XxHashContentHasher>();
         services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
