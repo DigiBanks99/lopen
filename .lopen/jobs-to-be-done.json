@@ -3,7 +3,7 @@
     "id": "JOB-001",
     "requirement_module": "cli",
     "description": "Create .NET 10.0 solution file and project structure (src/, tests/ directories, Lopen.sln)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 1,
     "notes": "AC: .NET solution builds successfully with dotnet build"
   },
@@ -11,7 +11,7 @@
     "id": "JOB-002",
     "requirement_module": "cli",
     "description": "Create CLI host project (Lopen.Cli) with Microsoft.Extensions.Hosting DI and Program.cs entry point",
-    "status": "not_started",
+    "status": "complete",
     "priority": 1,
     "notes": "AC: CLI entry point uses Microsoft.Extensions.Hosting for dependency injection"
   },
@@ -19,7 +19,7 @@
     "id": "JOB-003",
     "requirement_module": "cli",
     "description": "Create test projects and verify dotnet test passes; configure editorconfig and dotnet format",
-    "status": "not_started",
+    "status": "complete",
     "priority": 1,
     "notes": "AC: All test projects run with dotnet test; code formatting passes with dotnet format --verify-no-changes"
   },
