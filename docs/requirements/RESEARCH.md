@@ -30,6 +30,7 @@ Research documents for Lopen modules.
 
 ## OTEL Module
 
+- [RESEARCH.md](otel/RESEARCH.md) — OpenTelemetry .NET SDK setup, custom spans/metrics, OTLP exporter, ILogger integration, configuration, performance
 - [RESEARCH-aspire.md](otel/RESEARCH-aspire.md) — .NET Aspire dashboard and OpenTelemetry integration research
 
 ## Storage Module
