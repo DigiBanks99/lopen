@@ -44,4 +44,14 @@ public interface ISessionManager
     /// Updates the 'latest' symlink to point to the given session.
     /// </summary>
     Task SetLatestAsync(SessionId sessionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Moves a corrupted session directory to .lopen/corrupted/ for quarantine.
+    /// </summary>
+    Task QuarantineCorruptedSessionAsync(SessionId sessionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Prunes old sessions, keeping the most recent <paramref name="retentionCount"/>.
+    /// </summary>
+    Task<int> PruneSessionsAsync(int retentionCount, CancellationToken cancellationToken = default);
 }

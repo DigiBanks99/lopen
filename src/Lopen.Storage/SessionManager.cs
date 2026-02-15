@@ -110,8 +110,15 @@ internal sealed class SessionManager : ISessionManager
 
         // Atomic write: write to temp file then move
         var tempPath = statePath + ".tmp";
-        await _fileSystem.WriteAllTextAsync(tempPath, json, cancellationToken);
-        _fileSystem.MoveFile(tempPath, statePath);
+        try
+        {
+            await _fileSystem.WriteAllTextAsync(tempPath, json, cancellationToken);
+            _fileSystem.MoveFile(tempPath, statePath);
+        }
+        catch (IOException ex)
+        {
+            throw new StorageException($"Failed to save session state: {statePath}", statePath, ex);
+        }
 
         _logger.LogDebug("Saved session state for {SessionId}", sessionId);
     }
@@ -151,8 +158,15 @@ internal sealed class SessionManager : ISessionManager
         var json = JsonSerializer.Serialize(metrics, CompactJsonOptions);
 
         var tempPath = metricsPath + ".tmp";
-        await _fileSystem.WriteAllTextAsync(tempPath, json, cancellationToken);
-        _fileSystem.MoveFile(tempPath, metricsPath);
+        try
+        {
+            await _fileSystem.WriteAllTextAsync(tempPath, json, cancellationToken);
+            _fileSystem.MoveFile(tempPath, metricsPath);
+        }
+        catch (IOException ex)
+        {
+            throw new StorageException($"Failed to save session metrics: {metricsPath}", metricsPath, ex);
+        }
 
         _logger.LogDebug("Saved session metrics for {SessionId}", sessionId);
     }
@@ -196,6 +210,80 @@ internal sealed class SessionManager : ISessionManager
         _logger.LogDebug("Set latest symlink to {SessionId}", sessionId);
 
         return Task.CompletedTask;
+    }
+
+    public Task QuarantineCorruptedSessionAsync(SessionId sessionId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sessionId);
+
+        var sessionDir = StoragePaths.GetSessionDirectory(_projectRoot, sessionId);
+        if (!_fileSystem.DirectoryExists(sessionDir))
+        {
+            _logger.LogWarning("Session directory not found for quarantine: {SessionId}", sessionId);
+            return Task.CompletedTask;
+        }
+
+        var corruptedDir = StoragePaths.GetCorruptedDirectory(_projectRoot);
+        _fileSystem.CreateDirectory(corruptedDir);
+
+        var targetDir = Path.Combine(corruptedDir, sessionId.ToString());
+
+        try
+        {
+            // Move all files from session directory to corrupted directory
+            _fileSystem.CreateDirectory(targetDir);
+            var files = _fileSystem.GetFiles(sessionDir).ToList();
+            foreach (var file in files)
+            {
+                var fileName = Path.GetFileName(file);
+                _fileSystem.MoveFile(file, Path.Combine(targetDir, fileName));
+            }
+
+            _logger.LogWarning("Quarantined corrupted session {SessionId} to {Path}", sessionId, targetDir);
+        }
+        catch (IOException ex)
+        {
+            throw new StorageException($"Failed to quarantine corrupted session: {sessionId}", sessionDir, ex);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public async Task<int> PruneSessionsAsync(int retentionCount, CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(retentionCount);
+
+        var sessions = await ListSessionsAsync(cancellationToken);
+        if (sessions.Count <= retentionCount)
+        {
+            return 0;
+        }
+
+        // Sessions are sorted by date+counter; prune the oldest ones
+        var toPrune = sessions
+            .OrderByDescending(s => s.Date)
+            .ThenByDescending(s => s.Counter)
+            .Skip(retentionCount)
+            .ToList();
+
+        var pruned = 0;
+        foreach (var session in toPrune)
+        {
+            var sessionDir = StoragePaths.GetSessionDirectory(_projectRoot, session);
+            if (_fileSystem.DirectoryExists(sessionDir))
+            {
+                // Delete all files in the session directory
+                foreach (var file in _fileSystem.GetFiles(sessionDir))
+                {
+                    _fileSystem.DeleteFile(file);
+                }
+
+                _logger.LogInformation("Pruned session {SessionId}", session);
+                pruned++;
+            }
+        }
+
+        return pruned;
     }
 
     private Task<int> GetNextCounterAsync(string module, DateOnly date, CancellationToken cancellationToken)

@@ -264,4 +264,141 @@ public class SessionManagerTests
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             _manager.SaveSessionStateAsync(sessionId, null!));
     }
+
+    // === QuarantineCorruptedSessionAsync ===
+
+    [Fact]
+    public async Task QuarantineCorruptedSessionAsync_MovesSessionToCorruptedDir()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+
+        await _manager.QuarantineCorruptedSessionAsync(sessionId);
+
+        var corruptedDir = StoragePaths.GetCorruptedDirectory(_projectRoot);
+        Assert.True(_fileSystem.DirectoryExists(Path.Combine(corruptedDir, sessionId.ToString())));
+    }
+
+    [Fact]
+    public async Task QuarantineCorruptedSessionAsync_NonExistentSession_DoesNotThrow()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 99);
+
+        await _manager.QuarantineCorruptedSessionAsync(sessionId);
+    }
+
+    [Fact]
+    public async Task QuarantineCorruptedSessionAsync_NullSessionId_Throws()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _manager.QuarantineCorruptedSessionAsync(null!));
+    }
+
+    // === PruneSessionsAsync ===
+
+    [Fact]
+    public async Task PruneSessionsAsync_FewerThanRetention_PrunesNothing()
+    {
+        await _manager.CreateSessionAsync("auth");
+        await _manager.CreateSessionAsync("auth");
+
+        var pruned = await _manager.PruneSessionsAsync(5);
+
+        Assert.Equal(0, pruned);
+        var sessions = await _manager.ListSessionsAsync();
+        Assert.Equal(2, sessions.Count);
+    }
+
+    [Fact]
+    public async Task PruneSessionsAsync_ExactlyRetention_PrunesNothing()
+    {
+        await _manager.CreateSessionAsync("auth");
+        await _manager.CreateSessionAsync("core");
+        await _manager.CreateSessionAsync("llm");
+
+        var pruned = await _manager.PruneSessionsAsync(3);
+
+        Assert.Equal(0, pruned);
+    }
+
+    [Fact]
+    public async Task PruneSessionsAsync_MoreThanRetention_PrunesOldest()
+    {
+        await _manager.CreateSessionAsync("auth");
+        await _manager.CreateSessionAsync("auth");
+        await _manager.CreateSessionAsync("auth");
+
+        var pruned = await _manager.PruneSessionsAsync(1);
+
+        Assert.Equal(2, pruned);
+    }
+
+    [Fact]
+    public async Task PruneSessionsAsync_InvalidRetention_Throws()
+    {
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _manager.PruneSessionsAsync(0));
+    }
+
+    // === IO Error Wrapping ===
+
+    [Fact]
+    public async Task SaveSessionStateAsync_IoError_ThrowsStorageException()
+    {
+        var failFs = new FailingWriteFileSystem();
+        var mgr = new SessionManager(failFs, _logger, _projectRoot);
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "p",
+            Step = "s",
+            Module = "m",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await Assert.ThrowsAsync<StorageException>(() =>
+            mgr.SaveSessionStateAsync(sessionId, state));
+    }
+
+    [Fact]
+    public async Task SaveSessionMetricsAsync_IoError_ThrowsStorageException()
+    {
+        var failFs = new FailingWriteFileSystem();
+        var mgr = new SessionManager(failFs, _logger, _projectRoot);
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var metrics = new SessionMetrics
+        {
+            SessionId = sessionId.ToString(),
+            CumulativeInputTokens = 100,
+            CumulativeOutputTokens = 50,
+            PremiumRequestCount = 1,
+            IterationCount = 1,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await Assert.ThrowsAsync<StorageException>(() =>
+            mgr.SaveSessionMetricsAsync(sessionId, metrics));
+    }
+
+    /// <summary>
+    /// File system that fails on write operations (simulates disk full/write failure).
+    /// </summary>
+    private sealed class FailingWriteFileSystem : IFileSystem
+    {
+        private readonly HashSet<string> _directories = new(StringComparer.Ordinal);
+
+        public void CreateDirectory(string path) => _directories.Add(path);
+        public bool FileExists(string path) => false;
+        public bool DirectoryExists(string path) => _directories.Contains(path);
+        public Task<string> ReadAllTextAsync(string path, CancellationToken ct) => throw new FileNotFoundException();
+        public Task WriteAllTextAsync(string path, string content, CancellationToken ct) => throw new IOException("Disk full");
+        public IEnumerable<string> GetFiles(string path, string searchPattern = "*") => [];
+        public IEnumerable<string> GetDirectories(string path) => [];
+        public void MoveFile(string src, string dst) => throw new IOException("Disk full");
+        public void DeleteFile(string path) { }
+        public void CreateSymlink(string linkPath, string targetPath) { }
+        public string? GetSymlinkTarget(string linkPath) => null;
+        public DateTime GetLastWriteTimeUtc(string path) => DateTime.MinValue;
+    }
 }
