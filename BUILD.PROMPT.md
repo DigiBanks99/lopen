@@ -21,3 +21,6 @@ IMPORTANT:
 - If a new module is needed, create a new requirement folder in @docs/requirements and add a minimal SPECIFICATION.md file there. Update @docs/requirements/README.md to reference the new module.
 - If IMPLEMENTATION_PLAN.md becomes too long, clear out old and completed tasks to keep it concise.
 - You don't get to decide that tests are optional or don't add value.
+- Run a sub-agent with model gpt-5-mini to verify that all the acceptance criteria have been met before marking a task as done. Be clear on what task was done and where to find the acceptance criteria.
+- Run all tests.
+- Verify the features added by running the application and using the features where possible.
