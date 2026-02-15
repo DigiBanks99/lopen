@@ -27,7 +27,7 @@
     "id": "JOB-004",
     "requirement_module": "cli",
     "description": "Set up CI pipeline (GitHub Actions) with dotnet build, dotnet test, dotnet format --verify-no-changes",
-    "status": "not_started",
+    "status": "complete",
     "priority": 1,
     "notes": "Build infrastructure - ensures all AC verification is automated"
   },
@@ -67,7 +67,7 @@
     "id": "JOB-009",
     "requirement_module": "core",
     "description": "Create Core module project (Lopen.Core) and test project with service interfaces (depends on LLM, Storage, Configuration)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 1,
     "notes": "Central orchestration module"
   },
