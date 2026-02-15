@@ -85,15 +85,56 @@ await using var session = await client.CreateSessionAsync(new SessionConfig
 
 ### Sending Messages and Receiving Responses
 
-**Simple (blocking):**
+**Canonical pattern (event-driven):**
+
+The SDK's `SendAsync` method returns a message ID (`Task<string>`), not a response object. Responses are received via event handlers. Use `SessionIdleEvent` to detect completion:
 
 ```csharp
-var response = await session.SendAndWaitAsync(new MessageOptions
+var done = new TaskCompletionSource();
+string? responseContent = null;
+
+session.On(evt =>
+{
+    if (evt is AssistantMessageEvent msg)
+        responseContent = msg.Data.Content;
+    else if (evt is SessionIdleEvent)
+        done.SetResult();
+});
+
+await session.SendAsync(new MessageOptions
 {
     Prompt = "Analyze the authentication module requirements."
 });
-Console.WriteLine(response?.Data.Content);
+await done.Task;
+Console.WriteLine(responseContent);
 ```
+
+> **⚠️ Implementation note**: There is no `SendAndWaitAsync` convenience method in the official SDK API. Examples throughout this document use a `SendAndWaitAsync` pattern for brevity — implementers should build this as a wrapper:
+>
+> ```csharp
+> public static async Task<AssistantMessageEvent?> SendAndWaitAsync(
+>     this CopilotSession session, MessageOptions options,
+>     TimeSpan? timeout = null)
+> {
+>     var done = new TaskCompletionSource<AssistantMessageEvent?>();
+>     AssistantMessageEvent? result = null;
+>
+>     using var sub = session.On(evt =>
+>     {
+>         if (evt is AssistantMessageEvent msg) result = msg;
+>         else if (evt is SessionIdleEvent) done.TrySetResult(result);
+>         else if (evt is SessionErrorEvent err) done.TrySetException(
+>             new InvalidOperationException(err.Data.Message));
+>     });
+>
+>     await session.SendAsync(options);
+>     if (timeout.HasValue)
+>         await done.Task.WaitAsync(timeout.Value);
+>     else
+>         await done.Task;
+>     return done.Task.Result;
+> }
+> ```
 
 **Event-driven (streaming):**
 
@@ -245,7 +286,9 @@ var session = await client.CreateSessionAsync(new SessionConfig
 
 ## 4. Token Tracking
 
-Token usage is available via the `assistant.usage` session event. From the [compatibility docs](https://github.com/github/copilot-sdk/blob/main/docs/compatibility.md):
+Token usage is available via session events. From the [compatibility docs](https://github.com/github/copilot-sdk/blob/main/docs/compatibility.md):
+
+> **⚠️ Verification needed**: The `AssistantUsageEvent` type is referenced in compatibility docs but not listed in the main SDK event types documentation (which shows "And more..." for the full list). Verify this event type exists at implementation time. If unavailable, an alternative approach is to parse usage metadata from `AssistantMessageEvent.Data` or use the `OnPostToolUse` hook to track calls.
 
 ### Usage Events
 
@@ -404,9 +447,7 @@ var session = await client.CreateSessionAsync(new SessionConfig
             {
                 return new ErrorOccurredHookOutput
                 {
-                    ErrorHandling = "retry",
-                    RetryCount = 3,
-                    UserNotification = "Rate limit hit. Retrying with backoff..."
+                    ErrorHandling = "retry"  // "retry", "skip", or "abort"
                 };
             }
             return null; // Default handling
@@ -415,9 +456,7 @@ var session = await client.CreateSessionAsync(new SessionConfig
 });
 ```
 
-### Built-in Retry Support
-
-The `OnErrorOccurred` hook supports returning `errorHandling: "retry"` with a `retryCount`, which tells the SDK to retry the failed operation. The SDK handles the retry loop internally.
+> **Note**: The `OnErrorOccurred` hook supports `ErrorHandling` with values `"retry"`, `"skip"`, or `"abort"`. Retry count and backoff configuration are not exposed via the hook output — implement application-level backoff (see below) for fine-grained retry control.
 
 ### Application-Level Backoff
 
@@ -698,7 +737,7 @@ The GitHub Copilot SDK is **exactly what the LLM specification calls for**. Key 
 
 ### Open Questions
 
-1. **Token event granularity** — Does `AssistantUsageEvent` fire once per `SendAndWaitAsync` or multiple times during tool-calling loops? (Likely multiple — needs verification.)
+1. **Token event granularity** — Does `AssistantUsageEvent` fire once per message send or multiple times during tool-calling loops? (Likely multiple — needs verification. Event type itself needs verification, see [Section 4](#4-token-tracking).)
 2. **Context window size** — How to query the model's context window limit for budget calculations? `ListModelsAsync()` may include this in model capabilities.
 3. **Premium request counting** — The SDK bills each `SendAsync` as one premium request per the FAQ. Oracle sub-agent calls on standard models should not count as premium. Needs verification.
 4. **Error propagation** — When the CLI server crashes, does the SDK auto-restart (per `AutoRestart` option) or surface an error? Default is `AutoRestart = true`.

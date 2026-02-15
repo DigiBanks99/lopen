@@ -23,7 +23,7 @@ IMPORTANT:
 
 | File                                             | Purpose                                                                                          |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| `docs/requirements/jobs-to-be-done.json`         | Prioritized backlog of 100 jobs, each with id, requirement module, description, status, priority |
+| `.lopen/jobs-to-be-done.json`                    | Prioritized backlog of 100 jobs, each with id, requirement module, description, status, priority |
 | `docs/requirements/README.md`                    | Index of all requirement modules with state                                                      |
 | `docs/requirements/RESEARCH.md`                  | Index of all research documents across modules                                                   |
 | `.lopen/state/<module>-<YYYYMMDD>-<number>.json` | Session tracking and state tracking files                                                        |

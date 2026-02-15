@@ -9,7 +9,7 @@ Research into C# (.NET 8+) approaches for parsing markdown documents, extracting
 ## 1. Markdig (Recommended Approach)
 
 **Package**: [`Markdig`](https://github.com/xoofx/markdig) — most popular .NET markdown parser.
-**Latest**: `0.37.0` | **License**: BSD-2-Clause | **Targets**: .NET 6+, .NET Standard 2.0/2.1
+**Latest**: `0.45.0` | **License**: BSD-2-Clause | **Targets**: .NET 8+, .NET Standard 2.0/2.1, .NET Framework 4.6.2
 
 ### Key Types
 

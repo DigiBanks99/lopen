@@ -11,7 +11,7 @@ description: Research findings for implementing the Lopen TUI module
 
 ## 1. Spectre.Console
 
-**Current Version**: 0.54.0 (pre-release, latest stable: 0.49.1). The library targets .NET Standard 2.0, net8.0, net9.0, and net10.0. Over 156 dependent GitHub repos including `dotnet/aspire` and `microsoft/semantic-kernel`.
+**Current Version**: 0.54.0 (stable, released Nov 2025). Latest pre-release: 0.54.1-alpha.0.37. The library targets .NET Standard 2.0, net8.0, net9.0, and net10.0. Over 156 dependent GitHub repos including `dotnet/aspire` and `microsoft/semantic-kernel`.
 
 **Note**: As of 0.54.0, `Spectre.Console.Cli` has been moved to its own repository and will have independent versioning (targeting 1.0.0).
 
@@ -207,7 +207,7 @@ Spectre.Tui solves Spectre.Console's fundamental limitation: it provides a prope
 
 | Aspect | Spectre.Console | Spectre.Tui |
 |---|---|---|
-| **Version** | 0.54.0 (pre-release, 0.49.1 stable) | 0.0.0-preview.0.46 |
+| **Version** | 0.54.0 (stable) | 0.0.0-preview.0.46 |
 | **Maturity** | Widely adopted (14K+ dependents) | Early preview, ~30 NuGet downloads |
 | **Target** | .NET Standard 2.0, net8-10 | .NET 10.0 only |
 | **Paradigm** | Retained-mode renderable tree | Immediate-mode cell buffer (Ratatui-style) |
@@ -539,7 +539,81 @@ The keyboard handling requirements require building a custom input routing layer
 
 ---
 
-## 8. Component Architecture
+## 8. Modal & Overlay Rendering
+
+### The Core Challenge
+
+The spec requires multiple modal overlays: confirmation dialogs, error dialogs, session resume prompt, landing page, module selection, and resource viewer. In Spectre.Tui's immediate-mode, cell-based rendering, modals are rendered as layers on top of the main layout within the same render frame — there is no windowing system.
+
+### Implementation Pattern
+
+Modals are implemented by conditionally rendering an overlay region on top of the existing layout during the `renderer.Draw` callback:
+
+```csharp
+renderer.Draw((ctx, elapsed) =>
+{
+    // Always render the main layout
+    ctx.Render(headerWidget, regions.Header);
+    ctx.Render(activityWidget, regions.Activity);
+    ctx.Render(contextWidget, regions.Context);
+    ctx.Render(promptWidget, regions.Prompt);
+
+    // Render modal on top if active
+    if (state.ActiveModal != null)
+    {
+        // Center the modal on screen
+        var screen = ctx.Viewport;
+        int modalWidth = Math.Min(60, screen.Width - 4);
+        int modalHeight = state.ActiveModal.GetRequiredHeight();
+        int x = (screen.Width - modalWidth) / 2;
+        int y = (screen.Height - modalHeight) / 2;
+        var modalArea = new Rectangle(x, y, modalWidth, modalHeight);
+
+        // Dim background by overwriting visible cells with muted style
+        ctx.SetStyle(screen, new Style(foreground: Color.Grey, background: Color.Black));
+
+        // Render modal content into the centered area
+        ctx.Render(state.ActiveModal.Widget, modalArea);
+    }
+});
+```
+
+### Modal State Management
+
+```csharp
+public class ModalState
+{
+    public IModalWidget? ActiveModal { get; set; }
+    public Stack<IModalWidget> ModalStack { get; } = new(); // for nested modals
+}
+
+public interface IModalWidget : IWidget
+{
+    int GetRequiredHeight();
+    void HandleKey(ConsoleKeyInfo key, TuiState state);
+}
+```
+
+When a modal is active, the `InputHandler` routes all keys to `ActiveModal.HandleKey()` instead of the normal focus-based routing. This prevents interaction with the underlying layout while a modal is displayed.
+
+### Modal Types Required by Spec
+
+| Modal | Trigger | Options |
+|---|---|---|
+| Landing Page | First startup (no session) | Any key to dismiss |
+| Session Resume | Startup with existing session | Resume / Start New / View Details |
+| Confirmation | Dangerous or multi-file actions | Yes / No / Always / Other |
+| Error | Critical failures | Retry / Cancel, with details |
+| Module Selection | Multiple modules available | Arrow key selection |
+| Resource Viewer | Press 1-9 on active resource | Scrollable content, Esc to close |
+
+### Relevance to Lopen
+
+The spec defines 6+ distinct modal types. Since Spectre.Tui has no built-in overlay/modal system, implementing a `ModalWidget` base with centered rendering, background dimming, and input capture is necessary. The immediate-mode rendering makes this straightforward — modals are simply rendered last in the draw callback, overwriting the cells beneath them.
+
+---
+
+## 9. Component Architecture
 
 ### Design Principles (from spec)
 
@@ -655,7 +729,7 @@ The spec requires every component to work in the `lopen test tui` gallery with m
 
 ---
 
-## 9. Syntax Highlighting
+## 10. Syntax Highlighting
 
 ### Options for Terminal Syntax Highlighting
 
@@ -711,7 +785,7 @@ The spec requires "syntax highlighting in code blocks" and "diff viewer with syn
 
 ---
 
-## 10. Recommended NuGet Packages
+## 11. Recommended NuGet Packages
 
 ### Core Packages
 
@@ -720,7 +794,7 @@ The spec requires "syntax highlighting in code blocks" and "diff viewer with syn
 | `Spectre.Tui` | 0.0.0-preview.0.46 | Cell-based TUI rendering (Renderer, Widget, Buffer, Terminal) |
 | `Spectre.Console` | 0.54.0 | Rich console output for non-TUI paths (CLI help, error output, etc.) |
 | `Spectre.Console.Json` | 0.54.0 | JSON syntax highlighting |
-| `Spectre.Console.Cli` | 0.53.1 | CLI command parsing (used by CLI module) |
+| `Spectre.Console.Cli` | 0.53.1 (stable) / 1.0.0-alpha.0.12 (new independent) | CLI command parsing (used by CLI module) |
 
 ### Syntax Highlighting
 
@@ -742,7 +816,7 @@ The core rendering stack is `Spectre.Tui` for the full-screen TUI. `Spectre.Cons
 
 ---
 
-## 11. Implementation Approach
+## 12. Implementation Approach
 
 ### Recommended: Spectre.Tui with Custom Widget Layer
 
@@ -789,10 +863,11 @@ Since Spectre.Tui only provides Box, Clear, and List widgets, Lopen must impleme
 1. **LayoutWidget** — Split-screen layout calculator (Rectangle partitioning)
 2. **PanelWidget** — Bordered panel with title, wrapping BoxWidget
 3. **TreeWidget** — Hierarchical display with collapse/expand
-4. **ScrollableWidget** — Scrollable viewport for long content
+4. **ScrollableWidget** — Scrollable viewport for long content (virtual list with offset tracking)
 5. **PromptWidget** — Text input with cursor, history, and multiline support
 6. **ProgressWidget** — Progress indicator / spinner
 7. **StatusBarWidget** — Top panel with token counts, model info, session status
+8. **ModalWidget** — Centered overlay with background dimming, input capture, and dismiss handling (see Section 8)
 
 ### Application Loop
 
@@ -861,5 +936,5 @@ Building on Spectre.Tui provides a clean, single-library architecture with the c
 - [Spectre.Console Documentation](https://spectreconsole.net)
 - [Spectre.Console GitHub](https://github.com/spectreconsole/spectre.console)
 - [Ratatui](https://ratatui.rs/) — Rust TUI framework that inspired Spectre.Tui's architecture
-- [TextMateSharp GitHub](https://github.com/nicknacknow/TextMateSharp)
+- [TextMateSharp GitHub](https://github.com/danipen/TextMateSharp)
 - [CSharpRepl](https://github.com/waf/CSharpRepl) — Example of Spectre.Console + REPL input handling

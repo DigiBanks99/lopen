@@ -401,7 +401,7 @@ This is the exact pattern defined in the LLM and Core specs. The oracle runs wit
 
 ### Recommended: Markdig
 
-[`Markdig`](https://www.nuget.org/packages/Markdig) v0.37.0 — the most popular .NET markdown parser. Full AST with YAML frontmatter support. Thread-safe pipeline.
+[`Markdig`](https://www.nuget.org/packages/Markdig) v0.45.0 — the most popular .NET markdown parser. Full AST with YAML frontmatter support. Thread-safe pipeline.
 
 ```csharp
 var pipeline = new MarkdownPipelineBuilder()
@@ -544,7 +544,7 @@ Lopen.Core/
 | Package | Version | Purpose |
 |---|---|---|
 | `Stateless` | 5.20.1 | State machine execution, guards, diagram export |
-| `Markdig` | 0.37.0 | Markdown AST parsing, section extraction |
+| `Markdig` | 0.45.0 | Markdown AST parsing, section extraction |
 | `GitHub.Copilot.SDK` | latest | LLM invocation, tool registration |
 | `Microsoft.Extensions.AI` | latest | `AIFunctionFactory.Create` for tool definitions |
 

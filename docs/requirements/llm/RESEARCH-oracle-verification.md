@@ -6,6 +6,8 @@ This document covers the pattern for implementing oracle verification tools (`ve
 
 ## Key Finding: Copilot SDK Architecture
 
+> **⚠️ API Note**: The Copilot SDK's `CopilotSession` does not have a `SendAndWaitAsync` method. The canonical API is `SendAsync` (returns message ID) + event handlers for responses. Examples in this document use `SendAndWaitAsync` for brevity — see [RESEARCH.md § Model API](RESEARCH.md#2-model-api--chat-completions) for the convenience wrapper implementation that must be built.
+
 The Copilot SDK (.NET package `GitHub.Copilot.SDK`) communicates with the Copilot CLI via JSON-RPC. The **CLI handles the tool-calling loop internally** — the SDK registers custom tools via `AIFunctionFactory.Create` (from `Microsoft.Extensions.AI`), and the CLI automatically invokes handlers when the LLM calls them.
 
 **Critical distinction**: Unlike raw OpenAI SDK usage where you manually loop on `FinishReason.ToolCalls`, the Copilot SDK abstracts this. You:

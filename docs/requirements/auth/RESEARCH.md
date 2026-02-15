@@ -7,13 +7,14 @@ sources:
   - https://raw.githubusercontent.com/github/copilot-sdk/main/docs/auth/byok.md
   - https://raw.githubusercontent.com/github/copilot-sdk/main/docs/getting-started.md
   - https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow
+  - https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli
 ---
 
 # Auth Module Research
 
 ## 1. GitHub Copilot SDK Authentication in .NET
 
-The official **`GitHub.Copilot.SDK`** NuGet package (latest: `0.1.24-preview.0`, as of Feb 2026) is the .NET SDK for programmatic control of GitHub Copilot CLI. It is in **technical preview** and may change in breaking ways.
+The official **`GitHub.Copilot.SDK`** NuGet package (latest stable: `0.1.23`, latest preview: `0.1.24-preview.0`, as of Feb 2026) is the .NET SDK for programmatic control of GitHub Copilot CLI. It requires **.NET 8.0 or later**. It is in **technical preview** and may change in breaking ways.
 
 The SDK does not implement authentication directly. Instead, it wraps the **Copilot CLI** (`copilot` binary), which must be installed separately and available in `PATH`. The SDK communicates with the CLI over JSON-RPC (stdio transport by default). Authentication is handled entirely by the CLI process — the SDK passes configuration that tells the CLI which auth method to use.
 
@@ -79,15 +80,21 @@ The device flow (RFC 8628) is designed for headless apps like CLI tools. The flo
 
 ### How the Copilot SDK Handles It
 
-The SDK **does not expose the device flow directly** to the embedding application. The device flow is handled by the Copilot CLI itself when a user runs `copilot` and signs in interactively. The CLI stores credentials in the **system keychain**.
+The SDK **does not expose the device flow directly** to the embedding application. The device flow is handled by the Copilot CLI itself. Per the [official Copilot CLI docs](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli#authenticating-with-copilot-cli), authentication works as follows:
 
-When the SDK is created with `UseLoggedInUser = true` (the default), it tells the CLI process to use these stored credentials. The SDK does not provide an API to programmatically initiate the device flow from .NET code.
+- On **first launch** of the interactive `copilot` CLI, the user is prompted to use the **`/login` slash command** within the TUI
+- The `/login` command triggers the GitHub OAuth device flow interactively
+- Credentials are stored in the **system keychain**
+- There is **no `copilot auth login` subcommand** — authentication is a TUI-internal slash command, not a CLI flag or subcommand
 
-**Implication for Lopen**: `lopen auth login` will likely need to either:
-- (a) Shell out to `copilot auth login` (or equivalent CLI command) to trigger the device flow, or
-- (b) Use the SDK's CLI process with a configuration that triggers interactive auth
+When the SDK is created with `UseLoggedInUser = true` (the default), it tells the CLI process (running in server mode) to use these stored credentials. The SDK does not provide an API to programmatically initiate the device flow from .NET code.
 
-This needs verification against the actual CLI command structure. The `copilot` CLI likely has an auth subcommand similar to `gh auth login`.
+**Implication for Lopen**: `lopen auth login` cannot simply shell out to a CLI subcommand. Options:
+- (a) Launch `copilot` in interactive TUI mode and programmatically send `/login` via stdin, then parse the device code output — fragile but possible
+- (b) Start the SDK/CLI with `UseLoggedInUser = true` when no credentials exist, and handle the resulting error to direct the user to run `copilot` interactively first
+- (c) Implement the GitHub device flow directly using the GitHub OAuth endpoints (see Section 2 above) with Copilot's client_id — gives full UX control but bypasses the CLI's credential storage
+
+Option (c) would require discovering or reverse-engineering the Copilot CLI's OAuth `client_id` and keychain storage format. Option (b) is simplest but degrades the UX. This is a key architectural decision for implementation.
 
 ## 3. Environment Variable Authentication
 
@@ -184,7 +191,7 @@ var session = await client.CreateSessionAsync(new SessionConfig
 
 | Package | Version | Purpose |
 |---|---|---|
-| `GitHub.Copilot.SDK` | `0.1.24-preview.0` | Core SDK — CopilotClient, sessions, events, auth options |
+| `GitHub.Copilot.SDK` | `0.1.23` (stable) / `0.1.24-preview.0` (preview) | Core SDK — CopilotClient, sessions, events, auth options |
 
 ### Likely Required (Transitive or Companion)
 
@@ -220,35 +227,54 @@ Lopen.Auth (module)
 
 ### lopen auth login
 
-Since the SDK does not expose a device flow API, `lopen auth login` should:
+Since the SDK does not expose a device flow API, and the CLI uses a `/login` slash command in TUI mode (not a CLI subcommand), `lopen auth login` should:
 
 ```csharp
-// Option A: Use the SDK's CLI process management to trigger auth
-// The copilot CLI has auth commands — invoke them through the SDK's CLI path
-var cliPath = options.CliPath ?? "copilot"; // From CopilotClientOptions
+// Option A: Direct user to authenticate via the copilot CLI first
+// Simplest approach — delegate fully to the CLI's interactive TUI
+public async Task LoginAsync()
+{
+    var cliPath = options.CliPath ?? "copilot";
+
+    // Check if already authenticated by trying to start the SDK
+    try
+    {
+        await using var client = new CopilotClient();
+        await client.StartAsync();
+        await client.PingAsync();
+        Console.WriteLine("Already authenticated.");
+        return;
+    }
+    catch { /* Not authenticated — proceed */ }
+
+    // Direct the user to run the copilot CLI interactively
+    Console.WriteLine("Opening Copilot CLI for authentication...");
+    Console.WriteLine("Use the /login command when prompted.");
+    var process = Process.Start(new ProcessStartInfo
+    {
+        FileName = cliPath,
+        UseShellExecute = false,
+    });
+    await process.WaitForExitAsync();
+}
+```
+
+```csharp
+// Option B: Launch TUI and programmatically send /login
+// More control but fragile — depends on TUI's stdin/stdout behavior
 var process = Process.Start(new ProcessStartInfo
 {
     FileName = cliPath,
-    Arguments = "auth login",
+    RedirectStandardInput = true,
     RedirectStandardOutput = true,
     RedirectStandardError = true,
 });
+await process.StandardInput.WriteLineAsync("/login");
 // Parse output for user_code and verification_uri
 // Display to user, wait for completion
 ```
 
-```csharp
-// Option B: Create a CopilotClient and let it handle auth on first use
-// If no stored credentials exist, the CLI may prompt for login
-// This depends on CLI behavior — to be verified
-await using var client = new CopilotClient(new CopilotClientOptions
-{
-    UseLoggedInUser = true,
-});
-await client.StartAsync(); // May trigger auth if not logged in
-```
-
-**Recommendation**: Option A gives Lopen more control over the UX (displaying the code, opening browser, showing progress). Option B is simpler but may not provide the interactive feedback the spec requires.
+**Recommendation**: Option A is more robust for v1. It delegates the entire auth UX to the `copilot` CLI, which already handles the device flow, browser opening, and credential storage. Lopen can verify success afterward with `PingAsync()`.
 
 ### lopen auth status
 
@@ -282,8 +308,13 @@ public async Task<AuthStatus> CheckStatusAsync()
 ### lopen auth logout
 
 ```csharp
-// Shell out to copilot CLI to clear stored credentials
-var process = Process.Start("copilot", "auth logout");
+// The copilot CLI does not have a known `auth logout` subcommand.
+// Logout may need to: (a) clear keychain credentials directly, or
+// (b) use the copilot CLI's TUI `/logout` command if one exists.
+// Alternatively, start the SDK and handle the case where stored creds are cleared.
+//
+// Simplest approach: launch copilot interactively for the user
+var process = Process.Start("copilot");
 await process.WaitForExitAsync();
 
 // Warn if env vars are still set
@@ -375,7 +406,7 @@ var session = await client.CreateSessionAsync(new SessionConfig
 
 1. **The SDK fully supports Lopen's auth model.** `CopilotClientOptions.GithubToken` maps to the spec's environment variable auth, and `UseLoggedInUser` maps to the device flow credential path. No custom OAuth implementation is needed.
 
-2. **Device flow is CLI-owned, not SDK-owned.** `lopen auth login` must delegate to the `copilot` CLI binary (e.g., `copilot auth login`) rather than calling an SDK method. The SDK has no `LoginAsync()` or `AuthenticateAsync()` method.
+2. **Device flow is CLI-owned, not SDK-owned.** `lopen auth login` must delegate to the `copilot` CLI. The CLI authenticates via a `/login` slash command in its interactive TUI — there is no `copilot auth login` subcommand and no SDK `LoginAsync()` method. This means Lopen must either launch the CLI interactively for the user or implement device flow directly.
 
 3. **Environment variable precedence matches the spec.** The SDK checks `GH_TOKEN` before `GITHUB_TOKEN`. The SDK also supports `COPILOT_GITHUB_TOKEN` (highest env var priority) which is not in the Lopen spec — Lopen can optionally support this for forward-compatibility.
 
@@ -389,8 +420,15 @@ var session = await client.CreateSessionAsync(new SessionConfig
 
 ### Open Questions (To Be Verified)
 
-- **Exact CLI auth commands**: Does `copilot auth login` exist as a subcommand? Or is it `copilot login`? Verify against the installed CLI.
+- **CLI auth trigger in server mode**: When the SDK starts the CLI in server mode with `UseLoggedInUser = true` and no credentials exist, does the CLI return a specific error code/message? Or does it hang waiting for auth? This determines how `lopen auth status` detects "not authenticated."
+- **`/login` and `/logout` slash commands**: The docs confirm `/login` exists as a TUI slash command. Does `/logout` also exist? Are there other auth-related slash commands?
 - **Username retrieval**: How to get the authenticated GitHub username for `lopen auth status` display. The SDK may expose this through session metadata or require a separate API call.
-- **Credential storage location**: The docs say "system keychain" — confirm this works across Linux, macOS, and Windows for the Lopen Dockerfile environment.
+- **Credential storage location**: The docs say "system keychain" — confirm this works across Linux, macOS, and Windows for the Lopen Dockerfile environment. On Linux, this likely requires `gnome-keyring`, `kwallet`, or a similar service.
 - **CLI process lifetime**: Does each `CopilotClient` instance spawn a new CLI process? If so, what's the cost of creating a client just for auth status checks?
 - **`COPILOT_GITHUB_TOKEN` support**: Should Lopen support this in addition to `GH_TOKEN` / `GITHUB_TOKEN` for alignment with the SDK's full priority chain?
+- **Copilot CLI npm package**: The CLI is installed via `npm install -g @github/copilot` (or Homebrew/WinGet). What is the relationship between the CLI version and the SDK version? Must they be kept in sync?
+
+### Resolved Questions
+
+- **~~Exact CLI auth commands~~**: There is no `copilot auth login` subcommand. Auth uses the `/login` slash command within the interactive TUI. (Source: [Copilot CLI install docs](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli#authenticating-with-copilot-cli))
+- **~~PAT auth method~~**: Confirmed: set `GH_TOKEN` or `GITHUB_TOKEN` with a fine-grained PAT that has "Copilot Requests" permission. (Source: same docs)

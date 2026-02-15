@@ -23,4 +23,5 @@ Thumbs.db
 
 # Lopen
 .lopen/
+!.lopen/jobs-to-be-done.json
 lopen.loop.done

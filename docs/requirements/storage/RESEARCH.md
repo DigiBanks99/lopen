@@ -95,6 +95,7 @@ The spec requires compact JSON by default with on-demand prettification. System.
 [JsonSerializable(typeof(SessionState))]
 [JsonSerializable(typeof(SessionMetrics))]
 [JsonSerializable(typeof(ProjectConfig))]
+[JsonSerializable(typeof(AssessmentCacheEntry))]
 public partial class CompactJsonContext : JsonSerializerContext { }
 
 [JsonSourceGenerationOptions(
@@ -225,7 +226,7 @@ Lopen extracts sections from specification documents for context management. Thi
 
 ### Markdig Library
 
-**Package:** `Markdig` by xoofx
+**Package:** `Markdig` by xoofx (latest stable: 0.45.0)
 **Compatibility:** .NET Standard 2.0+, fully compatible with .NET 10.0
 **Performance:** One of the fastest managed Markdown parsers; CommonMark compliant with 20+ extensions.
 
@@ -474,7 +475,7 @@ The three-tier error strategy matches the spec exactly: corrupted state → warn
 | Package              | Purpose                             | Notes                                       |
 | -------------------- | ----------------------------------- | ------------------------------------------- |
 | `System.Text.Json`   | JSON serialization/deserialization  | Built into .NET 10.0 SDK; no extra package  |
-| `Markdig`            | Markdown parsing and AST extraction | Latest stable: 0.38.x. CommonMark compliant |
+| `Markdig`            | Markdown parsing and AST extraction | Latest stable: 0.45.0. CommonMark compliant  |
 
 ### Packages NOT Needed
 
@@ -491,7 +492,200 @@ Minimal dependencies keep the CLI lightweight and AOT-friendly. System.Text.Json
 
 ---
 
-## 8. Implementation Approach
+## 8. Plan Management (Markdown Checkboxes)
+
+The spec requires plans stored at `.lopen/modules/{module}/plan.md` with checkbox task hierarchies, updated programmatically by Lopen (not by the LLM).
+
+### Writing Plans
+
+Plans use standard GitHub-flavored markdown checkboxes:
+
+```markdown
+## Components
+
+- [ ] AuthController
+  - [ ] Implement login endpoint
+  - [x] Add JWT validation
+  - [ ] Write integration tests
+- [ ] UserService
+  - [ ] Create user repository
+```
+
+### Programmatic Checkbox Updates
+
+Markdig can parse task lists via the `UseTaskLists()` extension, but for **updating** checkboxes the most reliable approach is line-based text manipulation — Markdig's AST is primarily designed for reading, not round-trip editing:
+
+```csharp
+public string UpdateTaskStatus(string planContent, string taskText, bool completed)
+{
+    var lines = planContent.Split('\n');
+    for (int i = 0; i < lines.Length; i++)
+    {
+        var trimmed = lines[i].TrimStart();
+        if (trimmed.StartsWith("- [ ] ") || trimmed.StartsWith("- [x] "))
+        {
+            var text = trimmed[6..].Trim();
+            if (text.Equals(taskText, StringComparison.OrdinalIgnoreCase))
+            {
+                var prefix = lines[i][..lines[i].IndexOf("- [")];
+                lines[i] = $"{prefix}- [{(completed ? 'x' : ' ')}] {text}";
+                break;
+            }
+        }
+    }
+    return string.Join('\n', lines);
+}
+```
+
+### Reading Task Status
+
+For **reading** task status, Markdig's `TaskList` extension provides structured access:
+
+```csharp
+var pipeline = new MarkdownPipelineBuilder()
+    .UseTaskLists()
+    .Build();
+
+var document = Markdown.Parse(planContent, pipeline);
+foreach (var listItem in document.Descendants<ListItemBlock>())
+{
+    if (listItem.Count > 0 && listItem[0] is ParagraphBlock para)
+    {
+        var inline = para.Inline?.FirstChild;
+        if (inline is Markdig.Extensions.TaskLists.TaskList taskList)
+        {
+            bool isChecked = taskList.Checked;
+            var taskText = inline.NextSibling?.ToString()?.Trim();
+            // Process task status...
+        }
+    }
+}
+```
+
+### Relevance to Lopen
+
+Plan files are the human-inspectable view of task progress. Using line-based editing for updates avoids AST round-trip issues, while Markdig's TaskList extension provides structured reading. Plans are written atomically (same write-then-rename pattern as state files).
+
+---
+
+## 9. Assessment Cache
+
+The spec defines assessment cache as short-lived, invalidated on any file change in the assessed scope. This differs from the section cache (which tracks individual file timestamps).
+
+### Scope-Based Invalidation
+
+Assessment cache entries track a set of files (the assessed scope) and a snapshot of their modification times:
+
+```csharp
+public record AssessmentCacheEntry(
+    string AssessmentResult,
+    DateTime CachedAtUtc,
+    Dictionary<string, DateTime> FileTimestamps // filePath -> lastWriteTimeUtc
+);
+
+public class AssessmentCache
+{
+    private readonly string _cacheDir;
+
+    public string? Get(string scopeKey, IEnumerable<string> filePaths)
+    {
+        var cachePath = GetCachePath(scopeKey);
+        if (!File.Exists(cachePath)) return null;
+
+        try
+        {
+            var json = File.ReadAllText(cachePath);
+            var entry = JsonSerializer.Deserialize(json, CompactJsonContext.Default.AssessmentCacheEntry);
+            if (entry is null) return null;
+
+            // Invalidate if ANY file in scope has changed
+            foreach (var (path, cachedTime) in entry.FileTimestamps)
+            {
+                if (!File.Exists(path)) return null;
+                if (File.GetLastWriteTimeUtc(path) != cachedTime) return null;
+            }
+
+            return entry.AssessmentResult;
+        }
+        catch
+        {
+            try { File.Delete(cachePath); } catch { }
+            return null;
+        }
+    }
+
+    public void Set(string scopeKey, string result, IEnumerable<string> filePaths)
+    {
+        var timestamps = filePaths.ToDictionary(
+            f => f,
+            f => File.GetLastWriteTimeUtc(f)
+        );
+        var entry = new AssessmentCacheEntry(result, DateTime.UtcNow, timestamps);
+        var json = JsonSerializer.Serialize(entry, CompactJsonContext.Default.AssessmentCacheEntry);
+        WriteAtomicAsync(GetCachePath(scopeKey), json).GetAwaiter().GetResult();
+    }
+
+    private string GetCachePath(string scopeKey)
+    {
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(scopeKey)))[..16];
+        return Path.Combine(_cacheDir, "assessments", $"{hash}.json");
+    }
+}
+```
+
+### Relevance to Lopen
+
+The scope-based invalidation ensures correctness: if any file in the assessed directory changes, the assessment is re-run. This is more aggressive than section cache invalidation (which is per-file) because assessment results depend on the relationship between files, not individual files.
+
+---
+
+## 10. Session Pruning
+
+The spec requires completed sessions to be retained up to a configurable `session_retention` limit, with oldest pruned first.
+
+### Implementation Pattern
+
+```csharp
+public void PruneCompletedSessions(string sessionsDir, int retentionLimit)
+{
+    if (retentionLimit <= 0) return; // 0 = unlimited retention
+
+    var sessionDirs = Directory.GetDirectories(sessionsDir)
+        .Where(d => !Path.GetFileName(d).Equals("latest", StringComparison.OrdinalIgnoreCase))
+        .Select(d => new { Path = d, State = TryLoadSessionState(Path.Combine(d, "state.json")) })
+        .Where(s => s.State?.Status == "complete")
+        .OrderBy(s => s.State!.CompletedAtUtc)
+        .ToList();
+
+    // Keep the most recent `retentionLimit` completed sessions
+    var toRemove = sessionDirs.Count - retentionLimit;
+    if (toRemove <= 0) return;
+
+    foreach (var session in sessionDirs.Take(toRemove))
+    {
+        try
+        {
+            Directory.Delete(session.Path, recursive: true);
+        }
+        catch (IOException ex)
+        {
+            Log.Warning("Failed to prune session {Path}: {Error}", session.Path, ex.Message);
+        }
+    }
+}
+```
+
+### When to Prune
+
+Pruning runs on workflow startup (after resume detection), not during active workflows. This keeps the hot path simple and avoids deleting sessions that might be referenced.
+
+### Relevance to Lopen
+
+This directly satisfies the spec's acceptance criterion: "Completed sessions are retained up to the configured `session_retention` limit, then pruned." The oldest-first ordering ensures the most recent sessions are always available for reference.
+
+---
+
+## 11. Implementation Approach
 
 ### Directory Structure Creation
 
@@ -511,6 +705,9 @@ public class StorageInitializer
             Path.Combine(lopenDir, "cache", "assessments"),
             Path.Combine(lopenDir, "corrupted"),
         };
+
+        // Note: Per-session history/ directories are created when a session starts
+        // (if save_iteration_history is enabled), not during global init.
 
         foreach (var dir in dirs)
             Directory.CreateDirectory(dir);
@@ -602,8 +799,11 @@ public class SectionCacheService
 | Markdown parser                 | Markdig                 | Fast, CommonMark-compliant, good AST API                  |
 | In-memory cache structure       | `ConcurrentDictionary`  | Thread-safe, simple, no external dependency               |
 | Cache invalidation              | File modification time  | Low overhead, no content hashing needed                   |
+| Assessment cache invalidation   | Scope-based timestamps  | Any change in assessed scope invalidates the cache        |
+| Plan checkbox updates           | Line-based text editing | More reliable than AST round-trip for targeted edits      |
+| Session pruning                 | Startup-time, oldest-first | Avoids interference with active workflows              |
 | Error handling for corruption   | Move to `corrupted/`    | Preserves evidence for debugging without blocking startup |
 
 ### Relevance to Lopen
 
-This approach satisfies all acceptance criteria in the spec: atomic writes for crash-safety, symlink-based resume detection, dual-layer caching, three-tier error handling, and minimal dependencies. The implementation is AOT-compatible throughout, keeping the CLI startup fast.
+This approach satisfies all acceptance criteria in the spec: atomic writes for crash-safety, symlink-based resume detection, dual-layer caching (section + assessment), three-tier error handling, plan checkbox management, session pruning, and minimal dependencies. The implementation is AOT-compatible throughout, keeping the CLI startup fast.

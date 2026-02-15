@@ -119,19 +119,36 @@ public class LopenOptions
     public BudgetOptions Budget { get; set; } = new();
     public OracleOptions Oracle { get; set; } = new();
     public GitOptions Git { get; set; } = new();
+
+    [ConfigurationKeyName("tool_discipline")]
     public ToolDisciplineOptions ToolDiscipline { get; set; } = new();
     public bool Unattended { get; set; } = false;
+
+    [ConfigurationKeyName("max_iterations")]
     public int MaxIterations { get; set; } = 100;
+
+    [ConfigurationKeyName("failure_threshold")]
     public int FailureThreshold { get; set; } = 3;
+
+    [ConfigurationKeyName("auto_resume")]
     public bool AutoResume { get; set; } = true;
+
+    [ConfigurationKeyName("session_retention")]
     public int SessionRetention { get; set; } = 10;
+
+    [ConfigurationKeyName("save_iteration_history")]
     public bool SaveIterationHistory { get; set; } = false;
+
+    [ConfigurationKeyName("show_token_usage")]
     public bool ShowTokenUsage { get; set; } = true;
+
+    [ConfigurationKeyName("show_premium_count")]
     public bool ShowPremiumCount { get; set; } = true;
 }
 
 public class ModelOptions
 {
+    [ConfigurationKeyName("requirement_gathering")]
     public string RequirementGathering { get; set; } = "claude-opus-4.6";
     public string Planning { get; set; } = "claude-opus-4.6";
     public string Building { get; set; } = "claude-opus-4.6";
@@ -140,9 +157,16 @@ public class ModelOptions
 
 public class BudgetOptions
 {
+    [ConfigurationKeyName("token_budget_per_module")]
     public int TokenBudgetPerModule { get; set; } = 0;
+
+    [ConfigurationKeyName("premium_request_budget")]
     public int PremiumRequestBudget { get; set; } = 0;
+
+    [ConfigurationKeyName("warning_threshold")]
     public double WarningThreshold { get; set; } = 0.8;
+
+    [ConfigurationKeyName("confirmation_threshold")]
     public double ConfirmationThreshold { get; set; } = 0.9;
 }
 
@@ -154,13 +178,18 @@ public class OracleOptions
 public class GitOptions
 {
     public bool Enabled { get; set; } = true;
+
+    [ConfigurationKeyName("auto_commit")]
     public bool AutoCommit { get; set; } = true;
     public string Convention { get; set; } = "conventional";
 }
 
 public class ToolDisciplineOptions
 {
+    [ConfigurationKeyName("max_file_reads")]
     public int MaxFileReads { get; set; } = 3;
+
+    [ConfigurationKeyName("max_command_retries")]
     public int MaxCommandRetries { get; set; } = 3;
 }
 ```
@@ -180,9 +209,28 @@ config.Bind(options);
 
 ### JSON Property Name Mapping
 
-The configuration binder uses **case-insensitive matching** and maps snake_case JSON keys to PascalCase C# properties when they match after removing underscores. For `token_budget_per_module` → `TokenBudgetPerModule`, the built-in binder handles this via its case-insensitive key comparison when the names differ only by casing and underscores.
+The configuration binder uses **case-insensitive matching** but does **not** strip underscores. This means snake_case JSON keys like `token_budget_per_module` will **not** automatically bind to PascalCase C# properties like `TokenBudgetPerModule` — the `OrdinalIgnoreCase` comparison fails because `_` ≠ `B`.
 
-> **Note:** If snake_case mapping doesn't work reliably, a `ConfigurationKeyNameAttribute` or a thin JSON-to-configuration key normalization layer may be needed. Test this during implementation.
+**Solution:** Use `[ConfigurationKeyName]` to explicitly map snake_case JSON keys to PascalCase properties:
+
+```csharp
+public class BudgetOptions
+{
+    [ConfigurationKeyName("token_budget_per_module")]
+    public int TokenBudgetPerModule { get; set; } = 0;
+
+    [ConfigurationKeyName("premium_request_budget")]
+    public int PremiumRequestBudget { get; set; } = 0;
+
+    [ConfigurationKeyName("warning_threshold")]
+    public double WarningThreshold { get; set; } = 0.8;
+
+    [ConfigurationKeyName("confirmation_threshold")]
+    public double ConfirmationThreshold { get; set; } = 0.9;
+}
+```
+
+Apply `[ConfigurationKeyName("snake_case_name")]` to every property whose JSON key uses snake_case. Properties that are single words (e.g., `Model`, `Enabled`) don't need the attribute since case-insensitive matching handles those. The attribute is in the `Microsoft.Extensions.Configuration` namespace and requires no extra packages.
 
 ### Source Generator Alternative
 
@@ -278,6 +326,8 @@ public static class ConfigurationBuilderExtensions
 var modelOption = new Option<string>("--model", "Override all model assignments");
 var unattendedOption = new Option<bool>("--unattended", "Suppress intervention prompts");
 var maxIterationsOption = new Option<int>("--max-iterations", "Maximum loop iterations");
+var resumeOption = new Option<string?>("--resume", "Resume a specific session by ID");
+var noResumeOption = new Option<bool>("--no-resume", "Disable auto-resume for this invocation");
 
 // Map CLI flags to configuration keys
 var optionMap = new Dictionary<string, Option>
@@ -290,7 +340,10 @@ var optionMap = new Dictionary<string, Option>
     ["max_iterations"] = maxIterationsOption,
 };
 
-var rootCommand = new RootCommand("lopen") { modelOption, unattendedOption, maxIterationsOption };
+var rootCommand = new RootCommand("lopen")
+{
+    modelOption, unattendedOption, maxIterationsOption, resumeOption, noResumeOption
+};
 rootCommand.SetHandler(async (InvocationContext ctx) =>
 {
     var config = new ConfigurationBuilder()
@@ -309,6 +362,52 @@ rootCommand.SetHandler(async (InvocationContext ctx) =>
 ### Critical: `IsImplicit` Check
 
 The `result.IsImplicit` check is essential. Without it, System.CommandLine's default values for options would override values from config files. Only **explicitly provided** CLI flags should participate as overrides.
+
+### Handling `--resume` and `--no-resume`
+
+The `--resume <id>` and `--no-resume` flags from the specification require special handling outside the configuration provider because they carry **behavioral semantics** beyond a simple key override:
+
+- `--resume <id>` — sets `auto_resume` to `true` **and** specifies a target session ID. The session ID is not a configuration setting; it's a command argument consumed by the session-resume workflow.
+- `--no-resume` — sets `auto_resume` to `false` for this invocation.
+
+These two flags are **mutually exclusive**. Handle them in the command handler after configuration is built:
+
+```csharp
+rootCommand.SetHandler(async (InvocationContext ctx) =>
+{
+    var config = BuildConfiguration(ctx.ParseResult);
+    var options = new LopenOptions();
+    config.Bind(options);
+
+    // Override auto_resume based on --resume / --no-resume
+    var resumeResult = ctx.ParseResult.FindResultFor(resumeOption);
+    var noResumeResult = ctx.ParseResult.FindResultFor(noResumeOption);
+
+    string? resumeSessionId = null;
+    if (resumeResult is not null && !resumeResult.IsImplicit)
+    {
+        options.AutoResume = true;
+        resumeSessionId = ctx.ParseResult.GetValueForOption(resumeOption);
+    }
+    else if (noResumeResult is not null && !noResumeResult.IsImplicit)
+    {
+        options.AutoResume = false;
+    }
+});
+```
+
+Use `AddValidator` on the root command to enforce mutual exclusivity:
+
+```csharp
+rootCommand.AddValidator(result =>
+{
+    if (result.FindResultFor(resumeOption) is not null
+        && result.FindResultFor(noResumeOption) is not null)
+    {
+        result.ErrorMessage = "Cannot use --resume and --no-resume together.";
+    }
+});
+```
 
 ---
 
@@ -593,7 +692,7 @@ if (jsonOutput)
 
 4. **`--model` maps to multiple keys** — a single `--model` flag sets all four phase model keys. The option map handles this by mapping one `Option` to multiple configuration keys.
 
-5. **Snake_case JSON to PascalCase C#** — the binder is case-insensitive, but snake_case underscores need verification. If needed, `JsonNamingPolicy.SnakeCaseLower` handles serialization; for binding, a thin normalization layer or `ConfigurationKeyNameAttribute` may be required.
+5. **Snake_case JSON requires `[ConfigurationKeyName]`** — the binder's case-insensitive comparison does **not** strip underscores. Properties with snake_case JSON keys (e.g., `token_budget_per_module`) must use `[ConfigurationKeyName("token_budget_per_module")]` to bind correctly. Single-word properties (e.g., `Model`, `Enabled`) work without it.
 
 6. **Fail-fast validation** — CLI tools must validate at startup. Use `LopenOptionsValidator` with aggregated error messages so users see all problems at once.
 
