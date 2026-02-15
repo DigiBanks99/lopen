@@ -21,7 +21,6 @@ if [ "$1" == "plan" ]; then
         --allow-all \
         --model claude-opus-4.6 \
         --stream on \
-        --no-auto-update\
         --log-level all
 
     cd -
@@ -44,7 +43,6 @@ while [ ! -f lopen.loop.done ]; do
         --allow-all \
         --model claude-opus-4.6 \
         --stream on \
-        --no-auto-update\
         --log-level all
 
     # if iteration is not yet initialized, initialize it

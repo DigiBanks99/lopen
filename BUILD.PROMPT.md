@@ -1,9 +1,9 @@
 1. Ensure you are not on the `main` branch.
-2. Study the @docs/requirements/jobs-to-be-done.json file.
+2. Study the @.lopen/jobs-to-be-done.json file.
 3. Identify the highest priority task that is not yet marked as complete.
 4. Study the relevant SPECIFICATION.md file in the corresponding @docs/requirements/<module>/ folder to fully understand the requirement.
 5. Verify that the feature is not already completed
-6. Update the @docs/requirements/jobs-to-be-done.json document to reflect any changes in priorities or new tasks that have emerged.
+6. Update the @.lopen/jobs-to-be-done.json document to reflect any changes in priorities or new tasks that have emerged.
 7. Use a subagent to study existing RESEARCH.md files in the relevant requirement sub-folder to gather information on how to implement the task.
 8. Use subagents to research how the feature integrates with existing modules and features
 9. Use a subagent to output a concise plan in @docs/requirements/IMPLEMENTATION_PLAN.md for the job to be done.
