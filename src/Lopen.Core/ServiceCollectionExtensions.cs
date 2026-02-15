@@ -29,11 +29,13 @@ public static class ServiceCollectionExtensions
                     sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
                     sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ModuleScanner>>(),
                     projectRoot));
+            services.AddSingleton<IModuleLister, ModuleLister>();
         }
 
         services.AddSingleton<ISpecificationParser, MarkdigSpecificationParser>();
         services.AddSingleton<IContentHasher, XxHashContentHasher>();
         services.AddSingleton<IDriftDetector, DriftDetector>();
+        services.AddSingleton<ISectionExtractor, SectionExtractor>();
         services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
 
         return services;

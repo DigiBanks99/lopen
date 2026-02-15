@@ -387,9 +387,9 @@
     "id": "JOB-049",
     "requirement_module": "llm",
     "description": "Implement section-level document extraction for context window (not full documents)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Context window contains only section-level document extractions"
+    "notes": "SectionExtractor extracts relevant sections by header match or all sections. Token estimates via 4 chars/token heuristic. Tests: 17 tests in SectionExtractorTests."
   },
   {
     "id": "JOB-050",
@@ -467,9 +467,9 @@
     "id": "JOB-059",
     "requirement_module": "core",
     "description": "Implement 7-step workflow engine: Draft Spec \u2192 Dependencies \u2192 Components \u2192 Select \u2192 Tasks \u2192 Iterate \u2192 Repeat",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: The 7-step workflow executes in order"
+    "notes": "WorkflowEngine uses Stateless state machine. Full 7-step path: DraftSpec\u2192Dependencies\u2192Components\u2192Select\u2192Tasks\u2192Iterate\u2192Repeat. Supports reentry for task iteration, loops back via Assess, marks IsComplete on ModuleComplete. Tests: 20 tests in WorkflowEngineTests."
   },
   {
     "id": "JOB-060",
@@ -587,9 +587,9 @@
     "id": "JOB-074",
     "requirement_module": "core",
     "description": "Implement module selection listing modules with current state for user choice",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Module selection lists modules with current state and allows user to choose"
+    "notes": "ModuleLister combines ModuleScanner with checkbox counting to determine NotStarted/InProgress/Complete/Unknown status per module. Sorted alphabetically. Tests: 12 tests in ModuleListerTests."
   },
   {
     "id": "JOB-075",
