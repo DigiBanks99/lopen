@@ -91,4 +91,37 @@ public class ServiceCollectionExtensionsTests
 
         Assert.Same(first, second);
     }
+
+    [Fact]
+    public void AddLopenLlm_RegistersIToolRegistry()
+    {
+        using var provider = BuildProvider();
+
+        var registry = provider.GetService<IToolRegistry>();
+
+        Assert.NotNull(registry);
+        Assert.IsType<DefaultToolRegistry>(registry);
+    }
+
+    [Fact]
+    public void AddLopenLlm_RegistersIPromptBuilder()
+    {
+        using var provider = BuildProvider();
+
+        var builder = provider.GetService<IPromptBuilder>();
+
+        Assert.NotNull(builder);
+        Assert.IsType<DefaultPromptBuilder>(builder);
+    }
+
+    [Fact]
+    public void AddLopenLlm_RegistersIVerificationTracker()
+    {
+        using var provider = BuildProvider();
+
+        var tracker = provider.GetService<IVerificationTracker>();
+
+        Assert.NotNull(tracker);
+        Assert.IsType<VerificationTracker>(tracker);
+    }
 }

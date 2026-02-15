@@ -15,6 +15,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ILlmService, StubLlmService>();
         services.AddSingleton<IModelSelector, DefaultModelSelector>();
         services.AddSingleton<ITokenTracker, InMemoryTokenTracker>();
+        services.AddSingleton<IToolRegistry, DefaultToolRegistry>();
+        services.AddSingleton<IPromptBuilder, DefaultPromptBuilder>();
+        services.AddSingleton<IVerificationTracker, VerificationTracker>();
 
         return services;
     }

@@ -379,9 +379,9 @@
     "id": "JOB-048",
     "requirement_module": "llm",
     "description": "Implement system prompt assembly with role, workflow state, step instructions, context, tools, constraints",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: System prompt includes all required components"
+    "notes": "DefaultPromptBuilder assembles 6 labeled sections: Role, Workflow State, Instructions (phase-specific), Context (from contextSections dict), Available Tools (from IToolRegistry), Constraints. Tests: 13 tests covering all sections, ordering, phase instructions, null handling."
   },
   {
     "id": "JOB-049",
@@ -395,9 +395,9 @@
     "id": "JOB-050",
     "requirement_module": "llm",
     "description": "Implement Lopen-managed tools: read_spec, read_research, read_plan, update_task_status, get_current_context, log_research, report_progress",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: All 7 Lopen-managed tools are registered and functional"
+    "notes": "DefaultToolRegistry pre-registers 10 Lopen-managed tools (7 orchestration + 3 verification) with descriptions and phase availability. RegisterTool adds custom tools, GetAllTools returns all, GetToolsForPhase filters by phase. Tests: 18 tests covering all tools, phase filtering, custom registration, duplicates."
   },
   {
     "id": "JOB-051",
@@ -411,17 +411,17 @@
     "id": "JOB-052",
     "requirement_module": "llm",
     "description": "Implement update_task_status(complete) rejection unless preceded by passing verify_*_completion",
-    "status": "not_started",
+    "status": "in_progress",
     "priority": 3,
-    "notes": "AC: Completion rejected without prior passing verification call"
+    "notes": "VerificationTracker records oracle results with scope+identifier isolation and ResetForInvocation. IVerificationTracker interface + implementation + 14 tests complete. REMAINING: enforcement integration in update_task_status tool handler (depends on SDK tool handler implementation)."
   },
   {
     "id": "JOB-053",
     "requirement_module": "llm",
     "description": "Implement per-step tool registration varying by workflow step (e.g., log_research only during research)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Tool registration varies by workflow step"
+    "notes": "Phase filtering in DefaultToolRegistry: log_research only in Research+RequirementGathering, verify_* only in Building, update_task_status only in Building, read_plan only in Planning+Building, read_spec/read_research/get_current_context/report_progress in all phases. Tests verify each phase constraint."
   },
   {
     "id": "JOB-054",
