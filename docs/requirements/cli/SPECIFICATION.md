@@ -83,7 +83,6 @@ Authentication management for the GitHub Copilot SDK (see [Auth Specification](.
 ```sh
 lopen auth login          # Authenticate with GitHub
 lopen auth status         # Check current authentication state
-lopen auth renew          # Renew authentication tokens
 lopen auth logout         # Clear stored credentials
 ```
 
