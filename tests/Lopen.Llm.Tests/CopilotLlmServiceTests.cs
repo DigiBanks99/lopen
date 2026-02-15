@@ -85,6 +85,42 @@ public class CopilotLlmServiceTests
     }
 
     [Fact]
+    public async Task InvokeAsync_EachCallRequestsClient_FreshContext()
+    {
+        // Verifies that each InvokeAsync call goes through GetClientAsync,
+        // which leads to a new CreateSessionAsync (fresh context per invocation).
+        var countingProvider = new CountingClientProvider();
+        var service = CreateService(countingProvider);
+
+        // First invocation
+        await Assert.ThrowsAsync<LlmException>(() =>
+            service.InvokeAsync("prompt1", "claude-sonnet-4", []));
+        Assert.Equal(1, countingProvider.GetClientCallCount);
+
+        // Second invocation - should call GetClientAsync again (fresh session)
+        await Assert.ThrowsAsync<LlmException>(() =>
+            service.InvokeAsync("prompt2", "claude-sonnet-4", []));
+        Assert.Equal(2, countingProvider.GetClientCallCount);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_DifferentPromptsAndModels_EachCreatesNewSession()
+    {
+        // Each invocation with different parameters still creates fresh context
+        var countingProvider = new CountingClientProvider();
+        var service = CreateService(countingProvider);
+
+        await Assert.ThrowsAsync<LlmException>(() =>
+            service.InvokeAsync("requirement gathering prompt", "claude-opus-4.6", []));
+        await Assert.ThrowsAsync<LlmException>(() =>
+            service.InvokeAsync("planning prompt", "claude-sonnet-4", []));
+        await Assert.ThrowsAsync<LlmException>(() =>
+            service.InvokeAsync("building prompt", "claude-opus-4.6", []));
+
+        Assert.Equal(3, countingProvider.GetClientCallCount);
+    }
+
+    [Fact]
     public async Task InvokeAsync_ClientProviderThrowsLlmException_PropagatesDirectly()
     {
         var failingProvider = new LlmExceptionClientProvider();
@@ -147,6 +183,26 @@ public class CopilotLlmServiceTests
     {
         public Task<CopilotClient> GetClientAsync(CancellationToken cancellationToken = default)
             => throw new InvalidOperationException("Should not be called");
+
+        public Task<bool> IsAuthenticatedAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Counting client provider that tracks how many times GetClientAsync is called.
+    /// Throws LlmException (simulating auth check failure) to prevent actual SDK calls.
+    /// </summary>
+    private sealed class CountingClientProvider : ICopilotClientProvider
+    {
+        public int GetClientCallCount { get; private set; }
+
+        public Task<CopilotClient> GetClientAsync(CancellationToken cancellationToken = default)
+        {
+            GetClientCallCount++;
+            throw new LlmException("Simulated auth failure for counting", model: null);
+        }
 
         public Task<bool> IsAuthenticatedAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(false);

@@ -371,9 +371,9 @@
     "id": "JOB-047",
     "requirement_module": "llm",
     "description": "Implement fresh context window per workflow phase with no conversation history carried forward",
-    "status": "not_started",
+    "status": "done",
     "priority": 3,
-    "notes": "AC: Each workflow phase invokes the SDK with a fresh context window"
+    "notes": "CopilotLlmService creates a fresh CopilotSession per InvokeAsync call (fresh context per phase). No conversation history stored. 2 new fresh-context tests. AC verified."
   },
   {
     "id": "JOB-048",
