@@ -17,4 +17,7 @@ Depending on what you need to research, [Topics](#topics) has some advice on res
 
 ## Topics
 
+- `topics/aspire.md` - Research about Aspire, aka .NET Aspire.
+- `topics/aspnet.md` - Research about ASP.NET Core.
 - `topics/github-copilot.md` - Research about GitHub Copilot and its capabilities.
+- `topics/spectre-console.md` - Research about Spectre.Console and TUI and its capabilities.

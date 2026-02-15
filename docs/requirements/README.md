@@ -16,3 +16,4 @@ This document describes the known modules (requirements) for Lopen.
 | CLI           | `docs/requirements/cli`           | Command structure, global flags, headless mode, prompt injection | Draft |
 | Auth          | `docs/requirements/auth`          | GitHub Copilot authentication and credential management          | Draft |
 | TUI           | `docs/requirements/tui`           | Terminal UI layout, progressive disclosure, visual design        | Draft |
+| OTEL          | `docs/requirements/otel`          | OpenTelemetry observability, tracing, metrics, Aspire Dashboard  | Draft |
