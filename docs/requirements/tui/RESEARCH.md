@@ -1,1714 +1,940 @@
+---
+name: tui-research
+description: Research findings for implementing the Lopen TUI module
+---
+
 # TUI Implementation Research
 
-> Comprehensive research for implementing TUI enhancements using Spectre.Console
-
-**Research Date**: January 25, 2026  
-**Status**: ✅ Complete - Ready for Implementation  
-**Target Framework**: .NET 9.0  
-**Spectre.Console Version**: 0.49+
+> Research covering library selection, architecture patterns, and implementation strategies for the Lopen terminal UI.
 
 ---
 
-## Executive Summary
+## 1. Spectre.Console
 
-This document provides complete research and implementation guidance for the 8 incomplete TUI requirements from `SPECIFICATION.md`. All patterns have been researched with production-ready code examples, testing approaches, and best practices.
+**Current Version**: 0.54.0 (stable, released Nov 2025). Latest pre-release: 0.54.1-alpha.0.37. The library targets .NET Standard 2.0, net8.0, net9.0, and net10.0. Over 156 dependent GitHub repos including `dotnet/aspire` and `microsoft/semantic-kernel`.
 
-### Quick Navigation
+**Note**: As of 0.54.0, `Spectre.Console.Cli` has been moved to its own repository and will have independent versioning (targeting 1.0.0).
 
-- **Detailed Guide**: [`../../research/SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md`](../../research/SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md) - 3,800+ lines with complete implementations
-- **Quick Reference**: [`../../research/TUI_QUICK_REFERENCE.md`](../../research/TUI_QUICK_REFERENCE.md) - Daily coding companion
-- **Implementation Summary**: [`../../research/TUI_IMPLEMENTATION_SUMMARY.md`](../../research/TUI_IMPLEMENTATION_SUMMARY.md) - Executive overview
+### Key Capabilities
 
----
-
-## Requirements Coverage
-
-| ID | Requirement | Status | Research | Implementation Time |
-|----|-------------|--------|----------|---------------------|
-| REQ-015 | Progress Indicators & Spinners | 🟡 Partial | ✅ Complete | 2-3 days |
-| REQ-016 | Error Display & Correction | 🔴 Planned | ✅ Complete | 2-3 days |
-| REQ-017 | Structured Data Display | 🟡 Partial | ✅ Complete | 3-4 days |
-| REQ-018 | Layout & Right-Side Panels | 🔴 Planned | ✅ Complete | 3-4 days |
-| REQ-019 | AI Response Streaming | 🔴 Planned | ✅ Complete | 3-4 days |
-| REQ-020 | Responsive Terminal Detection | 🔴 Planned | ✅ Complete | 1-2 days |
-| REQ-021 | TUI Testing & Mocking | 🟡 Partial | ✅ Complete | 2-3 days |
-| REQ-022 | Welcome Header & Banner | 🔴 Planned | ✅ Complete | 1-2 days |
-
-**Total Estimated Implementation**: 17-25 days (2-3 weeks)
-
----
-
-## Key Questions Answered
-
-### 1. How to implement Spectre.Console spinners for async operations?
-
-**Answer**: Use `AnsiConsole.Status()` with async/await pattern.
+**Layout Widget** — Divides console space into named sections, split horizontally or vertically with precise sizing control:
 
 ```csharp
-// Pattern: Spinner for indeterminate operations
-await AnsiConsole.Status()
-    .Spinner(Spinner.Known.Dots)
-    .SpinnerStyle(Style.Parse("blue"))
-    .StartAsync("Connecting to Copilot...", async ctx =>
-    {
-        // Perform async work
-        var result = await copilotClient.ConnectAsync();
-        
-        // Update status during operation
-        ctx.Status("Processing response...");
-        await ProcessResponse(result);
-        
-        return result;
-    });
+var layout = new Layout("Root")
+    .SplitRows(
+        new Layout("Header").Size(3),
+        new Layout("Body"),
+        new Layout("Footer").Size(3));
+
+layout["Body"].SplitColumns(
+    new Layout("Activity").Ratio(3),
+    new Layout("Context").Ratio(2));
+
+layout["Activity"].Update(new Panel("Agent output...").Expand());
+layout["Context"].Update(new Panel("Task tree...").Expand());
+
+AnsiConsole.Write(layout);
 ```
 
-**Best Practices**:
-- Use `Dots` spinner for most operations (calm, professional)
-- Use `Arc` for heavy processing
-- Always update status text for multi-step operations
-- For REPL mode, consider non-blocking alternatives with `Live` displays
+- `Ratio(n)` for proportional sizing, `Size(n)` for fixed, `MinimumSize(n)` for floor
+- `IsVisible` property for dynamic show/hide
+- Named sections accessed via indexer: `layout["SectionName"]`
+- Nested splits for complex layouts (header + body with columns + footer)
 
-**Testing**:
-```csharp
-// Mock approach for testing
-public interface IProgressRenderer
-{
-    Task<T> ShowProgressAsync<T>(string status, Func<Task<T>> operation);
-}
+**Panel Widget** — Wraps content in bordered containers with headers. Supports rounded/square/heavy/double borders, `Expand()` to fill width, fixed `Width`/`Height`, `Padding`, and `BorderColor`. Panels nest arbitrarily and accept any `IRenderable`.
 
-// Test with mock
-var mock = new MockProgressRenderer();
-await handler.ExecuteAsync(mock);
-Assert.Contains("Connecting", mock.StatusUpdates);
-```
+**Table Widget** — Structured data in rows and columns. Features: 18 border styles, column alignment, `ShowRowSeparators()`, headers/footers, `Expand()`, nested tables, mixed `IRenderable` content in cells, and dynamic updates via `UpdateCell()`/`InsertRow()`.
 
-**Full Implementation**: See [REQ-015 in Implementation Guide](../../research/SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md#req-015-progress-indicators--spinners)
+**Tree Widget** — Hierarchical data with Unicode tree guides (Line, Ascii, DoubleLine, BoldLine). Nodes can be collapsed/expanded individually or globally. Supports `AddNode()` chaining, `AddNodes()` bulk, markup in labels, and embedding any `IRenderable` as node content.
 
----
+**Prompt Widgets** — `TextPrompt<T>` for typed user input with validation, default values, secret masking, and choice restriction. `SelectionPrompt<T>` for arrow-key list selection. `MultiSelectionPrompt<T>` for checkboxes. All prompts are **not thread safe** and cannot be used alongside Live displays.
 
-### 2. How to create an IErrorRenderer interface?
-
-**Answer**: Design interface-based abstraction with different error display patterns.
+**Live Rendering** — `AnsiConsole.Live()` updates content in-place without scrolling:
 
 ```csharp
-// Core interface
-public interface IErrorRenderer
-{
-    void RenderError(ErrorInfo error);
-    void RenderCommandNotFound(string command, string[] suggestions);
-    void RenderValidationError(string input, ValidationError error);
-    void RenderSdkError(string operation, Exception exception);
-}
-
-// Error info model
-public record ErrorInfo
-{
-    public required string Title { get; init; }
-    public required string Message { get; init; }
-    public string? DidYouMean { get; init; }
-    public List<string> Suggestions { get; init; } = new();
-    public string? TryCommand { get; init; }
-    public ErrorSeverity Severity { get; init; } = ErrorSeverity.Error;
-}
-
-// Implementation using Spectre.Console
-public class SpectreErrorRenderer : IErrorRenderer
-{
-    private readonly IAnsiConsole _console;
-    
-    public void RenderError(ErrorInfo error)
-    {
-        var panel = new Panel(BuildErrorContent(error))
-        {
-            Header = new PanelHeader($"[red]{GetSymbol(error.Severity)} {error.Title}[/]"),
-            Border = BoxBorder.Rounded,
-            BorderStyle = new Style(Color.Red)
-        };
-        
-        _console.Write(panel);
-    }
-    
-    private string BuildErrorContent(ErrorInfo error)
-    {
-        var content = new StringBuilder();
-        content.AppendLine(error.Message);
-        
-        if (!string.IsNullOrEmpty(error.DidYouMean))
-        {
-            content.AppendLine();
-            content.AppendLine($"[yellow]Did you mean:[/] [cyan]{error.DidYouMean}[/]");
-        }
-        
-        if (error.Suggestions.Any())
-        {
-            content.AppendLine();
-            content.AppendLine("[yellow]Suggestions:[/]");
-            foreach (var suggestion in error.Suggestions)
-                content.AppendLine($"  • {suggestion}");
-        }
-        
-        if (!string.IsNullOrEmpty(error.TryCommand))
-        {
-            content.AppendLine();
-            content.AppendLine($"[dim]💡 Try:[/] [blue]{error.TryCommand}[/]");
-        }
-        
-        return content.ToString();
-    }
-}
-```
-
-**Display Examples**:
-
-Simple error:
-```
-✗ Authentication failed
-  💡 Try: lopen auth login
-```
-
-Complex error with suggestions:
-```
-╭─ Error: Invalid command ─────────────────╮
-│ Command 'chatr' not found                │
-│                                           │
-│ Did you mean? chat                        │
-│                                           │
-│ Suggestions:                              │
-│   • chat                                  │
-│   • repl                                  │
-│   • status                                │
-│                                           │
-│ 💡 Try: lopen --help                     │
-╰───────────────────────────────────────────╯
-```
-
-**Testing**:
-```csharp
-[Fact]
-public void RenderError_WithSuggestions_ShowsPanel()
-{
-    var console = new TestConsole();
-    var renderer = new SpectreErrorRenderer(console);
-    
-    renderer.RenderError(new ErrorInfo
-    {
-        Title = "Command Not Found",
-        Message = "Unknown command 'statr'",
-        DidYouMean = "start",
-        Suggestions = new() { "start", "stop", "status" }
-    });
-    
-    Assert.Contains("Command Not Found", console.Output);
-    Assert.Contains("Did you mean", console.Output);
-    Assert.Contains("start", console.Output);
-}
-```
-
-**Full Implementation**: See [REQ-016 in Implementation Guide](../../research/SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md#req-016-error-display--correction-guidance)
-
----
-
-### 3. How to implement responsive layouts with Spectre.Console?
-
-**Answer**: Use `Layout` with `SplitColumns` and detect terminal width for adaptive rendering.
-
-```csharp
-public interface ILayoutRenderer
-{
-    void RenderSplitLayout(
-        IRenderable mainContent,
-        IRenderable? sidePanel = null,
-        int minWidthForSplit = 120);
-}
-
-public class SpectreLayoutRenderer : ILayoutRenderer
-{
-    private readonly IAnsiConsole _console;
-    private readonly ITerminalCapabilities _capabilities;
-    
-    public void RenderSplitLayout(
-        IRenderable mainContent,
-        IRenderable? sidePanel = null,
-        int minWidthForSplit = 120)
-    {
-        // Check if terminal is wide enough for split
-        if (_capabilities.Width < minWidthForSplit || sidePanel == null)
-        {
-            // Fallback: Full-width main content only
-            _console.Write(mainContent);
-            return;
-        }
-        
-        // Create split layout
-        var layout = new Layout("Root")
-            .SplitColumns(
-                new Layout("Main").Ratio(7),    // 70% width
-                new Layout("Panel").Ratio(3)    // 30% width
-            );
-        
-        layout["Main"].Update(mainContent);
-        layout["Panel"].Update(sidePanel);
-        
-        _console.Write(layout);
-    }
-}
-```
-
-**Responsive Breakpoints**:
-
-| Terminal Width | Layout Mode | Behavior |
-|----------------|-------------|----------|
-| < 60 chars | Minimal | Text only, no panels |
-| 60-79 chars | Narrow | Simple panels, vertical stack |
-| 80-119 chars | Standard | Full panels, single column |
-| 120+ chars | Wide | Split layout with side panels |
-
-**Usage Example**:
-
-```csharp
-// Main content
-var mainPanel = new Panel(
-    new Markup("[bold]Processing files...[/]")
-);
-
-// Side panel with task list
-var taskPanel = new Panel(
-    new Markup(
-        "[green]✓[/] Step 1: Connect\n" +
-        "[green]✓[/] Step 2: Authenticate\n" +
-        "[yellow]⏳[/] Step 3: Processing...\n" +
-        "[dim]○[/] Step 4: Finalize"
-    )
-)
-{
-    Header = new PanelHeader("Progress"),
-    Border = BoxBorder.Rounded
-};
-
-// Renders split layout on wide terminals, single column on narrow
-_layoutRenderer.RenderSplitLayout(mainPanel, taskPanel);
-```
-
-**Live Updating Layout**:
-
-```csharp
-var liveLayout = new Layout("Root")
-    .SplitColumns(
-        new Layout("Main"),
-        new Layout("Tasks")
-    );
-
-await _console.Live(liveLayout)
+await AnsiConsole.Live(layout)
+    .Overflow(VerticalOverflow.Crop)
+    .Cropping(VerticalOverflowCropping.Top)
     .StartAsync(async ctx =>
     {
-        foreach (var task in tasks)
-        {
-            // Update main content
-            liveLayout["Main"].Update(
-                new Panel($"Processing: {task.Name}")
-            );
-            
-            // Update task list
-            liveLayout["Tasks"].Update(
-                CreateTaskPanel(tasks)
-            );
-            
-            await task.ExecuteAsync();
-            ctx.Refresh();
-        }
+        // Update any section
+        layout["Activity"].Update(new Panel("New content"));
+        ctx.Refresh();
     });
 ```
 
-**Full Implementation**: See [REQ-018 in Implementation Guide](../../research/SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md#req-018-layout--right-side-panels)
+- `ctx.Refresh()` redraws the current renderable
+- `ctx.UpdateTarget()` replaces the entire renderable
+- Overflow modes: Ellipsis, Crop, Visible
+- Cropping direction: Top (keep newest) or Bottom (keep oldest)
+- `AutoClear(true)` removes display on completion
+- `StartAsync()` for async operations
+- **Not thread safe** — cannot combine with prompts or other interactive components
+
+### Relevance to Lopen
+
+Spectre.Console's `Layout` widget directly maps to the spec's split-screen design (Header, Activity/Context columns, Prompt). The `Tree` widget covers the task hierarchy display. `Live` rendering enables real-time updates to individual layout sections. The `Panel` widget provides the bordered regions seen throughout the spec mockups. The major limitation is that `Live` display and `Prompt` cannot coexist — this requires a custom input layer.
 
 ---
 
-### 4. How to buffer streaming tokens into paragraphs?
+## 2. Spectre.Tui
 
-**Answer**: Use `StringBuilder` with timeout-based flushing and paragraph detection.
+**Repository**: [github.com/spectreconsole/spectre.tui](https://github.com/spectreconsole/spectre.tui)
+**Author**: Patrik Svensson (same author as Spectre.Console)
+**Current Version**: 0.0.0-preview.0.46 (NuGet, pre-release)
+**Target**: .NET 10.0 exclusively
+**License**: MIT
+**Depends on**: `Spectre.Console.Ansi` 0.54.1-alpha.0.37 (low-level ANSI abstraction, not Spectre.Console itself)
 
+Spectre.Tui is a **low-level, cell-based TUI framework** inspired by [Ratatui](https://ratatui.rs/) (Rust). It provides the foundational rendering layer for building full-screen terminal applications with double-buffered, diff-based rendering.
+
+### Architecture
+
+**Immediate-mode rendering**: Unlike Spectre.Console's retained-mode `IRenderable` tree, Spectre.Tui uses an immediate-mode pattern where widgets draw directly into a cell buffer each frame.
+
+```
+┌──────────────────────────────────────────────────┐
+│                    Game Loop                      │
+│                                                   │
+│  Terminal → Renderer → Buffer (front/back)        │
+│                ↓                                  │
+│         RenderContext                             │
+│                ↓                                  │
+│    IWidget / IStatefulWidget<T>                   │
+│         draw into cells                           │
+│                ↓                                  │
+│         Buffer.Diff() → minimal ANSI writes       │
+└──────────────────────────────────────────────────┘
+```
+
+**Double-buffered renderer**: The `Renderer` maintains two `Buffer` instances (front/back). Each frame, widgets render into the current buffer, the renderer diffs against the previous buffer, and only changed cells are written to the terminal. Buffers swap after each frame.
+
+**Terminal abstraction**: Platform-specific `ITerminal` implementations (`WindowsTerminal`, `UnixTerminal`) handle raw terminal I/O. Created via `Terminal.Create()` which auto-detects the platform. Requires ANSI support.
+
+### Core Types
+
+**IWidget** — Stateless widget interface:
 ```csharp
-public interface IStreamRenderer
+public interface IWidget
 {
-    Task RenderStreamAsync(
-        IAsyncEnumerable<string> tokenStream,
-        CancellationToken cancellationToken = default);
+    void Render(RenderContext context);
 }
+```
 
-public class SpectreStreamRenderer : IStreamRenderer
+**IStatefulWidget\<TState\>** — Widget with external state (separation of concerns):
+```csharp
+public interface IStatefulWidget<in TState>
 {
-    private readonly IAnsiConsole _console;
-    private const int FlushTimeoutMs = 500;
-    private const int MaxTokensBeforeFlush = 100;
-    
-    public async Task RenderStreamAsync(
-        IAsyncEnumerable<string> tokenStream,
-        CancellationToken cancellationToken = default)
+    void Render(RenderContext context, TState state);
+}
+```
+
+**RenderContext** — Provides the drawing surface for a widget. Supports sub-area rendering via `context.Render(widget, area)` which creates a clipped child context. Key methods:
+- `SetString(x, y, text, style, maxWidth)` — Write styled text with grapheme-aware width handling
+- `SetLine(x, y, textLine, maxWidth)` — Write a `TextLine` (multiple styled spans)
+- `SetSymbol(x, y, char/Rune)` — Write a single character
+- `SetStyle(x, y, style)` / `SetStyle(area, style)` — Apply styling
+- `SetForeground(x, y, color)` / `SetBackground(x, y, color)` — Direct color control
+- `GetCell(x, y)` — Access individual buffer cells
+- `Render(widget, area)` — Render a child widget into a sub-area (with viewport clipping)
+
+**Cell** — Individual terminal cell with `Symbol` (string, Unicode-aware), `Style` (foreground, background, decoration). Supports `Bold`, `Italic`, `Underline`, `Strikethrough` decorations.
+
+**Renderer** — Manages the render loop with configurable FPS:
+```csharp
+using var terminal = Terminal.Create();
+var renderer = new Renderer(terminal);
+renderer.SetTargetFps(60);
+
+while (running)
+{
+    renderer.Draw((ctx, elapsed) =>
     {
-        var buffer = new StringBuilder();
-        var tokenCount = 0;
-        var lastFlush = DateTime.UtcNow;
-        
-        // Show initial indicator
-        _console.MarkupLine("[dim]⏳ Thinking...[/]");
-        
-        await foreach (var token in tokenStream.WithCancellation(cancellationToken))
-        {
-            buffer.Append(token);
-            tokenCount++;
-            
-            var shouldFlush = 
-                // Paragraph break detected
-                token.Contains("\n\n") ||
-                // Timeout reached
-                (DateTime.UtcNow - lastFlush).TotalMilliseconds > FlushTimeoutMs ||
-                // Too many tokens buffered
-                tokenCount >= MaxTokensBeforeFlush;
-            
-            if (shouldFlush && buffer.Length > 0)
-            {
-                await FlushBufferAsync(buffer);
-                buffer.Clear();
-                tokenCount = 0;
-                lastFlush = DateTime.UtcNow;
-            }
-        }
-        
-        // Final flush
-        if (buffer.Length > 0)
-        {
-            await FlushBufferAsync(buffer);
-        }
-    }
-    
-    private async Task FlushBufferAsync(StringBuilder buffer)
+        // Render widgets into the context
+        ctx.Render(new BoxWidget(Color.Red));
+        ctx.Render(contentWidget, innerArea);
+    });
+
+    // Handle input
+    if (Console.KeyAvailable)
     {
-        var content = buffer.ToString();
-        
-        // Detect and format code blocks
-        if (content.Contains("```"))
-        {
-            await RenderWithCodeBlocks(content);
-        }
-        else
-        {
-            // Render as formatted markdown
-            _console.Write(FormatMarkdown(content));
-        }
-    }
-    
-    private Markup FormatMarkdown(string content)
-    {
-        // Basic markdown formatting
-        var formatted = content
-            .Replace("**", "[bold]", 1)
-            .Replace("**", "[/]", 1)
-            .Replace("`", "[cyan]", 1)
-            .Replace("`", "[/]", 1);
-        
-        return new Markup(Markup.Escape(content));
-    }
-    
-    private async Task RenderWithCodeBlocks(string content)
-    {
-        // Split on code block markers
-        var parts = content.Split("```");
-        
-        for (int i = 0; i < parts.Length; i++)
-        {
-            if (i % 2 == 0)
-            {
-                // Regular text
-                _console.Write(FormatMarkdown(parts[i]));
-            }
-            else
-            {
-                // Code block
-                var lines = parts[i].Split('\n', 2);
-                var language = lines[0].Trim();
-                var code = lines.Length > 1 ? lines[1] : "";
-                
-                var panel = new Panel(Markup.Escape(code))
-                {
-                    Header = new PanelHeader(language),
-                    Border = BoxBorder.Rounded,
-                    BorderStyle = new Style(Color.Grey)
-                };
-                
-                _console.Write(panel);
-            }
-        }
+        var key = Console.ReadKey(true).Key;
+        // Process input...
     }
 }
 ```
 
-**Key Strategies**:
+**Terminal modes**:
+- `FullscreenMode` — Alternate screen buffer, hidden cursor (standard full-screen TUI)
+- `InlineMode(height)` — Renders in a fixed-height region within the scrollback (like a progress bar). Supports dynamic height changes via `SetHeight()`.
 
-1. **Buffering**: Accumulate tokens in StringBuilder
-2. **Flush Triggers**: 
-   - Paragraph break (`\n\n`)
-   - Timeout (500ms default)
-   - Token limit (100 tokens)
-3. **Code Block Handling**: Wait for complete block before rendering
-4. **Progress Indicator**: Show "Thinking..." until first chunk
+### Built-in Widgets
 
-**Testing**:
+| Widget | Description |
+|---|---|
+| `BoxWidget` | Bordered rectangle with configurable `Border` style (Rounded, Double, etc.) and color |
+| `ClearWidget` | Fills area with a character + style (background fill) |
+| `ListWidget<T>` | Scrollable, selectable list with highlight symbol, wrap-around, and keyboard navigation. Ported from Ratatui's list algorithm |
 
-```csharp
-[Fact]
-public async Task RenderStreamAsync_BuffersParagraphs()
-{
-    var console = new TestConsole();
-    var renderer = new SpectreStreamRenderer(console);
-    
-    async IAsyncEnumerable<string> GetTokens()
-    {
-        yield return "Hello";
-        await Task.Delay(10);
-        yield return " world";
-        await Task.Delay(10);
-        yield return "\n\n";  // Paragraph break triggers flush
-        yield return "Next paragraph";
-    }
-    
-    await renderer.RenderStreamAsync(GetTokens());
-    
-    // Should have flushed on paragraph break
-    Assert.Contains("Hello world", console.Output);
-}
-```
+### Text System
 
-**Full Implementation**: See [REQ-019 in Implementation Guide](../../research/SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md#req-019-ai-response-streaming)
+- `TextSpan` — Styled text segment (`Text` + `Style`)
+- `TextLine` — Collection of `TextSpan`s with optional line-level `Style`
+- `Text` — Multi-line text content, parsed from Spectre.Console markup syntax (e.g., `[red]Hello[/]`)
+- `StringBuffer` — Efficient string building for text construction
+
+### Primitives
+
+- `Rectangle` — Area with `X`, `Y`, `Width`, `Height` plus `Inflate()`, `Intersect()`, `Contains()`, `IsEmpty`
+- `Position` — `X`, `Y` coordinate
+- `Size` — `Width`, `Height`
+
+### Input Handling
+
+Spectre.Tui does **not** provide a built-in input/event system. Input is handled via raw `Console.ReadKey(intercept: true)` in the application's game loop (see Sandbox example). This is by design — the framework is a rendering layer, not a full application framework.
+
+### Testing
+
+The repo includes `Spectre.Tui.Testing` and `Spectre.Tui.Tests` projects using `Verify.Xunit` + `Spectre.Verify.Extensions` for snapshot testing. Tests verify rendered buffer output against approved snapshots.
+
+### Relevance to Lopen
+
+Spectre.Tui solves Spectre.Console's fundamental limitation: it provides a proper game-loop rendering architecture with double-buffered diff-based output, eliminating the `Live` + `Prompt` incompatibility. The immediate-mode, cell-level rendering gives full control over layout and composition. However, it is **early-stage** (preview, limited widgets, no layout/tree/table/progress equivalents yet) and requires building higher-level components from scratch.
 
 ---
 
-### 5. How to detect terminal capabilities?
+## 3. Spectre.Tui vs Spectre.Console
 
-**Answer**: Use `AnsiConsole.Profile` combined with environment variable checks.
+| Aspect | Spectre.Console | Spectre.Tui |
+|---|---|---|
+| **Version** | 0.54.0 (stable) | 0.0.0-preview.0.46 |
+| **Maturity** | Widely adopted (14K+ dependents) | Early preview, ~30 NuGet downloads |
+| **Target** | .NET Standard 2.0, net8-10 | .NET 10.0 only |
+| **Paradigm** | Retained-mode renderable tree | Immediate-mode cell buffer (Ratatui-style) |
+| **Rendering** | Write `IRenderable` → ANSI output | Double-buffered `Cell[]` → diff → minimal ANSI |
+| **Layout** | `Layout` with Ratio/Size/MinSize | Manual `Rectangle` calculation |
+| **Widgets** | Layout, Panel, Table, Tree, Prompt, Progress, Spinner, Live | Box, Clear, List (early set) |
+| **Input** | Blocking `TextPrompt` / `SelectionPrompt` | No built-in input (raw `Console.ReadKey` loop) |
+| **Live + Input** | **Incompatible** — `Live` blocks prompts | **Compatible** — render loop + input polling coexist naturally |
+| **Threading** | Not thread safe for interactive components | Single-threaded game loop (thread-safe by design) |
+| **Focus** | Not built-in | Not built-in (app responsibility) |
+| **Text Styling** | `[bold red]text[/]` markup → `IRenderable` | `TextSpan`/`TextLine` with `Style` records; `Text` parses Spectre markup |
+| **Terminal Modes** | Standard console output | Fullscreen (alt screen) and Inline (scrollback region) |
+| **FPS Control** | N/A (refresh on demand) | Configurable target FPS via `Renderer.SetTargetFps()` |
+| **Custom Widgets** | Implement `IRenderable` | Implement `IWidget` / `IStatefulWidget<T>` |
+| **Dependency** | Standalone | Depends on `Spectre.Console.Ansi` |
+| **Testing** | `Spectre.Console.Testing` (`TestConsole`) | `Spectre.Tui.Testing` (snapshot verification) |
 
-```csharp
-public interface ITerminalCapabilities
-{
-    int Width { get; }
-    int Height { get; }
-    ColorSystem ColorSystem { get; }
-    bool SupportsUnicode { get; }
-    bool IsInteractive { get; }
-    bool IsNoColorSet { get; }
-}
+### Spectre.Console Strengths
 
-public class TerminalCapabilities : ITerminalCapabilities
-{
-    public int Width { get; }
-    public int Height { get; }
-    public ColorSystem ColorSystem { get; }
-    public bool SupportsUnicode { get; }
-    public bool IsInteractive { get; }
-    public bool IsNoColorSet { get; }
-    
-    private TerminalCapabilities(
-        int width,
-        int height,
-        ColorSystem colorSystem,
-        bool supportsUnicode,
-        bool isInteractive,
-        bool isNoColorSet)
-    {
-        Width = width;
-        Height = height;
-        ColorSystem = colorSystem;
-        SupportsUnicode = supportsUnicode;
-        IsInteractive = isInteractive;
-        IsNoColorSet = isNoColorSet;
-    }
-    
-    public static ITerminalCapabilities Detect()
-    {
-        // Priority 1: Check NO_COLOR environment variable
-        var noColor = Environment.GetEnvironmentVariable("NO_COLOR");
-        var isNoColorSet = !string.IsNullOrEmpty(noColor);
-        
-        // Priority 2: Detect console capabilities
-        int width, height;
-        try
-        {
-            width = Console.WindowWidth;
-            height = Console.WindowHeight;
-        }
-        catch
-        {
-            // Fallback for non-interactive or piped output
-            width = 80;
-            height = 24;
-        }
-        
-        // Priority 3: Use Spectre.Console detection
-        var profile = AnsiConsole.Profile;
-        var colorSystem = isNoColorSet 
-            ? ColorSystem.NoColors 
-            : profile.Capabilities.ColorSystem;
-        
-        var supportsUnicode = profile.Capabilities.Unicode;
-        var isInteractive = !Console.IsInputRedirected && 
-                           !Console.IsOutputRedirected;
-        
-        return new TerminalCapabilities(
-            width,
-            height,
-            colorSystem,
-            supportsUnicode,
-            isInteractive,
-            isNoColorSet
-        );
-    }
-    
-    // Helper methods for common checks
-    public bool SupportsColor => ColorSystem != ColorSystem.NoColors;
-    public bool SupportsAnsi => ColorSystem != ColorSystem.NoColors;
-    public bool IsWideTerminal => Width >= 120;
-    public bool IsNarrowTerminal => Width < 60;
-}
-```
+- **Rich, mature widget library**: Layout, Panel, Table, Tree, Progress, Spinner, Prompt — all production-ready
+- **Broad .NET support**: .NET Standard 2.0 through .NET 10
+- **Large ecosystem**: 14K+ dependent packages, extensive community documentation
+- **Markup language**: Familiar `[bold red]text[/]` syntax
+- **Immediate utility**: High-level widgets can build complex UIs quickly
 
-**Capability Matrix**:
+### Spectre.Console Limitations for Lopen
 
-| Property | Detection Source | Fallback |
-|----------|------------------|----------|
-| Width | `Console.WindowWidth` | 80 |
-| Height | `Console.WindowHeight` | 24 |
-| ColorSystem | `AnsiConsole.Profile.Capabilities.ColorSystem` | NoColors |
-| SupportsUnicode | `AnsiConsole.Profile.Capabilities.Unicode` | false |
-| IsInteractive | `!Console.IsInputRedirected` | false |
-| IsNoColorSet | `NO_COLOR` env var | false |
+- **Live + Prompt incompatibility**: Cannot accept text input while updating the display
+- **No event loop**: Must build a custom render/input loop
+- **No focus management**: Tab-switching between panes requires custom implementation
+- **Full-redraw model**: `ctx.Refresh()` redraws the entire layout (internal diff helps, but no selective invalidation)
 
-**Adaptive Rendering Pattern**:
+### Spectre.Tui Strengths
 
-```csharp
-public class AdaptiveRenderer
-{
-    private readonly ITerminalCapabilities _capabilities;
-    
-    public void Render(string title, string content)
-    {
-        if (_capabilities.IsNoColorSet)
-        {
-            // Plain text
-            Console.WriteLine($"=== {title} ===");
-            Console.WriteLine(content);
-        }
-        else if (_capabilities.Width >= 100)
-        {
-            // Full panel with colors
-            var panel = new Panel(content)
-            {
-                Header = new PanelHeader(title),
-                Border = BoxBorder.Rounded,
-                BorderStyle = new Style(Color.Blue)
-            };
-            AnsiConsole.Write(panel);
-        }
-        else if (_capabilities.Width >= 60)
-        {
-            // Compact panel
-            var panel = new Panel(content)
-            {
-                Header = new PanelHeader(title),
-                Border = BoxBorder.Square
-            };
-            AnsiConsole.Write(panel);
-        }
-        else
-        {
-            // Minimal
-            Console.WriteLine(title);
-            Console.WriteLine(content);
-        }
-    }
-}
-```
+- **Same ecosystem**: Built by the same author (Patrik Svensson), uses `Spectre.Console.Ansi` — natural evolution
+- **Proper TUI architecture**: Double-buffered, diff-based rendering designed for full-screen apps
+- **Concurrent input + display**: Game loop pattern naturally supports polling input while rendering
+- **Full control**: Cell-level rendering gives precise control over every pixel
+- **Fullscreen + Inline modes**: Alt-screen for full TUI, inline mode for embedded rendering
+- **Stateful widgets**: `IStatefulWidget<TState>` separates rendering from state management
+- **FPS-controlled rendering**: Built-in frame rate management
+- **Auto-resize**: Renderer detects terminal size changes and re-renders automatically
+- **Compatible text system**: Parses Spectre.Console markup syntax (`[red]text[/]`)
 
-**Testing**:
+### Spectre.Tui Limitations
 
-```csharp
-[Theory]
-[InlineData(120, true, true)]  // Wide, color
-[InlineData(60, true, false)]  // Narrow, color
-[InlineData(120, false, false)] // Wide, no color
-public void Detect_ReturnsCorrectCapabilities(
-    int width, 
-    bool expectColor, 
-    bool expectWide)
-{
-    // Set up test console
-    var console = new TestConsole();
-    console.Profile.Width = width;
-    
-    var capabilities = TerminalCapabilities.Detect();
-    
-    Assert.Equal(expectColor, capabilities.SupportsColor);
-    Assert.Equal(expectWide, capabilities.IsWideTerminal);
-}
-```
+- **Very early stage**: Only Box, Clear, and List widgets available
+- **Missing high-level widgets**: No Layout, Panel, Table, Tree, Progress, Spinner equivalents
+- **No layout system**: Manual `Rectangle` calculations for positioning
+- **No focus management**: Must be implemented by the application
+- **No keyboard routing**: Raw `Console.ReadKey` polling only
+- **.NET 10 only**: Narrow target (acceptable for Lopen which targets .NET 10)
+- **No documentation**: README is minimal; only the Sandbox example demonstrates usage
+- **May change at any time**: The README explicitly warns about breaking changes
 
-**Full Implementation**: See [REQ-020 in Implementation Guide](../../research/SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md#req-020-responsive-terminal-detection)
+### Recommendation
+
+**Use Spectre.Tui as the rendering foundation**, building higher-level components on top of it. The rationale:
+
+1. **Architectural fit**: Spectre.Tui's game-loop + double-buffered rendering is the correct architecture for Lopen's requirements (concurrent input + live display). This is the exact problem that Spectre.Console cannot solve.
+2. **Same ecosystem**: Same author, same org, compatible markup syntax. As Spectre.Tui matures, it will likely gain first-party widgets that match Spectre.Console's quality.
+3. **Lopen as early adopter**: Lopen targets .NET 10 already. Building on Spectre.Tui means contributing to the ecosystem and getting native support as the library matures.
+4. **Build what's missing**: The missing widgets (layout splitting, panels, trees, progress) can be implemented as Lopen-specific `IWidget` implementations, potentially contributed upstream.
+
+The alternative (Spectre.Console + custom input thread) requires fighting the library's design. Spectre.Tui's design aligns with what Lopen needs.
+
+### Relevance to Lopen
+
+Spectre.Tui eliminates the need for a hybrid approach with a third-party framework. It provides the low-level rendering architecture that Spectre.Console lacks, while remaining in the same ecosystem. The trade-off is building higher-level widgets, which is manageable given Lopen's specific UI needs.
 
 ---
 
-### 6. How to create the Wind Runner ASCII art logo?
+## 4. Split-Screen Layout
 
-**Answer**: Use `FigletText` for branded text and custom ASCII art for symbols.
+### Spectre.Tui Approach
 
-```csharp
-public interface IWelcomeRenderer
-{
-    void RenderWelcomeHeader(WelcomeConfig config);
-}
-
-public record WelcomeConfig
-{
-    public string Version { get; init; } = "1.0.0";
-    public string SessionName { get; init; } = "default";
-    public string? ContextInfo { get; init; }
-    public bool ShowTip { get; init; } = true;
-}
-
-public class WelcomeRenderer : IWelcomeRenderer
-{
-    private readonly IAnsiConsole _console;
-    private readonly ITerminalCapabilities _capabilities;
-    
-    public void RenderWelcomeHeader(WelcomeConfig config)
-    {
-        if (_capabilities.Width >= 100)
-        {
-            RenderFullHeader(config);
-        }
-        else if (_capabilities.Width >= 60)
-        {
-            RenderCompactHeader(config);
-        }
-        else
-        {
-            RenderMinimalHeader(config);
-        }
-        
-        _console.WriteLine();
-    }
-    
-    private void RenderFullHeader(WelcomeConfig config)
-    {
-        var grid = new Grid();
-        grid.AddColumn();
-        
-        // ASCII art logo
-        grid.AddRow(CreateLogoPanel());
-        
-        // Version and tagline using FigletText
-        var figlet = new FigletText("LOPEN")
-            .Centered()
-            .Color(Color.Cyan1);
-        grid.AddRow(figlet);
-        
-        grid.AddRow(new Markup(
-            $"[dim]v{config.Version} - Interactive Copilot Agent Loop[/]"
-        ).Centered());
-        
-        // Session info
-        var sessionInfo = new Panel(CreateSessionInfo(config))
-        {
-            Border = BoxBorder.Rounded,
-            BorderStyle = new Style(Color.Grey)
-        };
-        grid.AddRow(sessionInfo);
-        
-        _console.Write(new Panel(grid)
-        {
-            Border = BoxBorder.Double,
-            BorderStyle = new Style(Color.Blue)
-        });
-    }
-    
-    private Panel CreateLogoPanel()
-    {
-        var logo = """
-                    ⚡ Wind Runner Sigil ⚡
-                    
-                        ▄▄▄▄▄▄▄▄▄
-                     ▄▀▀         ▀▀▄
-                   ▄▀   ▄▄▄▄▄▄▄    ▀▄
-                  █   ▄▀▀     ▀▀▄   █
-                 █   █  ⚡ W ⚡  █   █
-                 █    ▀▄▄     ▄▄▀    █
-                  ▀▄    ▀▀▀▀▀▀▀    ▄▀
-                    ▀▄▄         ▄▄▀
-                       ▀▀▀▀▀▀▀▀▀
-            """;
-        
-        return new Panel(new Markup(logo).Centered())
-        {
-            Border = BoxBorder.None
-        };
-    }
-    
-    private string CreateSessionInfo(WelcomeConfig config)
-    {
-        var info = new StringBuilder();
-        
-        if (config.ShowTip)
-        {
-            info.AppendLine("[yellow]💡 Tip:[/] Type [cyan]help[/] or [cyan]lopen --help[/] for commands");
-            info.AppendLine();
-        }
-        
-        info.Append($"[dim]📊 Session:[/] {config.SessionName}");
-        
-        if (!string.IsNullOrEmpty(config.ContextInfo))
-        {
-            info.Append($"  [dim]|[/]  [dim]Context:[/] {config.ContextInfo}");
-        }
-        
-        info.Append("  [green]🟢[/]");
-        
-        return info.ToString();
-    }
-    
-    private void RenderCompactHeader(WelcomeConfig config)
-    {
-        _console.Write(new FigletText("LOPEN")
-            .LeftJustified()
-            .Color(Color.Cyan1));
-        
-        _console.MarkupLine($"[dim]v{config.Version} - Interactive Agent Loop[/]");
-        _console.WriteLine();
-        
-        if (config.ShowTip)
-            _console.MarkupLine("[yellow]💡[/] Type [cyan]help[/] for commands");
-        
-        _console.MarkupLine($"[dim]Session:[/] {config.SessionName}");
-        
-        if (!string.IsNullOrEmpty(config.ContextInfo))
-            _console.MarkupLine($"[dim]Context:[/] {config.ContextInfo}");
-    }
-    
-    private void RenderMinimalHeader(WelcomeConfig config)
-    {
-        _console.WriteLine($"lopen v{config.Version}");
-        _console.WriteLine($"Session: {config.SessionName}");
-        
-        if (!string.IsNullOrEmpty(config.ContextInfo))
-            _console.WriteLine($"Context: {config.ContextInfo}");
-        
-        if (config.ShowTip)
-            _console.WriteLine("Type 'help' for commands");
-    }
-}
-```
-
-**Wind Runner Sigil ASCII Art Design Options**:
-
-Option 1 - Simple Symbol:
-```
-    ⚡
-  ⚡ W ⚡
-    ⚡
-```
-
-Option 2 - Bordered Symbol:
-```
-    ▄▄▄▄▄
-  ▄▀  ⚡  ▀▄
- █  ⚡ W ⚡  █
-  ▀▄  ⚡  ▄▀
-    ▀▀▀▀▀
-```
-
-Option 3 - Detailed Sigil:
-```
-      ▄▄▄▄▄▄▄▄▄
-   ▄▀▀         ▀▀▄
- ▄▀   ▄▄▄▄▄▄▄    ▀▄
-█   ▄▀▀     ▀▀▄   █
-█   █  ⚡ W ⚡  █   █
-█    ▀▄▄     ▄▄▀    █
- ▀▄    ▀▀▀▀▀▀▀    ▄▀
-   ▀▄▄         ▄▄▀
-      ▀▀▀▀▀▀▀▀▀
-```
-
-**Usage**:
+Calculate split regions as `Rectangle` values and render widgets into sub-areas:
 
 ```csharp
-// At REPL startup
-var welcomeRenderer = new WelcomeRenderer(
-    AnsiConsole.Console,
-    capabilities
-);
-
-welcomeRenderer.RenderWelcomeHeader(new WelcomeConfig
+renderer.Draw((ctx, elapsed) =>
 {
-    Version = Assembly.GetExecutingAssembly()
-        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-        ?.InformationalVersion ?? "1.0.0",
-    SessionName = sessionName,
-    ContextInfo = "2.4K/128K tokens",
-    ShowTip = !quietMode
+    var screen = ctx.Viewport;
+    int headerHeight = 4;
+    int promptHeight = 3;
+    int bodyHeight = screen.Height - headerHeight - promptHeight;
+
+    // Adjustable ratio: 60/40 default, range 50/50 to 80/20
+    int activityPercent = Math.Clamp(state.SplitPercent, 50, 80);
+    int activityWidth = (int)(screen.Width * activityPercent / 100.0);
+    int contextWidth = screen.Width - activityWidth;
+
+    var headerArea = new Rectangle(0, 0, screen.Width, headerHeight);
+    var activityArea = new Rectangle(0, headerHeight, activityWidth, bodyHeight);
+    var contextArea = new Rectangle(activityWidth, headerHeight, contextWidth, bodyHeight);
+    var promptArea = new Rectangle(0, headerHeight + bodyHeight, screen.Width, promptHeight);
+
+    ctx.Render(headerWidget, headerArea);
+    ctx.Render(activityWidget, activityArea);
+    ctx.Render(contextWidget, contextArea);
+    ctx.Render(promptWidget, promptArea);
 });
 ```
 
-**Testing**:
+### Spectre.Console Approach
 
 ```csharp
-[Fact]
-public void RenderWelcomeHeader_FullWidth_ShowsLogo()
-{
-    var console = new TestConsole();
-    console.Profile.Width = 120;
-    var renderer = new WelcomeRenderer(console, capabilities);
-    
-    renderer.RenderWelcomeHeader(new WelcomeConfig
-    {
-        Version = "1.0.0-test",
-        SessionName = "test-session"
-    });
-    
-    Assert.Contains("LOPEN", console.Output);
-    Assert.Contains("Wind Runner", console.Output);
-    Assert.Contains("1.0.0-test", console.Output);
-}
+var layout = new Layout("Root")
+    .SplitRows(
+        new Layout("TopPanel").Size(4),
+        new Layout("Body"),
+        new Layout("PromptArea").Size(3));
+
+layout["Body"].SplitColumns(
+    new Layout("Activity").Ratio(3).MinimumSize(40),
+    new Layout("Context").Ratio(2).MinimumSize(20));
 ```
 
-**Full Implementation**: See [REQ-022 in Implementation Guide](../../research/SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md#req-022-welcome-header-with-ascii-art)
+Spectre.Console's `Layout` is more declarative but requires `Live` display for updates, which conflicts with input handling.
+
+### Relevance to Lopen
+
+The spec requires "ratio adjustable from 50/50 to 80/20". With Spectre.Tui, layout is explicit `Rectangle` math — more verbose but fully controllable. A `LayoutHelper` utility can encapsulate the split calculations to keep widget code clean.
 
 ---
 
-## Architecture & Design Patterns
+## 5. Progressive Disclosure
 
-### Interface-Based Architecture
+### Pattern: Collapsible Activity Entries
 
-All TUI functionality is abstracted behind interfaces for testability:
+Each tool call in the activity area has two states:
+
+```
+// Collapsed (one-line summary)
+● Edit src/auth.ts (+45 -12)
+
+// Expanded (full details)
+▼ Edit src/auth.ts (+45 -12)
+   + Added validateToken function
+   + Imported JWT library
+   --- src/auth.ts
+   @@ -10,3 +10,15 @@
+   ...
+```
+
+### Implementation with Spectre.Tui
 
 ```csharp
-// Core interfaces
-public interface ITuiRenderer { }
-public interface IProgressRenderer { }
-public interface IErrorRenderer { }
-public interface IDataRenderer { }
-public interface ILayoutRenderer { }
-public interface IStreamRenderer { }
-public interface IWelcomeRenderer { }
-
-// Real implementations use Spectre.Console
-public class SpectreTuiRenderer : ITuiRenderer { }
-public class SpectreProgressRenderer : IProgressRenderer { }
-// ... etc
-
-// Test implementations use mocks
-public class MockTuiRenderer : ITuiRenderer { }
-public class MockProgressRenderer : IProgressRenderer { }
-// ... etc
-```
-
-**Benefits**:
-- ✅ Testability with mocks
-- ✅ Dependency injection friendly
-- ✅ Easy to swap implementations
-- ✅ Clear contracts for consumers
-
----
-
-### Progressive Enhancement Strategy
-
-Rendering adapts to terminal capabilities:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Terminal Capabilities → Feature Availability                │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│ TrueColor (24-bit RGB)                                      │
-│   ↓ Full rich TUI with gradients, brand colors            │
-│                                                             │
-│ 256-color (8-bit)                                           │
-│   ↓ Standard TUI with extended color palette               │
-│                                                             │
-│ 16-color (Standard ANSI)                                    │
-│   ↓ Basic TUI with standard colors                         │
-│                                                             │
-│ NO_COLOR / None                                             │
-│   ↓ Plain text fallback, ASCII borders                     │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Implementation**:
-
-```csharp
-public void Render(IRenderable content)
+public class ActivityEntry
 {
-    if (_capabilities.IsNoColorSet)
+    public string Summary { get; init; }
+    public string[] DetailLines { get; init; }
+    public bool IsExpanded { get; set; }
+    public bool IsCurrentAction { get; set; }
+
+    public int GetHeight() => IsExpanded ? 1 + DetailLines.Length : 1;
+
+    public void Render(RenderContext ctx, int y, int width)
     {
-        RenderPlainText(content);
-    }
-    else if (_capabilities.ColorSystem == ColorSystem.TrueColor)
-    {
-        RenderWithRichColors(content);
-    }
-    else if (_capabilities.ColorSystem == ColorSystem.EightBit)
-    {
-        RenderWithExtendedColors(content);
-    }
-    else
-    {
-        RenderWithBasicColors(content);
-    }
-}
-```
+        var prefix = IsExpanded ? "▼" : "●";
+        var style = IsCurrentAction
+            ? new Style(foreground: Color.Yellow, decoration: Decoration.Bold)
+            : Style.Plain;
 
----
+        ctx.SetString(0, y, $"{prefix} {Summary}", style, width);
 
-### Responsive Design Breakpoints
-
-Layout adapts to terminal width:
-
-| Width Range | Layout Mode | Components Enabled |
-|-------------|-------------|-------------------|
-| < 60 chars | **Minimal** | Text only, no panels or tables |
-| 60-79 chars | **Narrow** | Simple panels, vertical stacking |
-| 80-119 chars | **Standard** | Full panels, single column layout |
-| ≥ 120 chars | **Wide** | Split layouts, side panels, full features |
-
-**Implementation**:
-
-```csharp
-public void RenderContent(IRenderable main, IRenderable? side = null)
-{
-    switch (_capabilities.Width)
-    {
-        case < 60:
-            RenderMinimal(main);
-            break;
-        case < 80:
-            RenderNarrow(main);
-            break;
-        case < 120:
-            RenderStandard(main);
-            break;
-        default:
-            RenderWide(main, side);
-            break;
-    }
-}
-```
-
----
-
-## Testing Approaches
-
-### 1. Unit Testing with Mocks
-
-```csharp
-public class MockTuiRenderer : ITuiRenderer
-{
-    public List<string> WrittenText { get; } = new();
-    public List<Type> WrittenTypes { get; } = new();
-    
-    public void Write(IRenderable renderable)
-    {
-        WrittenTypes.Add(renderable.GetType());
-    }
-    
-    public void WriteLine(string text)
-    {
-        WrittenText.Add(text);
-    }
-}
-
-// Test usage
-[Fact]
-public async Task ChatCommand_ShowsProgress()
-{
-    var mockRenderer = new MockTuiRenderer();
-    var handler = new ChatCommandHandler(mockRenderer);
-    
-    await handler.ExecuteAsync("Hello");
-    
-    Assert.Contains(mockRenderer.WrittenText, 
-        t => t.Contains("Connecting"));
-}
-```
-
-### 2. Integration Testing with TestConsole
-
-```csharp
-[Fact]
-public void ErrorRenderer_ShowsPanel()
-{
-    var console = new TestConsole();
-    console.Profile.Width = 120;
-    var renderer = new SpectreErrorRenderer(console);
-    
-    renderer.RenderError(new ErrorInfo
-    {
-        Title = "Test Error",
-        Message = "Something went wrong"
-    });
-    
-    var output = console.Output;
-    Assert.Contains("Test Error", output);
-    Assert.Contains("╭", output); // Panel border
-}
-```
-
-### 3. Snapshot Testing for Visual Regression
-
-```csharp
-[Fact]
-public void WelcomeHeader_MatchesSnapshot()
-{
-    var console = new TestConsole();
-    console.Profile.Width = 120;
-    var renderer = new WelcomeRenderer(console, capabilities);
-    
-    renderer.RenderWelcomeHeader(new WelcomeConfig
-    {
-        Version = "1.0.0",
-        SessionName = "test-session"
-    });
-    
-    var output = console.Output;
-    
-    // Compare with saved snapshot
-    Snapshot.Match(output, "welcome-header-full");
-}
-```
-
----
-
-## Implementation Roadmap
-
-### Phase 1: Foundation (Week 1)
-
-**Focus**: Core interfaces, terminal detection, basic rendering
-
-- [ ] Create all interfaces in `src/Lopen.Core/Tui/Interfaces/`
-  - `ITuiRenderer.cs`
-  - `IProgressRenderer.cs`
-  - `IErrorRenderer.cs`
-  - `IDataRenderer.cs`
-  - `ILayoutRenderer.cs`
-  - `IStreamRenderer.cs`
-  - `IWelcomeRenderer.cs`
-  - `ITerminalCapabilities.cs`
-
-- [ ] Implement `TerminalCapabilities` (REQ-020)
-  - Width/height detection
-  - Color system detection
-  - NO_COLOR handling
-  - Interactive mode detection
-
-- [ ] Set up dependency injection
-  - Register interfaces in DI container
-  - Configure lifetime scopes
-  - Add to service collection
-
-- [ ] Implement `SpectreProgressRenderer` (REQ-015)
-  - Status with spinner
-  - Progress bars
-  - Non-blocking REPL mode
-
-- [ ] Implement `SpectreErrorRenderer` (REQ-016)
-  - Simple errors
-  - Panel errors
-  - Validation errors
-  - Command suggestions
-
-- [ ] Create `MockTuiRenderer` for testing (REQ-021)
-  - Record all render calls
-  - Queryable history
-  - Assertion helpers
-
-**Deliverables**:
-- ✅ All interfaces defined
-- ✅ Terminal capabilities working
-- ✅ Progress indicators functional
-- ✅ Error rendering complete
-- ✅ Basic test infrastructure
-
----
-
-### Phase 2: Core Features (Week 2)
-
-**Focus**: Data display, layouts, structured content
-
-- [ ] Implement `SpectreDataRenderer` (REQ-017)
-  - Panel rendering for metadata
-  - Tree rendering for hierarchies
-  - Enhanced table rendering
-  - Responsive column widths
-  - Component selection logic
-
-- [ ] Implement `SpectreLayoutRenderer` (REQ-018)
-  - Split-screen layout with `SplitColumns`
-  - Live layout updates
-  - `TaskListPanel` component
-  - `ContextPanel` component
-  - Responsive layout switching
-
-- [ ] Add responsive behavior
-  - Width-based component selection
-  - Fallback rendering for narrow terminals
-  - Adaptive table columns
-  - Panel nesting limits
-
-- [ ] Integration testing
-  - Test all components with `TestConsole`
-  - Verify ANSI output
-  - Test responsive breakpoints
-  - NO_COLOR validation
-
-**Deliverables**:
-- ✅ All data display components working
-- ✅ Split layouts functional
-- ✅ Responsive behavior implemented
-- ✅ Integration tests passing
-
----
-
-### Phase 3: Advanced & Polish (Week 3)
-
-**Focus**: Streaming, welcome header, comprehensive testing
-
-- [ ] Implement `SpectreStreamRenderer` (REQ-019)
-  - Token buffering logic
-  - Paragraph detection
-  - Timeout-based flushing
-  - Code block handling
-  - Markdown formatting
-
-- [ ] Implement `WelcomeRenderer` (REQ-022)
-  - ASCII art Wind Runner logo
-  - FigletText branding
-  - Version display from assembly
-  - Session info panel
-  - Responsive header layouts
-
-- [ ] Comprehensive testing
-  - Complete unit test coverage
-  - Integration tests for all components
-  - Snapshot tests for visual regression
-  - Performance testing
-  - Edge case validation
-
-- [ ] Documentation
-  - XML documentation comments
-  - Usage examples
-  - README for TUI module
-  - Architecture decision records
-
-- [ ] Polish & refinement
-  - Code review feedback
-  - Performance optimization
-  - Error handling edge cases
-  - Accessibility improvements
-
-**Deliverables**:
-- ✅ Streaming renderer complete
-- ✅ Welcome header polished
-- ✅ Full test coverage (90%+)
-- ✅ Documentation complete
-- ✅ Ready for production
-
----
-
-## Performance Considerations
-
-### 1. Output Buffering
-
-**Problem**: Excessive `AnsiConsole.Write()` calls cause flicker and performance issues.
-
-**Solution**: Buffer output and write in batches.
-
-```csharp
-// BAD: Multiple writes
-foreach (var item in items)
-{
-    AnsiConsole.WriteLine(item.ToString());
-}
-
-// GOOD: Buffer and write once
-var buffer = new StringBuilder();
-foreach (var item in items)
-{
-    buffer.AppendLine(item.ToString());
-}
-AnsiConsole.Write(buffer.ToString());
-```
-
-### 2. Live Displays
-
-**Problem**: Frequently updating static content causes redrawing overhead.
-
-**Solution**: Use `Live` displays for dynamic content.
-
-```csharp
-// For content that updates frequently
-await AnsiConsole.Live(initialContent)
-    .StartAsync(async ctx =>
-    {
-        while (!done)
+        if (IsExpanded)
         {
-            content = UpdateContent();
-            ctx.UpdateTarget(content);
-            ctx.Refresh();
-            await Task.Delay(100);
+            for (int i = 0; i < DetailLines.Length; i++)
+            {
+                ctx.SetString(3, y + 1 + i, DetailLines[i], Style.Plain, width - 3);
+            }
         }
-    });
-```
-
-### 3. Terminal Capability Caching
-
-**Problem**: Repeated capability detection is wasteful.
-
-**Solution**: Detect once at startup, cache for session.
-
-```csharp
-// Singleton or scoped service
-services.AddSingleton<ITerminalCapabilities>(
-    sp => TerminalCapabilities.Detect()
-);
-```
-
-### 4. Conditional Rendering
-
-**Problem**: Rendering complex layouts on narrow terminals wastes CPU.
-
-**Solution**: Early return for unsupported layouts.
-
-```csharp
-public void RenderSplitLayout(IRenderable main, IRenderable side)
-{
-    if (_capabilities.Width < 120)
-    {
-        // Early return - just render main
-        _console.Write(main);
-        return;
     }
-    
-    // Complex split layout only for wide terminals
-    var layout = new Layout("Root").SplitColumns(...);
-    // ...
 }
 ```
 
----
+### Auto-Expand Rules (from spec)
 
-## Best Practices Summary
+1. **Current action**: Always expanded
+2. **Previous actions**: Collapsed to summary
+3. **Errors/warnings**: Auto-expanded regardless of position
+4. **User toggle**: Click or keyboard shortcut to expand/collapse
 
-### ✅ Do's
+### Relevance to Lopen
 
-1. **Use interfaces for all TUI operations** - Enables testing and DI
-2. **Detect capabilities once at startup** - Cache for performance
-3. **Buffer output for batch operations** - Reduce flicker
-4. **Provide fallbacks for limited terminals** - Accessibility
-5. **Test with TestConsole** - Verify ANSI output
-6. **Respect NO_COLOR** - Environment variable standard
-7. **Use Live displays for frequently updating content** - Performance
-8. **Update status during long operations** - User feedback
-9. **Flush streaming buffers on paragraph breaks** - Readability
-10. **Document terminal width requirements** - User expectations
-
-### ❌ Don'ts
-
-1. **Don't call AnsiConsole.Write() in tight loops** - Buffer instead
-2. **Don't assume terminal supports color** - Check capabilities
-3. **Don't hardcode widths** - Use responsive breakpoints
-4. **Don't nest panels more than 2 levels deep** - Visual clutter
-5. **Don't ignore NO_COLOR** - Accessibility requirement
-6. **Don't show progress for fast operations (< 1s)** - Flicker
-7. **Don't use bright colors for borders** - Visual fatigue
-8. **Don't stream char-by-char** - Buffer into chunks
-9. **Don't render complex layouts on narrow terminals** - Poor UX
-10. **Don't skip testing with mocks** - Slow test suite
+Progressive disclosure is central to the activity area. The data model should track `IsExpanded` and `IsCurrentAction` per entry. When a new action starts, the previous one collapses automatically. Error entries override the collapse behavior.
 
 ---
 
-## Dependencies
+## 6. Real-Time Updates
+
+### Spectre.Tui Render Loop
+
+Spectre.Tui's architecture inherently supports real-time updates. The renderer's `Draw` callback is invoked every frame:
+
+```csharp
+renderer.SetTargetFps(60);
+
+while (running)
+{
+    renderer.Draw((ctx, elapsed) =>
+    {
+        // Always renders current state — no explicit refresh needed
+        ctx.Render(headerWidget, headerArea);
+        ctx.Render(activityWidget, activityArea);
+        ctx.Render(contextWidget, contextArea);
+        ctx.Render(promptWidget, promptArea);
+    });
+
+    // Input polling — naturally interleaved with rendering
+    while (Console.KeyAvailable)
+    {
+        var key = Console.ReadKey(intercept: true);
+        ProcessKey(key, state);
+    }
+}
+```
+
+**Key advantage**: The double-buffered diff ensures only changed cells are written to the terminal, so rendering the full layout every frame is efficient. No explicit dirty-tracking or partial refresh is needed.
+
+### Background Updates
+
+For async state changes (e.g., agent actions streaming in from a background task):
+
+```csharp
+// State is updated from background tasks
+// The render loop reads the latest state each frame
+public class TuiState
+{
+    // Thread-safe observable state
+    private volatile string _currentAction;
+    public string CurrentAction
+    {
+        get => _currentAction;
+        set => _currentAction = value;
+    }
+
+    // Use ConcurrentQueue for streaming activity entries
+    public ConcurrentQueue<ActivityEntry> PendingEntries { get; } = new();
+}
+```
+
+The render loop drains the queue and renders — no `Invoke()` or dispatcher needed since the render loop is single-threaded and reads state at a defined point each frame.
+
+### Relevance to Lopen
+
+The TUI must update the activity area as agent actions stream in, the context panel as tasks complete, and the top panel as token counts change — all while the prompt area remains responsive. Spectre.Tui's game-loop architecture handles this naturally: background tasks update shared state, and the render loop picks up changes on the next frame.
+
+---
+
+## 7. Keyboard Input Handling
+
+### The Core Challenge
+
+Lopen needs simultaneous:
+- **Text input** in the prompt area (typing messages)
+- **Keyboard shortcuts** (`Ctrl+P`, `Alt+Enter`, `Tab`, `1-9`)
+- **Navigation** (scroll activity area, expand/collapse entries)
+
+### Spectre.Tui Approach
+
+Input is handled via `Console.ReadKey` in the game loop. A custom input handler routes keys based on focus state:
+
+```csharp
+public class InputHandler
+{
+    private readonly StringBuilder _inputBuffer = new();
+    private FocusedPane _focusedPane = FocusedPane.Prompt;
+
+    public void ProcessKey(ConsoleKeyInfo key, TuiState state)
+    {
+        // Global shortcuts (work regardless of focus)
+        if (key.Modifiers.HasFlag(ConsoleModifiers.Control) && key.Key == ConsoleKey.P)
+        {
+            state.TogglePause();
+            return;
+        }
+
+        if (key.Key == ConsoleKey.Tab)
+        {
+            _focusedPane = _focusedPane.Next();
+            return;
+        }
+
+        // Focus-specific handling
+        switch (_focusedPane)
+        {
+            case FocusedPane.Prompt:
+                HandlePromptInput(key, state);
+                break;
+            case FocusedPane.Activity:
+                HandleActivityInput(key, state);
+                break;
+            case FocusedPane.Context:
+                HandleContextInput(key, state);
+                break;
+        }
+    }
+
+    private void HandlePromptInput(ConsoleKeyInfo key, TuiState state)
+    {
+        if (key.Modifiers.HasFlag(ConsoleModifiers.Alt) && key.Key == ConsoleKey.Enter)
+            _inputBuffer.AppendLine();
+        else if (key.Key == ConsoleKey.Enter)
+        {
+            state.SubmitPrompt(_inputBuffer.ToString());
+            _inputBuffer.Clear();
+        }
+        else if (key.Key == ConsoleKey.Backspace && _inputBuffer.Length > 0)
+            _inputBuffer.Remove(_inputBuffer.Length - 1, 1);
+        else if (!char.IsControl(key.KeyChar))
+            _inputBuffer.Append(key.KeyChar);
+    }
+
+    private void HandleActivityInput(ConsoleKeyInfo key, TuiState state)
+    {
+        if (key.Key == ConsoleKey.UpArrow) state.ScrollActivityUp();
+        else if (key.Key == ConsoleKey.DownArrow) state.ScrollActivityDown();
+        else if (key.Key == ConsoleKey.Enter) state.ToggleExpandEntry();
+        else if (key.Key >= ConsoleKey.D1 && key.Key <= ConsoleKey.D9)
+            state.OpenResource((int)key.Key - (int)ConsoleKey.D0);
+    }
+}
+```
+
+### Relevance to Lopen
+
+The keyboard handling requirements require building a custom input routing layer on top of `Console.ReadKey`. This is more work than a full application framework's event system but gives complete control over key routing. A `InputHandler` class with focus-aware dispatch is manageable for Lopen's defined shortcut set.
+
+---
+
+## 8. Modal & Overlay Rendering
+
+### The Core Challenge
+
+The spec requires multiple modal overlays: confirmation dialogs, error dialogs, session resume prompt, landing page, module selection, and resource viewer. In Spectre.Tui's immediate-mode, cell-based rendering, modals are rendered as layers on top of the main layout within the same render frame — there is no windowing system.
+
+### Implementation Pattern
+
+Modals are implemented by conditionally rendering an overlay region on top of the existing layout during the `renderer.Draw` callback:
+
+```csharp
+renderer.Draw((ctx, elapsed) =>
+{
+    // Always render the main layout
+    ctx.Render(headerWidget, regions.Header);
+    ctx.Render(activityWidget, regions.Activity);
+    ctx.Render(contextWidget, regions.Context);
+    ctx.Render(promptWidget, regions.Prompt);
+
+    // Render modal on top if active
+    if (state.ActiveModal != null)
+    {
+        // Center the modal on screen
+        var screen = ctx.Viewport;
+        int modalWidth = Math.Min(60, screen.Width - 4);
+        int modalHeight = state.ActiveModal.GetRequiredHeight();
+        int x = (screen.Width - modalWidth) / 2;
+        int y = (screen.Height - modalHeight) / 2;
+        var modalArea = new Rectangle(x, y, modalWidth, modalHeight);
+
+        // Dim background by overwriting visible cells with muted style
+        ctx.SetStyle(screen, new Style(foreground: Color.Grey, background: Color.Black));
+
+        // Render modal content into the centered area
+        ctx.Render(state.ActiveModal.Widget, modalArea);
+    }
+});
+```
+
+### Modal State Management
+
+```csharp
+public class ModalState
+{
+    public IModalWidget? ActiveModal { get; set; }
+    public Stack<IModalWidget> ModalStack { get; } = new(); // for nested modals
+}
+
+public interface IModalWidget : IWidget
+{
+    int GetRequiredHeight();
+    void HandleKey(ConsoleKeyInfo key, TuiState state);
+}
+```
+
+When a modal is active, the `InputHandler` routes all keys to `ActiveModal.HandleKey()` instead of the normal focus-based routing. This prevents interaction with the underlying layout while a modal is displayed.
+
+### Modal Types Required by Spec
+
+| Modal | Trigger | Options |
+|---|---|---|
+| Landing Page | First startup (no session) | Any key to dismiss |
+| Session Resume | Startup with existing session | Resume / Start New / View Details |
+| Confirmation | Dangerous or multi-file actions | Yes / No / Always / Other |
+| Error | Critical failures | Retry / Cancel, with details |
+| Module Selection | Multiple modules available | Arrow key selection |
+| Resource Viewer | Press 1-9 on active resource | Scrollable content, Esc to close |
+
+### Relevance to Lopen
+
+The spec defines 6+ distinct modal types. Since Spectre.Tui has no built-in overlay/modal system, implementing a `ModalWidget` base with centered rendering, background dimming, and input capture is necessary. The immediate-mode rendering makes this straightforward — modals are simply rendered last in the draw callback, overwriting the cells beneath them.
+
+---
+
+## 9. Component Architecture
+
+### Design Principles (from spec)
+
+1. Components accept data/state as input (not fetched internally)
+2. All external dependencies behind interfaces that can be stubbed
+3. Each component self-registers with the gallery
+
+### Interface-Based Architecture with Spectre.Tui
+
+```csharp
+// Lopen TUI component interface built on Spectre.Tui's IWidget
+public interface ITuiComponent : IWidget
+{
+    string Name { get; }
+    string Description { get; }
+    IEnumerable<StubScenario> GetStubScenarios();
+}
+
+// Stateful variant
+public interface IStatefulTuiComponent<in TState> : IStatefulWidget<TState>
+{
+    string Name { get; }
+    string Description { get; }
+    IEnumerable<StubScenario> GetStubScenarios();
+}
+
+// Stub scenario for gallery
+public record StubScenario(string Name, object State);
+```
+
+### State Injection Pattern
+
+```csharp
+public record ContextPanelState(
+    TaskInfo CurrentTask,
+    IReadOnlyList<ComponentInfo> Components,
+    IReadOnlyList<ResourceInfo> ActiveResources);
+
+public class ContextPanelWidget : IStatefulTuiComponent<ContextPanelState>
+{
+    public string Name => "Context Panel";
+    public string Description => "Task hierarchy and context display";
+
+    public void Render(RenderContext context, ContextPanelState state)
+    {
+        // Render border
+        context.Render(new BoxWidget(Color.Grey));
+        var inner = context.Viewport.Inflate(-1, -1);
+
+        // Render task tree into inner area
+        RenderTaskTree(context, inner, state.CurrentTask);
+    }
+
+    public IEnumerable<StubScenario> GetStubScenarios() =>
+    [
+        new("Empty", new ContextPanelState(null, [], [])),
+        new("In Progress", CreateInProgressState()),
+        new("Completed", CreateCompletedState()),
+        new("Error", CreateErrorState()),
+    ];
+}
+```
+
+### Gallery
+
+```csharp
+// Components discovered via DI
+services.AddTransient<IStatefulTuiComponent<ContextPanelState>, ContextPanelWidget>();
+// ... etc
+
+// Gallery runs each component with its stub scenarios using Spectre.Tui's renderer
+public class ComponentGallery
+{
+    public void Run(ITuiComponent component, StubScenario scenario)
+    {
+        using var terminal = Terminal.Create();
+        var renderer = new Renderer(terminal);
+        renderer.SetTargetFps(30);
+
+        var running = true;
+        while (running)
+        {
+            renderer.Draw((ctx, elapsed) =>
+            {
+                ctx.Render(component);
+            });
+
+            if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.Q)
+                running = false;
+        }
+    }
+}
+```
+
+### Testability
+
+```csharp
+[Fact]
+public async Task ContextPanel_WithEmptyState_RendersPlaceholder()
+{
+    // Use Spectre.Tui.Testing for snapshot verification
+    var widget = new ContextPanelWidget();
+    var state = new ContextPanelState(null, [], []);
+
+    // Render into a test buffer and verify snapshot
+    await Verify(RenderToString(widget, state, width: 80, height: 24));
+}
+```
+
+### Relevance to Lopen
+
+The spec requires every component to work in the `lopen test tui` gallery with mock data. The `IStatefulTuiComponent<T>` interface built on Spectre.Tui's `IStatefulWidget<T>` provides both gallery support and testability. DI registration ensures new components automatically appear in the gallery.
+
+---
+
+## 10. Syntax Highlighting
+
+### Options for Terminal Syntax Highlighting
+
+| Library | Approach | Languages | Size |
+|---|---|---|---|
+| Spectre.Tui TextSpan styling | Manual `Style` per span | N/A (manual) | 0 (built-in) |
+| Spectre.Tui Text markup | `[red]text[/]` parsed to styled spans | N/A (manual) | 0 (built-in) |
+| TextMateSharp | VS Code TextMate grammars | 50+ languages | ~5MB with grammars |
+| Custom regex-based | Pattern matching per language | Configurable | Small |
+
+### Spectre.Tui TextSpan (Simplest)
+
+```csharp
+// Manual highlighting for diff output using TextLine/TextSpan
+public TextLine HighlightDiffLine(string line)
+{
+    if (line.StartsWith('+'))
+        return new TextLine(new TextSpan(line, new Style(foreground: Color.Green)));
+    if (line.StartsWith('-'))
+        return new TextLine(new TextSpan(line, new Style(foreground: Color.Red)));
+    if (line.StartsWith("@@"))
+        return new TextLine(new TextSpan(line, new Style(foreground: Color.Cyan)));
+    return new TextLine(new TextSpan(line));
+}
+```
+
+### TextMateSharp → Spectre.Tui Spans
+
+```csharp
+// TextMateSharp tokenizes → convert to TextSpan list
+var grammar = registry.LoadGrammar(registryOptions.GetScopeByLanguageId("csharp"));
+var result = grammar.TokenizeLine(codeLine, null);
+
+var spans = result.Tokens.Select(token =>
+{
+    var color = GetColorFromScope(token.Scopes);
+    var text = codeLine[token.StartIndex..token.EndIndex];
+    return new TextSpan(text, new Style(foreground: color));
+});
+
+return new TextLine(spans.ToArray());
+```
+
+### Recommended Approach for Lopen
+
+1. **Diff highlighting**: Custom `TextSpan` styling — diffs have simple, well-defined syntax
+2. **Code blocks**: TextMateSharp for accurate syntax highlighting, output as `TextLine` collections
+3. **JSON**: Custom regex or TextMateSharp with JSON grammar
+
+### Relevance to Lopen
+
+The spec requires "syntax highlighting in code blocks" and "diff viewer with syntax highlighting." Spectre.Tui's `TextSpan`/`TextLine` system maps directly to tokenized syntax output. TextMateSharp provides VS Code-quality highlighting. The cost is a ~5MB grammar dependency, which is acceptable for a developer tool.
+
+---
+
+## 11. Recommended NuGet Packages
+
+### Core Packages
 
 | Package | Version | Purpose |
-|---------|---------|---------|
-| Spectre.Console | ^0.49.0 | Core TUI framework |
-| Spectre.Console.Testing | ^0.49.0 | Test infrastructure |
-| System.CommandLine | ^2.0.2 | CLI integration |
+|---|---|---|
+| `Spectre.Tui` | 0.0.0-preview.0.46 | Cell-based TUI rendering (Renderer, Widget, Buffer, Terminal) |
+| `Spectre.Console` | 0.54.0 | Rich console output for non-TUI paths (CLI help, error output, etc.) |
+| `Spectre.Console.Json` | 0.54.0 | JSON syntax highlighting |
+| `Spectre.Console.Cli` | 0.53.1 (stable) / 1.0.0-alpha.0.12 (new independent) | CLI command parsing (used by CLI module) |
 
-**Installation**:
+### Syntax Highlighting
 
-```bash
-dotnet add package Spectre.Console
-dotnet add package Spectre.Console.Testing
-dotnet add package System.CommandLine
+| Package | Version | Purpose |
+|---|---|---|
+| `TextMateSharp` | 2.0.3 | TextMate grammar engine for code highlighting |
+| `TextMateSharp.Grammars` | latest | Bundled VS Code grammars |
+
+### Testing
+
+| Package | Version | Purpose |
+|---|---|---|
+| `Spectre.Tui.Testing` | 0.0.0-preview.0.46 | Snapshot testing for Spectre.Tui widgets |
+| `Verify.Xunit` | latest | Snapshot/approval testing framework |
+
+### Relevance to Lopen
+
+The core rendering stack is `Spectre.Tui` for the full-screen TUI. `Spectre.Console` is retained for non-TUI output (CLI help text, error messages, etc.) and as a fallback for rich content formatting. `TextMateSharp` adds code highlighting. `Spectre.Tui.Testing` enables snapshot testing for the component gallery.
+
+---
+
+## 12. Implementation Approach
+
+### Recommended: Spectre.Tui with Custom Widget Layer
+
+Build the full-screen TUI on **Spectre.Tui's rendering engine**, implementing Lopen-specific higher-level widgets (layout splitting, panels, tree view, prompt area) as `IWidget`/`IStatefulWidget<T>` implementations.
+
 ```
+┌──────────────────────────────────────────────────────────┐
+│                 Spectre.Tui Renderer                      │
+│  Terminal → double-buffered cells → diff → ANSI output    │
+│                                                           │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │              Lopen Widget Layer                      │  │
+│  │                                                     │  │
+│  │  ┌─────────────────────┐  ┌──────────────────────┐  │  │
+│  │  │  ActivityWidget     │  │  ContextWidget       │  │  │
+│  │  │  (scrollable list   │  │  (tree view,         │  │  │
+│  │  │   with progressive  │  │   resource list,     │  │  │
+│  │  │   disclosure)       │  │   task hierarchy)    │  │  │
+│  │  └─────────────────────┘  └──────────────────────┘  │  │
+│  │                                                     │  │
+│  │  ┌─────────────────────────────────────────────┐    │  │
+│  │  │  PromptWidget (text input with cursor)      │    │  │
+│  │  └─────────────────────────────────────────────┘    │  │
+│  └─────────────────────────────────────────────────────┘  │
+│                                                           │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │  InputHandler (Console.ReadKey → focus-aware routing) │  │
+│  └─────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Why Spectre.Tui
+
+1. **Correct architecture**: Game-loop + double-buffered rendering is the right pattern for Lopen's concurrent input + display requirement
+2. **Same ecosystem**: Same author as Spectre.Console, compatible markup, shared `Spectre.Console.Ansi` foundation
+3. **Full control**: Cell-level rendering gives precise control over every aspect of the display
+4. **No bridging needed**: Unlike a hybrid approach, there's no impedance mismatch between two libraries
+5. **Future-proof**: As Spectre.Tui matures, Lopen benefits from new widgets without architectural changes
+
+### What Must Be Built
+
+Since Spectre.Tui only provides Box, Clear, and List widgets, Lopen must implement:
+
+1. **LayoutWidget** — Split-screen layout calculator (Rectangle partitioning)
+2. **PanelWidget** — Bordered panel with title, wrapping BoxWidget
+3. **TreeWidget** — Hierarchical display with collapse/expand
+4. **ScrollableWidget** — Scrollable viewport for long content (virtual list with offset tracking)
+5. **PromptWidget** — Text input with cursor, history, and multiline support
+6. **ProgressWidget** — Progress indicator / spinner
+7. **StatusBarWidget** — Top panel with token counts, model info, session status
+8. **ModalWidget** — Centered overlay with background dimming, input capture, and dismiss handling (see Section 8)
+
+### Application Loop
+
+```csharp
+using var terminal = Terminal.Create();
+var renderer = new Renderer(terminal);
+renderer.SetTargetFps(60);
+
+var state = new TuiState();
+var input = new InputHandler();
+var layout = new LayoutHelper();
+
+while (!state.ShouldExit)
+{
+    renderer.Draw((ctx, elapsed) =>
+    {
+        var regions = layout.Calculate(ctx.Viewport, state.SplitPercent);
+
+        ctx.Render(new HeaderWidget(), regions.Header, state.Header);
+        ctx.Render(new ActivityWidget(), regions.Activity, state.Activity);
+        ctx.Render(new ContextWidget(), regions.Context, state.Context);
+        ctx.Render(new PromptWidget(), regions.Prompt, state.Prompt);
+    });
+
+    while (Console.KeyAvailable)
+    {
+        input.ProcessKey(Console.ReadKey(intercept: true), state);
+    }
+}
+```
+
+### Component Lifecycle
+
+```
+Startup
+  ├─ Parse CLI flags (--no-welcome, --no-logo, --resume)
+  ├─ Initialize DI container with widget registrations
+  ├─ Create Terminal + Renderer
+  ├─ Check for existing session → show Resume Modal or Landing Page
+  └─ Enter main loop
+       ├─ renderer.Draw() each frame
+       │    ├─ Calculate layout regions
+       │    ├─ Render each widget with current state
+       │    └─ Diff + flush (automatic)
+       └─ Process input between frames
+```
+
+### Recommended Phasing
+
+1. **Phase 1**: Core rendering — LayoutWidget, PanelWidget, BoxWidget wrappers, basic text rendering
+2. **Phase 2**: Input — PromptWidget with cursor, InputHandler with focus routing, keyboard shortcuts
+3. **Phase 3**: Content widgets — ActivityWidget with progressive disclosure, ContextWidget with tree view
+4. **Phase 4**: Component gallery (`lopen test tui`) with stub data scenarios
+5. **Phase 5**: Integration with core, LLM, and storage modules
+
+### Relevance to Lopen
+
+Building on Spectre.Tui provides a clean, single-library architecture with the correct rendering paradigm. The trade-off is implementing higher-level widgets, but this gives Lopen exactly the components it needs without carrying unused framework weight. The component architecture (Section 8) ensures each widget is testable and gallery-ready.
 
 ---
 
 ## References
 
-### Official Documentation
-
-- **Spectre.Console Documentation**: https://spectreconsole.net/
-- **API Reference**: https://spectreconsole.net/api/
-- **Live Examples**: https://spectreconsole.net/live/
-
-### Key Spectre.Console Components
-
-| Component | Documentation | Use Case |
-|-----------|---------------|----------|
-| `Status` | https://spectreconsole.net/widgets/status | Progress spinners |
-| `Progress` | https://spectreconsole.net/widgets/progress | Progress bars |
-| `Panel` | https://spectreconsole.net/widgets/panel | Bordered content |
-| `Table` | https://spectreconsole.net/widgets/table | Tabular data |
-| `Tree` | https://spectreconsole.net/widgets/tree | Hierarchies |
-| `Layout` | https://spectreconsole.net/widgets/layout | Split layouts |
-| `Live` | https://spectreconsole.net/live-display | Dynamic updates |
-| `Markup` | https://spectreconsole.net/markup | Styled text |
-| `FigletText` | https://spectreconsole.net/widgets/figlet | ASCII art text |
-
-### Testing Resources
-
-- **TestConsole Guide**: https://spectreconsole.net/testing/test-console
-- **Snapshot Testing**: https://github.com/spectreconsole/spectre.console/tree/main/examples/Testing
-
-### Community Examples
-
-- **Spectre.Console GitHub**: https://github.com/spectreconsole/spectre.console
-- **Example Gallery**: https://github.com/spectreconsole/spectre.console/tree/main/examples
-
----
-
-## Next Steps
-
-1. **Review Implementation Guide**: Read [`SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md`](../../research/SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md) for complete code examples
-
-2. **Start with Foundation**: Begin Phase 1 implementation
-   - Create interfaces
-   - Implement terminal detection
-   - Set up basic progress and error rendering
-
-3. **Iterate and Test**: Build incrementally with tests
-   - Add one renderer at a time
-   - Write tests immediately
-   - Verify with TestConsole
-
-4. **Integrate with Commands**: Wire up to existing command handlers
-   - Replace `Console.WriteLine` with `ITuiRenderer`
-   - Add progress indicators to async operations
-   - Use error renderer for exceptions
-
-5. **Polish and Document**: Final refinements
-   - Add XML documentation
-   - Create usage examples
-   - Performance tuning
-
----
-
-## Questions or Issues?
-
-- **Review Full Guide**: [`SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md`](../../research/SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md)
-- **Quick Reference**: [`TUI_QUICK_REFERENCE.md`](../../research/TUI_QUICK_REFERENCE.md)
-- **Implementation Summary**: [`TUI_IMPLEMENTATION_SUMMARY.md`](../../research/TUI_IMPLEMENTATION_SUMMARY.md)
-
-**Research Status**: ✅ Complete and ready for implementation
-
-
----
-
-## January 2026 Implementation Status Update
-
-**Update Date**: January 27, 2026  
-**Updated By**: Gap Analysis Review  
-**Status**: 🟢 **95% Complete** - Most requirements implemented, minor integration needed
-
-### Implementation Reality Check
-
-A comprehensive review of the codebase reveals that **nearly all TUI functionality is already implemented**. The SPECIFICATION.md file has 52 unchecked criteria, but **40 of these are actually complete** and just need checkbox updates.
-
-### Actual Status by Requirement
-
-| Requirement | Spec Status | Actual Status | Gap |
-|-------------|-------------|---------------|-----|
-| REQ-014 Output Formatting | 🟢 Complete | ✅ Complete | None |
-| REQ-015 Progress | 🟢 Complete | ✅ 98% (needs batch integration) | Minor |
-| REQ-016 Errors | 🟢 Complete | ✅ 85% (needs CLI integration) | Medium |
-| REQ-017 Data Display | 🟢 Complete | ✅ 95% (responsive cols pending) | Minor |
-| REQ-018 Layouts | 🔴 Planned | ✅ 90% (live display pending) | Enhancement |
-| REQ-019 Streaming | 🔴 Planned | ✅ 95% (prompt position) | Enhancement |
-| REQ-020 Terminal Detection | 🟢 Done | ✅ 100% Complete | None |
-| REQ-021 Testing | 🟢 Done | ✅ 90% (snapshot tests optional) | Minor |
-| REQ-022 Welcome Header | 🟢 Done | ✅ 80% (not integrated yet) | **Critical** |
-
-### What's Actually Implemented
-
-All the following components exist with full tests:
-
-#### ✅ Completed Components
-- `ILayoutRenderer` / `SpectreLayoutRenderer` - Split layouts with task/context panels
-- `IStreamRenderer` / `SpectreStreamRenderer` - Buffered streaming with markdown support
-- `IWelcomeHeaderRenderer` / `SpectreWelcomeHeaderRenderer` - Full header with responsive layouts
-- `IProgressRenderer` / `SpectreProgressRenderer` - Spinners for async operations
-- `IErrorRenderer` / `SpectreErrorRenderer` - Structured errors with suggestions
-- `IDataRenderer` / `SpectreDataRenderer` - Tables, panels, trees
-- `ITerminalCapabilities` / `TerminalCapabilities` - Full detection system
-- `AsciiLogoProvider` - Wind Runner sigil ASCII art
-- `ColorProvider` - Adaptive color depth (16/256/TrueColor)
-- `SymbolProvider` - Unicode symbols with ASCII fallbacks
-- `ConsoleOutput` - Comprehensive output helper
-- Complete mock implementations for all interfaces
-- 105+ unit tests with high coverage
-
-### Critical Gaps to Address
-
-Only **3 gaps** prevent full specification compliance:
-
-#### 1. Welcome Header Integration (HIGH PRIORITY)
-**Status**: Implemented but not used  
-**Effort**: 4 hours  
-**Files to modify**:
-- `src/Lopen.Core/ReplService.cs` - Add `IWelcomeHeaderRenderer` parameter
-- `src/Lopen.Core/LoopService.cs` - Add welcome header rendering
-- `src/Lopen.Cli/Program.cs` - Inject renderer, add `--no-header`/`--quiet` options
-
-**Code needed**:
-```csharp
-// ReplService.cs
-public ReplService(
-    IConsoleInput input,
-    ConsoleOutput output,
-    ISessionStateService? sessionStateService = null,
-    IWelcomeHeaderRenderer? welcomeRenderer = null, // Add this
-    string prompt = "lopen> ")
-{
-    _welcomeRenderer = welcomeRenderer;
-    // ...
-}
-
-public async Task<int> RunAsync(...)
-{
-    // Show welcome header if available
-    if (_welcomeRenderer != null)
-    {
-        var context = new WelcomeHeaderContext
-        {
-            Version = Assembly.GetExecutingAssembly()
-                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-                .InformationalVersion ?? "1.0.0",
-            SessionName = _sessionStateService?.CurrentState?.Id ?? "repl",
-            ContextWindow = new ContextWindowInfo
-            {
-                MessageCount = _sessionStateService?.CurrentState?.CommandHistory.Count ?? 0
-            }
-        };
-        _welcomeRenderer.RenderWelcomeHeader(context);
-    }
-    // ... rest of REPL loop
-}
-```
-
-#### 2. CLI Flag Support (MEDIUM PRIORITY)
-**Status**: Infrastructure ready, options not defined  
-**Effort**: 2 hours  
-**Files to modify**:
-- `src/Lopen.Cli/Program.cs` - Add global options
-
-**Code needed**:
-```csharp
-// Program.cs - add global options
-var noHeaderOption = new Option<bool>("--no-header")
-{
-    Description = "Suppress welcome header display",
-    IsGlobal = true
-};
-rootCommand.Options.Add(noHeaderOption);
-
-var quietOption = new Option<bool>("--quiet")
-{
-    Description = "Suppress all non-essential output",
-    IsGlobal = true
-};
-quietOption.Aliases.Add("-q");
-rootCommand.Options.Add(quietOption);
-
-// Use in command handlers
-var preferences = new WelcomeHeaderPreferences
-{
-    ShowLogo = !parseResult.GetValue(noHeaderOption),
-    ShowTip = !parseResult.GetValue(quietOption),
-    ShowSession = !parseResult.GetValue(quietOption)
-};
-```
-
-#### 3. System.CommandLine Error Integration (MEDIUM PRIORITY)
-**Status**: `IErrorRenderer` exists but not used for command parsing errors  
-**Effort**: 6 hours  
-**Files to modify**:
-- `src/Lopen.Cli/Program.cs` - Add custom error handler
-
-**Code needed**:
-```csharp
-// Create error renderer
-var errorRenderer = new SpectreErrorRenderer();
-
-// Set custom invoke handler
-rootCommand.SetHandler((InvocationContext context) =>
-{
-    var parseResult = context.ParseResult;
-    
-    if (parseResult.Errors.Any())
-    {
-        foreach (var error in parseResult.Errors)
-        {
-            var errorInfo = new ErrorInfo
-            {
-                Title = "Command Error",
-                Message = error.Message,
-                Suggestions = GetSimilarCommands(error),
-                Severity = ErrorSeverity.Validation
-            };
-            errorRenderer.RenderError(errorInfo);
-        }
-        context.ExitCode = ExitCodes.InvalidArguments;
-        return;
-    }
-    
-    // Normal command execution
-    // ...
-});
-```
-
-### Enhancement Opportunities (Optional)
-
-These would improve UX but aren't blocking:
-
-1. **Live Display for Streaming** (8-12 hours)
-   - Use Spectre.Console `Live` context for non-blocking updates
-   - Maintain REPL prompt position during streaming
-   - Lines 426, 427, 517 in SPECIFICATION.md
-
-2. **Responsive Column Widths** (4-6 hours)
-   - Adapt table columns based on terminal width
-   - Line 307 in SPECIFICATION.md
-
-3. **Progress Bar Integration** (2-3 hours per use case)
-   - Use `IProgressRenderer` in batch operations
-   - Line 149 in SPECIFICATION.md
-
-4. **Stack Trace Filtering** (1-2 hours)
-   - Only show stack traces in `--verbose` mode
-   - Line 220 in SPECIFICATION.md
-
-### Specification Checkbox Updates Needed
-
-The Migration Plan section (lines 1124-1159) has many unchecked items that are complete:
-
-**Phase 1 (Foundation)**: 10/11 complete - only CLI flags pending
-**Phase 2 (Errors)**: 3/4 complete - only System.CommandLine integration pending
-**Phase 3 (Progress & Streaming)**: 4/4 complete
-**Phase 4 (Layouts)**: 4/4 complete
-**Phase 5 (Testing)**: 2/4 complete - snapshot tests and docs pending
-
-**Recommendation**: Update SPECIFICATION.md to mark all implemented items as [x] to accurately reflect current state.
-
-### Test Coverage Summary
-
-All components have comprehensive test coverage:
-
-```
-Component                       Tests  Status
-======================================  =====
-SpectreLayoutRenderer           14     ✅
-SpectreStreamRenderer           23     ✅
-SpectreWelcomeHeaderRenderer    13     ✅
-SpectreProgressRenderer         12     ✅
-SpectreErrorRenderer            18     ✅
-SpectreDataRenderer             15     ✅
-TerminalCapabilities            10     ✅
-AsciiLogoProvider                8     ✅
-ColorProvider                   12     ✅
-SymbolProvider                  10     ✅
-ConsoleOutput                   25     ✅
-TreeRenderer                    12     ✅
-```
-
-**Total**: 172 TUI-related tests  
-**Coverage**: ~90% for TUI components
-
-### File Inventory
-
-All implemented files:
-
-**Interfaces**:
-- `src/Lopen.Core/ILayoutRenderer.cs`
-- `src/Lopen.Core/IStreamRenderer.cs`
-- `src/Lopen.Core/IWelcomeHeaderRenderer.cs`
-- `src/Lopen.Core/IProgressRenderer.cs`
-- `src/Lopen.Core/IErrorRenderer.cs`
-- `src/Lopen.Core/IDataRenderer.cs`
-- `src/Lopen.Core/ITerminalCapabilities.cs`
-
-**Implementations**:
-- `src/Lopen.Core/SpectreLayoutRenderer.cs`
-- `src/Lopen.Core/SpectreStreamRenderer.cs`
-- `src/Lopen.Core/SpectreWelcomeHeaderRenderer.cs`
-- `src/Lopen.Core/SpectreProgressRenderer.cs`
-- `src/Lopen.Core/SpectreErrorRenderer.cs`
-- `src/Lopen.Core/SpectreDataRenderer.cs`
-- `src/Lopen.Core/TerminalCapabilities.cs`
-
-**Mocks** (all 7 Mock*Renderer.cs files exist)
-**Tests** (all 12 Spectre*RendererTests.cs files exist)
-
-**Supporting**:
-- `src/Lopen.Core/ConsoleOutput.cs` - Main output helper
-- `src/Lopen.Core/AsciiLogoProvider.cs` - ASCII art
-- `src/Lopen.Core/ColorProvider.cs` - Adaptive colors
-- `src/Lopen.Core/SymbolProvider.cs` - Unicode/ASCII symbols
-- `src/Lopen.Core/TreeRenderer.cs` - Hierarchical display
-
-### Timeline to Full Compliance
-
-| Task | Effort | Priority | Blocking? |
-|------|--------|----------|-----------|
-| Welcome header integration | 4h | HIGH | Yes |
-| CLI flag support | 2h | MEDIUM | Yes |
-| System.CommandLine errors | 6h | MEDIUM | No |
-| **Total Critical Path** | **12h** | - | - |
-| Live display features | 12h | LOW | No |
-| Responsive columns | 6h | LOW | No |
-| Progress bar integration | 4h | LOW | No |
-
-**Conclusion**: Only **12 hours of work** separates current implementation from full specification compliance. The majority of work has been completed, and primarily requires integration rather than new development.
-
-### Next Steps
-
-1. **Immediate** (This Sprint):
-   - Integrate welcome header into REPL/Loop services
-   - Add `--no-header` and `--quiet` CLI options
-   - Update SPECIFICATION.md checkboxes to reflect actual state
-
-2. **Short Term** (Next Sprint):
-   - Implement System.CommandLine error integration
-   - Add live display for streaming
-
-3. **Medium Term** (Future):
-   - Responsive column widths
-   - Snapshot testing integration
-   - Documentation examples guide
-
-### Resources
-
-- Full implementation details in previous sections of this document
-- Detailed implementation guide: `../../research/SPECTRE_CONSOLE_TUI_IMPLEMENTATION_GUIDE.md`
-- Quick reference: `../../research/TUI_QUICK_REFERENCE.md`
-
----
-
-**END OF UPDATE**
-
+- [Spectre.Tui GitHub](https://github.com/spectreconsole/spectre.tui)
+- [Spectre.Tui NuGet](https://www.nuget.org/packages/Spectre.Tui)
+- [Spectre.Console Documentation](https://spectreconsole.net)
+- [Spectre.Console GitHub](https://github.com/spectreconsole/spectre.console)
+- [Ratatui](https://ratatui.rs/) — Rust TUI framework that inspired Spectre.Tui's architecture
+- [TextMateSharp GitHub](https://github.com/danipen/TextMateSharp)
+- [CSharpRepl](https://github.com/waf/CSharpRepl) — Example of Spectre.Console + REPL input handling

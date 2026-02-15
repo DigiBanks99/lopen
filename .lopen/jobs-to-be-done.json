@@ -1,0 +1,802 @@
+[
+  {
+    "id": "JOB-001",
+    "requirement_module": "cli",
+    "description": "Create .NET 10.0 solution file and project structure (src/, tests/ directories, Lopen.sln)",
+    "status": "not_started",
+    "priority": 1,
+    "notes": "AC: .NET solution builds successfully with dotnet build"
+  },
+  {
+    "id": "JOB-002",
+    "requirement_module": "cli",
+    "description": "Create CLI host project (Lopen.Cli) with Microsoft.Extensions.Hosting DI and Program.cs entry point",
+    "status": "not_started",
+    "priority": 1,
+    "notes": "AC: CLI entry point uses Microsoft.Extensions.Hosting for dependency injection"
+  },
+  {
+    "id": "JOB-003",
+    "requirement_module": "cli",
+    "description": "Create test projects and verify dotnet test passes; configure editorconfig and dotnet format",
+    "status": "not_started",
+    "priority": 1,
+    "notes": "AC: All test projects run with dotnet test; code formatting passes with dotnet format --verify-no-changes"
+  },
+  {
+    "id": "JOB-004",
+    "requirement_module": "cli",
+    "description": "Set up CI pipeline (GitHub Actions) with dotnet build, dotnet test, dotnet format --verify-no-changes",
+    "status": "not_started",
+    "priority": 1,
+    "notes": "Build infrastructure - ensures all AC verification is automated"
+  },
+  {
+    "id": "JOB-005",
+    "requirement_module": "auth",
+    "description": "Create Auth module project (Lopen.Auth) and test project with IAuthService interface and service registration",
+    "status": "not_started",
+    "priority": 1,
+    "notes": "Foundation module - standalone, needed by LLM"
+  },
+  {
+    "id": "JOB-006",
+    "requirement_module": "configuration",
+    "description": "Create Configuration module project (Lopen.Configuration) and test project with ILopenConfiguration interface",
+    "status": "not_started",
+    "priority": 1,
+    "notes": "Foundation module - standalone, needed by core and cli"
+  },
+  {
+    "id": "JOB-007",
+    "requirement_module": "storage",
+    "description": "Create Storage module project (Lopen.Storage) and test project with IStorageService interface",
+    "status": "not_started",
+    "priority": 1,
+    "notes": "Foundation module - standalone, needed by core"
+  },
+  {
+    "id": "JOB-008",
+    "requirement_module": "llm",
+    "description": "Create LLM module project (Lopen.Llm) and test project with ILlmService interface (depends on Auth)",
+    "status": "not_started",
+    "priority": 1,
+    "notes": "Depends on Auth module for Copilot SDK credentials"
+  },
+  {
+    "id": "JOB-009",
+    "requirement_module": "core",
+    "description": "Create Core module project (Lopen.Core) and test project with service interfaces (depends on LLM, Storage, Configuration)",
+    "status": "not_started",
+    "priority": 1,
+    "notes": "Central orchestration module"
+  },
+  {
+    "id": "JOB-010",
+    "requirement_module": "tui",
+    "description": "Create TUI module project (Lopen.Tui) and test project with service registration (depends on CLI, Core)",
+    "status": "not_started",
+    "priority": 1,
+    "notes": "Terminal UI module - built last"
+  },
+  {
+    "id": "JOB-011",
+    "requirement_module": "otel",
+    "description": "Create OTEL module project (Lopen.Otel) and test project as cross-cutting concern (depends on Core)",
+    "status": "not_started",
+    "priority": 1,
+    "notes": "OpenTelemetry observability module"
+  },
+  {
+    "id": "JOB-012",
+    "requirement_module": "auth",
+    "description": "Implement device flow login via Copilot SDK - lopen auth login initiates device flow and completes authentication",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: lopen auth login initiates the Copilot SDK device flow and completes authentication successfully"
+  },
+  {
+    "id": "JOB-013",
+    "requirement_module": "auth",
+    "description": "Implement auth status reporting - lopen auth status reports authenticated/unauthenticated/invalid states",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: lopen auth status accurately reports authenticated, unauthenticated, and invalid credential states"
+  },
+  {
+    "id": "JOB-014",
+    "requirement_module": "auth",
+    "description": "Implement logout with SDK credential clearing and env var warning when GH_TOKEN/GITHUB_TOKEN is still set",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: lopen auth logout clears SDK-managed credentials; warns when env vars still set"
+  },
+  {
+    "id": "JOB-015",
+    "requirement_module": "auth",
+    "description": "Implement headless auth login error directing user to set GH_TOKEN",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: lopen auth login --headless returns an error directing the user to set GH_TOKEN"
+  },
+  {
+    "id": "JOB-016",
+    "requirement_module": "auth",
+    "description": "Implement GH_TOKEN and GITHUB_TOKEN environment variable authentication with precedence rules",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: GH_TOKEN works without login; GITHUB_TOKEN fallback; GH_TOKEN > GITHUB_TOKEN > SDK credentials"
+  },
+  {
+    "id": "JOB-017",
+    "requirement_module": "auth",
+    "description": "Implement pre-flight auth check blocking workflow when credentials are missing or invalid",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Pre-flight auth check blocks workflow start when credentials are missing or invalid"
+  },
+  {
+    "id": "JOB-018",
+    "requirement_module": "auth",
+    "description": "Implement automatic token renewal and failed renewal handling (critical error, save state, inform user)",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Auto renewal transparently refreshes; failed renewal triggers critical error and saves session"
+  },
+  {
+    "id": "JOB-019",
+    "requirement_module": "auth",
+    "description": "Implement descriptive auth error messages with what/why/how-to-fix including Copilot Requests permission guidance",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: All error messages include guidance; invalid PAT includes Copilot Requests permission requirement"
+  },
+  {
+    "id": "JOB-020",
+    "requirement_module": "auth",
+    "description": "Verify no credentials stored by Lopen - all credential storage delegated to SDK",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: No auth credentials or tokens are stored by Lopen"
+  },
+  {
+    "id": "JOB-021",
+    "requirement_module": "auth",
+    "description": "Write unit tests for all auth acceptance criteria (device flow, status, logout, env vars, precedence, renewal, errors)",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "Tests for all 15 auth ACs"
+  },
+  {
+    "id": "JOB-022",
+    "requirement_module": "configuration",
+    "description": "Implement configuration hierarchy resolving CLI flags \u2192 project config \u2192 global config \u2192 built-in defaults",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Configuration hierarchy resolves in order; higher-priority source wins"
+  },
+  {
+    "id": "JOB-023",
+    "requirement_module": "configuration",
+    "description": "Implement project config discovery at .lopen/config.json and global config at ~/.config/lopen/config.json",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Project config discovered in cwd or nearest parent; global config at ~/.config/lopen/"
+  },
+  {
+    "id": "JOB-024",
+    "requirement_module": "configuration",
+    "description": "Implement sensible built-in defaults so Lopen works without any configuration files",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: All settings have sensible built-in defaults"
+  },
+  {
+    "id": "JOB-025",
+    "requirement_module": "configuration",
+    "description": "Implement lopen config show displaying resolved configuration with sources and --json output",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: lopen config show displays resolved config with sources; --json outputs machine-readable JSON"
+  },
+  {
+    "id": "JOB-026",
+    "requirement_module": "configuration",
+    "description": "Implement --model CLI flag override for all model phase assignments",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: --model <name> CLI flag overrides all model phase assignments for the invocation"
+  },
+  {
+    "id": "JOB-027",
+    "requirement_module": "configuration",
+    "description": "Implement --unattended, --resume/--no-resume, --max-iterations CLI flag overrides",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: CLI flags override unattended, auto_resume, max_iterations settings"
+  },
+  {
+    "id": "JOB-028",
+    "requirement_module": "configuration",
+    "description": "Implement budget settings enforcement (token_budget_per_module, premium_request_budget)",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Budget settings are respected when non-zero"
+  },
+  {
+    "id": "JOB-029",
+    "requirement_module": "configuration",
+    "description": "Implement oracle model and tool discipline configuration passthrough to LLM module",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Oracle model setting passed to LLM; tool discipline settings control thresholds"
+  },
+  {
+    "id": "JOB-030",
+    "requirement_module": "configuration",
+    "description": "Implement configuration validation with clear error messages and guidance for invalid values",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Invalid configuration values produce clear error messages with guidance"
+  },
+  {
+    "id": "JOB-031",
+    "requirement_module": "configuration",
+    "description": "Write unit tests for all configuration acceptance criteria (hierarchy, discovery, defaults, overrides, validation)",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "Tests for all 15 configuration ACs"
+  },
+  {
+    "id": "JOB-032",
+    "requirement_module": "storage",
+    "description": "Implement .lopen/ directory creation in project root on first workflow run",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: .lopen/ directory is created in project root on first workflow run"
+  },
+  {
+    "id": "JOB-033",
+    "requirement_module": "storage",
+    "description": "Implement session state persistence (state.json) with phase, step, module, component, task hierarchy",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Session state persists workflow phase, step, module, component, and task hierarchy"
+  },
+  {
+    "id": "JOB-034",
+    "requirement_module": "storage",
+    "description": "Implement session metrics persistence (metrics.json) with per-iteration and cumulative token/premium counts",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Session metrics persists per-iteration and cumulative token counts and premium request counts"
+  },
+  {
+    "id": "JOB-035",
+    "requirement_module": "storage",
+    "description": "Implement session ID generation ({module}-YYYYMMDD-{counter}) and latest symlink management",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Session IDs follow format with no collisions; latest symlink points to most recent session"
+  },
+  {
+    "id": "JOB-036",
+    "requirement_module": "storage",
+    "description": "Implement auto-save on step/task/phase completion, component completion, and user pause/switch",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: State auto-saved after step/task completion, phase transition, component completion, user pause"
+  },
+  {
+    "id": "JOB-037",
+    "requirement_module": "storage",
+    "description": "Implement session resume from latest with resume-or-fresh prompt, --resume {id}, and --no-resume",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Resume from latest; --resume {id} resumes specific; --no-resume starts fresh"
+  },
+  {
+    "id": "JOB-038",
+    "requirement_module": "storage",
+    "description": "Implement plan storage at .lopen/modules/{module}/plan.md with programmatic checkbox updates",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Plans stored with checkbox hierarchy; checkboxes updated by Lopen, not LLM"
+  },
+  {
+    "id": "JOB-039",
+    "requirement_module": "storage",
+    "description": "Implement section cache at .lopen/cache/sections/ with file path + header + timestamp key and invalidation",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Section cache keyed correctly; invalidated on source file change"
+  },
+  {
+    "id": "JOB-040",
+    "requirement_module": "storage",
+    "description": "Implement assessment cache with short-lived invalidation on any file change in assessed scope",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Assessment cache is short-lived and invalidated on any file change"
+  },
+  {
+    "id": "JOB-041",
+    "requirement_module": "storage",
+    "description": "Implement corrupted state detection, warning, exclusion from resume, and move to .lopen/corrupted/",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Corrupted state detected, warned, excluded; corrupted files moved to .lopen/corrupted/"
+  },
+  {
+    "id": "JOB-042",
+    "requirement_module": "storage",
+    "description": "Implement disk full/write failure as critical system error and corrupted cache silent invalidation",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Disk full pauses workflow; corrupted cache silently invalidated and regenerated"
+  },
+  {
+    "id": "JOB-043",
+    "requirement_module": "storage",
+    "description": "Implement session retention pruning and research document storage at docs/requirements/{module}/RESEARCH-{topic}.md",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Prune beyond session_retention limit; research docs stored in source tree"
+  },
+  {
+    "id": "JOB-044",
+    "requirement_module": "storage",
+    "description": "Implement compact JSON storage format with on-demand prettification via lopen session show --format",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "AC: Storage format is compact JSON by default, with on-demand prettification"
+  },
+  {
+    "id": "JOB-045",
+    "requirement_module": "storage",
+    "description": "Write unit tests for all storage acceptance criteria (directory, state, metrics, sessions, cache, corruption, pruning)",
+    "status": "not_started",
+    "priority": 2,
+    "notes": "Tests for all 20 storage ACs"
+  },
+  {
+    "id": "JOB-046",
+    "requirement_module": "llm",
+    "description": "Implement Copilot SDK authentication using credentials from the Auth module",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Lopen authenticates with the Copilot SDK using credentials from the Auth module"
+  },
+  {
+    "id": "JOB-047",
+    "requirement_module": "llm",
+    "description": "Implement fresh context window per workflow phase with no conversation history carried forward",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Each workflow phase invokes the SDK with a fresh context window"
+  },
+  {
+    "id": "JOB-048",
+    "requirement_module": "llm",
+    "description": "Implement system prompt assembly with role, workflow state, step instructions, context, tools, constraints",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: System prompt includes all required components"
+  },
+  {
+    "id": "JOB-049",
+    "requirement_module": "llm",
+    "description": "Implement section-level document extraction for context window (not full documents)",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Context window contains only section-level document extractions"
+  },
+  {
+    "id": "JOB-050",
+    "requirement_module": "llm",
+    "description": "Implement Lopen-managed tools: read_spec, read_research, read_plan, update_task_status, get_current_context, log_research, report_progress",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: All 7 Lopen-managed tools are registered and functional"
+  },
+  {
+    "id": "JOB-051",
+    "requirement_module": "llm",
+    "description": "Implement oracle verification tools (verify_task/component/module_completion) dispatching sub-agent with pass/fail",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Oracle tools dispatch sub-agent; run within same SDK invocation (no extra premium request)"
+  },
+  {
+    "id": "JOB-052",
+    "requirement_module": "llm",
+    "description": "Implement update_task_status(complete) rejection unless preceded by passing verify_*_completion",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Completion rejected without prior passing verification call"
+  },
+  {
+    "id": "JOB-053",
+    "requirement_module": "llm",
+    "description": "Implement per-step tool registration varying by workflow step (e.g., log_research only during research)",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Tool registration varies by workflow step"
+  },
+  {
+    "id": "JOB-054",
+    "requirement_module": "llm",
+    "description": "Implement per-phase model selection and model fallback when configured model is unavailable",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Per-phase model selection works; fallback activates with warning"
+  },
+  {
+    "id": "JOB-055",
+    "requirement_module": "llm",
+    "description": "Implement token usage metrics from SDK response metadata, TUI surfacing, and session persistence",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Token metrics read from SDK, surfaced to TUI, persisted in session state"
+  },
+  {
+    "id": "JOB-056",
+    "requirement_module": "llm",
+    "description": "Implement context window budget enforcement with lower-priority section truncation/summarization",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Context window budget respected; lower-priority sections truncated or summarized"
+  },
+  {
+    "id": "JOB-057",
+    "requirement_module": "llm",
+    "description": "Write unit tests for all LLM acceptance criteria (auth, context, tools, oracle, model selection, metrics, budget)",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "Tests for all 14 LLM ACs"
+  },
+  {
+    "id": "JOB-058",
+    "requirement_module": "core",
+    "description": "Implement module scanner that identifies all module specifications in docs/requirements/",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Lopen scans docs/requirements/ and correctly identifies all module specifications"
+  },
+  {
+    "id": "JOB-059",
+    "requirement_module": "core",
+    "description": "Implement 7-step workflow engine: Draft Spec \u2192 Dependencies \u2192 Components \u2192 Select \u2192 Tasks \u2192 Iterate \u2192 Repeat",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: The 7-step workflow executes in order"
+  },
+  {
+    "id": "JOB-060",
+    "requirement_module": "core",
+    "description": "Implement re-entrant assessment determining current workflow step from actual codebase state",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Re-entrant assessment uses codebase state, not stale session data"
+  },
+  {
+    "id": "JOB-061",
+    "requirement_module": "core",
+    "description": "Implement specification drift detection when spec sections change between iterations",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Drift detection identifies spec changes and flags to user"
+  },
+  {
+    "id": "JOB-062",
+    "requirement_module": "core",
+    "description": "Implement phase transitions: Req Gathering\u2192Planning requires user confirmation (human gate)",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Requirement Gathering \u2192 Planning transition requires explicit user confirmation"
+  },
+  {
+    "id": "JOB-063",
+    "requirement_module": "core",
+    "description": "Implement automatic phase transitions: Planning\u2192Building (plan complete) and Building\u2192Complete (all ACs pass)",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Planning\u2192Building auto when plan complete; Building\u2192Complete auto when all ACs pass"
+  },
+  {
+    "id": "JOB-064",
+    "requirement_module": "core",
+    "description": "Implement task hierarchy (Module \u2192 Component \u2192 Task \u2192 Subtask) with state transitions (Pending \u2192 In Progress \u2192 Complete/Failed)",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: 4-level task hierarchy with defined state transitions"
+  },
+  {
+    "id": "JOB-065",
+    "requirement_module": "core",
+    "description": "Implement task completion oracle verification requirement before accepting update_task_status(complete)",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Task completion requires passing oracle verification"
+  },
+  {
+    "id": "JOB-066",
+    "requirement_module": "core",
+    "description": "Implement back-pressure Category 1 (Resource Limits): warn at threshold, pause at confirmation threshold",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Resource limits with warning and pause thresholds"
+  },
+  {
+    "id": "JOB-067",
+    "requirement_module": "core",
+    "description": "Implement back-pressure Category 2 (Progress Integrity): churn detection and false completion rejection",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Churn detection escalates; false completions rejected when required tool calls not made"
+  },
+  {
+    "id": "JOB-068",
+    "requirement_module": "core",
+    "description": "Implement back-pressure Category 3 (Quality Gates): acceptance criteria enforced at module/component completion",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Quality gates enforce ACs at completion boundaries"
+  },
+  {
+    "id": "JOB-069",
+    "requirement_module": "core",
+    "description": "Implement back-pressure Category 4 (Tool Discipline): corrective instructions for wasteful tool patterns",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Corrective instructions injected when wasteful tool patterns detected"
+  },
+  {
+    "id": "JOB-070",
+    "requirement_module": "core",
+    "description": "Implement git auto-commit on task completion and branch-per-module (lopen/{module}) creation",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Git auto-commit after each task when enabled; branch per module creates working branches"
+  },
+  {
+    "id": "JOB-071",
+    "requirement_module": "core",
+    "description": "Implement lopen revert to roll back to last task-completion commit and update session state",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: lopen revert rolls back to last task-completion commit"
+  },
+  {
+    "id": "JOB-072",
+    "requirement_module": "core",
+    "description": "Implement document management (section extraction for context) and programmatic updates without LLM invocation",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Section extraction for LLM context; programmatic updates happen without LLM"
+  },
+  {
+    "id": "JOB-073",
+    "requirement_module": "core",
+    "description": "Implement failure handling: inline single failures with self-correction, user intervention at threshold, critical errors block",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Single failures inline; repeated failures prompt user; critical errors block execution"
+  },
+  {
+    "id": "JOB-074",
+    "requirement_module": "core",
+    "description": "Implement module selection listing modules with current state for user choice",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "AC: Module selection lists modules with current state and allows user to choose"
+  },
+  {
+    "id": "JOB-075",
+    "requirement_module": "core",
+    "description": "Write unit tests for all core acceptance criteria (workflow, assessment, drift, transitions, back-pressure, git, failures)",
+    "status": "not_started",
+    "priority": 3,
+    "notes": "Tests for all 24 core ACs"
+  },
+  {
+    "id": "JOB-076",
+    "requirement_module": "cli",
+    "description": "Implement root command (lopen) starting TUI with full workflow and session resume offer",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: lopen starts TUI with full workflow; offers session resume if active session exists"
+  },
+  {
+    "id": "JOB-077",
+    "requirement_module": "cli",
+    "description": "Implement --headless mode with plain text output and --quiet/-q flag disabling TUI",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: --headless runs autonomously; --quiet/-q disables TUI entirely"
+  },
+  {
+    "id": "JOB-078",
+    "requirement_module": "cli",
+    "description": "Implement lopen spec, lopen plan, lopen build subcommands with prerequisite validation",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: spec runs step 1; plan errors if no spec; build errors if no spec and plan"
+  },
+  {
+    "id": "JOB-079",
+    "requirement_module": "cli",
+    "description": "Implement lopen auth login/status/logout subcommands wired to Auth module",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Auth subcommands invoke auth module correctly"
+  },
+  {
+    "id": "JOB-080",
+    "requirement_module": "cli",
+    "description": "Implement lopen session list/show/resume/delete/prune subcommands wired to Storage module",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Session subcommands with --format flag support"
+  },
+  {
+    "id": "JOB-081",
+    "requirement_module": "cli",
+    "description": "Implement lopen config show and lopen revert subcommands wired to Configuration and Core modules",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: config show displays resolved config; revert rolls back"
+  },
+  {
+    "id": "JOB-082",
+    "requirement_module": "cli",
+    "description": "Implement --prompt flag (headless: inject into LLM; TUI: populate input), exit codes (0/1/2), --help/--version",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: --prompt behavior; headless without --prompt errors; exit codes 0/1/2; help/version flags"
+  },
+  {
+    "id": "JOB-083",
+    "requirement_module": "cli",
+    "description": "Write integration tests for all CLI acceptance criteria (commands, flags, exit codes, DI wiring)",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "Tests for all 25 CLI ACs"
+  },
+  {
+    "id": "JOB-084",
+    "requirement_module": "tui",
+    "description": "Implement split-screen layout with activity (left) and context (right) panes, adjustable 50/50 to 80/20 ratio",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Split-screen layout with adjustable ratio"
+  },
+  {
+    "id": "JOB-085",
+    "requirement_module": "tui",
+    "description": "Implement top panel with logo, version, model, context usage, premium requests, git branch, auth status, phase, step",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Top panel displays all required status information including phase/step visualization"
+  },
+  {
+    "id": "JOB-086",
+    "requirement_module": "tui",
+    "description": "Implement context panel showing current task, task tree with completion states (checkmark/arrow/circle), active resources",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Context panel with hierarchical task tree and numbered resource access"
+  },
+  {
+    "id": "JOB-087",
+    "requirement_module": "tui",
+    "description": "Implement main activity area with scrolling, progressive disclosure (expand current, collapse previous to summaries)",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Scrollable activity area; current action expanded, previous collapsed"
+  },
+  {
+    "id": "JOB-088",
+    "requirement_module": "tui",
+    "description": "Implement multi-line prompt area with Alt+Enter for newlines and keyboard hints at bottom",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Multi-line prompt input with Alt+Enter; keyboard hints displayed"
+  },
+  {
+    "id": "JOB-089",
+    "requirement_module": "tui",
+    "description": "Implement landing page modal with quick commands (skippable --no-welcome) and session resume modal",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Landing page on first startup; session resume modal for active sessions"
+  },
+  {
+    "id": "JOB-090",
+    "requirement_module": "tui",
+    "description": "Implement tool call output expansion, inline research display, phase transition summaries, diff viewer with syntax highlighting",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Expandable tool outputs; research drill-in; phase summaries; diff viewer with line numbers"
+  },
+  {
+    "id": "JOB-091",
+    "requirement_module": "tui",
+    "description": "Implement file picker with tree view, module selection modal with arrow keys, component selection UI",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: File picker, module selection modal, component selection tree view"
+  },
+  {
+    "id": "JOB-092",
+    "requirement_module": "tui",
+    "description": "Implement keyboard shortcuts (Tab focus, Ctrl+P pause, number keys resources) and guided conversation UI for step 1",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: All keyboard shortcuts functional; guided conversation for requirement gathering"
+  },
+  {
+    "id": "JOB-093",
+    "requirement_module": "tui",
+    "description": "Implement confirmation modals (Yes/No/Always/Other), expandable sections, failure/error modals with recovery options",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Confirmation modals; failure inline auto-expanded; repeated failure modal; critical error modal"
+  },
+  {
+    "id": "JOB-094",
+    "requirement_module": "tui",
+    "description": "Implement spinner async feedback, real-time progress percentages, context/premium counters in top panel",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Spinner for long ops; real-time progress; context window usage; premium request counter with fire indicator"
+  },
+  {
+    "id": "JOB-095",
+    "requirement_module": "tui",
+    "description": "Implement semantic color palette, Unicode/ASCII fallbacks, box-drawing borders, syntax highlighting, NO_COLOR support",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Visual design with semantic colors, Unicode fallbacks, box chars, NO_COLOR respected"
+  },
+  {
+    "id": "JOB-096",
+    "requirement_module": "tui",
+    "description": "Implement slash commands (/help /spec /plan /build /session /config /revert /auth), queued messages, Ctrl+P pause",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Slash commands invoke CLI; unknown commands error; queued messages; Ctrl+P pauses"
+  },
+  {
+    "id": "JOB-097",
+    "requirement_module": "tui",
+    "description": "Implement component gallery (lopen test tui) with self-registration, mock data, interactive preview, multiple visual states",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "AC: Gallery with component listing, realistic stubs, interactive preview, self-registration"
+  },
+  {
+    "id": "JOB-098",
+    "requirement_module": "tui",
+    "description": "Write unit tests for all TUI acceptance criteria (layout, interactions, modals, slash commands, visual design, gallery)",
+    "status": "not_started",
+    "priority": 4,
+    "notes": "Tests for all ~40 TUI ACs"
+  },
+  {
+    "id": "JOB-099",
+    "requirement_module": "otel",
+    "description": "Implement OTEL span hierarchy (command, phase, sdk invocation, tool, oracle, task, backpressure), counters, histograms, structured logs with TraceId/SpanId",
+    "status": "not_started",
+    "priority": 5,
+    "notes": "AC: All 7 span types with correct attributes; all counter/histogram metrics; structured logs with correlation"
+  },
+  {
+    "id": "JOB-100",
+    "requirement_module": "otel",
+    "description": "Implement OTLP export, Aspire Dashboard integration, config toggles (enabled, traces, metrics, logs), env var precedence, and <5ms overhead verification with tests",
+    "status": "not_started",
+    "priority": 5,
+    "notes": "AC: OTLP conditional export; aspire run integration; individual signal toggles; env var precedence; performance verification; tests for all 17 OTEL ACs"
+  }
+]

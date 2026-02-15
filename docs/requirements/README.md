@@ -1,125 +1,19 @@
-# Lopen - Requirements Index
-
-> A .NET 10 CLI application with REPL capabilities for GitHub Copilot SDK integration
-
-## Project Information
-
-| Attribute | Value |
-|-----------|-------|
-| Name | lopen |
-| Platform | .NET 10 |
-| Architecture | Single executable (initially) |
-
+---
+name: requirements-readme
+description: Contains the index lookup of the requirements for Lopen. It has a brief summary of each requirement (module), where to find it, plus the latest known state of said requirement
 ---
 
-## Modules
+# Lopen Requirements
 
-| Module | Description | Document |
-|--------|-------------|----------|
-| [cli-core](cli-core/SPECIFICATION.md) | Version, help commands | Phase 1 |
-| [auth](auth/SPECIFICATION.md) | OAuth2, device flow, token management | Phase 1 |
-| [repl](repl/SPECIFICATION.md) | Interactive REPL, session state, history | Phase 2 |
-| [tui](tui/SPECIFICATION.md) | Terminal UI patterns (Spectre.Console) | Phase 2 |
-| [platform](platform/SPECIFICATION.md) | Performance, cross-platform, accessibility | Cross-cutting |
-| [copilot](copilot/SPECIFICATION.md) | Copilot SDK, chat, streaming, tools | Phase 3 |
-| [testing](testing/SPECIFICATION.md) | Lopen Testing harness | Cross-cutting |
-| [loop](loop/SPECIFICATION.md) | The Lopen Loop - autonomous iterative development | Phase 4 |
-| [tech-debt](tech-debt/SPECIFICATION.md) | Items related to cleaning up the code | Cross-cutting |
+This document describes the known modules (requirements) for Lopen.
 
----
-
-## Requirements Summary
-
-### Phase 1 - Foundation (Current)
-
-| ID | Requirement | Module | Status |
-|----|-------------|--------|--------|
-| REQ-001 | Version Command | [cli-core](cli-core/SPECIFICATION.md) | 🟢 Complete |
-| REQ-002 | Help/Commands List | [cli-core](cli-core/SPECIFICATION.md) | 🟢 Complete |
-| REQ-003 | Copilot SDK Authentication | [auth](auth/SPECIFICATION.md) | 🟢 Complete |
-
-### Phase 2 - REPL & TUI (Complete)
-
-| ID | Requirement | Module | Status |
-|----|-------------|--------|--------|
-| REQ-010 | REPL Mode | [repl](repl/SPECIFICATION.md) | 🟢 Complete |
-| REQ-011 | Session State Management | [repl](repl/SPECIFICATION.md) | 🟢 Complete |
-| REQ-012 | Command History | [repl](repl/SPECIFICATION.md) | 🟢 Complete |
-| REQ-013 | Auto-completion | [repl](repl/SPECIFICATION.md) | 🟢 Complete |
-| REQ-014 | Modern TUI Patterns | [tui](tui/SPECIFICATION.md) | 🟢 Complete |
-
-### Phase 3 - Copilot Integration (Complete)
-
-| ID | Requirement | Module | Status |
-|----|-------------|--------|--------|
-| REQ-020 | Copilot SDK Integration | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
-| REQ-021 | Chat Command | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
-| REQ-022 | Streaming Responses | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
-| REQ-023 | Custom Tools | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
-| REQ-024 | Session Persistence | [copilot](copilot/SPECIFICATION.md) | 🟢 Complete |
-
-### Phase 4 - The Lopen Loop (Complete)
-
-| ID | Requirement | Module | Status |
-|----|-------------|--------|--------|
-| REQ-030 | Loop Command | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
-| REQ-031 | Loop Configuration | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
-| REQ-032 | Plan Phase | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
-| REQ-033 | Build Phase | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
-| REQ-034 | State Management | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
-| REQ-035 | Output Streaming | [loop](loop/SPECIFICATION.md) | 🟢 Complete |
-| REQ-036 | Verification Agent | [loop](loop/SPECIFICATION.md) | 🟡 Partial |
-
-> **Note**: REQ-036 Verification Agent service is implemented but not yet integrated into the build loop. See JTBD-002.
-
-### Phase 5 - Self-Testing (Complete)
-
-| ID | Requirement | Module | Status |
-|----|-------------|--------|--------|
-| REQ-020-TEST | Self-Testing Command | [testing](testing/SPECIFICATION.md) | 🟢 Complete |
-
-> **Note**: Minor enhancements pending: per-test timestamps (JTBD-006), stack traces in verbose mode (JTBD-007).
-
-### Non-Functional Requirements
-
-| ID | Requirement | Module | Status |
-|----|-------------|--------|--------|
-| NFR-001 | Performance | [platform](platform/SPECIFICATION.md) | 🟢 Complete |
-| NFR-002 | Cross-Platform | [platform](platform/SPECIFICATION.md) | 🟢 Complete |
-| NFR-003 | Accessibility | [platform](platform/SPECIFICATION.md) | 🟢 Complete |
-
----
-
-## Technology Stack
-
-| Component | Technology |
-|-----------|------------|
-| CLI Framework | System.CommandLine (2.0.2) |
-| TUI | Spectre.Console (0.54.0) |
-| Auth | GitHub OAuth2 (device flow) |
-| Testing | xUnit + Shouldly + coverlet |
-| Logging | Serilog |
-
-> **Note**: The official GitHub Copilot SDK for .NET (`GitHub.Copilot.SDK` v0.1.17) is now available on NuGet. Phase 3 will integrate this SDK for AI-powered chat and agentic workflows.
-
----
-
-## Status Legend
-
-| Icon | Meaning |
-|------|---------|
-| 🔴 | Not Started |
-| 🟡 | In Progress |
-| 🟢 | Complete |
-| ⏸️ | Blocked |
-
----
-
-## Change Log
-
-| Date | Change |
-|------|--------|
-| 2026-01-27 | Comprehensive JTBD audit: identified 13 open items, updated Loop/Testing status to Complete |
-| 2026-01-25 | Phase 3 complete, Phase 4 research complete, added Phase 5 Self-Testing |
-| 2026-01-24 | Phase 2 complete, added Phase 3 Copilot Integration requirements |
-| 2026-01-23 | Initial requirements, split into modules |
+| Requirement   | Location                          | Summary                                                          | State |
+| ------------- | --------------------------------- | ---------------------------------------------------------------- | ----- |
+| Core          | `docs/requirements/core`          | Workflow orchestration, task management, failure handling        | Draft |
+| LLM           | `docs/requirements/llm`           | Copilot SDK integration, model selection, tool strategy          | Draft |
+| Storage       | `docs/requirements/storage`       | Session persistence, `.lopen/` structure, document formats       | Draft |
+| Configuration | `docs/requirements/configuration` | Settings hierarchy, CLI flags, model assignments, defaults       | Draft |
+| CLI           | `docs/requirements/cli`           | Command structure, global flags, headless mode, prompt injection | Draft |
+| Auth          | `docs/requirements/auth`          | GitHub Copilot authentication and credential management          | Draft |
+| TUI           | `docs/requirements/tui`           | Terminal UI layout, progressive disclosure, visual design        | Draft |
+| OTEL          | `docs/requirements/otel`          | OpenTelemetry observability, tracing, metrics, Aspire Dashboard  | Draft |
