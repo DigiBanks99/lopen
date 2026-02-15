@@ -411,9 +411,9 @@
     "id": "JOB-052",
     "requirement_module": "llm",
     "description": "Implement update_task_status(complete) rejection unless preceded by passing verify_*_completion",
-    "status": "in_progress",
+    "status": "complete",
     "priority": 3,
-    "notes": "VerificationTracker records oracle results with scope+identifier isolation and ResetForInvocation. IVerificationTracker interface + implementation + 14 tests complete. QualityGateGuardrail in Core enforces back-pressure (JOB-065 complete). REMAINING: wiring VerificationTracker + QualityGateGuardrail into actual update_task_status SDK tool handler (depends on JOB-046 CopilotService implementation)."
+    "notes": "TaskStatusGate validates completion via IVerificationTracker.IsVerified(). Scope-specific rejection messages reference correct verify_*_completion tool. QualityGateGuardrail in Core enforces back-pressure. DI wired in both LLM and Core modules. 14 TaskStatusGate tests + 14 VerificationTracker tests."
   },
   {
     "id": "JOB-053",

@@ -21,6 +21,13 @@
             "tests": "VerificationTrackerTests (14 tests)",
             "jobs": ["JOB-052"]
         },
+        "task_status_gate": {
+            "status": "complete",
+            "implementation": "TaskStatusGate (ITaskStatusGate)",
+            "tests": "TaskStatusGateTests (14 tests)",
+            "jobs": ["JOB-052"],
+            "notes": "Validates update_task_status(complete) by checking IVerificationTracker.IsVerified(). Returns scope-specific rejection messages referencing correct verify_*_completion tool."
+        },
         "oracle_verifier": {
             "status": "complete",
             "implementation": "OracleVerifier",
@@ -74,5 +81,5 @@
             "notes": "Decouples LLM module from Auth module. Composition root can register custom provider."
         }
     },
-    "last_updated": "2026-02-15T18:06:00Z"
+    "last_updated": "2026-02-15T19:00:00Z"
 }

@@ -48,6 +48,22 @@ public static class ServiceCollectionExtensions
                 ? new ToolDisciplineGuardrail(options)
                 : new ToolDisciplineGuardrail();
         });
+        services.AddSingleton<IGuardrail>(sp =>
+        {
+            var tracker = sp.GetService<Lopen.Llm.IVerificationTracker>();
+            if (tracker is null)
+            {
+                return new QualityGateGuardrail(
+                    isCompletionBoundary: _ => false,
+                    hasPassingVerification: _ => true);
+            }
+
+            return new QualityGateGuardrail(
+                isCompletionBoundary: ctx => ctx.TaskName is not null,
+                hasPassingVerification: ctx =>
+                    ctx.TaskName is not null &&
+                    tracker.IsVerified(Lopen.Llm.VerificationScope.Task, ctx.TaskName));
+        });
         services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
 
         return services;

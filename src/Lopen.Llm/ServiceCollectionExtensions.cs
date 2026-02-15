@@ -25,6 +25,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IVerificationTracker, VerificationTracker>();
         services.AddSingleton<IOracleVerifier, OracleVerifier>();
         services.AddSingleton<IContextBudgetManager, ContextBudgetManager>();
+        services.AddSingleton<ITaskStatusGate, TaskStatusGate>();
 
         return services;
     }
