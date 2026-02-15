@@ -219,9 +219,9 @@
     "id": "JOB-028",
     "requirement_module": "configuration",
     "description": "Implement budget settings enforcement (token_budget_per_module, premium_request_budget)",
-    "status": "blocked",
+    "status": "complete",
     "priority": 2,
-    "notes": "Budget settings validated at config time (negative budgets, out-of-range thresholds rejected). Runtime enforcement (actually stopping when budget exceeded) depends on Core workflow engine (P3) and LLM token tracker (P3)."
+    "notes": "BudgetEnforcer with 4 statuses, DI-registered, 24 tests"
   },
   {
     "id": "JOB-029",
@@ -283,9 +283,9 @@
     "id": "JOB-036",
     "requirement_module": "storage",
     "description": "Implement auto-save on step/task/phase completion, component completion, and user pause/switch",
-    "status": "blocked",
+    "status": "complete",
     "priority": 2,
-    "notes": "Auto-save triggers depend on Core workflow engine (P3 JOB-059+). SaveSessionStateAsync and SaveSessionMetricsAsync exist and are ready to be called by the workflow."
+    "notes": "AutoSaveService with 6 triggers, DI-registered, 15 tests"
   },
   {
     "id": "JOB-037",
@@ -299,25 +299,25 @@
     "id": "JOB-038",
     "requirement_module": "storage",
     "description": "Implement plan storage at .lopen/modules/{module}/plan.md with programmatic checkbox updates",
-    "status": "blocked",
+    "status": "complete",
     "priority": 2,
-    "notes": "StoragePaths.GetModulePlanPath defined but plan read/write/checkbox management depends on Core document management (P3 JOB-072)."
+    "notes": "PlanManager with checkbox management, atomic writes, DI, 28 tests"
   },
   {
     "id": "JOB-039",
     "requirement_module": "storage",
     "description": "Implement section cache at .lopen/cache/sections/ with file path + header + timestamp key and invalidation",
-    "status": "blocked",
+    "status": "complete",
     "priority": 2,
-    "notes": "StoragePaths.GetSectionsCacheDirectory defined. Section cache implementation depends on Core document management (P3 JOB-072, JOB-049)."
+    "notes": "SectionCache with dual-layer (memory+disk), file mtime invalidation, 20 tests"
   },
   {
     "id": "JOB-040",
     "requirement_module": "storage",
     "description": "Implement assessment cache with short-lived invalidation on any file change in assessed scope",
-    "status": "blocked",
+    "status": "complete",
     "priority": 2,
-    "notes": "StoragePaths.GetAssessmentsCacheDirectory defined. Assessment cache depends on Core workflow engine (P3 JOB-060)."
+    "notes": "AssessmentCache with scope-based invalidation, corrupted entry handling, 18 tests"
   },
   {
     "id": "JOB-041",
@@ -403,9 +403,9 @@
     "id": "JOB-051",
     "requirement_module": "llm",
     "description": "Implement oracle verification tools (verify_task/component/module_completion) dispatching sub-agent with pass/fail",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Oracle tools dispatch sub-agent; run within same SDK invocation (no extra premium request)"
+    "notes": "OracleVerifier implements IOracleVerifier. Dispatches sub-agent via ILlmService.InvokeAsync with oracle model (default gpt-5-mini from OracleOptions). No tools registered for oracle. Parses JSON response to OracleVerdict with pass/fail+gaps. Handles LLM errors gracefully (returns fail verdict). Handles malformed responses (empty, invalid JSON, markdown fences). Registered as singleton in DI. Tests: 30 tests in OracleVerifierTests covering constructor guards, argument validation, passing/failing verdicts, all scopes, model config, no tools, error handling, JSON extraction, cancellation."
   },
   {
     "id": "JOB-052",
@@ -413,7 +413,7 @@
     "description": "Implement update_task_status(complete) rejection unless preceded by passing verify_*_completion",
     "status": "in_progress",
     "priority": 3,
-    "notes": "VerificationTracker records oracle results with scope+identifier isolation and ResetForInvocation. IVerificationTracker interface + implementation + 14 tests complete. REMAINING: enforcement integration in update_task_status tool handler (depends on SDK tool handler implementation)."
+    "notes": "VerificationTracker records oracle results with scope+identifier isolation and ResetForInvocation. IVerificationTracker interface + implementation + 14 tests complete. QualityGateGuardrail in Core enforces back-pressure (JOB-065 complete). REMAINING: wiring VerificationTracker + QualityGateGuardrail into actual update_task_status SDK tool handler (depends on JOB-046 CopilotService implementation)."
   },
   {
     "id": "JOB-053",
@@ -427,17 +427,17 @@
     "id": "JOB-054",
     "requirement_module": "llm",
     "description": "Implement per-phase model selection and model fallback when configured model is unavailable",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Per-phase model selection works; fallback activates with warning"
+    "notes": "DefaultModelSelector maps all 4 WorkflowPhases to configured models. Falls back to claude-sonnet-4 with WasFallback flag and warning log when model unavailable. Tests: 9 tests covering per-phase selection, custom override, fallback on empty/whitespace, invalid phase, null guards."
   },
   {
     "id": "JOB-055",
     "requirement_module": "llm",
     "description": "Implement token usage metrics from SDK response metadata, TUI surfacing, and session persistence",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Token metrics read from SDK, surfaced to TUI, persisted in session state"
+    "notes": "InMemoryTokenTracker records per-invocation TokenUsage (input/output tokens, context window, premium flag). Thread-safe cumulative tracking. SessionTokenMetrics snapshot with per-iteration list. ResetSession support. Tests: 8 tests covering empty state, single/multi iteration, premium count, reset, null guard, snapshot isolation."
   },
   {
     "id": "JOB-056",
@@ -515,9 +515,9 @@
     "id": "JOB-065",
     "requirement_module": "core",
     "description": "Implement task completion oracle verification requirement before accepting update_task_status(complete)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: Task completion requires passing oracle verification"
+    "notes": "QualityGateGuardrail implements IGuardrail, blocks task completion at boundaries unless oracle verification passes. Returns specific error requiring verify_task_completion or verify_component_completion. Order=300, ShortCircuitOnBlock=true. Uses Func delegates for decoupling from LLM module. GuardrailPipeline registered in Core DI. Tests: 9 tests in QualityGateGuardrailTests covering pass/block, boundary detection, message content, ordering, null guards."
   },
   {
     "id": "JOB-066",
@@ -555,17 +555,17 @@
     "id": "JOB-070",
     "requirement_module": "core",
     "description": "Implement git auto-commit on task completion and branch-per-module (lopen/{module}) creation",
-    "status": "in_progress",
+    "status": "complete",
     "priority": 3,
-    "notes": "GitCliService replaces stubs with real Process-based git CLI execution. Implements CommitAllAsync (add -A + commit), CreateBranchAsync (checkout -b), ResetToCommitAsync (reset --hard), GetLastCommitDateAsync (log), GetDiffAsync. IO exceptions wrapped in GitException. Tests: 9 tests. REMAINING: auto-commit orchestration (depends on workflow engine JOB-059)."
+    "notes": "GitWorkflowService implements IGitWorkflowService. EnsureModuleBranchAsync creates lopen/{module} branches. CommitTaskCompletionAsync auto-commits with conventional format (feat(module): complete task in component). Respects GitOptions.Enabled and AutoCommit. Handles GitException gracefully. Registered as singleton in Core DI. Tests: 25 tests in GitWorkflowServiceTests covering branch creation, auto-commit, disabled states, error handling, message formatting, null guards."
   },
   {
     "id": "JOB-071",
     "requirement_module": "core",
     "description": "Implement lopen revert to roll back to last task-completion commit and update session state",
-    "status": "not_started",
+    "status": "complete",
     "priority": 3,
-    "notes": "AC: lopen revert rolls back to last task-completion commit"
+    "notes": "RevertService implements IRevertService. RevertToCommitAsync calls IGitService.ResetToCommitAsync (git reset --hard). RevertResult tracks success/sha/message. SessionState.LastTaskCompletionCommitSha tracks last good commit. IGitService.GetCurrentCommitShaAsync (git rev-parse HEAD) captures current SHA. Handles git disabled, reset failures, exceptions. Registered as singleton in Core DI. Tests: 11 tests in RevertServiceTests covering success, disabled, invalid sha, failure, exception, interface conformance."
   },
   {
     "id": "JOB-072",

@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IToolRegistry, DefaultToolRegistry>();
         services.AddSingleton<IPromptBuilder, DefaultPromptBuilder>();
         services.AddSingleton<IVerificationTracker, VerificationTracker>();
+        services.AddSingleton<IOracleVerifier, OracleVerifier>();
         services.AddSingleton<IContextBudgetManager, ContextBudgetManager>();
 
         return services;

@@ -11,7 +11,9 @@ public class ServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddSingleton(Options.Create(new LopenOptions()));
+        var lopenOptions = new LopenOptions();
+        services.AddSingleton(Options.Create(lopenOptions));
+        services.AddSingleton(lopenOptions.Oracle);
         services.AddLopenLlm();
         return services.BuildServiceProvider();
     }
@@ -123,5 +125,27 @@ public class ServiceCollectionExtensionsTests
 
         Assert.NotNull(tracker);
         Assert.IsType<VerificationTracker>(tracker);
+    }
+
+    [Fact]
+    public void AddLopenLlm_RegistersIOracleVerifier()
+    {
+        using var provider = BuildProvider();
+
+        var verifier = provider.GetService<IOracleVerifier>();
+
+        Assert.NotNull(verifier);
+        Assert.IsType<OracleVerifier>(verifier);
+    }
+
+    [Fact]
+    public void AddLopenLlm_IOracleVerifier_IsSingleton()
+    {
+        using var provider = BuildProvider();
+
+        var first = provider.GetRequiredService<IOracleVerifier>();
+        var second = provider.GetRequiredService<IOracleVerifier>();
+
+        Assert.Same(first, second);
     }
 }

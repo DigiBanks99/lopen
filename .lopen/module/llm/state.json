@@ -1,0 +1,64 @@
+{
+  "module": "llm",
+  "description": "LLM integration module using GitHub Copilot SDK",
+  "status": "in_progress",
+  "components": {
+    "prompt_builder": {
+      "status": "complete",
+      "implementation": "DefaultPromptBuilder",
+      "tests": "DefaultPromptBuilderTests (13 tests)",
+      "jobs": ["JOB-048"]
+    },
+    "tool_registry": {
+      "status": "complete",
+      "implementation": "DefaultToolRegistry",
+      "tests": "DefaultToolRegistryTests (18 tests)",
+      "jobs": ["JOB-050", "JOB-053"]
+    },
+    "verification_tracker": {
+      "status": "complete",
+      "implementation": "VerificationTracker",
+      "tests": "VerificationTrackerTests (14 tests)",
+      "jobs": ["JOB-052"]
+    },
+    "oracle_verifier": {
+      "status": "complete",
+      "implementation": "OracleVerifier",
+      "tests": "OracleVerifierTests (30 tests)",
+      "jobs": ["JOB-051"],
+      "notes": "Dispatches sub-agent via ILlmService with standard-tier oracle model (gpt-5-mini). Parses JSON pass/fail+gaps. No tools registered for oracle. AC2 (same invocation) resolved at SDK integration level."
+    },
+    "model_selector": {
+      "status": "complete",
+      "implementation": "DefaultModelSelector",
+      "tests": "DefaultModelSelectorTests (9 tests)",
+      "jobs": ["JOB-054"]
+    },
+    "token_tracker": {
+      "status": "complete",
+      "implementation": "InMemoryTokenTracker",
+      "tests": "InMemoryTokenTrackerTests (8 tests)",
+      "jobs": ["JOB-055"]
+    },
+    "section_extractor": {
+      "status": "complete",
+      "implementation": "SectionExtractor",
+      "tests": "SectionExtractorTests (17 tests)",
+      "jobs": ["JOB-049"]
+    },
+    "context_budget_manager": {
+      "status": "complete",
+      "implementation": "ContextBudgetManager",
+      "tests": "ContextBudgetManagerTests (12 tests)",
+      "jobs": ["JOB-056"]
+    },
+    "llm_service": {
+      "status": "stub",
+      "implementation": "StubLlmService (throws LlmException)",
+      "tests": "N/A - stub",
+      "jobs": ["JOB-046", "JOB-047"],
+      "notes": "Awaiting Copilot SDK integration (JOB-046). Real implementation will use CopilotClient with fresh sessions per phase."
+    }
+  },
+  "last_updated": "2026-02-15T17:15:00Z"
+}

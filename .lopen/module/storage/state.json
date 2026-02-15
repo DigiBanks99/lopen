@@ -1,0 +1,48 @@
+{
+  "module": "storage",
+  "description": "Session persistence, plan management, and caching",
+  "status": "in_progress",
+  "components": {
+    "session_manager": {
+      "status": "complete",
+      "implementation": "SessionManager (atomic file I/O)",
+      "tests": "SessionManagerTests",
+      "jobs": ["JOB-034", "JOB-035"]
+    },
+    "storage_initializer": {
+      "status": "complete",
+      "implementation": "StorageInitializer",
+      "tests": "StorageInitializerTests",
+      "jobs": ["JOB-034"]
+    },
+    "auto_save": {
+      "status": "complete",
+      "implementation": "AutoSaveService + AutoSaveTrigger (6 triggers)",
+      "tests": "AutoSaveServiceTests (15 tests)",
+      "jobs": ["JOB-036"],
+      "notes": "Saves state+metrics on step/task/phase/component completion and user pause. StorageException caught silently."
+    },
+    "plan_manager": {
+      "status": "complete",
+      "implementation": "PlanManager + PlanTask",
+      "tests": "PlanManagerTests (28 tests)",
+      "jobs": ["JOB-038"],
+      "notes": "Plans at .lopen/modules/{module}/plan.md. Regex-based checkbox parsing/updating. Atomic writes. Hierarchical task levels."
+    },
+    "section_cache": {
+      "status": "complete",
+      "implementation": "SectionCache + SectionCacheEntry",
+      "tests": "SectionCacheTests (20 tests)",
+      "jobs": ["JOB-039"],
+      "notes": "Dual-layer (memory+disk) at .lopen/cache/sections/. Keyed by file path + header. Invalidated on file mtime change. Corrupted entries silently removed."
+    },
+    "assessment_cache": {
+      "status": "complete",
+      "implementation": "AssessmentCache + AssessmentCacheEntry",
+      "tests": "AssessmentCacheTests (18 tests)",
+      "jobs": ["JOB-040"],
+      "notes": "Scope-based invalidation. Tracks per-file timestamps. Any file change in scope invalidates. Corrupted entries silently removed."
+    }
+  },
+  "last_updated": "2026-02-15T18:00:00Z"
+}
