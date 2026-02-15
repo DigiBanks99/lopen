@@ -10,6 +10,7 @@ IMPORTANT:
 - Keep AGENTS.md concise and only with information to help solve problems quickly.
 - Never make additional files for research. Keep all isolated to @docs/requirements/<module>/RESEARCH.md
 - Keep SPECIFICATION.md files clean of research or implementation advice
+- Functionality is driven by other Lopen modules in `src`
 
 **Lopen** is a .NET 10.0 CLI application with REPL capabilities for GitHub Copilot integration.
 
