@@ -173,6 +173,54 @@ In TUI mode, `--prompt` provides an initial message that populates the input —
 
 ---
 
+## Project Structure
+
+Lopen is a .NET 10.0 solution. The project structure follows standard .NET conventions:
+
+### Solution Layout
+
+```
+Lopen.sln
+Directory.Build.props          # Shared build properties (LangVersion, Nullable, TreatWarningsAsErrors)
+Directory.Packages.props       # Centralized package version management
+src/
+  Lopen/                       # CLI entry point (console application)
+  Lopen.Core/                  # Core orchestration (workflow, task management, back-pressure)
+  Lopen.Llm/                   # LLM/Copilot SDK integration
+  Lopen.Storage/               # Storage and persistence
+  Lopen.Configuration/         # Configuration hierarchy
+  Lopen.Auth/                  # Authentication
+  Lopen.Tui/                   # Terminal UI components
+  Lopen.Otel/                  # OpenTelemetry instrumentation
+  Lopen.AppHost/               # Aspire AppHost for local development
+tests/
+  Lopen.Core.Tests/            # Core module tests
+  Lopen.Llm.Tests/             # LLM module tests
+  Lopen.Storage.Tests/         # Storage module tests
+  Lopen.Configuration.Tests/   # Configuration module tests
+  Lopen.Auth.Tests/            # Auth module tests
+  Lopen.Tui.Tests/             # TUI module tests
+  Lopen.Otel.Tests/            # OTEL module tests
+  Lopen.Cli.Tests/             # CLI integration tests
+```
+
+### Build & Test
+
+- `dotnet build` — Compile all projects
+- `dotnet test` — Run all tests
+- `dotnet format --verify-no-changes` — Verify code formatting
+- `dotnet publish -c Release` — Publish release build
+
+### Hosting Model
+
+The CLI entry point uses `Microsoft.Extensions.Hosting` for dependency injection, configuration, and logging:
+
+- `IHostBuilder` configures services, configuration, and logging
+- Services are registered via dependency injection
+- The host is built and run synchronously for CLI execution
+
+---
+
 ## Notes
 
 This specification defines the **CLI command structure and flags**. It does not define what happens inside each command — that's the [Core Workflow](../core/SPECIFICATION.md). It does not define how the TUI renders — that's the [TUI Specification](../tui/SPECIFICATION.md).
@@ -202,6 +250,10 @@ This specification defines the **CLI command structure and flags**. It does not 
 - [ ] Headless mode without `--prompt` and without an active session errors with guidance
 - [ ] Exit codes: `0` success, `1` failure, `2` user intervention required (headless + unattended)
 - [ ] `--help` and `--version` flags work as expected
+- [ ] .NET solution builds successfully with `dotnet build`
+- [ ] All test projects run successfully with `dotnet test`
+- [ ] Code formatting passes with `dotnet format --verify-no-changes`
+- [ ] CLI entry point uses `Microsoft.Extensions.Hosting` for dependency injection
 
 ---
 
