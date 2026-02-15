@@ -75,9 +75,9 @@
     "id": "JOB-010",
     "requirement_module": "tui",
     "description": "Create TUI module project (Lopen.Tui) and test project with service registration (depends on CLI, Core)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 1,
-    "notes": "Terminal UI module - built last"
+    "notes": "TUI module foundation - ITuiApplication, ITuiComponent, IComponentGallery, StubTuiApplication, ComponentGallery, DI registration, 24 tests"
   },
   {
     "id": "JOB-011",
