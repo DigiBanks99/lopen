@@ -30,6 +30,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options.ToolDiscipline);
         services.AddSingleton(options.Display);
 
+        services.AddSingleton<IBudgetEnforcer, BudgetEnforcer>();
+
         return services;
     }
 }

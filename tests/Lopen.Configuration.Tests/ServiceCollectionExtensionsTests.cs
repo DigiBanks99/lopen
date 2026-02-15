@@ -46,4 +46,16 @@ public class ServiceCollectionExtensionsTests
 
         Assert.Same(services, result);
     }
+
+    [Fact]
+    public void AddLopenConfiguration_RegistersBudgetEnforcer()
+    {
+        var services = new ServiceCollection();
+        services.AddLopenConfiguration(new LopenOptions());
+
+        var provider = services.BuildServiceProvider();
+        var enforcer = provider.GetRequiredService<IBudgetEnforcer>();
+
+        Assert.IsType<BudgetEnforcer>(enforcer);
+    }
 }
