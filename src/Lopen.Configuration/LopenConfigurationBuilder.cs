@@ -40,6 +40,33 @@ public sealed class LopenConfigurationBuilder
     }
 
     /// <summary>
+    /// Applies the --unattended flag override.
+    /// </summary>
+    public LopenConfigurationBuilder AddUnattendedOverride(bool unattended = true)
+    {
+        _overrides["Workflow:Unattended"] = unattended.ToString();
+        return this;
+    }
+
+    /// <summary>
+    /// Applies the --resume or --no-resume flag override.
+    /// </summary>
+    public LopenConfigurationBuilder AddResumeOverride(bool autoResume)
+    {
+        _overrides["Session:AutoResume"] = autoResume.ToString();
+        return this;
+    }
+
+    /// <summary>
+    /// Applies the --max-iterations flag override.
+    /// </summary>
+    public LopenConfigurationBuilder AddMaxIterationsOverride(int maxIterations)
+    {
+        _overrides["Workflow:MaxIterations"] = maxIterations.ToString();
+        return this;
+    }
+
+    /// <summary>
     /// Builds the layered configuration and binds to <see cref="LopenOptions"/>.
     /// Validates and throws <see cref="InvalidOperationException"/> if validation fails.
     /// </summary>

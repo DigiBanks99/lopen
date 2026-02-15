@@ -167,4 +167,75 @@ public class LopenConfigurationBuilderTests : IDisposable
         Assert.Contains("lopen", path);
         Assert.EndsWith("config.json", path);
     }
+
+    // === CLI flag override convenience methods ===
+
+    [Fact]
+    public void AddUnattendedOverride_SetsWorkflowUnattended()
+    {
+        var builder = new LopenConfigurationBuilder();
+        builder.AddUnattendedOverride();
+
+        var (options, _) = builder.Build();
+
+        Assert.True(options.Workflow.Unattended);
+    }
+
+    [Fact]
+    public void AddUnattendedOverride_False_DisablesUnattended()
+    {
+        var builder = new LopenConfigurationBuilder();
+        builder.AddUnattendedOverride(false);
+
+        var (options, _) = builder.Build();
+
+        Assert.False(options.Workflow.Unattended);
+    }
+
+    [Fact]
+    public void AddResumeOverride_True_EnablesAutoResume()
+    {
+        var builder = new LopenConfigurationBuilder();
+        builder.AddResumeOverride(true);
+
+        var (options, _) = builder.Build();
+
+        Assert.True(options.Session.AutoResume);
+    }
+
+    [Fact]
+    public void AddResumeOverride_False_DisablesAutoResume()
+    {
+        var builder = new LopenConfigurationBuilder();
+        builder.AddResumeOverride(false);
+
+        var (options, _) = builder.Build();
+
+        Assert.False(options.Session.AutoResume);
+    }
+
+    [Fact]
+    public void AddMaxIterationsOverride_SetsMaxIterations()
+    {
+        var builder = new LopenConfigurationBuilder();
+        builder.AddMaxIterationsOverride(42);
+
+        var (options, _) = builder.Build();
+
+        Assert.Equal(42, options.Workflow.MaxIterations);
+    }
+
+    [Fact]
+    public void AddMaxIterationsOverride_OverridesProjectConfig()
+    {
+        var projectPath = Path.Combine(_tempDir, "project.json");
+        File.WriteAllText(projectPath, """{"Workflow": {"MaxIterations": 200}}""");
+
+        var builder = new LopenConfigurationBuilder(projectConfigPath: projectPath);
+        builder.AddMaxIterationsOverride(15);
+
+        var (options, _) = builder.Build();
+
+        Assert.Equal(15, options.Workflow.MaxIterations);
+    }
 }

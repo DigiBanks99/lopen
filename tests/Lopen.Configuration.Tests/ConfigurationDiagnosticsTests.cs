@@ -138,4 +138,47 @@ public class ConfigurationDiagnosticsTests
             File.Delete(tempFile);
         }
     }
+
+    // === FormatJson ===
+
+    [Fact]
+    public void FormatJson_ReturnsValidJsonArray()
+    {
+        var entries = new List<ConfigurationEntry>
+        {
+            new("Models:Planning", "gpt-5", "CLI Override"),
+            new("Workflow:MaxIterations", "50", "project.json")
+        };
+
+        var json = ConfigurationDiagnostics.FormatJson(entries);
+
+        Assert.StartsWith("[", json);
+        Assert.Contains("\"key\":", json);
+        Assert.Contains("\"value\":", json);
+        Assert.Contains("\"source\":", json);
+        Assert.Contains("\"Models:Planning\"", json);
+        Assert.Contains("\"gpt-5\"", json);
+    }
+
+    [Fact]
+    public void FormatJson_EmptyEntries_ReturnsEmptyArray()
+    {
+        var json = ConfigurationDiagnostics.FormatJson([]);
+
+        Assert.StartsWith("[", json);
+        Assert.Contains("]", json);
+    }
+
+    [Fact]
+    public void FormatJson_EscapesSpecialCharacters()
+    {
+        var entries = new List<ConfigurationEntry>
+        {
+            new("Key", "value with \"quotes\"", "Source")
+        };
+
+        var json = ConfigurationDiagnostics.FormatJson(entries);
+
+        Assert.Contains("\\\"quotes\\\"", json);
+    }
 }

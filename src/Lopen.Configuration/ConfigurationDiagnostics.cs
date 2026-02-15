@@ -52,6 +52,35 @@ public static class ConfigurationDiagnostics
         return string.Join(Environment.NewLine, lines);
     }
 
+    /// <summary>
+    /// Formats configuration entries as machine-readable JSON.
+    /// </summary>
+    public static string FormatJson(IReadOnlyList<ConfigurationEntry> entries)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[");
+
+        for (var i = 0; i < entries.Count; i++)
+        {
+            var entry = entries[i];
+            var comma = i < entries.Count - 1 ? "," : "";
+            sb.AppendLine($"  {{\"key\": {JsonEscape(entry.Key)}, \"value\": {JsonEscape(entry.Value)}, \"source\": {JsonEscape(entry.Source)}}}{comma}");
+        }
+
+        sb.Append(']');
+        return sb.ToString();
+    }
+
+    private static string JsonEscape(string value)
+    {
+        return "\"" + value
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Replace("\n", "\\n")
+            .Replace("\r", "\\r")
+            .Replace("\t", "\\t") + "\"";
+    }
+
     private static string GetProviderName(IConfigurationRoot root, string key)
     {
         // Walk providers in reverse order (highest priority first) to find the winning provider

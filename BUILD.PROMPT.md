@@ -25,3 +25,4 @@ IMPORTANT:
 - Run all tests.
 - Verify the features added by running the application and using the features where possible.
 - If you find a bug, create a new job to be done for the bug fix and prioritize it accordingly. Do not just fix the bug without tracking it as a job to be done.
+- Ensure you update the state of each module, component and task in @.lopen/module/<module>/state.json as you work on them. This is crucial for tracking progress and understanding the current state of the project.
