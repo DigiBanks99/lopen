@@ -264,8 +264,8 @@ The TUI displays phase and step progression in the **Top Panel**:
 **Phase Indicator**: Shows current phase name
 
 - "Phase: Requirement Gathering" (Step 1)
-- "Phase: Planning" (Steps 2-3)  
-- "Phase: Building" (Steps 4-7)
+- "Phase: Planning" (Steps 2-5)  
+- "Phase: Building" (Steps 6-7)
 
 **Step Progress**: Visual progress indicator
 

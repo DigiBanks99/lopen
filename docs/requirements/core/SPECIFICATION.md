@@ -41,17 +41,17 @@ Lopen guides the LLM through a structured 7-step process for building modules. T
 
 1. **Draft Specification** — User provides initial idea, Lopen conducts guided conversation to gather requirements. The specification must follow the [Specification Pattern](#specification-pattern) including Acceptance Criteria
 2. **Determine Dependencies** — Identify what's needed to make the specification work (libraries, APIs, other modules)
-3. **Identify Components** — Break down the module into logical C4 components; assess existing codebase against the spec to determine what is already done, partially done, or missing
+3. **Identify Components** — Break down the module into logical components; assess existing codebase against the spec to determine what is already done, partially done, or missing
 4. **Select Next Component** — LLM chooses the next component to build based on dependency order and progress; re-assesses codebase state to verify prior completion claims
 5. **Break Into Tasks** — Decompose the component into achievable atomic tasks
-6. **Iterate Through Tasks** — Execute tasks via the LLM, self-correct on failures, track progress, enforce [Back-Pressure](#back-pressure) guardrails
+6. **Iterate Through Tasks** — Iteratively complete tasks via the LLM, self-correct on failures, track progress, enforce [Back-Pressure](#back-pressure) guardrails
 7. **Repeat** — Return to step 4 until all components are complete and module [Acceptance Criteria](#acceptance-criteria) are satisfied
 
 ### The 3 Phases
 
-- **Requirement Gathering** (Step 1) — Define what needs to be built
-- **Planning** (Steps 2–3) — Understand dependencies and architecture
-- **Building** (Steps 4–7) — Iteratively construct components
+- **Requirement Gathering** (Step 1) — Define what needs to be built and augment with research
+- **Planning** (Steps 2–5) — Understand dependencies and architecture through research, select next most important component and break into tasks
+- **Building** (Steps 6–7) — Iteratively construct components
 
 ### Phase Transitions
 
@@ -194,7 +194,7 @@ Prevent churn, false completion claims, and circular behavior.
 - **False completion prevention** — When the LLM claims a task is complete, Lopen verifies through:
   1. **Tool call tracking** — Lopen records which tools the LLM invoked. If a task requires running tests but the LLM never called the test runner, the completion claim is rejected
   2. **VCS commit hooks** — Pre-commit hooks (linters, tests, formatters) that the LLM cannot bypass. Lopen helps set these up in the repository
-  3. **Oracle verification** — A cheap/fast model reviews the diff against the spec and validates correctness (see [Oracle Verification](#oracle-verification))
+  3. **Oracle verification** — Mandatory oracle sub-agent validates the diff against the spec and acceptance criteria via `verify_task_completion`, `verify_component_completion`, or `verify_module_completion` tools (see [Oracle Verification](#oracle-verification))
 - **Circular behavior detection** — Lopen tracks iteration patterns (e.g., same file read 3+ times, same command re-run without changes) and intervenes with corrective instructions
 
 ### Category 3: Quality Gates
@@ -229,13 +229,21 @@ These skills are always available. Lopen enforces that relevant skills are invok
 
 ### Oracle Verification
 
-At task and component completion boundaries, Lopen may dispatch a cheap/fast model (e.g., gpt-5-mini, gpt-4o) as a sub-agent to:
+At task, component, and module completion boundaries, Lopen **requires** oracle verification via three Lopen-managed tools that the LLM must call before marking work complete:
 
-1. Review the diff produced by the primary LLM
-2. Validate the changes against the specification and acceptance criteria
-3. Report findings back to Lopen
+| Tool | Boundary | Validation Scope |
+| --- | --- | --- |
+| `verify_task_completion` | Task completion | Task diff, tests exist/pass, code quality hooks pass, task requirements met |
+| `verify_component_completion` | Component completion | All task diffs holistically, component-level acceptance criteria, no regressions, integration coherence |
+| `verify_module_completion` | Module completion | Full module against all acceptance criteria, full test suite, cross-component integration |
 
-Oracle verification catches semantic errors that automated hooks miss. It runs in parallel with the primary workflow when possible to minimize latency. The oracle model is configurable via [Configuration](../configuration/SPECIFICATION.md).
+Each tool is implemented as a Lopen-managed tool handler that dispatches a cheap/fast model (e.g., gpt-5-mini, gpt-4o) as a sub-agent. The oracle reviews the evidence (diffs, test results, acceptance criteria) and returns a pass/fail verdict with specific findings. This runs within the primary model's SDK tool-calling loop — **no additional premium request** is consumed (see [LLM § Oracle Verification Tools](../llm/SPECIFICATION.md#oracle-verification-tools)).
+
+**Enforcement**: Back-pressure Category 2 (Progress Integrity) requires that `update_task_status(complete)` is rejected unless preceded by a passing `verify_*_completion` call. The LLM cannot bypass oracle verification.
+
+**Retry within context**: If the oracle reports gaps, its findings are returned to the primary LLM as a tool result. The LLM addresses the gaps and re-invokes the verification tool — all within the same SDK invocation. This loop continues until verification passes, churn limits are hit (see [Back-Pressure § Category 2](#category-2-progress-integrity)), or the LLM gives up.
+
+The oracle model is configurable via [Configuration](../configuration/SPECIFICATION.md).
 
 ---
 
@@ -439,7 +447,7 @@ These features support the core workflow but are not part of the 7-step process:
 
 **Purpose**: Ensure implementation plan is achievable and well-structured.
 
-**When**: During Planning phase (steps 2–3).
+**When**: During Planning phase (steps 2–5).
 
 **How**:
 

@@ -54,7 +54,7 @@ Runs the **Requirement Gathering** phase (step 1). Conducts a guided conversatio
 lopen plan [options]
 ```
 
-Runs the **Planning** phase (steps 2–3). Determines dependencies and identifies components for the current module.
+Runs the **Planning** phase (steps 2–5). Determines dependencies, identifies components, selects the next component, and breaks it into tasks.
 
 - Requires an existing specification (errors if none found for the target module)
 - In TUI mode: Shows planning progress, allows user review
@@ -66,7 +66,7 @@ Runs the **Planning** phase (steps 2–3). Determines dependencies and identifie
 lopen build [options]
 ```
 
-Runs the **Building** phase (steps 4–7). Iteratively builds components by selecting, decomposing, and executing tasks.
+Runs the **Building** phase (steps 6–7). Iteratively builds components by executing tasks and repeating the component loop.
 
 - Requires an existing specification and plan
 - In TUI mode: Shows build progress, handles user intervention on failures
