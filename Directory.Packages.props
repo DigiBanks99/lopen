@@ -7,8 +7,13 @@
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0-preview.5.25277.114" />
     <PackageVersion Include="System.CommandLine" Version="2.0.0-beta5.25306.1" />
     <!-- Shared -->
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.0-preview.5.25277.114" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0-preview.5.25277.114" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0-preview.5.25277.114" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0-preview.5.25277.114" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0-preview.5.25277.114" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0-preview.5.25277.114" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.0-preview.5.25277.114" />
     <!-- Testing -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
