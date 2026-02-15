@@ -6,6 +6,8 @@
     <!-- CLI Host -->
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
     <PackageVersion Include="System.CommandLine" Version="2.0.0-beta5.25306.1" />
+    <!-- Copilot SDK -->
+    <PackageVersion Include="GitHub.Copilot.SDK" Version="0.1.23" />
     <!-- Core -->
     <PackageVersion Include="Markdig" Version="0.45.0" />
     <PackageVersion Include="Stateless" Version="5.20.1" />

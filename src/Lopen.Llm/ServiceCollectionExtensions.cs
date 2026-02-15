@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Lopen.Llm;
 
@@ -12,7 +13,11 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddLopenLlm(this IServiceCollection services)
     {
-        services.AddSingleton<ILlmService, StubLlmService>();
+        // Auth token provider — default is null (SDK resolves credentials).
+        // Consumers can register their own IGitHubTokenProvider before calling this.
+        services.TryAddSingleton<IGitHubTokenProvider, NullGitHubTokenProvider>();
+        services.TryAddSingleton<ICopilotClientProvider, CopilotClientProvider>();
+        services.AddSingleton<ILlmService, CopilotLlmService>();
         services.AddSingleton<IModelSelector, DefaultModelSelector>();
         services.AddSingleton<ITokenTracker, InMemoryTokenTracker>();
         services.AddSingleton<IToolRegistry, DefaultToolRegistry>();

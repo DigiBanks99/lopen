@@ -1,13 +1,38 @@
 # Implementation Plan
 
-## Completed This Session
+## Current Job: JOB-046 — Copilot SDK Authentication
+
+**Module**: llm  
+**Priority**: P3  
+**AC**: Lopen authenticates with the Copilot SDK using credentials from the Auth module
+
+### Tasks
+
+- [ ] 1. Add `GitHub.Copilot.SDK` v0.1.23 NuGet package to Lopen.Llm (DONE)
+- [ ] 2. Create `IGitHubTokenProvider` interface in Lopen.Llm for auth decoupling
+- [ ] 3. Create `ICopilotClientProvider` interface for CopilotClient lifecycle management
+- [ ] 4. Implement `CopilotClientProvider` wrapping CopilotClient creation with auth token injection
+- [ ] 5. Implement `CopilotLlmService` replacing `StubLlmService`, using ICopilotClientProvider
+- [ ] 6. Update DI registration in `ServiceCollectionExtensions.AddLopenLlm`
+- [ ] 7. Write unit tests for auth token injection, auth failure handling, client lifecycle
+- [ ] 8. Update module state in `.lopen/module/llm/state.json`
+
+### Design Decisions
+
+- `IGitHubTokenProvider` lives in Lopen.Llm to avoid LLM→Auth dependency
+- Composition root wires Auth module's `ITokenSourceResolver` to provide tokens
+- SDK's built-in credential chain used as fallback (env vars, gh CLI stored credentials)
+- `CopilotClientProvider` creates a singleton `CopilotClient` per application lifecycle
+- Auth failures from SDK throw `LlmException` with clear error messages
+
+### Previous Completed Jobs
 
 | Job | Module | Description | Tests |
 |-----|--------|-------------|-------|
 | JOB-051 | llm | OracleVerifier | 30 tests |
-| JOB-054 | llm | Model selection (verified) | 9 tests |
-| JOB-055 | llm | Token tracking (verified) | 8 tests |
-| JOB-065 | core | Quality gate guardrail (verified) | 9 tests |
+| JOB-054 | llm | Model selection | 9 tests |
+| JOB-055 | llm | Token tracking | 8 tests |
+| JOB-065 | core | Quality gate guardrail | 9 tests |
 | JOB-070 | core | GitWorkflowService | 25 tests |
 | JOB-071 | core | RevertService | 11 tests |
 | JOB-028 | configuration | BudgetEnforcer | 24 tests |
@@ -15,23 +40,3 @@
 | JOB-038 | storage | PlanManager | 28 tests |
 | JOB-039 | storage | SectionCache | 20 tests |
 | JOB-040 | storage | AssessmentCache | 18 tests |
-
-Total: 947 tests passing across 8 test projects.
-
-## Remaining P2 Jobs
-
-| Job | Module | Description | Status |
-|-----|--------|-------------|--------|
-| JOB-029 | configuration | Oracle/tool config passthrough | blocked |
-| JOB-037 | storage | Session resume | blocked |
-
-## Remaining P3 Jobs
-
-| Job | Module | Description | Status |
-|-----|--------|-------------|--------|
-| JOB-046 | llm | Copilot SDK auth | blocked (needs SDK package) |
-| JOB-047 | llm | Fresh context window | blocked (needs SDK) |
-| JOB-052 | llm | update_task_status enforcement | blocked (needs SDK) |
-| JOB-057 | llm | Unit tests for all 14 LLM ACs | not_started |
-| JOB-075 | core | Unit tests for all 24 core ACs | not_started |
-
