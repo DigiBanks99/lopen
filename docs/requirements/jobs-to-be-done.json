@@ -1,0 +1,802 @@
+[
+  {
+    "id": "JOB-001",
+    "requirement": "cli",
+    "description": "Create .NET 10.0 solution with Lopen.sln, Directory.Build.props, and Directory.Packages.props",
+    "status": "open",
+    "priority": 1,
+    "notes": "Foundation — nothing else can proceed without a buildable solution"
+  },
+  {
+    "id": "JOB-002",
+    "requirement": "cli",
+    "description": "Create CLI entry point project (src/Lopen/) with Microsoft.Extensions.Hosting and System.CommandLine",
+    "status": "open",
+    "priority": 1,
+    "notes": "Main executable project with DI container, root command, --help, and --version"
+  },
+  {
+    "id": "JOB-003",
+    "requirement": "cli",
+    "description": "Create class library projects for each module (Core, Llm, Storage, Configuration, Auth, Tui, Otel)",
+    "status": "open",
+    "priority": 1,
+    "notes": "Empty class libraries with correct inter-project references per dependency graph"
+  },
+  {
+    "id": "JOB-004",
+    "requirement": "cli",
+    "description": "Create xUnit test projects for each module and add to solution",
+    "status": "open",
+    "priority": 1,
+    "notes": "Tests must pass with dotnet test from solution root"
+  },
+  {
+    "id": "JOB-005",
+    "requirement": "cli",
+    "description": "Add .editorconfig and verify dotnet format --verify-no-changes passes",
+    "status": "open",
+    "priority": 1,
+    "notes": "Code formatting must be enforced from the start"
+  },
+  {
+    "id": "JOB-006",
+    "requirement": "storage",
+    "description": "Add .lopen/ to .gitignore along with standard .NET build artifacts",
+    "status": "open",
+    "priority": 1,
+    "notes": ".lopen/ contains ephemeral session state, not project source"
+  },
+  {
+    "id": "JOB-007",
+    "requirement": "cli",
+    "description": "Update Dockerfile to match new solution structure and verify dotnet build succeeds",
+    "status": "open",
+    "priority": 2,
+    "notes": "Existing Dockerfile references dotnet build but no solution exists"
+  },
+  {
+    "id": "JOB-008",
+    "requirement": "configuration",
+    "description": "Implement built-in default settings as strongly-typed C# configuration classes",
+    "status": "open",
+    "priority": 2,
+    "notes": "All settings from Configuration spec: models, budget, oracle, workflow, session, git, tool_discipline, display"
+  },
+  {
+    "id": "JOB-009",
+    "requirement": "configuration",
+    "description": "Implement JSON configuration file loading from .lopen/config.json and ~/.config/lopen/config.json",
+    "status": "open",
+    "priority": 2,
+    "notes": "Uses Microsoft.Extensions.Configuration.Json"
+  },
+  {
+    "id": "JOB-010",
+    "requirement": "configuration",
+    "description": "Implement configuration hierarchy resolution (CLI flags > project config > global config > defaults)",
+    "status": "open",
+    "priority": 2,
+    "notes": "Higher-priority source must win when setting defined at multiple levels"
+  },
+  {
+    "id": "JOB-011",
+    "requirement": "configuration",
+    "description": "Implement configuration validation with clear error messages for invalid values",
+    "status": "open",
+    "priority": 3,
+    "notes": "Invalid config must produce actionable error messages"
+  },
+  {
+    "id": "JOB-012",
+    "requirement": "configuration",
+    "description": "Add unit tests for configuration hierarchy resolution and validation",
+    "status": "open",
+    "priority": 3,
+    "notes": "Test all 4 layers and precedence rules"
+  },
+  {
+    "id": "JOB-013",
+    "requirement": "auth",
+    "description": "Implement auth service interface abstracting Copilot SDK authentication",
+    "status": "open",
+    "priority": 3,
+    "notes": "Interface for device flow, token validation, status check, and logout"
+  },
+  {
+    "id": "JOB-014",
+    "requirement": "auth",
+    "description": "Implement environment variable authentication (GH_TOKEN and GITHUB_TOKEN precedence)",
+    "status": "open",
+    "priority": 3,
+    "notes": "GH_TOKEN > GITHUB_TOKEN > SDK-stored credentials"
+  },
+  {
+    "id": "JOB-015",
+    "requirement": "auth",
+    "description": "Implement device flow authentication for lopen auth login",
+    "status": "open",
+    "priority": 3,
+    "notes": "Delegates to Copilot SDK device flow; displays user code and verification URL"
+  },
+  {
+    "id": "JOB-016",
+    "requirement": "auth",
+    "description": "Implement lopen auth status command (authenticated/unauthenticated/invalid states)",
+    "status": "open",
+    "priority": 3,
+    "notes": "Queries SDK for current auth state, does not cache"
+  },
+  {
+    "id": "JOB-017",
+    "requirement": "auth",
+    "description": "Implement lopen auth logout with env var warning",
+    "status": "open",
+    "priority": 3,
+    "notes": "Clears SDK credentials; warns if GH_TOKEN/GITHUB_TOKEN still set"
+  },
+  {
+    "id": "JOB-018",
+    "requirement": "auth",
+    "description": "Implement pre-flight authentication check that blocks workflow on invalid/missing credentials",
+    "status": "open",
+    "priority": 3,
+    "notes": "Lightweight SDK call before entering any workflow phase"
+  },
+  {
+    "id": "JOB-019",
+    "requirement": "auth",
+    "description": "Implement automatic token renewal during active sessions",
+    "status": "open",
+    "priority": 4,
+    "notes": "Intercept 401/403, call SDK refresh, retry; if renewal fails treat as critical error"
+  },
+  {
+    "id": "JOB-020",
+    "requirement": "auth",
+    "description": "Implement auth error messages with what-failed/why/how-to-fix format",
+    "status": "open",
+    "priority": 3,
+    "notes": "Includes PAT permission guidance for invalid tokens"
+  },
+  {
+    "id": "JOB-021",
+    "requirement": "auth",
+    "description": "Add unit tests for auth precedence, pre-flight check, and error handling",
+    "status": "open",
+    "priority": 3,
+    "notes": "Test env var precedence, SDK delegation, error message format"
+  },
+  {
+    "id": "JOB-022",
+    "requirement": "storage",
+    "description": "Implement .lopen/ directory creation and structure initialization",
+    "status": "open",
+    "priority": 3,
+    "notes": "Create sessions/, modules/, cache/ subdirectories on first workflow run"
+  },
+  {
+    "id": "JOB-023",
+    "requirement": "storage",
+    "description": "Implement session state persistence (state.json) with workflow phase, step, task hierarchy",
+    "status": "open",
+    "priority": 3,
+    "notes": "Compact JSON format using System.Text.Json"
+  },
+  {
+    "id": "JOB-024",
+    "requirement": "storage",
+    "description": "Implement session metrics persistence (metrics.json) for token counts and premium requests",
+    "status": "open",
+    "priority": 4,
+    "notes": "Per-iteration and cumulative token counts"
+  },
+  {
+    "id": "JOB-025",
+    "requirement": "storage",
+    "description": "Implement session ID generation in {module}-YYYYMMDD-{counter} format",
+    "status": "open",
+    "priority": 3,
+    "notes": "Counter is monotonically increasing per module per day"
+  },
+  {
+    "id": "JOB-026",
+    "requirement": "storage",
+    "description": "Implement latest symlink management for most recent session",
+    "status": "open",
+    "priority": 4,
+    "notes": "Symlink at .lopen/sessions/latest pointing to most recent session"
+  },
+  {
+    "id": "JOB-027",
+    "requirement": "storage",
+    "description": "Implement auto-save triggers (step/task/phase completion, user pause)",
+    "status": "open",
+    "priority": 4,
+    "notes": "State saved after each significant action for crash safety"
+  },
+  {
+    "id": "JOB-028",
+    "requirement": "storage",
+    "description": "Implement session resume from .lopen/sessions/latest with resume/start-fresh options",
+    "status": "open",
+    "priority": 4,
+    "notes": "Supports --resume {id} and --no-resume CLI flags"
+  },
+  {
+    "id": "JOB-029",
+    "requirement": "storage",
+    "description": "Implement plan storage at .lopen/modules/{module}/plan.md with checkbox task hierarchy",
+    "status": "open",
+    "priority": 4,
+    "notes": "Plans updated programmatically by Lopen, not by the LLM"
+  },
+  {
+    "id": "JOB-030",
+    "requirement": "storage",
+    "description": "Implement section cache keyed by file path + section header + modification timestamp",
+    "status": "open",
+    "priority": 5,
+    "notes": "Cache invalidated when source file changes"
+  },
+  {
+    "id": "JOB-031",
+    "requirement": "storage",
+    "description": "Implement corrupted state detection and recovery (move to .lopen/corrupted/)",
+    "status": "open",
+    "priority": 5,
+    "notes": "Detect unreadable/malformed state files, exclude from resume, warn user"
+  },
+  {
+    "id": "JOB-032",
+    "requirement": "storage",
+    "description": "Implement session lifecycle management (create, complete, prune by retention limit)",
+    "status": "open",
+    "priority": 5,
+    "notes": "Completed sessions retained up to configured session_retention limit"
+  },
+  {
+    "id": "JOB-033",
+    "requirement": "storage",
+    "description": "Add unit tests for session persistence, resume, ID generation, and corrupted state handling",
+    "status": "open",
+    "priority": 4,
+    "notes": "Test crash-safe write, symlink management, session lifecycle"
+  },
+  {
+    "id": "JOB-034",
+    "requirement": "cli",
+    "description": "Implement root command (lopen) with TUI launch and session resume detection",
+    "status": "open",
+    "priority": 4,
+    "notes": "Starts TUI by default; offers resume if active session exists"
+  },
+  {
+    "id": "JOB-035",
+    "requirement": "cli",
+    "description": "Implement phase subcommands (lopen spec, lopen plan, lopen build)",
+    "status": "open",
+    "priority": 4,
+    "notes": "Each scopes to a workflow phase; plan/build error if no spec/plan exists"
+  },
+  {
+    "id": "JOB-036",
+    "requirement": "cli",
+    "description": "Implement auth subcommands (lopen auth login, status, logout)",
+    "status": "open",
+    "priority": 4,
+    "notes": "Delegates to Auth module; auth login --headless errors with GH_TOKEN guidance"
+  },
+  {
+    "id": "JOB-037",
+    "requirement": "cli",
+    "description": "Implement session subcommands (list, show, resume, delete, prune)",
+    "status": "open",
+    "priority": 5,
+    "notes": "session show supports --format (md, json, yaml)"
+  },
+  {
+    "id": "JOB-038",
+    "requirement": "cli",
+    "description": "Implement config subcommand (lopen config show, --json)",
+    "status": "open",
+    "priority": 5,
+    "notes": "Displays resolved configuration with source indicated per setting"
+  },
+  {
+    "id": "JOB-039",
+    "requirement": "cli",
+    "description": "Implement revert command (rollback to last task-completion commit)",
+    "status": "open",
+    "priority": 6,
+    "notes": "Errors if no task-completion commits or uncommitted changes exist"
+  },
+  {
+    "id": "JOB-040",
+    "requirement": "cli",
+    "description": "Implement global flags (--headless, --model, --prompt, --unattended, --resume, --no-resume, --max-iterations)",
+    "status": "open",
+    "priority": 4,
+    "notes": "Global flags available across all commands (where applicable per spec)"
+  },
+  {
+    "id": "JOB-041",
+    "requirement": "cli",
+    "description": "Implement headless mode behavior (plain text stdout/stderr, non-interactive, exit codes)",
+    "status": "open",
+    "priority": 5,
+    "notes": "Exit codes: 0 success, 1 failure, 2 user intervention required"
+  },
+  {
+    "id": "JOB-042",
+    "requirement": "cli",
+    "description": "Implement --prompt injection for headless and TUI modes",
+    "status": "open",
+    "priority": 5,
+    "notes": "Headless: inject into LLM context. TUI: populate input field for user review"
+  },
+  {
+    "id": "JOB-043",
+    "requirement": "cli",
+    "description": "Add integration tests for CLI command parsing, flag validation, and exit codes",
+    "status": "open",
+    "priority": 5,
+    "notes": "Test all commands parse correctly, invalid flags produce errors"
+  },
+  {
+    "id": "JOB-044",
+    "requirement": "llm",
+    "description": "Implement Copilot SDK client wrapper with authentication bridge from Auth module",
+    "status": "open",
+    "priority": 5,
+    "notes": "Wraps SDK invocation with Lopen's auth, model selection, and error handling"
+  },
+  {
+    "id": "JOB-045",
+    "requirement": "llm",
+    "description": "Implement per-phase model selection from Configuration module",
+    "status": "open",
+    "priority": 5,
+    "notes": "Each workflow phase can use a different configured model"
+  },
+  {
+    "id": "JOB-046",
+    "requirement": "llm",
+    "description": "Implement model fallback logic when configured model is unavailable",
+    "status": "open",
+    "priority": 6,
+    "notes": "Log warning, fall back to next available model, error if none available"
+  },
+  {
+    "id": "JOB-047",
+    "requirement": "llm",
+    "description": "Implement Lopen-managed tool registration with the Copilot SDK",
+    "status": "open",
+    "priority": 5,
+    "notes": "Register tools per workflow step; schemas follow SDK function-calling format"
+  },
+  {
+    "id": "JOB-048",
+    "requirement": "llm",
+    "description": "Implement read_spec tool handler (section-level document extraction)",
+    "status": "open",
+    "priority": 5,
+    "notes": "Returns only the requested section, not full document"
+  },
+  {
+    "id": "JOB-049",
+    "requirement": "llm",
+    "description": "Implement read_research, read_plan, and log_research tool handlers",
+    "status": "open",
+    "priority": 6,
+    "notes": "read_plan returns plan with task statuses; log_research saves to RESEARCH-{topic}.md"
+  },
+  {
+    "id": "JOB-050",
+    "requirement": "llm",
+    "description": "Implement update_task_status tool handler with oracle verification enforcement",
+    "status": "open",
+    "priority": 5,
+    "notes": "Rejects complete status unless preceded by passing verify_*_completion call"
+  },
+  {
+    "id": "JOB-051",
+    "requirement": "llm",
+    "description": "Implement get_current_context and report_progress tool handlers",
+    "status": "open",
+    "priority": 6,
+    "notes": "get_current_context returns workflow step, module, component, task"
+  },
+  {
+    "id": "JOB-052",
+    "requirement": "llm",
+    "description": "Implement oracle verification tools (verify_task/component/module_completion)",
+    "status": "open",
+    "priority": 6,
+    "notes": "Dispatch cheap/fast model as sub-agent within same SDK invocation"
+  },
+  {
+    "id": "JOB-053",
+    "requirement": "llm",
+    "description": "Implement system prompt construction (role, workflow state, step instructions, context, tools, constraints)",
+    "status": "open",
+    "priority": 5,
+    "notes": "Structured prompt assembled per SDK invocation"
+  },
+  {
+    "id": "JOB-054",
+    "requirement": "llm",
+    "description": "Implement token and cost tracking from SDK response metadata",
+    "status": "open",
+    "priority": 6,
+    "notes": "Track context window usage, premium request count, session totals"
+  },
+  {
+    "id": "JOB-055",
+    "requirement": "llm",
+    "description": "Implement context window budget management (truncation/summarization of lower-priority sections)",
+    "status": "open",
+    "priority": 7,
+    "notes": "When context exceeds budget, truncate or summarize lower-priority sections"
+  },
+  {
+    "id": "JOB-056",
+    "requirement": "llm",
+    "description": "Add unit tests for tool registration, handler execution, and prompt construction",
+    "status": "open",
+    "priority": 6,
+    "notes": "Test tool schemas, handler responses, prompt assembly"
+  },
+  {
+    "id": "JOB-057",
+    "requirement": "core",
+    "description": "Implement specification scanner that discovers modules from docs/requirements/ subdirectories",
+    "status": "open",
+    "priority": 4,
+    "notes": "Scans for SPECIFICATION.md files with YAML frontmatter"
+  },
+  {
+    "id": "JOB-058",
+    "requirement": "core",
+    "description": "Implement 7-step workflow state machine with phase tracking",
+    "status": "open",
+    "priority": 5,
+    "notes": "Steps: Draft Spec > Dependencies > Components > Select > Tasks > Iterate > Repeat"
+  },
+  {
+    "id": "JOB-059",
+    "requirement": "core",
+    "description": "Implement re-entrant assessment that determines workflow step from actual codebase state",
+    "status": "open",
+    "priority": 6,
+    "notes": "Reads spec, checks plan/task tree, verifies claimed-complete items, determines correct step"
+  },
+  {
+    "id": "JOB-060",
+    "requirement": "core",
+    "description": "Implement specification drift detection via section content hashing",
+    "status": "open",
+    "priority": 7,
+    "notes": "Hash spec sections per save, compare on resume, flag changes to user"
+  },
+  {
+    "id": "JOB-061",
+    "requirement": "core",
+    "description": "Implement phase transition logic (human gate for spec>plan, auto for plan>build and build>complete)",
+    "status": "open",
+    "priority": 5,
+    "notes": "Only spec to plan requires user confirmation"
+  },
+  {
+    "id": "JOB-062",
+    "requirement": "core",
+    "description": "Implement task hierarchy data model (Module > Component > Task > Subtask)",
+    "status": "open",
+    "priority": 5,
+    "notes": "State transitions: Pending > In Progress > Complete/Failed"
+  },
+  {
+    "id": "JOB-063",
+    "requirement": "core",
+    "description": "Implement task state transitions with completion criteria enforcement",
+    "status": "open",
+    "priority": 5,
+    "notes": "Task only complete when implementation done, tests pass, oracle verification passes"
+  },
+  {
+    "id": "JOB-064",
+    "requirement": "core",
+    "description": "Implement back-pressure Category 1: resource limits (budget warning at 80%, confirmation at 90%)",
+    "status": "open",
+    "priority": 6,
+    "notes": "Per-module token and premium request budgets; configurable thresholds"
+  },
+  {
+    "id": "JOB-065",
+    "requirement": "core",
+    "description": "Implement back-pressure Category 2: progress integrity (churn detection, false completion prevention)",
+    "status": "open",
+    "priority": 6,
+    "notes": "Escalate after configured failure threshold; reject task complete without tool verification"
+  },
+  {
+    "id": "JOB-066",
+    "requirement": "core",
+    "description": "Implement back-pressure Category 3: quality gates (acceptance criteria enforcement)",
+    "status": "open",
+    "priority": 7,
+    "notes": "Module and component completion blocked until acceptance criteria satisfied"
+  },
+  {
+    "id": "JOB-067",
+    "requirement": "core",
+    "description": "Implement back-pressure Category 4: tool discipline (corrective instructions on wasteful patterns)",
+    "status": "open",
+    "priority": 7,
+    "notes": "Detect repeated file reads, same failing command; inject corrective instruction"
+  },
+  {
+    "id": "JOB-068",
+    "requirement": "core",
+    "description": "Implement git auto-commit per task completion",
+    "status": "open",
+    "priority": 6,
+    "notes": "When git.auto_commit enabled, commit after each task with conventional message"
+  },
+  {
+    "id": "JOB-069",
+    "requirement": "core",
+    "description": "Implement branch per module (e.g., lopen/auth, lopen/storage)",
+    "status": "open",
+    "priority": 6,
+    "notes": "Working branch isolates module work from main branch"
+  },
+  {
+    "id": "JOB-070",
+    "requirement": "core",
+    "description": "Implement document management (section-level extraction for LLM context)",
+    "status": "open",
+    "priority": 5,
+    "notes": "Parse markdown headers, extract relevant sections, auto-track resources"
+  },
+  {
+    "id": "JOB-071",
+    "requirement": "core",
+    "description": "Implement programmatic task status updates without LLM invocation",
+    "status": "open",
+    "priority": 6,
+    "notes": "Checkbox updates, status tracking done in code, not by LLM"
+  },
+  {
+    "id": "JOB-072",
+    "requirement": "core",
+    "description": "Implement failure handling (inline display, self-correction, user intervention at threshold)",
+    "status": "open",
+    "priority": 6,
+    "notes": "Single failures: inline. Repeated (3+): prompt user. Critical: block and require action"
+  },
+  {
+    "id": "JOB-073",
+    "requirement": "core",
+    "description": "Implement module selection (scan, list with state, user selection)",
+    "status": "open",
+    "priority": 5,
+    "notes": "List modules from docs/requirements/ with not-started/in-progress/complete state"
+  },
+  {
+    "id": "JOB-074",
+    "requirement": "core",
+    "description": "Add unit tests for workflow state machine and phase transitions",
+    "status": "open",
+    "priority": 6,
+    "notes": "Test 7-step progression, human gate enforcement, auto-progression"
+  },
+  {
+    "id": "JOB-075",
+    "requirement": "core",
+    "description": "Add unit tests for back-pressure enforcement across all 4 categories",
+    "status": "open",
+    "priority": 7,
+    "notes": "Test resource limits, churn detection, quality gates, tool discipline"
+  },
+  {
+    "id": "JOB-076",
+    "requirement": "tui",
+    "description": "Implement split-screen layout with activity (left) and context (right) panes",
+    "status": "open",
+    "priority": 7,
+    "notes": "Ratio adjustable 50/50 to 80/20 based on terminal width"
+  },
+  {
+    "id": "JOB-077",
+    "requirement": "tui",
+    "description": "Implement top panel (logo, version, model, context usage, premium requests, git branch, auth status, phase/step)",
+    "status": "open",
+    "priority": 7,
+    "notes": "Always visible; suppressible with --quiet or --no-logo"
+  },
+  {
+    "id": "JOB-078",
+    "requirement": "tui",
+    "description": "Implement main activity area with progressive disclosure (current expanded, previous collapsed)",
+    "status": "open",
+    "priority": 7,
+    "notes": "Scrollable, auto-scrolls to current activity"
+  },
+  {
+    "id": "JOB-079",
+    "requirement": "tui",
+    "description": "Implement context panel (task tree, component/module hierarchy, active resources)",
+    "status": "open",
+    "priority": 7,
+    "notes": "Real-time updates, numbered resource access (1-9)"
+  },
+  {
+    "id": "JOB-080",
+    "requirement": "tui",
+    "description": "Implement prompt area with multi-line input and keyboard shortcuts (Enter, Alt+Enter, Ctrl+P, Ctrl+C)",
+    "status": "open",
+    "priority": 7,
+    "notes": "Fixed at bottom with context-aware hints"
+  },
+  {
+    "id": "JOB-081",
+    "requirement": "tui",
+    "description": "Implement landing page modal with quick commands",
+    "status": "open",
+    "priority": 8,
+    "notes": "Dismisses on keypress; skippable with --no-welcome"
+  },
+  {
+    "id": "JOB-082",
+    "requirement": "tui",
+    "description": "Implement session resume modal with session details",
+    "status": "open",
+    "priority": 7,
+    "notes": "Arrow key navigation between Resume/Start New/View Details"
+  },
+  {
+    "id": "JOB-083",
+    "requirement": "tui",
+    "description": "Implement tool call display (file edits with diffs, command execution, test results, research)",
+    "status": "open",
+    "priority": 7,
+    "notes": "Progressive disclosure with expandable sections"
+  },
+  {
+    "id": "JOB-084",
+    "requirement": "tui",
+    "description": "Implement confirmation and error modals",
+    "status": "open",
+    "priority": 7,
+    "notes": "Confirmation: Yes/No/Always/Other. Errors: severity-based with recovery options"
+  },
+  {
+    "id": "JOB-085",
+    "requirement": "tui",
+    "description": "Implement diff viewer with syntax highlighting and line numbers",
+    "status": "open",
+    "priority": 8,
+    "notes": "Line numbers with +/- markers, context lines around changes"
+  },
+  {
+    "id": "JOB-086",
+    "requirement": "tui",
+    "description": "Implement module selection modal with arrow key navigation",
+    "status": "open",
+    "priority": 8,
+    "notes": "Shows module state (not started/in progress/complete)"
+  },
+  {
+    "id": "JOB-087",
+    "requirement": "tui",
+    "description": "Implement slash commands (/help, /spec, /plan, /build, /session, /config, /revert, /auth)",
+    "status": "open",
+    "priority": 8,
+    "notes": "TUI prompt-area shortcuts that invoke corresponding CLI commands"
+  },
+  {
+    "id": "JOB-088",
+    "requirement": "tui",
+    "description": "Implement visual design (semantic colors, unicode symbols with ASCII fallbacks, box-drawing borders)",
+    "status": "open",
+    "priority": 8,
+    "notes": "Support NO_COLOR env var, terminal color detection"
+  },
+  {
+    "id": "JOB-089",
+    "requirement": "tui",
+    "description": "Implement component gallery (lopen test tui) with all components and stub data",
+    "status": "open",
+    "priority": 9,
+    "notes": "Interactive gallery; components self-register; multiple visual states per component"
+  },
+  {
+    "id": "JOB-090",
+    "requirement": "tui",
+    "description": "Implement queued user messages during active workflow (delivered in next SDK invocation)",
+    "status": "open",
+    "priority": 8,
+    "notes": "Preserves fresh-context-per-invocation model"
+  },
+  {
+    "id": "JOB-091",
+    "requirement": "tui",
+    "description": "Add tests for TUI component rendering with stub data",
+    "status": "open",
+    "priority": 8,
+    "notes": "Verify all components render without errors using mock data"
+  },
+  {
+    "id": "JOB-092",
+    "requirement": "otel",
+    "description": "Implement OTEL trace instrumentation for all required spans (command, phase, sdk, tool, oracle, task, session, git, backpressure)",
+    "status": "open",
+    "priority": 8,
+    "notes": "Uses System.Diagnostics.Activity with lopen.* namespace"
+  },
+  {
+    "id": "JOB-093",
+    "requirement": "otel",
+    "description": "Implement OTEL metrics (counters: commands, tools, sdk invocations, tokens, premium requests, oracle verdicts, tasks, backpressure, git commits)",
+    "status": "open",
+    "priority": 8,
+    "notes": "Uses System.Diagnostics.Metrics with lopen.* namespace"
+  },
+  {
+    "id": "JOB-094",
+    "requirement": "otel",
+    "description": "Implement OTEL histogram metrics (sdk invocation duration, tool duration, task duration, command duration, oracle duration)",
+    "status": "open",
+    "priority": 8,
+    "notes": "Duration metrics in milliseconds tagged by relevant dimensions"
+  },
+  {
+    "id": "JOB-095",
+    "requirement": "otel",
+    "description": "Implement OTEL log export with ILogger and trace correlation (TraceId/SpanId)",
+    "status": "open",
+    "priority": 8,
+    "notes": "Log categories: Workflow, Sdk, Tools, Oracle, BackPressure, Session, Git, Config"
+  },
+  {
+    "id": "JOB-096",
+    "requirement": "otel",
+    "description": "Implement conditional OTLP export (activated by OTEL_EXPORTER_OTLP_ENDPOINT, silent when unset)",
+    "status": "open",
+    "priority": 8,
+    "notes": "No telemetry leaves process when endpoint not set; no export errors"
+  },
+  {
+    "id": "JOB-097",
+    "requirement": "otel",
+    "description": "Implement OTEL configuration settings (enabled, export endpoint/protocol, service name, signal toggles)",
+    "status": "open",
+    "priority": 8,
+    "notes": "OTEL env vars take precedence over Lopen config settings"
+  },
+  {
+    "id": "JOB-098",
+    "requirement": "otel",
+    "description": "Implement Aspire AppHost project for local development (aspire run launches dashboard + Lopen)",
+    "status": "open",
+    "priority": 9,
+    "notes": "Lightweight AppHost that references Lopen as project resource"
+  },
+  {
+    "id": "JOB-099",
+    "requirement": "otel",
+    "description": "Add tests for OTEL instrumentation (spans created, metrics increment, export activation)",
+    "status": "open",
+    "priority": 9,
+    "notes": "Verify span hierarchy, metric registration, and conditional export behavior"
+  },
+  {
+    "id": "JOB-100",
+    "requirement": "configuration",
+    "description": "Implement lopen config show command with source indication and --json output",
+    "status": "open",
+    "priority": 5,
+    "notes": "Display resolved config with each setting's source (CLI/project/global/default)"
+  }
+]
