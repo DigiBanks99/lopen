@@ -44,3 +44,4 @@ core, llm, storage, configuration, cli, auth, tui, otel — each under `docs/req
 5. CLI parsing uses `System.CommandLine`
 6. TUI uses Spectre.Tui (cell-based rendering, Ratatui-inspired) with Spectre.Console for non-TUI output
 7. Run a sub-agent with model gpt-5-mini to verify that all the acceptance criteria have been met before marking a task as done. Be clear on what task was done and where to find the acceptance criteria
+8. Write the state of jobs to @.lopen/module/<module>/state.json and keep it up to date with progress
