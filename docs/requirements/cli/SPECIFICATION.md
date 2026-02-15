@@ -101,6 +101,21 @@ lopen session delete <session-id>   # Delete a session
 lopen session prune                 # Remove completed sessions beyond retention limit
 ```
 
+#### `lopen revert`
+
+```sh
+lopen revert [options]
+```
+
+Rolls back to the last known-good commit (the most recent task-completion commit). See [Core § Git Safety & Rollback](../core/SPECIFICATION.md#git-safety--rollback).
+
+- Identifies the last task-completion commit on the current module branch
+- Performs a `git revert` or `git reset` to that commit
+- Updates session state to reflect the rollback
+- Informs the LLM of the rollback in the next iteration context
+- In headless mode: outputs the reverted commit SHA and exits
+- Errors if no task-completion commits exist or if the working tree has uncommitted changes
+
 #### `lopen config`
 
 Configuration inspection (see [Configuration Specification](../configuration/SPECIFICATION.md)):
@@ -151,7 +166,7 @@ The `--prompt` flag accepts a text string that is injected into the LLM context 
 lopen spec --headless --prompt "Build an authentication module using JWT tokens"
 
 # Continue building with specific guidance
-lopen build --headless --resume 20260214-1357 --prompt "Focus on the session management component next"
+lopen build --headless --resume auth-20260214-1357 --prompt "Focus on the session management component next"
 ```
 
 In TUI mode, `--prompt` provides an initial message that populates the input — the user can edit before sending.
@@ -161,6 +176,50 @@ In TUI mode, `--prompt` provides an initial message that populates the input —
 ## Notes
 
 This specification defines the **CLI command structure and flags**. It does not define what happens inside each command — that's the [Core Workflow](../core/SPECIFICATION.md). It does not define how the TUI renders — that's the [TUI Specification](../tui/SPECIFICATION.md).
+
+---
+
+## Acceptance Criteria
+
+- [ ] `lopen` (root command) starts the TUI with full workflow; offers session resume if active session exists
+- [ ] `lopen --headless` runs the full workflow autonomously with plain text output to stdout/stderr
+- [ ] `lopen spec` runs the Requirement Gathering phase (step 1) with guided conversation
+- [ ] `lopen plan` runs the Planning phase (steps 2–5); errors if no specification exists for the target module
+- [ ] `lopen build` runs the Building phase (steps 6–7); errors if no specification and plan exist
+- [ ] `lopen auth login` initiates the Copilot SDK device flow
+- [ ] `lopen auth status` reports current authentication state
+- [ ] `lopen auth logout` clears SDK-managed credentials
+- [ ] `lopen session list` lists all sessions (active and completed)
+- [ ] `lopen session show` displays session details with optional `--format` flag
+- [ ] `lopen session resume [id]` resumes a specific session
+- [ ] `lopen session delete <id>` deletes a session
+- [ ] `lopen session prune` removes completed sessions beyond retention limit
+- [ ] `lopen config show` displays resolved configuration with sources
+- [ ] `lopen revert` rolls back to the last task-completion commit and updates session state
+- [ ] `--headless` / `--quiet` / `-q` disables TUI entirely; output is plain text to stdout/stderr
+- [ ] `--prompt <text>` injects user instructions into LLM context
+- [ ] `--prompt` in TUI mode populates the input field for user review before sending
+- [ ] Headless mode without `--prompt` and without an active session errors with guidance
+- [ ] Exit codes: `0` success, `1` failure, `2` user intervention required (headless + unattended)
+- [ ] `--help` and `--version` flags work as expected
+
+---
+
+## Dependencies
+
+- **[Core module](../core/SPECIFICATION.md)** — Workflow phases, step logic, session management
+- **[LLM module](../llm/SPECIFICATION.md)** — SDK invocation for prompt injection and model override
+- **[Auth module](../auth/SPECIFICATION.md)** — Authentication commands (`lopen auth` subcommands)
+- **[Storage module](../storage/SPECIFICATION.md)** — Session persistence for resume/list/show/delete/prune commands
+- **[Configuration module](../configuration/SPECIFICATION.md)** — Settings resolution and `lopen config` commands
+- **[TUI module](../tui/SPECIFICATION.md)** — Interactive terminal UI (default mode)
+- **System.CommandLine** — .NET CLI parsing library (or equivalent)
+
+---
+
+## Skills & Hooks
+
+- **verify-cli-parse**: Validate that all registered commands and flags parse correctly without runtime errors
 
 ## References
 

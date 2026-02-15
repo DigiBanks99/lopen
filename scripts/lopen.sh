@@ -19,7 +19,7 @@ if [ "$1" == "plan" ]; then
     # run copilot cli once with --allow-all for the selected prompt file and exit
     copilot -p "$(cat "$PROMPT_FILE")" \
         --allow-all \
-        --model claude-opus-4.5 \
+        --model claude-opus-4.6 \
         --stream on \
         --no-auto-update\
         --log-level all
@@ -42,7 +42,7 @@ rm -f lopen.loop.done
 while [ ! -f lopen.loop.done ]; do
     copilot -p "$(cat "$PROMPT_FILE")" \
         --allow-all \
-        --model claude-opus-4.5 \
+        --model claude-opus-4.6 \
         --stream on \
         --no-auto-update\
         --log-level all

@@ -42,7 +42,7 @@ All Lopen state lives under `.lopen/` in the project root:
 
 ### Conventions
 
-- **Session IDs** are short, human-readable identifiers (e.g., timestamp-based: `20260214-1357`)
+- **Session IDs** follow the format `{module}-YYYYMMDD-{counter}` (e.g., `auth-20260214-1`, `auth-20260214-2`). The counter is a monotonically increasing integer per module per day, preventing collisions.
 - **Module names** match the specification directory names under `docs/requirements/`
 - The `.lopen/` directory should be added to `.gitignore` — it contains ephemeral session state, not project source
 
@@ -153,9 +153,80 @@ Plans are stored under `.lopen/modules/{module}/plan.md`:
 
 ---
 
+## Error Handling
+
+### Corrupted State
+
+If session state files (`.lopen/sessions/`, `.lopen/modules/`) are unreadable, malformed, or corrupted:
+
+1. Lopen logs a warning with the specific file and error
+2. The corrupted session is marked as unusable and excluded from resume options
+3. The user is informed and offered to start a fresh session
+4. Lopen does **not** attempt to repair corrupted state — it starts clean
+5. Corrupted files are moved to `.lopen/corrupted/` for manual inspection, not deleted
+
+### Disk Full / Write Failure
+
+If Lopen cannot write to `.lopen/` (disk full, permissions, etc.):
+
+1. This is a **critical system error** per [Core § Failure Handling](../core/SPECIFICATION.md#failure-handling--self-correction)
+2. Lopen surfaces the error immediately with the specific path and OS error
+3. The workflow pauses — session state integrity cannot be guaranteed without persistence
+4. The user must resolve the disk/permission issue before resuming
+
+### Cache Corruption
+
+If cache files (`.lopen/cache/`) are corrupted:
+
+1. Lopen silently invalidates and regenerates the affected cache entries
+2. This is a recoverable situation — cache is always re-derivable from source documents
+3. No user notification unless regeneration fails repeatedly
+
+---
+
 ## Notes
 
 This specification defines **where and how Lopen stores its state**. It does not define what state is tracked (that's the [Core Workflow](../core/SPECIFICATION.md)) or how state is displayed (that's the [TUI](../tui/SPECIFICATION.md)).
+
+---
+
+## Acceptance Criteria
+
+- [ ] `.lopen/` directory is created in project root on first workflow run
+- [ ] Session state (`state.json`) persists workflow phase, step, module, component, and task hierarchy
+- [ ] Session metrics (`metrics.json`) persists per-iteration and cumulative token counts and premium request counts
+- [ ] Session IDs follow the `{module}-YYYYMMDD-{counter}` format with no collisions
+- [ ] `latest` symlink points to the most recent session directory
+- [ ] State is auto-saved after: step completion, task completion/failure, phase transition, component completion, user pause/switch
+- [ ] Session resume loads state from `.lopen/sessions/latest` and offers resume or start fresh
+- [ ] `--resume {id}` resumes a specific session; `--no-resume` starts fresh
+- [ ] Plans are stored at `.lopen/modules/{module}/plan.md` with checkbox task hierarchy
+- [ ] Plan checkboxes are updated programmatically by Lopen, not by the LLM
+- [ ] Section cache (`.lopen/cache/sections/`) is keyed by file path + section header + modification timestamp
+- [ ] Section cache is invalidated when the source file changes
+- [ ] Assessment cache is short-lived and invalidated on any file change in the assessed scope
+- [ ] Corrupted session state is detected, warned, and the session is excluded from resume options
+- [ ] Corrupted files are moved to `.lopen/corrupted/` for manual inspection
+- [ ] Disk full / write failure is treated as a critical system error and pauses the workflow
+- [ ] Corrupted cache entries are silently invalidated and regenerated
+- [ ] Completed sessions are retained up to the configured `session_retention` limit, then pruned
+- [ ] Research documents are stored at `docs/requirements/{module}/RESEARCH-{topic}.md` (in source, not `.lopen/`)
+- [ ] Storage format is compact JSON by default, with on-demand prettification via `lopen session show --format`
+
+---
+
+## Dependencies
+
+- **[Core module](../core/SPECIFICATION.md)** — Defines workflow state, task hierarchy, and document management that Storage persists
+- **[Configuration module](../configuration/SPECIFICATION.md)** — Session retention, save_iteration_history, auto_resume settings
+- **File system** — Local file I/O for `.lopen/` directory and project source documents
+
+---
+
+## Skills & Hooks
+
+- **verify-state-integrity**: Validate that session state files are well-formed JSON before loading
+- **pre-workflow**: Ensure `.lopen/` directory exists and is writable before entering workflow
 
 ## References
 

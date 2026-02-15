@@ -461,6 +461,54 @@ These features support the core workflow but are not part of the 7-step process:
 
 This specification defines the **core workflow and orchestration behavior** of Lopen independent of user interface, LLM backend, storage mechanism, or configuration system.
 
+---
+
+## Acceptance Criteria
+
+- [ ] Lopen scans `docs/requirements/` and correctly identifies all module specifications
+- [ ] The 7-step workflow executes in order: Draft Spec → Dependencies → Components → Select → Tasks → Iterate → Repeat
+- [ ] Re-entrant assessment correctly determines the current workflow step from actual codebase state, not stale session data
+- [ ] Specification drift detection identifies when spec sections change between iterations and flags the drift to the user
+- [ ] The Requirement Gathering → Planning phase transition requires explicit user confirmation (human gate)
+- [ ] Planning → Building transition proceeds automatically when plan is structurally complete
+- [ ] Building → Complete transition proceeds automatically when all acceptance criteria pass verification
+- [ ] Task hierarchy supports Module → Component → Task → Subtask levels
+- [ ] Task state transitions follow: Pending → In Progress → Complete/Failed
+- [ ] Task completion requires passing oracle verification (`verify_task_completion`) before `update_task_status(complete)` is accepted
+- [ ] Back-pressure Category 1 (Resource Limits): warns at configured warning threshold, pauses at confirmation threshold
+- [ ] Back-pressure Category 2 (Progress Integrity): churn detection escalates after configured failure threshold
+- [ ] Back-pressure Category 2: false completion claims rejected when required tool calls were not made
+- [ ] Back-pressure Category 3 (Quality Gates): acceptance criteria enforced at module and component completion
+- [ ] Back-pressure Category 4 (Tool Discipline): corrective instructions injected when wasteful tool patterns detected
+- [ ] Git auto-commit creates a commit after each task completion when `git.auto_commit` is enabled
+- [ ] Branch per module creates working branches (e.g., `lopen/auth`) for each module
+- [ ] `lopen revert` rolls back to the last task-completion commit and updates session state
+- [ ] Document management extracts relevant sections (not full documents) for LLM context
+- [ ] Programmatic updates (task checkboxes, status tracking) happen without LLM invocation
+- [ ] Single task failures display inline and the LLM self-corrects
+- [ ] Repeated task failures (at threshold) prompt user intervention
+- [ ] Critical system errors block execution and require user action
+- [ ] Module selection lists modules with current state and allows user to choose
+
+---
+
+## Dependencies
+
+- **[LLM module](../llm/SPECIFICATION.md)** — SDK invocation, model selection, tool registration, prompt construction, oracle verification dispatch
+- **[Storage module](../storage/SPECIFICATION.md)** — Session persistence, plan storage, section caching, document formats
+- **[Configuration module](../configuration/SPECIFICATION.md)** — Workflow settings (failure_threshold, max_iterations, unattended), budget settings, git settings
+- **Git** — Auto-commit, branch management, revert functionality
+
+---
+
+## Skills & Hooks
+
+- **verify-build**: `dotnet build --no-restore` — Compile check before marking tasks complete
+- **verify-tests**: `dotnet test --no-build` — Test suite must pass before marking tasks complete
+- **verify-lint**: `dotnet format --verify-no-changes` — Code formatting check
+- **verify-commit**: Run all verify-* skills before committing (pre-commit hook)
+- **pre-workflow**: Validate that a module specification exists and is parseable before entering workflow
+
 ## References
 
 - [LLM Specification](../llm/SPECIFICATION.md) — Copilot SDK integration, model selection, tool strategy, token tracking

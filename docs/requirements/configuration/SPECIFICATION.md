@@ -22,7 +22,7 @@ Lopen's behavior is controlled through a layered configuration system that suppo
 
 Settings are resolved in this order (highest priority first):
 
-1. **CLI flags** — Per-invocation overrides (e.g., `--model claude-opus-4.5`)
+1. **CLI flags** — Per-invocation overrides (e.g., `--model claude-opus-4.6`)
 2. **Project configuration** — `.lopen/config.json` in the project root
 3. **Global configuration** — `~/.config/lopen/config.json` (user-wide defaults)
 4. **Built-in defaults** — Hardcoded sensible defaults in Lopen
@@ -40,15 +40,30 @@ Configure which Copilot SDK model is used for each workflow phase (see [LLM § P
 ```json
 {
   "models": {
-    "requirement_gathering": "claude-opus-4.5",
-    "planning": "claude-opus-4.5",
-    "building": "claude-opus-4.5",
-    "research": "claude-sonnet-4"
+    "requirement_gathering": "claude-opus-4.6",
+    "planning": "claude-opus-4.6",
+    "building": "claude-opus-4.6",
+    "research": "claude-opus-4.6"
   }
 }
 ```
 
 **Default**: All phases use the premium tier model.
+
+### Budget Settings
+
+| Setting                          | Type    | Default | Description                                                              |
+| -------------------------------- | ------- | ------- | ------------------------------------------------------------------------ |
+| `budget.token_budget_per_module` | integer | `0`     | Maximum token budget per module (0 = unlimited)                          |
+| `budget.premium_request_budget`  | integer | `0`     | Maximum premium API requests per module (0 = unlimited)                  |
+| `budget.warning_threshold`       | number  | `0.8`   | Fraction of budget consumed before warning (0.0–1.0)                     |
+| `budget.confirmation_threshold`  | number  | `0.9`   | Fraction of budget consumed before requiring user confirmation (0.0–1.0) |
+
+### Oracle Settings
+
+| Setting        | Type   | Default        | Description                                                    |
+| -------------- | ------ | -------------- | -------------------------------------------------------------- |
+| `oracle.model` | string | `"gpt-5-mini"` | Copilot SDK model used for oracle verification sub-agent calls |
 
 ### Workflow Settings
 
@@ -74,6 +89,13 @@ Configure which Copilot SDK model is used for each workflow phase (see [LLM § P
 | `git.auto_commit` | boolean | `true`           | Instruct the LLM to commit after task/component completion |
 | `git.convention`  | string  | `"conventional"` | Commit message convention to instruct the LLM to follow    |
 
+### Tool Discipline Settings
+
+| Setting                               | Type    | Default | Description                                                          |
+| ------------------------------------- | ------- | ------- | -------------------------------------------------------------------- |
+| `tool_discipline.max_file_reads`      | integer | `3`     | Max reads of the same file per iteration before corrective injection |
+| `tool_discipline.max_command_retries` | integer | `3`     | Max re-runs of the same failing command per iteration                |
+
 ### Display Settings
 
 | Setting              | Type    | Default | Description                                |
@@ -87,13 +109,13 @@ Configure which Copilot SDK model is used for each workflow phase (see [LLM § P
 
 Common CLI flags that override configuration:
 
-| Flag                   | Overrides             | Example                         |
-| ---------------------- | --------------------- | ------------------------------- |
-| `--model <name>`       | All model assignments | `lopen --model claude-sonnet-4` |
-| `--unattended`         | `unattended`          | `lopen --unattended`            |
-| `--resume <id>`        | `auto_resume`         | `lopen --resume 20260214-1357`  |
-| `--no-resume`          | `auto_resume`         | `lopen --no-resume`             |
-| `--max-iterations <n>` | `max_iterations`      | `lopen --max-iterations 50`     |
+| Flag                   | Overrides             | Example                             |
+| ---------------------- | --------------------- | ----------------------------------- |
+| `--model <name>`       | All model assignments | `lopen --model claude-sonnet-4`     |
+| `--unattended`         | `unattended`          | `lopen --unattended`                |
+| `--resume <id>`        | `auto_resume`         | `lopen --resume auth-20260214-1357` |
+| `--no-resume`          | `auto_resume`         | `lopen --no-resume`                 |
+| `--max-iterations <n>` | `max_iterations`      | `lopen --max-iterations 50`         |
 
 ---
 
@@ -120,6 +142,40 @@ Common CLI flags that override configuration:
 ## Notes
 
 This specification defines **what can be configured and how settings are resolved**. It does not define the settings' effects — those are documented in the modules they affect ([Core](../core/SPECIFICATION.md), [LLM](../llm/SPECIFICATION.md), [Storage](../storage/SPECIFICATION.md), [TUI](../tui/SPECIFICATION.md)).
+
+---
+
+## Acceptance Criteria
+
+- [ ] Configuration hierarchy resolves in order: CLI flags → project config → global config → built-in defaults
+- [ ] Higher-priority source wins when a setting is defined at multiple levels
+- [ ] Project configuration is discovered at `.lopen/config.json` in the current working directory or nearest parent with `.lopen/`
+- [ ] Global configuration is discovered at `~/.config/lopen/config.json`
+- [ ] `lopen config show` displays the resolved configuration with sources indicated for each setting
+- [ ] `lopen config show --json` outputs machine-readable JSON
+- [ ] All settings have sensible built-in defaults — Lopen works without any configuration files
+- [ ] `--model <name>` CLI flag overrides all model phase assignments for the invocation
+- [ ] `--unattended` CLI flag overrides the `unattended` setting
+- [ ] `--resume <id>` and `--no-resume` CLI flags override `auto_resume` behavior
+- [ ] `--max-iterations <n>` CLI flag overrides `max_iterations`
+- [ ] Budget settings (`token_budget_per_module`, `premium_request_budget`) are respected when non-zero
+- [ ] Oracle model setting is passed to the LLM module for verification sub-agent dispatch
+- [ ] Tool discipline settings control corrective injection thresholds
+- [ ] Invalid configuration values produce clear error messages with guidance
+
+---
+
+## Dependencies
+
+- **[Storage module](../storage/SPECIFICATION.md)** — `.lopen/config.json` location within the `.lopen/` directory structure
+- **[CLI module](../cli/SPECIFICATION.md)** — CLI flags that override configuration settings
+- **File system** — Reading configuration files from project and global paths
+
+---
+
+## Skills & Hooks
+
+- **verify-config**: Validate that configuration files are well-formed JSON with recognized settings before workflow start
 
 ## References
 

@@ -71,15 +71,15 @@ Each SDK invocation receives a **fresh context window** — no conversation hist
 
 Users can assign different Copilot models to different workflow phases via [Configuration](../configuration/SPECIFICATION.md):
 
-| Phase                 | Default Model | Rationale                                     |
-| --------------------- | ------------- | --------------------------------------------- |
-| Requirement Gathering | Premium       | Nuanced conversation, spec quality matters    |
-| Planning              | Premium       | Architecture decisions need strong reasoning  |
-| Building              | Premium       | Code generation accuracy is critical          |
-| Research              | Standard      | Information gathering is less reasoning-heavy |
+| Phase                 | Default Model     | Rationale                                     |
+| --------------------- | ----------------- | --------------------------------------------- |
+| Requirement Gathering | `claude-opus-4.6` | Nuanced conversation, spec quality matters    |
+| Planning              | `claude-opus-4.6` | Architecture decisions need strong reasoning  |
+| Building              | `claude-opus-4.6` | Code generation accuracy is critical          |
+| Research              | `claude-opus-4.6` | Consistent default; users can override to save premium requests |
 
-- **"Premium"** and **"Standard"** are abstract tiers mapped to specific Copilot SDK model identifiers in configuration
-- Users can override any assignment (e.g., use standard-tier for building to save premium requests)
+- Configuration uses specific Copilot SDK model names directly (e.g., `claude-opus-4.6`, `claude-sonnet-4`) — no abstract tier system
+- Users can override any phase assignment to a different model
 - Model identifiers must be valid Copilot SDK model names
 
 ### Model Fallback
@@ -87,8 +87,8 @@ Users can assign different Copilot models to different workflow phases via [Conf
 If a configured model is unavailable (rate limited, deprecated):
 
 1. Lopen logs a warning
-2. Falls back to the next available model in the same tier
-3. If no models available in the tier, surfaces error to user
+2. Falls back to the next available model (Lopen maintains a fallback order in built-in defaults)
+3. If no models available, surfaces error to user
 
 ---
 
@@ -141,7 +141,7 @@ Lopen does **not** restrict or wrap these tools. The LLM uses them freely during
 The `verify_task_completion`, `verify_component_completion`, and `verify_module_completion` tools implement [Core § Oracle Verification](../core/SPECIFICATION.md#oracle-verification) as Lopen-managed tools. When the LLM calls one of these tools, Lopen's tool handler:
 
 1. Collects the relevant diff, test results, and acceptance criteria for the requested scope
-2. Dispatches a **cheap/fast model** (e.g., gpt-5-mini, gpt-4o) as a sub-agent to review the evidence against the specification
+2. Dispatches a **cheap/fast model** (e.g., gpt-5-mini, gpt-4o) as a sub-agent to review the evidence against the specification in the same SDK session as a sub-agent
 3. Returns the oracle's findings (pass/fail with specific gaps) back to the primary LLM as the tool result
 
 **This happens within the same SDK invocation** — the tool call round-trip is part of the primary model's tool-calling loop, so it does **not** consume an additional premium request. The oracle model call is a standard-tier request.
@@ -213,6 +213,42 @@ These metrics are surfaced to the [TUI](../tui/SPECIFICATION.md) for display and
 ## Notes
 
 This specification defines **how Lopen integrates with the LLM backend**. It does not define what the LLM is asked to do (that's the [Core Workflow](../core/SPECIFICATION.md)) or how results are displayed (that's the [TUI](../tui/SPECIFICATION.md)).
+
+---
+
+## Acceptance Criteria
+
+- [ ] Lopen authenticates with the Copilot SDK using credentials from the [Auth module](../auth/SPECIFICATION.md)
+- [ ] Each workflow phase invokes the SDK with a fresh context window (no conversation history carried forward)
+- [ ] System prompt includes: role/identity, workflow state, step instructions, relevant context, available tools, constraints
+- [ ] Context window contains only section-level document extractions, not full documents
+- [ ] Lopen-managed tools (`read_spec`, `read_research`, `read_plan`, `update_task_status`, `get_current_context`, `log_research`, `report_progress`) are registered and functional
+- [ ] Oracle verification tools (`verify_task_completion`, `verify_component_completion`, `verify_module_completion`) dispatch a sub-agent and return pass/fail verdicts
+- [ ] Oracle verification runs within the same SDK invocation (no additional premium request consumed)
+- [ ] `update_task_status(complete)` is rejected unless preceded by a passing `verify_*_completion` call in the same invocation
+- [ ] Tool registration varies by workflow step (e.g., `log_research` only available during research phases)
+- [ ] Per-phase model selection works — each phase can use a different configured model
+- [ ] Model fallback activates when a configured model is unavailable (logs warning, falls back to next available)
+- [ ] Token usage metrics (context window usage, premium request count, session totals) are read from SDK response metadata and recorded
+- [ ] Token metrics are surfaced to the TUI and persisted in session state
+- [ ] Context window budget is respected — lower-priority sections truncated or summarized when context would exceed budget
+
+---
+
+## Dependencies
+
+- **[Copilot SDK](https://github.com/features/copilot)** — LLM invocation, tool calling, authentication, response metadata (token counts)
+- **[Auth module](../auth/SPECIFICATION.md)** — Credential provision for SDK authentication
+- **[Core module](../core/SPECIFICATION.md)** — Workflow state, task hierarchy, document management, back-pressure enforcement
+- **[Storage module](../storage/SPECIFICATION.md)** — Session state persistence, token metrics storage
+- **[Configuration module](../configuration/SPECIFICATION.md)** — Model assignments, budget settings, oracle model selection
+
+---
+
+## Skills & Hooks
+
+- **verify-sdk-connection**: Lightweight SDK call to validate authentication and model availability before workflow start
+- **track-token-usage**: Record per-iteration token metrics after each SDK invocation
 
 ## References
 

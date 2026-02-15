@@ -39,7 +39,7 @@ The TUI visualizes and enables interaction with Lopen's 7-step workflow (see [Co
 
 **Phase Transitions**:
 
-- Semi-automatic reviews offered at boundaries (e.g., spec review after step 1)
+- Semi-automatic reviews offered at boundaries, though progression from phase 1 is human driven
 - Research summaries displayed when transitioning phases
 
 ---
@@ -62,7 +62,7 @@ The TUI uses a split-screen layout to balance agent activity with contextual awa
 
 ```sh
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│  ╻  ┏━┓┏━┓┏━╸┏┓╻  v1.0.0  │ claude-sonnet  │ Context: 2.4K/128K (🔥 23 premium)  │  main  │  🟢   │
+│  ╻  ┏━┓┏━┓┏━╸┏┓╻  v1.0.0 │ claude-opus-4.6  │ Context: 2.4K/128K (🔥 23 premium)  │  main  │  🟢   │
 │  ┃  ┃ ┃┣━┛┣╸ ┃┗┫                                                                                    │
 │  ┗━╸┗━┛╹  ┗━╸╹ ╹                          Phase: Building ●●●○○○○ Step 6/7: Iterate Tasks          │
 ├──────────────────────────────────────────────┬──────────────────────────────────────────────────────┤
@@ -186,7 +186,7 @@ Fixed at bottom with clear border separation:
 
 ### UI for Session Resumption
 
-See [Core Specification § Session Management](../core/SPECIFICATION.md#session-management) for session persistence details.
+See [Storage Specification § Session Persistence](../storage/SPECIFICATION.md#session-persistence) for session persistence details.
 
 The TUI displays a resume prompt on startup when previous session detected:
 
@@ -226,17 +226,17 @@ On startup (when no session to resume), display a modal overlay before entering 
                             ┃  ┃ ┃┣━┛┣╸ ┃┗┫                                  │
                             ┗━╸┗━┛╹  ┗━╸╹ ╹                                  │
                                                                              │
-                             v1.0.0-alpha                                    │
+                             v1.0.0                                          │
                          Interactive Agent Loop                              │
                                                                              │
 
   Quick Commands                                                             │
                                                                              │
     /help          Show available commands                                   │
+    /spec          Start requirement gathering                               │
     /plan          Start planning mode                                       │
     /build         Start build mode                                          │
-    Ctrl+P         Switch to plan mode (workspace: pause agent)              │
-    Ctrl+B         Switch to build mode                                      │
+    /session       Manage sessions                                           │
                                                                              │
 
   Press any key to continue...                              🟢 Authenticated │
@@ -540,6 +540,40 @@ The TUI provides a module selection interface when multiple modules exist:
 
 ---
 
+## Slash Commands
+
+Within the TUI prompt area, users can type slash commands as shortcuts to CLI subcommands. These are convenience aliases — they invoke the same logic as the corresponding `lopen <command>`:
+
+| Slash Command   | Equivalent CLI Command | Description                           |
+| --------------- | ---------------------- | ------------------------------------- |
+| `/help`         | `lopen --help`         | Show available commands and usage     |
+| `/spec`         | `lopen spec`           | Start or resume requirement gathering |
+| `/plan`         | `lopen plan`           | Start or resume planning phase        |
+| `/build`        | `lopen build`          | Start or resume building phase        |
+| `/session list` | `lopen session list`   | List all sessions                     |
+| `/session show` | `lopen session show`   | Show current session details          |
+| `/config show`  | `lopen config show`    | Show resolved configuration           |
+| `/revert`       | `lopen revert`         | Revert to last known-good commit      |
+| `/auth status`  | `lopen auth status`    | Check authentication state            |
+
+- Slash commands are only available within the TUI prompt area
+- Unknown slash commands display an error with a list of valid commands
+- Any text not starting with `/` is treated as a user prompt to the LLM
+
+---
+
+## User Input During Active Workflow
+
+When the agent is actively working (e.g., during task execution in the Building phase), the TUI prompt area remains available for:
+
+- **Metadata inspection**: Users can browse the context panel, expand/collapse tool call outputs, and view resources without interrupting the agent
+- **Queued messages**: User prompts typed during active execution are queued and delivered as additional context in the next SDK invocation (the next loop iteration), not injected into the current invocation
+- **Pause**: `Ctrl+P` pauses agent execution, allowing the user to type a prompt that will be included in the next invocation when resumed
+
+This design preserves the fresh-context-per-invocation model (see [LLM § Context Window Strategy](../llm/SPECIFICATION.md#context-window-strategy)) while keeping the user informed and able to influence the next iteration.
+
+---
+
 ## Input Experiences
 
 ### Requirement Gathering (Step 1)
@@ -577,15 +611,15 @@ The TUI provides a module selection interface when multiple modules exist:
 
 ## CLI Flags
 
-| Flag            | Effect                                               |
-| --------------- | ---------------------------------------------------- |
-| `--quiet`, `-q` | Suppress logo and non-essential output               |
-| `--no-logo`     | Hide ASCII logo in top panel                         |
-| `--no-color`    | Disable colors (also respects `NO_COLOR` env)        |
-| `--no-welcome`  | Skip landing page modal, go straight to workspace    |
-| `--unattended`  | Suppress failure confirmations, full autonomous mode |
-| `--resume [ID]` | Resume specific session by ID (skip resume prompt)   |
-| `--no-resume`   | Ignore previous session, start fresh                 |
+| Flag            | Effect                                                                                                                             |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `--quiet`, `-q` | Alias for `--headless` — disables TUI, plain text output (see [CLI Specification](../cli/SPECIFICATION.md#headless-mode-behavior)) |
+| `--no-logo`     | Hide ASCII logo in top panel                                                                                                       |
+| `--no-color`    | Disable colors (also respects `NO_COLOR` env)                                                                                      |
+| `--no-welcome`  | Skip landing page modal, go straight to workspace                                                                                  |
+| `--unattended`  | Suppress failure confirmations, full autonomous mode                                                                               |
+| `--resume [ID]` | Resume specific session by ID (skip resume prompt)                                                                                 |
+| `--no-resume`   | Ignore previous session, start fresh                                                                                               |
 
 ---
 
@@ -642,93 +676,109 @@ Every TUI component must be designed so that it can be rendered with injected st
 
 ---
 
-## Requirements Checklist
-
-**Note**: For core workflow, task management, and document management requirements, see [Core Specification § Requirements Checklist](../core/SPECIFICATION.md#requirements-checklist). This checklist focuses on UI-specific requirements.
+## Acceptance Criteria
 
 ### Layout & Structure
 
-| ID      | Requirement                                                        | Priority |
-| ------- | ------------------------------------------------------------------ | -------- |
-| TUI-001 | Split-screen layout (activity left, context right, 50/50 to 80/20) | High     |
-| TUI-002 | Top panel with logo, version, model, context, premium requests     | High     |
-| TUI-003 | Context panel: current task, task tree, resources                  | High     |
-| TUI-004 | Main activity area with progressive disclosure                     | High     |
-| TUI-005 | Multi-line prompt area with keyboard hints                         | High     |
-| TUI-006 | Landing page modal with quick commands                             | Medium   |
-| TUI-007 | Session resume modal on restart                                    | High     |
+- [ ] Split-screen layout with activity (left) and context (right) panes, ratio adjustable from 50/50 to 80/20
+- [ ] Top panel displays logo, version, model, context usage, premium requests, git branch, auth status, phase, and step
+- [ ] Context panel shows current task, task tree with completion states, and active resources
+- [ ] Main activity area supports scrolling with progressive disclosure
+- [ ] Multi-line prompt area with keyboard hints at bottom
+- [ ] Landing page modal with quick commands on first startup (skippable with `--no-welcome`)
+- [ ] Session resume modal displayed when previous active session detected
 
 ### Display & Interaction
 
-| ID      | Requirement                                                  | Priority |
-| ------- | ------------------------------------------------------------ | -------- |
-| TUI-201 | Progressive disclosure: current expanded, previous collapsed | High     |
-| TUI-202 | Expandable tool call outputs (click or key to expand)        | High     |
-| TUI-203 | Real-time task progress updates in context panel             | High     |
-| TUI-204 | Hierarchical task tree with status indicators (✓/▶/○)        | High     |
-| TUI-205 | Numbered resource access (press 1-9 to view)                 | Medium   |
-| TUI-206 | Inline research display with drill-into                      | Medium   |
-| TUI-207 | Phase transition summaries in activity area                  | Medium   |
-| TUI-208 | Diff viewer with syntax highlighting                         | Medium   |
-| TUI-209 | File picker with tree view                                   | Low      |
-| TUI-210 | Phase/step visualization in top panel                        | High     |
-| TUI-211 | Module selection modal UI                                    | Medium   |
-| TUI-212 | Component selection UI                                       | High     |
+- [ ] Current action expanded, previous actions collapsed to summaries
+- [ ] Tool call outputs expandable via click or keyboard shortcut
+- [ ] Real-time task progress updates in context panel
+- [ ] Hierarchical task tree with status indicators (✓/▶/○)
+- [ ] Numbered resource access (press 1-9 to view active resources)
+- [ ] Inline research display with ability to drill into full document
+- [ ] Phase transition summaries shown in activity area
+- [ ] Diff viewer with syntax highlighting and line numbers
+- [ ] File picker with tree view navigation
+- [ ] Phase/step visualization (●/○ progress indicator) in top panel
+- [ ] Module selection modal with arrow key navigation
+- [ ] Component selection UI with tree view
 
 ### User Interaction Patterns
 
-| ID      | Requirement                                      | Priority |
-| ------- | ------------------------------------------------ | -------- |
-| TUI-301 | Multi-line prompt with Alt+Enter for newlines    | High     |
-| TUI-302 | Keyboard shortcuts (Tab, Ctrl+P, number keys)    | High     |
-| TUI-303 | Guided conversation UI for requirement gathering | High     |
-| TUI-304 | Confirmation modals with Yes/No/Always/Other     | High     |
-| TUI-305 | Expandable sections (click/key to expand)        | High     |
+- [ ] Multi-line prompt input with Alt+Enter for newlines
+- [ ] Keyboard shortcuts functional: Tab (focus panel), Ctrl+P (pause), number keys (resources)
+- [ ] Guided conversation UI for requirement gathering (step 1)
+- [ ] Confirmation modals with Yes/No/Always/Other options
+- [ ] Expandable sections via click or keyboard shortcut
 
 ### Feedback & Status
 
-| ID      | Requirement                                        | Priority |
-| ------- | -------------------------------------------------- | -------- |
-| TUI-401 | Task failure display (inline, auto-expanded)       | High     |
-| TUI-402 | Repeated failure confirmation modal                | High     |
-| TUI-403 | Critical error modal with recovery options         | High     |
-| TUI-404 | Spinner-based async feedback                       | Medium   |
-| TUI-405 | Context window usage display in top panel          | High     |
-| TUI-406 | Premium request counter in top panel (🔥 indicator) | High     |
-| TUI-407 | Real-time progress percentages                     | Medium   |
+- [ ] Task failures displayed inline and auto-expanded
+- [ ] Repeated failure confirmation modal shown at configured threshold
+- [ ] Critical error modal with details and recovery options
+- [ ] Spinner-based async feedback for long-running operations
+- [ ] Context window usage displayed in top panel
+- [ ] Premium request counter displayed in top panel (🔥 indicator)
+- [ ] Real-time progress percentages in context panel
 
 ### Visual Design
 
-| ID      | Requirement                                | Priority |
-| ------- | ------------------------------------------ | -------- |
-| TUI-501 | Semantic color palette (balanced approach) | Medium   |
-| TUI-502 | Unicode symbols with ASCII fallbacks       | Medium   |
-| TUI-503 | Box-drawing characters for borders         | Low      |
-| TUI-504 | Syntax highlighting in code blocks         | Medium   |
-| TUI-505 | Consistent panel styling throughout        | Medium   |
+- [ ] Semantic color palette (green/red/yellow/blue/gray/cyan) using terminal theme colors
+- [ ] Unicode symbols with ASCII fallbacks for all indicators
+- [ ] Box-drawing characters used for borders and panels
+- [ ] Syntax highlighting in code blocks
+- [ ] Consistent panel styling throughout the application
+- [ ] `NO_COLOR` environment variable respected
 
-### CLI Flags & Configuration
+### Slash Commands & Input
 
-| ID      | Requirement                                          | Priority |
-| ------- | ---------------------------------------------------- | -------- |
-| TUI-601 | `--quiet`, `--no-logo` flags                         | Low      |
-| TUI-602 | `--no-color` flag (respect `NO_COLOR` env)           | Medium   |
-| TUI-603 | `--no-welcome` flag                                  | Low      |
-| TUI-604 | `--unattended` flag (suppress failure confirmations) | Medium   |
-| TUI-605 | `--resume [ID]`, `--no-resume` flags                 | Medium   |
+- [ ] Slash commands (`/help`, `/spec`, `/plan`, `/build`, `/session`, `/config`, `/revert`, `/auth`) invoke corresponding CLI commands
+- [ ] Unknown slash commands display error with valid command list
+- [ ] Queued user messages delivered as context in the next SDK invocation
+- [ ] `Ctrl+P` pauses agent execution
 
 ### Component Gallery
 
-| ID      | Requirement                                                            | Priority |
-| ------- | ---------------------------------------------------------------------- | -------- |
-| TUI-701 | `lopen test tui` launches interactive component gallery                | High     |
-| TUI-702 | Gallery lists all TUI components with selection navigation             | High     |
-| TUI-703 | Each component renders with realistic mock/stub data                   | High     |
-| TUI-704 | Components are fully interactive in preview (shortcuts, scroll, etc.)  | High     |
-| TUI-705 | Components accept injected data; no live dependencies in preview       | High     |
-| TUI-706 | Components self-register with gallery for automatic listing            | Medium   |
-| TUI-707 | Stub data exercises multiple visual states (empty, error, loading)     | Medium   |
+- [ ] `lopen test tui` launches interactive component gallery
+- [ ] Gallery lists all TUI components with selection navigation
+- [ ] Each component renders with realistic mock/stub data
+- [ ] Components are fully interactive in preview (shortcuts, scroll, expand/collapse)
+- [ ] Components accept injected data with no live dependencies in preview
+- [ ] Components self-register with gallery for automatic listing
+- [ ] Stub data exercises multiple visual states (empty, populated, error, loading)
+
+---
+
+## Dependencies
+
+- **[Core module](../core/SPECIFICATION.md)** — Workflow phases, task hierarchy, task states, document management, failure handling
+- **[LLM module](../llm/SPECIFICATION.md)** — Token metrics, context window usage, premium request counts
+- **[Storage module](../storage/SPECIFICATION.md)** — Session state for resume modal, plan data for task tree
+- **[Configuration module](../configuration/SPECIFICATION.md)** — Display settings (show_token_usage, show_premium_count)
+- **[CLI module](../cli/SPECIFICATION.md)** — Command definitions for slash command aliases
+- **[Auth module](../auth/SPECIFICATION.md)** — Auth status indicator
+- **[Spectre.Console](https://spectreconsole.net/)** — .NET terminal UI library (spinners, trees, panels, tables)
+
+---
+
+## Skills & Hooks
+
+- **verify-tui-render**: Validate that all TUI components render without errors using stub data
+- **verify-tui-gallery**: Validate that `lopen test tui` launches and all components are listed and previewable
+
+---
+
+## Notes
+
+- The TUI is built on Spectre.Console (or equivalent .NET terminal UI library). Component architecture must support dependency injection of data/state for testability and the component gallery.
+- TUI-specific flags (`--no-welcome`, `--no-logo`, `--no-color`) are owned by this module and not duplicated in the CLI spec's global flags table.
+- `lopen test tui` is a development/testing command owned by this module; it is not listed in the CLI spec's command structure.
 
 ## References
 
-[Core Specification](../core/SPECIFICATION.md) - The complete 7-step workflow, document management, task hierarchy, failure handling, and session management.
+- [Core Specification](../core/SPECIFICATION.md) — Workflow phases, task hierarchy, task states, document management, failure handling
+- [LLM Specification](../llm/SPECIFICATION.md) — Token metrics, context window usage, premium request counts
+- [Storage Specification](../storage/SPECIFICATION.md) — Session state for resume modal, plan data for task tree
+- [Configuration Specification](../configuration/SPECIFICATION.md) — Display settings, TUI-related configuration
+- [CLI Specification](../cli/SPECIFICATION.md) — Command definitions for slash command aliases
+- [Auth Specification](../auth/SPECIFICATION.md) — Authentication state for status indicator
