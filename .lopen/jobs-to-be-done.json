@@ -710,9 +710,9 @@
     "id": "JOB-089",
     "requirement_module": "tui",
     "description": "Implement landing page modal with quick commands (skippable --no-welcome) and session resume modal",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: Landing page on first startup; session resume modal for active sessions"
+    "notes": "LandingPageComponent + SessionResumeModalComponent. Quick commands, auth status, session details, option selection. 22 tests."
   },
   {
     "id": "JOB-090",

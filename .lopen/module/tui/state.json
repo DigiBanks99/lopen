@@ -31,8 +31,14 @@
       "status": "complete",
       "implementation": "PromptAreaComponent + PromptAreaData",
       "tests": "PromptAreaComponentTests (16)",
-      "jobs": ["JOB-088"],
-      "notes": "Multi-line input, keyboard hints bar, pause/resume toggle, text wrapping, custom hints."
+      "jobs": ["JOB-088"]
+    },
+    "modals": {
+      "status": "complete",
+      "implementation": "LandingPageComponent + SessionResumeModalComponent + ModalData",
+      "tests": "ModalComponentTests (22)",
+      "jobs": ["JOB-089"],
+      "notes": "Landing page with quick commands, auth status. Resume modal with session details, option selection."
     },
     "component_gallery": {
       "status": "complete",

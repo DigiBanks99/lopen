@@ -1,6 +1,6 @@
 # Implementation Plan
 
-## Current Job: JOB-088 — Prompt Area
+## Current Job: JOB-089 — Modals
 
 **Module**: tui  
 **Priority**: P4  
@@ -10,8 +10,8 @@
 
 | Job | Module | Description |
 |-----|--------|-------------|
-| JOB-088 | tui | Multi-line prompt area with hints |
-| JOB-087 | tui | Activity panel with scrolling/disclosure |
+| JOB-089 | tui | Landing page + session resume modals |
+| JOB-088 | tui | Multi-line prompt area |
+| JOB-087 | tui | Activity panel with scrolling |
 | JOB-086 | tui | Context panel with task tree |
 | JOB-085 | tui | Top panel component |
-| JOB-076 | cli/tui | Root command launches TUI |
