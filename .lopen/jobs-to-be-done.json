@@ -734,7 +734,7 @@
     "id": "JOB-092",
     "requirement_module": "tui",
     "description": "Implement keyboard shortcuts (Tab focus, Ctrl+P pause, number keys resources) and guided conversation UI for step 1",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
     "notes": "AC: All keyboard shortcuts functional; guided conversation for requirement gathering"
   },
@@ -774,7 +774,7 @@
     "id": "JOB-097",
     "requirement_module": "tui",
     "description": "Implement component gallery (lopen test tui) with self-registration, mock data, interactive preview, multiple visual states",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
     "notes": "AC: Gallery with component listing, realistic stubs, interactive preview, self-registration"
   },
@@ -782,7 +782,7 @@
     "id": "JOB-098",
     "requirement_module": "tui",
     "description": "Write unit tests for all TUI acceptance criteria (layout, interactions, modals, slash commands, visual design, gallery)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
     "notes": "Tests for all ~40 TUI ACs"
   },

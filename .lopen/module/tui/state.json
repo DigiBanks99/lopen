@@ -70,10 +70,22 @@
       "tests": "VisualAndCommandTests (8 command tests)",
       "jobs": ["JOB-096"]
     },
+    "keyboard_handler": {
+      "status": "complete",
+      "implementation": "KeyboardHandler + KeyInput + FocusPanel + KeyAction",
+      "tests": "KeyboardHandlerTests (33)",
+      "jobs": ["JOB-092"]
+    },
+    "gallery_registration": {
+      "status": "complete",
+      "implementation": "GalleryListComponent + self-registration in AddLopenTui + IPreviewableComponent",
+      "tests": "ComponentGalleryRegistrationTests (13)",
+      "jobs": ["JOB-097"]
+    },
     "component_gallery": {
       "status": "complete",
       "implementation": "ComponentGallery (in-memory registry) + ITuiComponent interface",
-      "tests": "ComponentGalleryTests (existing)"
+      "tests": "ComponentGalleryTests (existing) + ComponentGalleryRegistrationTests (13)"
     },
     "stub_application": {
       "status": "complete",

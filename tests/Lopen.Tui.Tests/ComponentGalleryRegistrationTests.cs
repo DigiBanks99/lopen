@@ -1,0 +1,186 @@
+using Lopen.Tui;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Lopen.Tui.Tests;
+
+/// <summary>
+/// Tests for ComponentGallery self-registration and GalleryListComponent.
+/// Covers JOB-097 acceptance criteria.
+/// </summary>
+public class ComponentGalleryRegistrationTests
+{
+    // ==================== Self-Registration ====================
+
+    [Fact]
+    public void AddLopenTui_RegistersComponentGallery()
+    {
+        var services = new ServiceCollection();
+        services.AddLopenTui();
+        var sp = services.BuildServiceProvider();
+
+        var gallery = sp.GetRequiredService<IComponentGallery>();
+        Assert.NotNull(gallery);
+    }
+
+    [Fact]
+    public void Gallery_HasAllBuiltInComponents()
+    {
+        var services = new ServiceCollection();
+        services.AddLopenTui();
+        var sp = services.BuildServiceProvider();
+        var gallery = sp.GetRequiredService<IComponentGallery>();
+
+        var all = gallery.GetAll();
+        Assert.True(all.Count >= 14, $"Expected at least 14 components, got {all.Count}");
+    }
+
+    [Fact]
+    public void Gallery_ContainsExpectedComponents()
+    {
+        var services = new ServiceCollection();
+        services.AddLopenTui();
+        var sp = services.BuildServiceProvider();
+        var gallery = sp.GetRequiredService<IComponentGallery>();
+
+        var names = gallery.GetAll().Select(c => c.Name).ToHashSet();
+
+        Assert.Contains("TopPanel", names);
+        Assert.Contains("ContextPanel", names);
+        Assert.Contains("ActivityPanel", names);
+        Assert.Contains("PromptArea", names);
+        Assert.Contains("LandingPage", names);
+        Assert.Contains("SessionResumeModal", names);
+        Assert.Contains("DiffViewer", names);
+        Assert.Contains("PhaseTransition", names);
+        Assert.Contains("ResearchDisplay", names);
+        Assert.Contains("FilePicker", names);
+        Assert.Contains("SelectionModal", names);
+        Assert.Contains("ConfirmationModal", names);
+        Assert.Contains("ErrorModal", names);
+        Assert.Contains("Spinner", names);
+    }
+
+    [Fact]
+    public void Gallery_GetByName_FindsComponent()
+    {
+        var services = new ServiceCollection();
+        services.AddLopenTui();
+        var sp = services.BuildServiceProvider();
+        var gallery = sp.GetRequiredService<IComponentGallery>();
+
+        var topPanel = gallery.GetByName("TopPanel");
+        Assert.NotNull(topPanel);
+        Assert.Equal("TopPanel", topPanel.Name);
+    }
+
+    [Fact]
+    public void Gallery_GetByName_CaseInsensitive()
+    {
+        var services = new ServiceCollection();
+        services.AddLopenTui();
+        var sp = services.BuildServiceProvider();
+        var gallery = sp.GetRequiredService<IComponentGallery>();
+
+        Assert.NotNull(gallery.GetByName("toppanel"));
+    }
+
+    // ==================== GalleryListComponent ====================
+
+    private readonly GalleryListComponent _list = new();
+
+    [Fact]
+    public void GalleryList_Name_IsCorrect()
+    {
+        Assert.Equal("GalleryList", _list.Name);
+    }
+
+    [Fact]
+    public void GalleryList_Render_ShowsComponentNames()
+    {
+        var data = new GalleryListData
+        {
+            Items = [new("Alpha", "First"), new("Beta", "Second")],
+            SelectedIndex = 0
+        };
+        var lines = _list.Render(data, new ScreenRect(0, 0, 60, 10));
+
+        var text = string.Join("\n", lines);
+        Assert.Contains("Alpha", text);
+        Assert.Contains("Beta", text);
+    }
+
+    [Fact]
+    public void GalleryList_ShowsSelectionMarker()
+    {
+        var data = new GalleryListData
+        {
+            Items = [new("A", "Desc A"), new("B", "Desc B")],
+            SelectedIndex = 1
+        };
+        var lines = _list.Render(data, new ScreenRect(0, 0, 60, 10));
+
+        // Line 0 = title, Line 1 = separator, Line 2 = A (not selected), Line 3 = B (selected)
+        Assert.DoesNotContain("▶", lines[2]);
+        Assert.Contains("▶", lines[3]);
+    }
+
+    [Fact]
+    public void GalleryList_PadsToRegionHeight()
+    {
+        var data = new GalleryListData
+        {
+            Items = [new("X", "Only one")],
+            SelectedIndex = 0
+        };
+        var lines = _list.Render(data, new ScreenRect(0, 0, 40, 8));
+
+        Assert.Equal(8, lines.Length);
+    }
+
+    [Fact]
+    public void GalleryList_TruncatesToWidth()
+    {
+        var data = new GalleryListData
+        {
+            Items = [new("VeryLongComponentName", "With a very long description that exceeds width")],
+            SelectedIndex = 0
+        };
+        var lines = _list.Render(data, new ScreenRect(0, 0, 20, 5));
+
+        foreach (var line in lines)
+            Assert.True(line.Length <= 20, $"Line too long: '{line}' ({line.Length})");
+    }
+
+    [Fact]
+    public void GalleryList_EmptyRegion_ReturnsEmpty()
+    {
+        var data = new GalleryListData { Items = [], SelectedIndex = 0 };
+        var lines = _list.Render(data, new ScreenRect(0, 0, 0, 0));
+        Assert.Empty(lines);
+    }
+
+    [Fact]
+    public void GalleryList_FromGallery_CreatesItems()
+    {
+        var gallery = new ComponentGallery();
+        gallery.Register(new TopPanelComponent());
+        gallery.Register(new SpinnerComponent());
+
+        var data = GalleryListComponent.FromGallery(gallery, selectedIndex: 1);
+
+        Assert.Equal(2, data.Items.Count);
+        Assert.Equal(1, data.SelectedIndex);
+        Assert.Equal("TopPanel", data.Items[0].Name);
+        Assert.Equal("Spinner", data.Items[1].Name);
+    }
+
+    // ==================== IPreviewableComponent ====================
+
+    [Fact]
+    public void PreviewableComponent_Interface_Exists()
+    {
+        // Verify the interface is accessible (compile-time check manifested as runtime test)
+        var type = typeof(IPreviewableComponent);
+        Assert.True(type.IsAssignableTo(typeof(ITuiComponent)));
+    }
+}

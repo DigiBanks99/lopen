@@ -16,3 +16,15 @@ public interface ITuiComponent
     /// </summary>
     string Description { get; }
 }
+
+/// <summary>
+/// Optional interface for components that can render a preview with stub data.
+/// Used by the component gallery.
+/// </summary>
+public interface IPreviewableComponent : ITuiComponent
+{
+    /// <summary>
+    /// Renders a preview of the component with realistic stub data.
+    /// </summary>
+    string[] RenderPreview(int width, int height);
+}
