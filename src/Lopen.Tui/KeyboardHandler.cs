@@ -50,7 +50,9 @@ public enum KeyAction
     ViewResource8,
     ViewResource9,
     ToggleExpand,
-    Backspace
+    Backspace,
+    ScrollUp,
+    ScrollDown
 }
 
 /// <summary>
@@ -116,6 +118,13 @@ public sealed class KeyboardHandler
         // Space or Enter on activity/context: toggle expand
         if (currentFocus != FocusPanel.Prompt && input.Key is ConsoleKey.Spacebar or ConsoleKey.Enter)
             return KeyAction.ToggleExpand;
+
+        // Up/Down arrows on activity/context: scroll selection
+        if (currentFocus != FocusPanel.Prompt && input.Key == ConsoleKey.UpArrow)
+            return KeyAction.ScrollUp;
+
+        if (currentFocus != FocusPanel.Prompt && input.Key == ConsoleKey.DownArrow)
+            return KeyAction.ScrollDown;
 
         return KeyAction.None;
     }

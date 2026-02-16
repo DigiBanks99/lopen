@@ -33,9 +33,10 @@
       "tests": "ActivityPanelComponentTests (21) + ActivityPanelDataProviderTests (24)",
       "jobs": [
         "JOB-087",
-        "JOB-040"
+        "JOB-040",
+        "JOB-042"
       ],
-      "notes": "Thread-safe ConcurrentQueue for workflow events. Auto-scroll on new entries. Progressive disclosure via IsExpanded/Details. Wired into TuiApplication render loop. DI via AddActivityPanelDataProvider()."
+      "notes": "Thread-safe ConcurrentQueue for workflow events. Auto-scroll on new entries. Progressive disclosure via IsExpanded/Details. Wired into TuiApplication render loop. DI via AddActivityPanelDataProvider(). Progressive disclosure: latest entry auto-expanded, previous collapsed, errors stay expanded. SelectedEntryIndex for keyboard navigation."
     },
     "prompt_area": {
       "status": "complete",
@@ -103,11 +104,12 @@
     },
     "keyboard_handler": {
       "status": "complete",
-      "implementation": "KeyboardHandler + KeyInput + FocusPanel + KeyAction (includes Backspace)",
-      "tests": "KeyboardHandlerTests (36)",
+      "implementation": "KeyboardHandler + KeyInput + FocusPanel + KeyAction (Backspace, ScrollUp, ScrollDown)",
+      "tests": "KeyboardHandlerTests (42)",
       "jobs": [
         "JOB-092",
-        "JOB-041"
+        "JOB-041",
+        "JOB-042"
       ]
     },
     "gallery_registration": {
@@ -137,9 +139,10 @@
         "JOB-037",
         "JOB-041",
         "JOB-038",
-        "JOB-039"
+        "JOB-039",
+        "JOB-042"
       ],
-      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI. Ctrl+P toggles IPauseController. Slash commands wired via ISlashCommandExecutor. Context-aware hints wired each frame. Non-slash prompts flow to IUserPromptQueue. Landing page modal state machine in DrainKeyboardInput and RenderFrame. Session resume modal with option navigation."
+      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI. Ctrl+P toggles IPauseController. Slash commands wired via ISlashCommandExecutor. Context-aware hints wired each frame. Non-slash prompts flow to IUserPromptQueue. Landing page modal state machine in DrainKeyboardInput and RenderFrame. Session resume modal with option navigation. ToggleExpand, ScrollUp/Down for activity panel entry navigation."
     },
     "component_gallery_command": {
       "status": "complete",
@@ -169,5 +172,5 @@
       "notes": "Level 0=components, Level 1=tasks, Level 2+=subtasks. First incomplete item at each level marked InProgress. Resources placeholder (empty list) until IDocumentManager is implemented."
     }
   },
-  "last_updated": "2026-02-17T02:00:00Z"
+  "last_updated": "2026-02-17T02:30:00Z"
 }

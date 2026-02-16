@@ -273,18 +273,114 @@ public class ActivityPanelDataProviderTests
     }
 
     [Fact]
-    public void AddEntry_CollapsedEntry_PreservesIsCollapsed()
+    public void AddEntry_CollapsedEntry_WithDetails_AutoExpands()
     {
         var provider = new ActivityPanelDataProvider();
         provider.AddEntry(new ActivityEntry
         {
-            Summary = "Previous action",
+            Summary = "Action with details",
             Kind = ActivityEntryKind.Action,
             IsExpanded = false,
             Details = ["Hidden detail"]
         });
 
         var data = provider.GetCurrentData();
+        // Auto-expanded because it has details and is the latest entry
+        Assert.True(data.Entries[0].IsExpanded);
+    }
+
+    // ==================== Progressive Disclosure (JOB-042) ====================
+
+    [Fact]
+    public void AddEntry_CollapsesPreviousEntries()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddEntry(new ActivityEntry
+        {
+            Summary = "First action",
+            Details = ["Detail 1"],
+            Kind = ActivityEntryKind.Action
+        });
+        provider.AddEntry(new ActivityEntry
+        {
+            Summary = "Second action",
+            Details = ["Detail 2"],
+            Kind = ActivityEntryKind.Action
+        });
+
+        var data = provider.GetCurrentData();
+        Assert.False(data.Entries[0].IsExpanded); // First collapsed
+        Assert.True(data.Entries[1].IsExpanded);  // Latest expanded
+    }
+
+    [Fact]
+    public void AddEntry_ErrorsStayExpanded()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddEntry(new ActivityEntry
+        {
+            Summary = "Error occurred",
+            Details = ["Stack trace"],
+            Kind = ActivityEntryKind.Error
+        });
+        provider.AddEntry(new ActivityEntry
+        {
+            Summary = "New action",
+            Details = ["Detail"],
+            Kind = ActivityEntryKind.Action
+        });
+
+        var data = provider.GetCurrentData();
+        Assert.True(data.Entries[0].IsExpanded);  // Error stays expanded
+        Assert.True(data.Entries[1].IsExpanded);  // Latest is expanded
+    }
+
+    [Fact]
+    public void AddEntry_NoDetails_NotAutoExpanded()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddEntry(new ActivityEntry
+        {
+            Summary = "Simple action",
+            Kind = ActivityEntryKind.Action
+        });
+
+        var data = provider.GetCurrentData();
+        Assert.False(data.Entries[0].IsExpanded); // No details, not expanded
+    }
+
+    [Fact]
+    public void AddEntry_ErrorWithoutDetails_StillAutoExpands()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddEntry(new ActivityEntry
+        {
+            Summary = "Error without details",
+            Kind = ActivityEntryKind.Error
+        });
+
+        var data = provider.GetCurrentData();
+        Assert.True(data.Entries[0].IsExpanded); // Errors always expand
+    }
+
+    [Fact]
+    public void SelectedEntryIndex_DefaultIsNegativeOne()
+    {
+        var data = new ActivityPanelData();
+        Assert.Equal(-1, data.SelectedEntryIndex);
+    }
+
+    [Fact]
+    public void AddEntry_ThreeEntries_OnlyLatestExpanded()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddEntry(new ActivityEntry { Summary = "A", Details = ["d1"], Kind = ActivityEntryKind.Action });
+        provider.AddEntry(new ActivityEntry { Summary = "B", Details = ["d2"], Kind = ActivityEntryKind.Action });
+        provider.AddEntry(new ActivityEntry { Summary = "C", Details = ["d3"], Kind = ActivityEntryKind.Action });
+
+        var data = provider.GetCurrentData();
         Assert.False(data.Entries[0].IsExpanded);
+        Assert.False(data.Entries[1].IsExpanded);
+        Assert.True(data.Entries[2].IsExpanded);
     }
 }

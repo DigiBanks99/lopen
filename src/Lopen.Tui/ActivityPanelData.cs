@@ -10,6 +10,9 @@ public sealed record ActivityPanelData
 
     /// <summary>Index of the scroll position (0 = top). -1 means auto-scroll to bottom.</summary>
     public int ScrollOffset { get; init; } = -1;
+
+    /// <summary>Index of the currently selected entry for keyboard navigation. -1 means no selection.</summary>
+    public int SelectedEntryIndex { get; init; } = -1;
 }
 
 /// <summary>

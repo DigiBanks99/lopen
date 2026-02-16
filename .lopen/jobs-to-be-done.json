@@ -373,9 +373,9 @@
     "requirement_code": "TUI-08",
     "requirement_module": "tui",
     "description": "Implement progressive disclosure - expand current action, collapse previous to summaries",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ActivityPanelComponent has expand/collapse logic. Need to ensure it auto-expands current and auto-collapses completed actions during live workflow."
+    "notes": "Auto-expand latest entry with details, collapse previous non-error entries. Errors stay expanded. Up/Down arrows for entry navigation, Space/Enter to toggle expand. 13 new tests."
   },
   {
     "id": "JOB-043",

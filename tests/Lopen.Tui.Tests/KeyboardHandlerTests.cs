@@ -215,4 +215,38 @@ public class KeyboardHandlerTests
         var input = new KeyInput { Key = ConsoleKey.Backspace };
         Assert.Equal(KeyAction.None, _handler.Handle(input, FocusPanel.Context));
     }
+
+    // ==================== Scroll Up/Down ====================
+
+    [Theory]
+    [InlineData(FocusPanel.Activity)]
+    [InlineData(FocusPanel.Context)]
+    public void UpArrow_NonPrompt_ReturnsScrollUp(FocusPanel focus)
+    {
+        var input = new KeyInput { Key = ConsoleKey.UpArrow };
+        Assert.Equal(KeyAction.ScrollUp, _handler.Handle(input, focus));
+    }
+
+    [Theory]
+    [InlineData(FocusPanel.Activity)]
+    [InlineData(FocusPanel.Context)]
+    public void DownArrow_NonPrompt_ReturnsScrollDown(FocusPanel focus)
+    {
+        var input = new KeyInput { Key = ConsoleKey.DownArrow };
+        Assert.Equal(KeyAction.ScrollDown, _handler.Handle(input, focus));
+    }
+
+    [Fact]
+    public void UpArrow_WhenPromptFocused_ReturnsNone()
+    {
+        var input = new KeyInput { Key = ConsoleKey.UpArrow };
+        Assert.Equal(KeyAction.None, _handler.Handle(input, FocusPanel.Prompt));
+    }
+
+    [Fact]
+    public void DownArrow_WhenPromptFocused_ReturnsNone()
+    {
+        var input = new KeyInput { Key = ConsoleKey.DownArrow };
+        Assert.Equal(KeyAction.None, _handler.Handle(input, FocusPanel.Prompt));
+    }
 }

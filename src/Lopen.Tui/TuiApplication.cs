@@ -357,6 +357,32 @@ internal sealed class TuiApplication : ITuiApplication
                     CursorPosition = _promptData.CursorPosition + 1
                 };
                 break;
+
+            case KeyAction.ToggleExpand:
+                ToggleSelectedEntry();
+                break;
+
+            case KeyAction.ScrollUp:
+                if (_focus == FocusPanel.Activity && _activityData.Entries.Count > 0)
+                {
+                    var idx = _activityData.SelectedEntryIndex;
+                    _activityData = _activityData with
+                    {
+                        SelectedEntryIndex = Math.Max(0, idx <= 0 ? _activityData.Entries.Count - 1 : idx - 1)
+                    };
+                }
+                break;
+
+            case KeyAction.ScrollDown:
+                if (_focus == FocusPanel.Activity && _activityData.Entries.Count > 0)
+                {
+                    var idx2 = _activityData.SelectedEntryIndex;
+                    _activityData = _activityData with
+                    {
+                        SelectedEntryIndex = idx2 >= _activityData.Entries.Count - 1 ? 0 : idx2 + 1
+                    };
+                }
+                break;
         }
     }
 
@@ -463,6 +489,21 @@ internal sealed class TuiApplication : ITuiApplication
                 _modalState = TuiModalState.None;
                 break;
         }
+    }
+
+    private void ToggleSelectedEntry()
+    {
+        if (_focus != FocusPanel.Activity || _activityData.Entries.Count == 0)
+            return;
+
+        var idx = _activityData.SelectedEntryIndex;
+        if (idx < 0 || idx >= _activityData.Entries.Count)
+            return;
+
+        var entries = _activityData.Entries.ToList();
+        var entry = entries[idx];
+        entries[idx] = entry with { IsExpanded = !entry.IsExpanded };
+        _activityData = _activityData with { Entries = entries };
     }
 
     private async Task CheckForActiveSessionAsync(CancellationToken cancellationToken)
