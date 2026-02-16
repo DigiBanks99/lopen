@@ -24,8 +24,12 @@ public sealed class ActivityPanelComponent : ITuiComponent
         {
             var entry = data.Entries[i];
             var prefix = KindPrefix(entry.Kind);
+            var expandIndicator = entry.HasDetails
+                ? (entry.IsExpanded ? "▼" : "▶")
+                : " ";
+            var selectionMarker = i == data.SelectedEntryIndex ? ">" : " ";
 
-            allLines.Add($"{prefix} {entry.Summary}");
+            allLines.Add($"{selectionMarker}{expandIndicator}{prefix} {entry.Summary}");
 
             if (entry.IsExpanded && entry.Details.Count > 0)
             {
@@ -90,6 +94,7 @@ public sealed class ActivityPanelComponent : ITuiComponent
         ActivityEntryKind.TestResult => "✓",
         ActivityEntryKind.PhaseTransition => "◆",
         ActivityEntryKind.Error => "⚠",
+        ActivityEntryKind.ToolCall => "⚙",
         _ => "●",
     };
 

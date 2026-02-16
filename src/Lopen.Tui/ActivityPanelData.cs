@@ -31,6 +31,9 @@ public sealed record ActivityEntry
 
     /// <summary>Entry type for visual styling.</summary>
     public ActivityEntryKind Kind { get; init; } = ActivityEntryKind.Action;
+
+    /// <summary>Whether this entry has expandable details.</summary>
+    public bool HasDetails => Details.Count > 0;
 }
 
 /// <summary>
@@ -50,4 +53,6 @@ public enum ActivityEntryKind
     PhaseTransition,
     /// <summary>Error or warning (auto-expands).</summary>
     Error,
+    /// <summary>Tool call (e.g., code editing, file operations).</summary>
+    ToolCall,
 }

@@ -382,9 +382,9 @@
     "requirement_code": "TUI-09",
     "requirement_module": "tui",
     "description": "Implement expandable tool call outputs via click or keyboard shortcut",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Tool outputs should be collapsed by default with ability to expand details. Requires TUI app shell to handle interaction events."
+    "notes": "Added ToolCall ActivityEntryKind with \u2699 prefix. Expand/collapse indicators (\u25bc/\u25b6) for entries with details. Selection marker (>) for keyboard navigation. 8 new tests."
   },
   {
     "id": "JOB-044",

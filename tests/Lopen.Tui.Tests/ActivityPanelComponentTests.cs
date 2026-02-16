@@ -251,4 +251,106 @@ public class ActivityPanelComponentTests
             Assert.Equal(50, line.Length);
         }
     }
+
+    // ==================== Tool Call Kind (JOB-043) ====================
+
+    [Fact]
+    public void KindPrefix_ToolCall_ReturnsGear()
+    {
+        Assert.Equal("⚙", ActivityPanelComponent.KindPrefix(ActivityEntryKind.ToolCall));
+    }
+
+    [Fact]
+    public void Render_ToolCallEntry_ShowsGearPrefix()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries = [new ActivityEntry { Summary = "read_file src/main.ts", Kind = ActivityEntryKind.ToolCall }]
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 5));
+        Assert.Contains("⚙", lines[0]);
+        Assert.Contains("read_file", lines[0]);
+    }
+
+    // ==================== Expand/Collapse Indicators ====================
+
+    [Fact]
+    public void Render_ExpandedEntryWithDetails_ShowsDownTriangle()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries = [new ActivityEntry
+            {
+                Summary = "Action",
+                Details = ["Detail"],
+                IsExpanded = true
+            }]
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 5));
+        Assert.Contains("▼", lines[0]);
+    }
+
+    [Fact]
+    public void Render_CollapsedEntryWithDetails_ShowsRightTriangle()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries = [new ActivityEntry
+            {
+                Summary = "Action",
+                Details = ["Detail"],
+                IsExpanded = false
+            }]
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 5));
+        Assert.Contains("▶", lines[0]);
+    }
+
+    [Fact]
+    public void Render_EntryWithNoDetails_NoExpandIndicator()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries = [new ActivityEntry { Summary = "Simple action" }]
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 5));
+        Assert.DoesNotContain("▼", lines[0]);
+        Assert.DoesNotContain("▶", lines[0]);
+    }
+
+    [Fact]
+    public void Render_SelectedEntry_ShowsSelectionMarker()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries =
+            [
+                new ActivityEntry { Summary = "First" },
+                new ActivityEntry { Summary = "Second" }
+            ],
+            SelectedEntryIndex = 1
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 5));
+        Assert.StartsWith(">", lines[1].TrimEnd());
+        Assert.StartsWith(" ", lines[0].TrimEnd());
+    }
+
+    [Fact]
+    public void HasDetails_WithEntries_ReturnsTrue()
+    {
+        var entry = new ActivityEntry { Summary = "Test", Details = ["Detail 1"] };
+        Assert.True(entry.HasDetails);
+    }
+
+    [Fact]
+    public void HasDetails_WithoutEntries_ReturnsFalse()
+    {
+        var entry = new ActivityEntry { Summary = "Test" };
+        Assert.False(entry.HasDetails);
+    }
 }
