@@ -251,6 +251,26 @@ public class ServiceCollectionExtensionsTests
         Assert.Equal(FailureAction.PromptUser, fifth.Action);
     }
 
+    [Fact]
+    public void AddLopenCore_WithProjectRoot_OrchestratorResolves_WithBudgetEnforcer()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddSingleton<Lopen.Llm.ILlmService, NullLlmService>();
+        services.AddSingleton<Lopen.Llm.IPromptBuilder, NullPromptBuilder>();
+        services.AddSingleton<Lopen.Llm.IToolRegistry, NullToolRegistry>();
+        services.AddSingleton<Lopen.Llm.IModelSelector, NullModelSelector>();
+        services.AddSingleton<Lopen.Configuration.IBudgetEnforcer>(
+            new Lopen.Configuration.BudgetEnforcer(new Lopen.Configuration.BudgetOptions()));
+        services.AddLopenCore(projectRoot: "/tmp");
+
+        var provider = services.BuildServiceProvider();
+        var service = provider.GetService<IWorkflowOrchestrator>();
+
+        Assert.NotNull(service);
+    }
+
     private sealed class StubFileSystem : Lopen.Storage.IFileSystem
     {
         public void CreateDirectory(string path) { }

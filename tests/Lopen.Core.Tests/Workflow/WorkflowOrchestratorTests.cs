@@ -937,6 +937,238 @@ public class WorkflowOrchestratorTests
         Assert.True(failureHandler.ResetCalled);
     }
 
+    // --- CFG-12: Budget Enforcement Tests ---
+
+    [Fact]
+    public async Task RunAsync_BudgetOk_ProceedsNormally()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var tokenTracker = new StubTokenTracker();
+        var budgetEnforcer = new StubBudgetEnforcer { StatusToReturn = BudgetStatus.Ok };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete);
+    }
+
+    [Fact]
+    public async Task RunAsync_BudgetWarning_RendersWarningAndContinues()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var tokenTracker = new StubTokenTracker();
+        var budgetEnforcer = new StubBudgetEnforcer
+        {
+            StatusToReturn = BudgetStatus.Warning,
+            MessageToReturn = "Token usage at 82% — approaching budget limit."
+        };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete);
+        Assert.Contains(_renderer.ErrorMessages, m => m.Contains("82%"));
+    }
+
+    [Fact]
+    public async Task RunAsync_BudgetConfirmationRequired_UserConfirmsY_Continues()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var tokenTracker = new StubTokenTracker();
+        // Return ConfirmationRequired on first check, then Ok (after user confirms and step retries)
+        var budgetEnforcer = new StubBudgetEnforcer
+        {
+            StatusToReturn = BudgetStatus.ConfirmationRequired,
+            MessageToReturn = "Token usage at 92% — confirmation required to continue.",
+            ReturnOkAfterFirstCheck = true,
+        };
+        _renderer.PromptResponse = "y";
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete);
+        Assert.Single(_renderer.PromptMessages);
+        Assert.Contains("Continue?", _renderer.PromptMessages[0]);
+    }
+
+    [Fact]
+    public async Task RunAsync_BudgetConfirmationRequired_UserDeclinesN_Interrupts()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var tokenTracker = new StubTokenTracker();
+        var budgetEnforcer = new StubBudgetEnforcer
+        {
+            StatusToReturn = BudgetStatus.ConfirmationRequired,
+            MessageToReturn = "Token usage at 92% — confirmation required to continue.",
+        };
+        _renderer.PromptResponse = "n";
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+        Assert.Single(_renderer.PromptMessages);
+    }
+
+    [Fact]
+    public async Task RunAsync_BudgetConfirmationRequired_UnattendedMode_Interrupts()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var tokenTracker = new StubTokenTracker();
+        var budgetEnforcer = new StubBudgetEnforcer
+        {
+            StatusToReturn = BudgetStatus.ConfirmationRequired,
+            MessageToReturn = "Token usage at 92% — confirmation required to continue.",
+        };
+        var options = new WorkflowOptions { Unattended = true };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer,
+            workflowOptions: options);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+        Assert.Empty(_renderer.PromptMessages); // No prompt in unattended mode
+    }
+
+    [Fact]
+    public async Task RunAsync_BudgetConfirmationRequired_HeadlessNullResponse_Interrupts()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var tokenTracker = new StubTokenTracker();
+        var budgetEnforcer = new StubBudgetEnforcer
+        {
+            StatusToReturn = BudgetStatus.ConfirmationRequired,
+            MessageToReturn = "Token usage at 92% — confirmation required to continue.",
+        };
+        _renderer.PromptResponse = null; // Headless — no user interaction
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+        Assert.Single(_renderer.PromptMessages);
+    }
+
+    [Fact]
+    public async Task RunAsync_BudgetExceeded_InterruptsImmediately()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var tokenTracker = new StubTokenTracker();
+        var budgetEnforcer = new StubBudgetEnforcer
+        {
+            StatusToReturn = BudgetStatus.Exceeded,
+            MessageToReturn = "Token budget exceeded (105% used).",
+        };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+        Assert.Contains("Budget exceeded", result.InterruptionReason);
+        Assert.Equal(0, _llmService.InvokeCount); // LLM never called
+    }
+
+    [Fact]
+    public async Task RunAsync_BudgetExceeded_AutoSavesBeforeInterrupting()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var tokenTracker = new StubTokenTracker();
+        var budgetEnforcer = new StubBudgetEnforcer
+        {
+            StatusToReturn = BudgetStatus.Exceeded,
+            MessageToReturn = "Token budget exceeded (105% used).",
+        };
+        var autoSave = new StubAutoSaveService();
+        var sessionMgr = new StubSessionManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            autoSaveService: autoSave, sessionManager: sessionMgr,
+            tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
+
+        await sut.RunAsync("test-module");
+
+        // Auto-save triggered for session resume
+        Assert.True(autoSave.Saves.Count > 0);
+    }
+
+    [Fact]
+    public async Task RunAsync_NoBudgetEnforcer_ProceedsNormally()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var tokenTracker = new StubTokenTracker();
+        // No budget enforcer — backward compatible
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            tokenTracker: tokenTracker);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete);
+    }
+
+    [Fact]
+    public async Task RunAsync_NoTokenTracker_SkipsBudgetCheck()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var budgetEnforcer = new StubBudgetEnforcer
+        {
+            StatusToReturn = BudgetStatus.Exceeded, // Would block if checked
+        };
+        // No token tracker — budget check skipped
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            budgetEnforcer: budgetEnforcer);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete); // Budget enforcer never consulted
+        Assert.Equal(0, budgetEnforcer.CheckCallCount);
+    }
+
     private sealed class StubWorkflowEngine : IWorkflowEngine
     {
         public WorkflowStep CurrentStep { get; set; } = WorkflowStep.DraftSpecification;
@@ -1256,5 +1488,31 @@ public class WorkflowOrchestratorTests
 
         public int GetFailureCount(string taskId) =>
             _counts.TryGetValue(taskId, out var count) ? count : 0;
+    }
+
+    private sealed class StubBudgetEnforcer : IBudgetEnforcer
+    {
+        public BudgetStatus StatusToReturn { get; set; } = BudgetStatus.Ok;
+        public string MessageToReturn { get; set; } = "Budget usage is within limits.";
+        public bool ReturnOkAfterFirstCheck { get; set; }
+        public int CheckCallCount { get; private set; }
+
+        public BudgetCheckResult Check(long currentTokens, int currentRequests)
+        {
+            CheckCallCount++;
+            var status = CheckCallCount > 1 && ReturnOkAfterFirstCheck
+                ? BudgetStatus.Ok
+                : StatusToReturn;
+            var message = status == BudgetStatus.Ok ? "Budget usage is within limits." : MessageToReturn;
+            return new BudgetCheckResult
+            {
+                Status = status,
+                TokenStatus = status,
+                RequestStatus = BudgetStatus.Ok,
+                TokenUsageFraction = 0.5,
+                RequestUsageFraction = null,
+                Message = message,
+            };
+        }
     }
 }

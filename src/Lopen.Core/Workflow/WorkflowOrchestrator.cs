@@ -31,6 +31,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly ISessionManager? _sessionManager;
     private readonly ITokenTracker? _tokenTracker;
     private readonly IFailureHandler? _failureHandler;
+    private readonly IBudgetEnforcer? _budgetEnforcer;
     private readonly WorkflowOptions? _workflowOptions;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
@@ -55,6 +56,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         ISessionManager? sessionManager = null,
         ITokenTracker? tokenTracker = null,
         IFailureHandler? failureHandler = null,
+        IBudgetEnforcer? budgetEnforcer = null,
         WorkflowOptions? workflowOptions = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
@@ -73,6 +75,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _sessionManager = sessionManager;
         _tokenTracker = tokenTracker;
         _failureHandler = failureHandler;
+        _budgetEnforcer = budgetEnforcer;
         _workflowOptions = workflowOptions;
     }
 
@@ -248,6 +251,11 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         // OTEL gauge: current iteration
         LopenTelemetryDiagnostics.SessionIteration.Record(_iterationCount);
+
+        // 0. Check budget before LLM invocation (CFG-12)
+        var budgetStepResult = await CheckBudgetAsync(moduleName);
+        if (budgetStepResult is not null)
+            return budgetStepResult;
 
         // 1. Evaluate guardrails before LLM invocation
         var guardrailContext = new GuardrailContext(moduleName, null, _iterationCount, 0);
@@ -435,6 +443,66 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             _logger.LogError(ex, "LLM invocation failed at step {Step}", step);
             await _renderer.RenderErrorAsync($"LLM error: {ex.Message}", ex);
             return StepResult.Failed($"LLM invocation failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Checks budget limits before each LLM invocation (CFG-12).
+    /// Returns null to proceed, or a StepResult to short-circuit the step.
+    /// </summary>
+    private async Task<StepResult?> CheckBudgetAsync(string moduleName)
+    {
+        if (_budgetEnforcer is null || _tokenTracker is null)
+            return null;
+
+        var metrics = _tokenTracker.GetSessionMetrics();
+        long totalTokens = metrics.CumulativeInputTokens + metrics.CumulativeOutputTokens;
+        var check = _budgetEnforcer.Check(totalTokens, metrics.PremiumRequestCount);
+
+        switch (check.Status)
+        {
+            case BudgetStatus.Ok:
+                return null;
+
+            case BudgetStatus.Warning:
+                _logger.LogWarning("Budget warning: {Message}", check.Message);
+                await _renderer.RenderErrorAsync($"Warning: {check.Message}");
+                return null; // Continue
+
+            case BudgetStatus.ConfirmationRequired:
+                if (_workflowOptions?.Unattended == true)
+                {
+                    _logger.LogWarning(
+                        "Budget confirmation required in unattended mode — halting: {Message}",
+                        check.Message);
+                    await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, default);
+                    return StepResult.Failed(
+                        $"Budget confirmation required (unattended): {check.Message}");
+                }
+
+                _logger.LogWarning("Budget confirmation required: {Message}", check.Message);
+                var response = await _renderer.PromptAsync(
+                    $"{check.Message} Continue? [y/N]", default);
+
+                if (response is not null &&
+                    (response.Trim().Equals("y", StringComparison.OrdinalIgnoreCase) ||
+                     response.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase)))
+                {
+                    _logger.LogInformation("User confirmed budget continuation");
+                    return null; // Continue
+                }
+
+                _logger.LogWarning("User declined budget continuation");
+                await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, default);
+                return StepResult.Failed($"Budget confirmation declined: {check.Message}");
+
+            case BudgetStatus.Exceeded:
+                _logger.LogWarning("Budget exceeded — halting: {Message}", check.Message);
+                await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, default);
+                return StepResult.Failed($"Budget exceeded: {check.Message}");
+
+            default:
+                return null;
         }
     }
 
