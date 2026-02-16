@@ -391,9 +391,9 @@
     "requirement_code": "TUI-10",
     "requirement_module": "tui",
     "description": "Wire real-time task progress updates to ContextPanelComponent",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ContextPanelComponent can display task states. Must receive live updates from workflow engine as tasks progress."
+    "notes": "Added visual progress bar [████░░░░] to ContextPanelComponent.RenderTaskSection. Data pipeline (IPlanManager → ContextPanelDataProvider → 1s polling → renderer) was already wired. 7 new progress bar tests. All 1871 tests pass."
   },
   {
     "id": "JOB-045",

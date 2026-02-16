@@ -58,6 +58,7 @@ public sealed class ContextPanelComponent : ITuiComponent
     {
         lines.Add($"▶ Current Task: {task.Name}");
         lines.Add($"  Progress: {task.ProgressPercent}% ({task.CompletedSubtasks}/{task.TotalSubtasks} subtasks done)");
+        lines.Add($"  {RenderProgressBar(task.ProgressPercent, 20)}");
 
         for (int i = 0; i < task.Subtasks.Count; i++)
         {
@@ -65,6 +66,17 @@ public sealed class ContextPanelComponent : ITuiComponent
             var connector = i < task.Subtasks.Count - 1 ? "├─" : "└─";
             lines.Add($"  {connector}{StateIcon(sub.State)} {sub.Name}");
         }
+    }
+
+    /// <summary>
+    /// Renders a text-based progress bar of the given width.
+    /// </summary>
+    internal static string RenderProgressBar(int percent, int barWidth = 20)
+    {
+        percent = Math.Clamp(percent, 0, 100);
+        var filled = (int)(barWidth * percent / 100.0);
+        var empty = barWidth - filled;
+        return $"[{new string('█', filled)}{new string('░', empty)}]";
     }
 
     private static void RenderComponentSection(ComponentSectionData component, List<string> lines)

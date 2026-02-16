@@ -1,18 +1,15 @@
-# Implementation Plan — JOB-042 (TUI-08): Progressive Disclosure
+# Implementation Plan — JOB-044 (TUI-10): Real-time Task Progress Updates
 
-**Goal:** Expand current action, collapse previous to summaries. Errors stay expanded.
+**Goal:** Visual progress bar + real-time updates in context panel.
 
 ## Acceptance Criteria
-- [TUI-08] Current action expanded, previous actions collapsed to summaries
+- [TUI-10] Real-time task progress updates visible in context panel
 
 ## Tasks
 
-- [x] 1. Add SelectedEntryIndex to ActivityPanelData
-- [x] 2. Update ActivityPanelDataProvider.AddEntry to auto-expand latest (with details), collapse previous non-errors
-- [x] 3. Auto-expand error entries regardless of position
-- [x] 4. Add ScrollUp/ScrollDown KeyAction + KeyboardHandler mappings
-- [x] 5. Handle ToggleExpand, ScrollUp, ScrollDown in TuiApplication.ApplyAction
-- [x] 6. Write 13 new tests (7 progressive disclosure + 6 scroll navigation)
-- [x] 7. Run full test suite — 1,856 tests pass, 0 failures
-- [x] 8. Verify acceptance criteria with sub-agent
-- [x] 9. Update state.json, jobs-to-be-done.json, commit
+- [x] 1. Add RenderProgressBar to ContextPanelComponent (text-based [████░░░░] bar)
+- [x] 2. Integrate progress bar into RenderTaskSection
+- [x] 3. Write 7 new progress bar tests (0%, 50%, 100%, clamping, default width, section rendering)
+- [x] 4. Run full test suite — 1,871 tests pass, 0 failures
+- [x] 5. Verify acceptance criteria with sub-agent
+- [x] 6. Update state.json, jobs-to-be-done.json, commit

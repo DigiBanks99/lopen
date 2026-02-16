@@ -270,4 +270,68 @@ public class ContextPanelComponentTests
         Assert.Contains(lines, l => l.Contains("[9] doc9.md"));
         Assert.DoesNotContain(lines, l => l.TrimEnd().Contains("[10]"));
     }
+
+    // ==================== Progress Bar (JOB-044) ====================
+
+    [Fact]
+    public void RenderProgressBar_0Percent()
+    {
+        var bar = ContextPanelComponent.RenderProgressBar(0, 10);
+        Assert.Equal("[░░░░░░░░░░]", bar);
+    }
+
+    [Fact]
+    public void RenderProgressBar_50Percent()
+    {
+        var bar = ContextPanelComponent.RenderProgressBar(50, 10);
+        Assert.Equal("[█████░░░░░]", bar);
+    }
+
+    [Fact]
+    public void RenderProgressBar_100Percent()
+    {
+        var bar = ContextPanelComponent.RenderProgressBar(100, 10);
+        Assert.Equal("[██████████]", bar);
+    }
+
+    [Fact]
+    public void RenderProgressBar_ClampsAbove100()
+    {
+        var bar = ContextPanelComponent.RenderProgressBar(150, 10);
+        Assert.Equal("[██████████]", bar);
+    }
+
+    [Fact]
+    public void RenderProgressBar_ClampsBelow0()
+    {
+        var bar = ContextPanelComponent.RenderProgressBar(-10, 10);
+        Assert.Equal("[░░░░░░░░░░]", bar);
+    }
+
+    [Fact]
+    public void Render_TaskSection_ContainsProgressBar()
+    {
+        var data = new ContextPanelData
+        {
+            CurrentTask = new TaskSectionData
+            {
+                Name = "Test task",
+                ProgressPercent = 60,
+                CompletedSubtasks = 3,
+                TotalSubtasks = 5,
+                Subtasks = [new("Step 1", TaskState.Complete)]
+            }
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 10));
+        Assert.Contains(lines, l => l.Contains("█") && l.Contains("░"));
+    }
+
+    [Fact]
+    public void RenderProgressBar_DefaultWidth()
+    {
+        var bar = ContextPanelComponent.RenderProgressBar(25);
+        // Default width is 20, 25% = 5 filled
+        Assert.Equal($"[{new string('█', 5)}{new string('░', 15)}]", bar);
+    }
 }

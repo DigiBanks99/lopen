@@ -21,11 +21,13 @@
     },
     "context_panel": {
       "status": "complete",
-      "implementation": "ContextPanelComponent + ContextPanelData",
-      "tests": "ContextPanelComponentTests (21)",
+      "implementation": "ContextPanelComponent + ContextPanelData + RenderProgressBar",
+      "tests": "ContextPanelComponentTests (28)",
       "jobs": [
-        "JOB-086"
-      ]
+        "JOB-086",
+        "JOB-044"
+      ],
+      "notes": "Visual progress bar [████░░░░] for task progress. Data pipeline: IPlanManager → ContextPanelDataProvider → 1s polling → renderer. Task name, %, subtask tree with ✓/▶/○ icons."
     },
     "activity_panel": {
       "status": "complete",
