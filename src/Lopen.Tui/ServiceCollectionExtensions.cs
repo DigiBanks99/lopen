@@ -10,6 +10,11 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddLopenTui(this IServiceCollection services)
     {
+        services.AddSingleton<TopPanelComponent>();
+        services.AddSingleton<ActivityPanelComponent>();
+        services.AddSingleton<ContextPanelComponent>();
+        services.AddSingleton<PromptAreaComponent>();
+        services.AddSingleton<KeyboardHandler>();
         services.AddSingleton<ITuiApplication, StubTuiApplication>();
         services.AddSingleton<IComponentGallery>(sp =>
         {
@@ -31,6 +36,24 @@ public static class ServiceCollectionExtensions
             gallery.Register(new SpinnerComponent());
             return gallery;
         });
+        return services;
+    }
+
+    /// <summary>
+    /// Replaces the stub TUI with the real TuiApplication that runs a
+    /// full-screen Spectre.Tui render loop. Call after <see cref="AddLopenTui"/>
+    /// and only in the real CLI entry point (not in tests or headless mode).
+    /// </summary>
+    public static IServiceCollection UseRealTui(this IServiceCollection services)
+    {
+        // Remove the stub registration and replace with real TUI
+        var descriptor = services.FirstOrDefault(d =>
+            d.ServiceType == typeof(ITuiApplication));
+        if (descriptor is not null)
+            services.Remove(descriptor);
+
+        services.AddSingleton<TuiApplication>();
+        services.AddSingleton<ITuiApplication>(sp => sp.GetRequiredService<TuiApplication>());
         return services;
     }
 }

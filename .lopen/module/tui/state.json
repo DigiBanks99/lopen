@@ -7,80 +7,107 @@
       "status": "complete",
       "implementation": "LayoutCalculator + ScreenRect + LayoutRegions",
       "tests": "LayoutCalculatorTests (12) + ScreenRectTests (4)",
-      "jobs": ["JOB-084"]
+      "jobs": [
+        "JOB-084"
+      ]
     },
     "top_panel": {
       "status": "complete",
       "implementation": "TopPanelComponent + TopPanelData",
       "tests": "TopPanelComponentTests (34)",
-      "jobs": ["JOB-085"]
+      "jobs": [
+        "JOB-085"
+      ]
     },
     "context_panel": {
       "status": "complete",
       "implementation": "ContextPanelComponent + ContextPanelData",
       "tests": "ContextPanelComponentTests (21)",
-      "jobs": ["JOB-086"]
+      "jobs": [
+        "JOB-086"
+      ]
     },
     "activity_panel": {
       "status": "complete",
       "implementation": "ActivityPanelComponent + ActivityPanelData",
       "tests": "ActivityPanelComponentTests (21)",
-      "jobs": ["JOB-087"]
+      "jobs": [
+        "JOB-087"
+      ]
     },
     "prompt_area": {
       "status": "complete",
       "implementation": "PromptAreaComponent + PromptAreaData",
       "tests": "PromptAreaComponentTests (16)",
-      "jobs": ["JOB-088"]
+      "jobs": [
+        "JOB-088"
+      ]
     },
     "modals": {
       "status": "complete",
       "implementation": "LandingPageComponent + SessionResumeModalComponent + ModalData",
       "tests": "ModalComponentTests (22)",
-      "jobs": ["JOB-089"],
+      "jobs": [
+        "JOB-089"
+      ],
       "notes": "Landing page with quick commands, auth status. Resume modal with session details, option selection."
     },
     "tool_outputs": {
       "status": "complete",
       "implementation": "DiffViewerComponent + PhaseTransitionComponent + ResearchDisplayComponent + ToolOutputData",
       "tests": "ToolOutputComponentTests (16)",
-      "jobs": ["JOB-090"]
+      "jobs": [
+        "JOB-090"
+      ]
     },
     "selection_components": {
       "status": "complete",
       "implementation": "FilePickerComponent + SelectionModalComponent + ConfirmationModalComponent + ErrorModalComponent + SelectionData",
       "tests": "SelectionComponentTests (19)",
-      "jobs": ["JOB-091", "JOB-093"]
+      "jobs": [
+        "JOB-091",
+        "JOB-093"
+      ]
     },
     "spinner": {
       "status": "complete",
       "implementation": "SpinnerComponent + SpinnerData",
       "tests": "VisualAndCommandTests (8 spinner tests)",
-      "jobs": ["JOB-094"]
+      "jobs": [
+        "JOB-094"
+      ]
     },
     "visual_design": {
       "status": "complete",
       "implementation": "ColorPalette + UnicodeSupport",
       "tests": "VisualAndCommandTests (5 visual tests)",
-      "jobs": ["JOB-095"]
+      "jobs": [
+        "JOB-095"
+      ]
     },
     "slash_commands": {
       "status": "complete",
       "implementation": "SlashCommandRegistry + SlashCommandDefinition",
       "tests": "VisualAndCommandTests (8 command tests)",
-      "jobs": ["JOB-096"]
+      "jobs": [
+        "JOB-096"
+      ]
     },
     "keyboard_handler": {
       "status": "complete",
       "implementation": "KeyboardHandler + KeyInput + FocusPanel + KeyAction",
       "tests": "KeyboardHandlerTests (33)",
-      "jobs": ["JOB-092"]
+      "jobs": [
+        "JOB-092"
+      ]
     },
     "gallery_registration": {
       "status": "complete",
       "implementation": "GalleryListComponent + self-registration in AddLopenTui + IPreviewableComponent",
       "tests": "ComponentGalleryRegistrationTests (13)",
-      "jobs": ["JOB-097"]
+      "jobs": [
+        "JOB-097"
+      ]
     },
     "component_gallery": {
       "status": "complete",
@@ -91,7 +118,16 @@
       "status": "complete",
       "implementation": "StubTuiApplication (no-op for headless mode)",
       "tests": "StubTuiApplicationTests (existing)"
+    },
+    "application_shell": {
+      "status": "complete",
+      "implementation": "TuiApplication in Lopen.Tui with Spectre.Tui fullscreen render loop",
+      "tests": "TuiApplicationTests (12 tests) covering DI, lifecycle, state updates, constructor validation",
+      "jobs": [
+        "JOB-008"
+      ],
+      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI."
     }
   },
-  "last_updated": "2026-02-16T18:00:00Z"
+  "last_updated": "2026-02-16T17:50:00Z"
 }

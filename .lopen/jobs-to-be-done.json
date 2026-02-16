@@ -67,9 +67,9 @@
     "requirement_code": "TUI-01",
     "requirement_module": "tui",
     "description": "Create real TUI application shell with terminal I/O loop replacing StubTuiApplication",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "StubTuiApplication is the only ITuiApplication. Need a real implementation that: enters a rendering loop, reads terminal input via KeyboardHandler, renders components via LayoutCalculator, and drives the workflow engine. Spectre.Console packages are referenced but unused."
+    "notes": "TuiApplication class created with Spectre.Tui FullscreenMode, 30 FPS render loop, LayoutCalculator regions, KeyboardHandler input, all 4 panels. UseRealTui() extension for DI. 12 new tests."
   },
   {
     "id": "JOB-009",
@@ -157,9 +157,9 @@
     "requirement_code": "CORE-11",
     "requirement_module": "core",
     "description": "Wire GuardrailPipeline.EvaluateAsync into orchestration loop for back-pressure enforcement",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "GuardrailPipeline and all 4 guardrail implementations are registered in DI but EvaluateAsync is only called from tests. Must be called during task iteration."
+    "notes": "Already wired in WorkflowOrchestrator.RunStepAsync step 1. GuardrailPipeline.EvaluateAsync called before every LLM invocation. Block results abort the step, warn results render to user. Tested in WorkflowOrchestratorTests."
   },
   {
     "id": "JOB-019",

@@ -17,6 +17,7 @@ builder.Services.AddLopenCore();
 builder.Services.AddLopenStorage();
 builder.Services.AddLopenLlm();
 builder.Services.AddLopenTui();
+builder.Services.UseRealTui();
 
 using var host = builder.Build();
 
