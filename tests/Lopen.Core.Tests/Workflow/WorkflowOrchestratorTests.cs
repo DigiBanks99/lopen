@@ -699,6 +699,98 @@ public class WorkflowOrchestratorTests
         Assert.Null(_promptBuilder.LastContextSections);
     }
 
+    // --- CORE-21: Failure Handler Self-Correction Tests ---
+
+    [Fact]
+    public async Task RunAsync_WithFailureHandler_SelfCorrectsOnSingleFailure()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.FailUntilInvokeCount = 1; // Fail first, succeed second
+        var failureHandler = new StubFailureHandler();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete);
+        Assert.Equal(2, _llmService.InvokeCount); // Failed once, succeeded once
+        Assert.True(failureHandler.RecordedFailures.Count > 0);
+        Assert.Contains(_renderer.ErrorMessages, m => m.Contains("LLM error"));
+    }
+
+    [Fact]
+    public async Task RunAsync_WithoutFailureHandler_InterruptsOnFailure()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        var sut = CreateOrchestrator(); // No failure handler
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithFailureHandler_InterruptsWhenThresholdReached()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true; // Always fails
+        var failureHandler = new StubFailureHandler { Threshold = 2 };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+        Assert.Equal(2, failureHandler.RecordedFailures.Count); // Failed twice before escalation
+    }
+
+    [Fact]
+    public async Task RunAsync_WithFailureHandler_RendersErrorInlineOnSelfCorrect()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.FailUntilInvokeCount = 1;
+        var failureHandler = new StubFailureHandler();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        await sut.RunAsync("test-module");
+
+        // Error was rendered inline (displayed to user) but loop continued
+        Assert.Contains(_renderer.ErrorMessages, m => m.Contains("LLM error"));
+    }
+
+    [Fact]
+    public async Task RunAsync_WithFailureHandler_ResetsCountOnSuccess()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.FailUntilInvokeCount = 1;
+        var failureHandler = new StubFailureHandler();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        await sut.RunAsync("test-module");
+
+        Assert.True(failureHandler.ResetCalled);
+    }
+
     // --- Stubs ---
 
     private sealed class StubWorkflowEngine : IWorkflowEngine
@@ -764,6 +856,7 @@ public class WorkflowOrchestratorTests
     {
         public int InvokeCount { get; private set; }
         public bool ThrowOnInvoke { get; set; }
+        public int FailUntilInvokeCount { get; set; }
         public LlmInvocationResult? Result { get; set; }
 
         public Task<LlmInvocationResult> InvokeAsync(
@@ -771,7 +864,7 @@ public class WorkflowOrchestratorTests
             CancellationToken ct = default)
         {
             InvokeCount++;
-            if (ThrowOnInvoke)
+            if (ThrowOnInvoke || (FailUntilInvokeCount > 0 && InvokeCount <= FailUntilInvokeCount))
                 throw new InvalidOperationException("LLM error");
 
             return Task.FromResult(Result ??
@@ -974,5 +1067,45 @@ public class WorkflowOrchestratorTests
         };
 
         public void ResetSession() => RecordedUsages.Clear();
+    }
+
+    private sealed class StubFailureHandler : IFailureHandler
+    {
+        public int Threshold { get; set; } = 3;
+        public List<(string TaskId, string Message)> RecordedFailures { get; } = [];
+        public bool ResetCalled { get; private set; }
+        private readonly Dictionary<string, int> _counts = new(StringComparer.OrdinalIgnoreCase);
+
+        public FailureClassification RecordFailure(string taskId, string errorMessage)
+        {
+            RecordedFailures.Add((taskId, errorMessage));
+            _counts.TryGetValue(taskId, out var count);
+            count++;
+            _counts[taskId] = count;
+
+            if (count >= Threshold)
+                return new FailureClassification(
+                    FailureSeverity.RepeatedFailure, FailureAction.PromptUser,
+                    $"Threshold reached ({count})", taskId, count);
+
+            return new FailureClassification(
+                FailureSeverity.TaskFailure, FailureAction.SelfCorrect,
+                $"Self-correcting (attempt {count})", taskId, count);
+        }
+
+        public FailureClassification RecordCriticalError(string errorMessage) =>
+            new(FailureSeverity.Critical, FailureAction.Block, errorMessage);
+
+        public FailureClassification RecordWarning(string message) =>
+            new(FailureSeverity.Warning, FailureAction.SelfCorrect, message);
+
+        public void ResetFailureCount(string taskId)
+        {
+            ResetCalled = true;
+            _counts.Remove(taskId);
+        }
+
+        public int GetFailureCount(string taskId) =>
+            _counts.TryGetValue(taskId, out var count) ? count : 0;
     }
 }

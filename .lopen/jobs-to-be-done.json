@@ -634,9 +634,9 @@
     "requirement_code": "CORE-21",
     "requirement_module": "core",
     "description": "Implement single task failure handling - display inline and trigger LLM self-correction",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "When a task fails, the error should be displayed inline (in TUI or headless output) and the LLM should attempt self-correction on next iteration."
+    "notes": "IFailureHandler wired into WorkflowOrchestrator. On single task failure: error rendered inline, loop continues (SelfCorrect). At threshold: interrupts (PromptUser). Registered in DI with WorkflowOptions.FailureThreshold. 7 new tests added. All 1578 tests pass."
   },
   {
     "id": "JOB-072",

@@ -29,6 +29,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IAutoSaveService? _autoSaveService;
     private readonly ISessionManager? _sessionManager;
     private readonly ITokenTracker? _tokenTracker;
+    private readonly IFailureHandler? _failureHandler;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
     private int _iterationCount;
@@ -50,7 +51,8 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IGitWorkflowService? gitWorkflowService = null,
         IAutoSaveService? autoSaveService = null,
         ISessionManager? sessionManager = null,
-        ITokenTracker? tokenTracker = null)
+        ITokenTracker? tokenTracker = null,
+        IFailureHandler? failureHandler = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _assessor = assessor ?? throw new ArgumentNullException(nameof(assessor));
@@ -67,6 +69,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _autoSaveService = autoSaveService;
         _sessionManager = sessionManager;
         _tokenTracker = tokenTracker;
+        _failureHandler = failureHandler;
     }
 
     public async Task<OrchestrationResult> RunAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
@@ -121,9 +124,32 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 _logger.LogWarning("Step {Step} failed: {Summary}", _engine.CurrentStep, stepResult.Summary);
                 await _renderer.RenderErrorAsync(stepResult.Summary ?? "Step failed");
                 await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
+
+                // CORE-21: Consult failure handler for self-correction vs interruption
+                if (_failureHandler is not null)
+                {
+                    var taskId = _engine.CurrentStep.ToString();
+                    var classification = _failureHandler.RecordFailure(taskId, stepResult.Summary ?? "Step failed");
+
+                    if (classification.Action == FailureAction.SelfCorrect)
+                    {
+                        _logger.LogInformation(
+                            "Self-correcting: {Message} (attempt {Count})",
+                            classification.Message, classification.ConsecutiveFailures);
+                        continue; // Let the LLM retry on next iteration
+                    }
+
+                    _logger.LogWarning(
+                        "Failure escalated: {Action} — {Message}",
+                        classification.Action, classification.Message);
+                }
+
                 return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
                     stepResult.Summary ?? "Step failed");
             }
+
+            // Reset failure count on success when handler is present
+            _failureHandler?.ResetFailureCount(_engine.CurrentStep.ToString());
 
             // Auto-save after each successful step (STOR-06)
             await AutoSaveAsync(AutoSaveTrigger.StepCompletion, moduleName, cancellationToken);

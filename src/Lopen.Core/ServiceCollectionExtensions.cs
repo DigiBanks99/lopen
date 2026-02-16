@@ -6,6 +6,7 @@ using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Lopen.Core;
 
@@ -37,6 +38,14 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IModuleLister, ModuleLister>();
             services.AddSingleton<IStateAssessor, CodebaseStateAssessor>();
             services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
+            services.AddSingleton<IFailureHandler>(sp =>
+            {
+                var workflowOptions = sp.GetService<WorkflowOptions>();
+                var threshold = workflowOptions?.FailureThreshold ?? 3;
+                return new FailureHandler(
+                    sp.GetRequiredService<ILogger<FailureHandler>>(),
+                    threshold);
+            });
             services.AddSingleton<IWorkflowOrchestrator>(sp =>
             {
                 Git.IGitWorkflowService? gitService = null;
@@ -55,6 +64,10 @@ public static class ServiceCollectionExtensions
                 try { tokenTracker = sp.GetService<Lopen.Llm.ITokenTracker>(); }
                 catch { /* Token tracker optional */ }
 
+                IFailureHandler? failureHandler = null;
+                try { failureHandler = sp.GetService<IFailureHandler>(); }
+                catch { /* Failure handler optional */ }
+
                 return new WorkflowOrchestrator(
                     sp.GetRequiredService<IWorkflowEngine>(),
                     sp.GetRequiredService<IStateAssessor>(),
@@ -70,7 +83,8 @@ public static class ServiceCollectionExtensions
                     gitService,
                     autoSave,
                     sessionMgr,
-                    tokenTracker);
+                    tokenTracker,
+                    failureHandler);
             });
             services.AddSingleton<ISpecificationDriftService, SpecificationDriftService>();
             services.AddSingleton<IToolHandlerBinder>(sp =>

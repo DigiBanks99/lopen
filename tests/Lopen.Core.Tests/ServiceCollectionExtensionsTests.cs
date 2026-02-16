@@ -214,6 +214,43 @@ public class ServiceCollectionExtensionsTests
         Assert.Null(service);
     }
 
+    [Fact]
+    public void AddLopenCore_WithProjectRoot_RegistersFailureHandler()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddLopenCore(projectRoot: "/tmp");
+
+        var provider = services.BuildServiceProvider();
+        var service = provider.GetService<IFailureHandler>();
+
+        Assert.NotNull(service);
+    }
+
+    [Fact]
+    public void AddLopenCore_WithProjectRoot_FailureHandlerUsesWorkflowOptionsThreshold()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddSingleton(new Lopen.Configuration.WorkflowOptions { FailureThreshold = 5 });
+        services.AddLopenCore(projectRoot: "/tmp");
+
+        var provider = services.BuildServiceProvider();
+        var handler = provider.GetService<IFailureHandler>();
+
+        Assert.NotNull(handler);
+        // Verify threshold by failing 4 times (should still self-correct) then 5th escalates
+        for (var i = 0; i < 4; i++)
+        {
+            var classification = handler.RecordFailure("test-task", "error");
+            Assert.Equal(FailureAction.SelfCorrect, classification.Action);
+        }
+        var fifth = handler.RecordFailure("test-task", "error");
+        Assert.Equal(FailureAction.PromptUser, fifth.Action);
+    }
+
     private sealed class StubFileSystem : Lopen.Storage.IFileSystem
     {
         public void CreateDirectory(string path) { }

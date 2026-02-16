@@ -1,29 +1,20 @@
-# Implementation Plan
+# Implementation Plan — JOB-071 (CORE-21): Single Task Failure Self-Correction
 
-## Status: P2 CLI Features Complete, TUI Wiring Next
+**Goal:** On single task failure, display error inline and let the LLM self-correct instead of immediately interrupting the workflow.
 
-All P1 jobs, P2 OTel, P2 service wiring, and P2 CLI feature jobs are complete.
+## Background
 
-### Completed Jobs
+- `FailureHandler` / `IFailureHandler` exist in `src/Lopen.Core/Workflow/` with full tests
+- `WorkflowOrchestrator.RunAsync()` returns `Interrupted` immediately on any step failure (blocks self-correction)
+- `IFailureHandler` is **not** registered in DI and **not** wired into `WorkflowOrchestrator`
 
-| Job | Description | Status |
-|-----|-------------|--------|
-| JOB-001–010 | Core DI, orchestration, tools, CLI, headless, TUI shell, layout/keyboard | ✅ Done |
-| JOB-013–021 | Drift, transitions, gates, git, autosave, session resume, token metrics | ✅ Done |
-| JOB-022–030 | OTel spans, counters, histograms, gauges, backpressure | ✅ Done |
-| JOB-031–034 | CLI --prompt injection, TUI prompt, headless validation, exit codes | ✅ Done |
-| JOB-035 | Test TUI command | ✅ Done |
-| JOB-077 | Wire root to real TUI | ✅ Done |
+## Tasks
 
-### Next P2 Jobs
-
-| Job | Description | Module |
-|-----|-------------|--------|
-| JOB-011 | Connect TopPanelComponent to live data sources | tui |
-| JOB-012 | Connect ContextPanelComponent to live task tree | tui |
-| JOB-036 | Wire SlashCommandRegistry to CLI commands | tui |
-| JOB-037 | Implement Ctrl+P pause | tui |
-| JOB-038 | Wire LandingPageComponent | tui |
-| JOB-039 | Wire SessionResumeModal | tui |
-| JOB-040 | Wire ActivityPanelComponent to stream events | tui |
-| JOB-041 | Wire PromptAreaComponent to submit to orchestrator | tui |
+- [x] 1. Register `IFailureHandler` in `AddLopenCore()` (`ServiceCollectionExtensions.cs`), sourcing `FailureThreshold` from `WorkflowOptions`
+- [x] 2. Add optional `IFailureHandler?` parameter to `WorkflowOrchestrator` constructor
+- [x] 3. Modify `RunAsync()`: on step failure, call `RecordFailure()`. If `SelfCorrect` → render error inline, continue loop. If `PromptUser`/`Block` → return `Interrupted` (existing behavior)
+- [x] 4. On successful step completion, reset failure count (task id = step name)
+- [x] 5. Add task identifier (current step name) for failure tracking
+- [x] 6. Unit tests: failure with handler → continues (self-correct); failure without handler → `Interrupted` (backward compat); success resets count
+- [x] 7. Test `IFailureHandler` DI registration in `ServiceCollectionExtensions` tests
+- [x] 8. Run full test suite — verify green (1578 tests, 0 failures)

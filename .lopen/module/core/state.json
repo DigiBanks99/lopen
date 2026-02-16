@@ -189,7 +189,16 @@
         "JOB-070"
       ],
       "notes": "Optional dependency - updates plan.md checkbox when task marked complete"
+    },
+    "failure_handler_wiring": {
+      "status": "complete",
+      "implementation": "IFailureHandler wired into WorkflowOrchestrator. On step failure: RecordFailure() \u2192 SelfCorrect continues loop, PromptUser/Block interrupts. ResetFailureCount on success.",
+      "tests": "WorkflowOrchestratorTests (5 new failure handler tests) + ServiceCollectionExtensionsTests (2 new DI tests)",
+      "jobs": [
+        "JOB-071"
+      ],
+      "notes": "IFailureHandler registered in DI via AddLopenCore(). Uses WorkflowOptions.FailureThreshold. Backward compatible: without handler, behavior unchanged."
     }
   },
-  "last_updated": "2026-02-16T22:00:00Z"
+  "last_updated": "2026-02-16T19:30:00Z"
 }
