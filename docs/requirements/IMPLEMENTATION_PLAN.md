@@ -1,29 +1,25 @@
 # Implementation Plan
 
-## Current Job: JOB-083 — CLI Integration Tests
+## Current Job: JOB-037 — Session Resume with --resume/--no-resume
 
-**Module**: cli  
-**Priority**: P4  
+**Module**: storage/cli  
+**Priority**: P2  
 **Status**: ✅ Complete  
-**Description**: Write integration tests for all CLI acceptance criteria (commands, flags, exit codes, DI wiring).
+**Description**: Implement session resume from latest with --resume {id} and --no-resume flags.
 
 ### Tasks
 
-- [x] **1. Create `CliIntegrationTests.cs`** — 12 tests covering DI wiring, command registration, root command, global flags
-- [x] **2. Validate** — 1158 tests pass across all 8 test projects
-
-### Coverage: 20/25 ACs covered across CLI test suite
-
-| Status | ACs | Notes |
-|--------|-----|-------|
-| ✅ Covered | AC-3–15, AC-17, AC-19–21, AC-25 | Full test coverage |
-| ⏳ Deferred | AC-1 (TUI), AC-2 (E2E headless), AC-18 (TUI input) | Requires TUI/workflow |
-| ⏳ Deferred | AC-22, AC-23, AC-24 | CI pipeline checks |
+- [x] **1. Add global options** — `--resume` and `--no-resume` in GlobalOptions
+- [x] **2. Create `ResolveSessionAsync`** — Validates format, existence, not-complete; auto-resume from latest
+- [x] **3. Wire into phase commands** — spec/plan/build use ResolveSessionAsync
+- [x] **4. Write tests** — 7 resume tests covering all scenarios
+- [x] **5. Validate** — 1165 tests pass
 
 ### Recently Completed Jobs
 
 | Job | Module | Description |
 |-----|--------|-------------|
+| JOB-037 | storage/cli | Session resume (--resume/--no-resume) |
 | JOB-083 | cli | CLI integration tests (12 tests, 20/25 ACs) |
 | JOB-082 | cli | --prompt flag, exit codes, --help/--version |
 | JOB-078 | cli | Phase subcommands (spec/plan/build) |

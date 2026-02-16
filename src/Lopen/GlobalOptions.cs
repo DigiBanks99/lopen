@@ -23,6 +23,20 @@ public static class GlobalOptions
         Aliases = { "-p" },
     };
 
+    /// <summary>Resumes a specific session by ID instead of starting fresh.</summary>
+    public static Option<string?> Resume { get; } = new("--resume")
+    {
+        Description = "Resume a specific session by ID",
+        Recursive = true,
+    };
+
+    /// <summary>Forces starting a fresh session, skipping the resume prompt.</summary>
+    public static Option<bool> NoResume { get; } = new("--no-resume")
+    {
+        Description = "Start a fresh session; skip the resume prompt",
+        Recursive = true,
+    };
+
     /// <summary>
     /// Registers all global options on the root command.
     /// </summary>
@@ -30,5 +44,7 @@ public static class GlobalOptions
     {
         root.Options.Add(Headless);
         root.Options.Add(Prompt);
+        root.Options.Add(Resume);
+        root.Options.Add(NoResume);
     }
 }

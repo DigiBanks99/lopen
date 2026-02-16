@@ -292,9 +292,9 @@
     "id": "JOB-037",
     "requirement_module": "storage",
     "description": "Implement session resume from latest with resume-or-fresh prompt, --resume {id}, and --no-resume",
-    "status": "blocked",
+    "status": "complete",
     "priority": 2,
-    "notes": "Session resume depends on Core workflow engine (P3) and CLI module (P4) for user prompts. GetLatestSessionIdAsync and LoadSessionStateAsync provide the foundation."
+    "notes": "Implemented --resume {id}, --no-resume global flags and auto-resume from latest active session. ResolveSessionAsync validates format, existence, not-complete. 7 tests covering all scenarios."
   },
   {
     "id": "JOB-038",

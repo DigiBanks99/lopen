@@ -25,6 +25,18 @@ public static class PhaseCommands
                 if (headlessError is not null)
                     return headlessError.Value;
 
+                var (sessionId, resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
+                if (resolveError is not null)
+                {
+                    await stderr.WriteLineAsync(resolveError);
+                    return ExitCodes.Failure;
+                }
+
+                if (sessionId is not null)
+                {
+                    await stdout.WriteLineAsync($"Resuming session: {sessionId}");
+                }
+
                 await stdout.WriteLineAsync("Starting requirement gathering phase...");
                 await stdout.WriteLineAsync("Workflow engine not yet wired to CLI. Use the TUI for interactive spec gathering.");
                 return ExitCodes.Success;
@@ -53,11 +65,23 @@ public static class PhaseCommands
                 if (headlessError is not null)
                     return headlessError.Value;
 
+                var (sessionId, resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
+                if (resolveError is not null)
+                {
+                    await stderr.WriteLineAsync(resolveError);
+                    return ExitCodes.Failure;
+                }
+
                 var validationResult = await ValidateSpecExistsAsync(services, cancellationToken);
                 if (validationResult is not null)
                 {
                     await stderr.WriteLineAsync(validationResult);
                     return ExitCodes.Failure;
+                }
+
+                if (sessionId is not null)
+                {
+                    await stdout.WriteLineAsync($"Resuming session: {sessionId}");
                 }
 
                 await stdout.WriteLineAsync("Starting planning phase...");
@@ -88,6 +112,13 @@ public static class PhaseCommands
                 if (headlessError is not null)
                     return headlessError.Value;
 
+                var (sessionId, resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
+                if (resolveError is not null)
+                {
+                    await stderr.WriteLineAsync(resolveError);
+                    return ExitCodes.Failure;
+                }
+
                 var specResult = await ValidateSpecExistsAsync(services, cancellationToken);
                 if (specResult is not null)
                 {
@@ -100,6 +131,11 @@ public static class PhaseCommands
                 {
                     await stderr.WriteLineAsync(planResult);
                     return ExitCodes.Failure;
+                }
+
+                if (sessionId is not null)
+                {
+                    await stdout.WriteLineAsync($"Resuming session: {sessionId}");
                 }
 
                 await stdout.WriteLineAsync("Starting building phase...");
@@ -201,5 +237,65 @@ public static class PhaseCommands
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Resolves which session to use based on --resume/--no-resume flags.
+    /// Returns (sessionId, errorMessage). If sessionId is null and errorMessage is not null, an error occurred.
+    /// If both are null, no session and --no-resume was specified (start fresh).
+    /// </summary>
+    internal static async Task<(SessionId? sessionId, string? errorMessage)> ResolveSessionAsync(
+        IServiceProvider services, ParseResult parseResult, CancellationToken cancellationToken)
+    {
+        var resumeId = parseResult.GetValue(GlobalOptions.Resume);
+        var noResume = parseResult.GetValue(GlobalOptions.NoResume);
+
+        if (noResume)
+        {
+            return (null, null);
+        }
+
+        var sessionManager = services.GetService<ISessionManager>();
+        if (sessionManager is null)
+        {
+            // No session manager available (e.g., no project root). Start fresh.
+            return (null, null);
+        }
+
+        if (!string.IsNullOrWhiteSpace(resumeId))
+        {
+            var parsed = SessionId.TryParse(resumeId);
+            if (parsed is null)
+            {
+                return (null, $"Invalid session ID format: '{resumeId}'. Expected format: <module>-YYYYMMDD-<counter>.");
+            }
+
+            var state = await sessionManager.LoadSessionStateAsync(parsed, cancellationToken);
+            if (state is null)
+            {
+                return (null, $"Session not found: '{resumeId}'.");
+            }
+
+            if (string.Equals(state.Phase, "complete", StringComparison.OrdinalIgnoreCase))
+            {
+                return (null, $"Session '{resumeId}' is already complete. Use --no-resume to start fresh.");
+            }
+
+            await sessionManager.SetLatestAsync(parsed, cancellationToken);
+            return (parsed, null);
+        }
+
+        // No explicit flags: check for latest active session
+        var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
+        if (latestId is not null)
+        {
+            var state = await sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
+            if (state is not null && !string.Equals(state.Phase, "complete", StringComparison.OrdinalIgnoreCase))
+            {
+                return (latestId, null);
+            }
+        }
+
+        return (null, null);
     }
 }

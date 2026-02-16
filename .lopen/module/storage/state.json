@@ -7,43 +7,66 @@
       "status": "complete",
       "implementation": "SessionManager (atomic file I/O) + DeleteSessionAsync + DeleteDirectory on IFileSystem",
       "tests": "SessionManagerTests (incl. 3 delete tests)",
-      "jobs": ["JOB-034", "JOB-035", "JOB-080"],
+      "jobs": [
+        "JOB-034",
+        "JOB-035",
+        "JOB-080"
+      ],
       "notes": "Added DeleteSessionAsync and DeleteDirectory to support CLI session delete command."
     },
     "storage_initializer": {
       "status": "complete",
       "implementation": "StorageInitializer",
       "tests": "StorageInitializerTests",
-      "jobs": ["JOB-034"]
+      "jobs": [
+        "JOB-034"
+      ]
     },
     "auto_save": {
       "status": "complete",
       "implementation": "AutoSaveService + AutoSaveTrigger (6 triggers)",
       "tests": "AutoSaveServiceTests (15 tests)",
-      "jobs": ["JOB-036"],
+      "jobs": [
+        "JOB-036"
+      ],
       "notes": "Saves state+metrics on step/task/phase/component completion and user pause. StorageException caught silently."
     },
     "plan_manager": {
       "status": "complete",
       "implementation": "PlanManager + PlanTask",
       "tests": "PlanManagerTests (28 tests)",
-      "jobs": ["JOB-038"],
+      "jobs": [
+        "JOB-038"
+      ],
       "notes": "Plans at .lopen/modules/{module}/plan.md. Regex-based checkbox parsing/updating. Atomic writes. Hierarchical task levels."
     },
     "section_cache": {
       "status": "complete",
       "implementation": "SectionCache + SectionCacheEntry",
       "tests": "SectionCacheTests (20 tests)",
-      "jobs": ["JOB-039"],
+      "jobs": [
+        "JOB-039"
+      ],
       "notes": "Dual-layer (memory+disk) at .lopen/cache/sections/. Keyed by file path + header. Invalidated on file mtime change. Corrupted entries silently removed."
     },
     "assessment_cache": {
       "status": "complete",
       "implementation": "AssessmentCache + AssessmentCacheEntry",
       "tests": "AssessmentCacheTests (18 tests)",
-      "jobs": ["JOB-040"],
+      "jobs": [
+        "JOB-040"
+      ],
       "notes": "Scope-based invalidation. Tracks per-file timestamps. Any file change in scope invalidates. Corrupted entries silently removed."
+    },
+    "session_resume": {
+      "status": "complete",
+      "implementation": "ResolveSessionAsync in PhaseCommands + GlobalOptions (--resume/--no-resume)",
+      "tests": "PhaseCommandTests (7 resume tests)",
+      "jobs": [
+        "JOB-037"
+      ],
+      "notes": "Auto-resume from latest active session, --resume {id} specific session, --no-resume starts fresh. Validates format, existence, not-complete."
     }
   },
-  "last_updated": "2026-02-16T04:45:00Z"
+  "last_updated": "2026-02-16T09:00:00Z"
 }
