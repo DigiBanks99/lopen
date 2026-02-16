@@ -103,9 +103,9 @@
     "requirement_code": "TUI-03",
     "requirement_module": "tui",
     "description": "Connect ContextPanelComponent to live task tree and active resources",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "ContextPanelComponent renders task tree with completion states. Need to wire to WorkflowEngine task hierarchy for real-time updates."
+    "notes": "ContextPanelDataProvider maps IPlanManager tasks to ContextPanelData hierarchy (module/component/task sections). Wired into TuiApplication with throttled refresh. 30 unit tests + 2 integration tests."
   },
   {
     "id": "JOB-013",

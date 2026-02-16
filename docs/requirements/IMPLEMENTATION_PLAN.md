@@ -1,20 +1,20 @@
-# Implementation Plan — JOB-011 (TUI-02): Wire TopPanelComponent to Live Data Sources
+# Implementation Plan — JOB-012 (TUI-03): Wire ContextPanelComponent to Live Data Sources
 
-**Goal:** Connect the TopPanelComponent to real-time data from ITokenTracker, IGitService, IAuthService, IWorkflowEngine, and IModelSelector so the top panel displays live information.
+**Goal:** Connect the ContextPanelComponent to live task tree data from IPlanManager and IWorkflowEngine so the context panel displays real-time task hierarchy, component progress, and active resources.
 
 ## Acceptance Criteria
-- [TUI-02] Top panel displays logo, version, model, context usage, premium requests, git branch, auth status, phase, and step
-- [TUI-29] Context window usage displayed in top panel (subset of TUI-02)
+- [TUI-03] Context panel shows current task, task tree with completion states, and active resources
+- [TUI-10] Real-time task progress updates in context panel (subset)
+- [TUI-31] Real-time progress percentages in context panel (subset)
 
 ## Tasks
 
-- [x] 1. Add `GetCurrentBranchAsync` to `IGitService` interface and implement in `GitCliService`
-- [x] 2. Create `ITopPanelDataProvider` interface in `Lopen.Tui` with `TopPanelData GetCurrentData()` and `Task RefreshAsync(CancellationToken)`
-- [x] 3. Create `TopPanelDataProvider` implementation that aggregates ITokenTracker, IGitService, IAuthService, IWorkflowEngine, IModelSelector
-- [x] 4. Add `Lopen.Auth` project reference to `Lopen.Tui.csproj`
-- [x] 5. Modify `TuiApplication` to accept `ITopPanelDataProvider` and refresh top panel data with throttling (every ~1s, not every frame)
-- [x] 6. Register `TopPanelDataProvider` in DI (`ServiceCollectionExtensions`)
-- [x] 7. Write unit tests for `TopPanelDataProvider` — 31 tests
-- [x] 8. Write integration tests for `TuiApplication` data provider wiring — 4 tests
-- [x] 9. Run full test suite — 1,662 tests pass, 0 failures
-- [x] 10. Update module state and commit
+- [x] 1. Add `Lopen.Storage` project reference to `Lopen.Tui.csproj`
+- [x] 2. Create `IContextPanelDataProvider` interface with `GetCurrentData()`, `RefreshAsync()`, and `SetActiveModule()`
+- [x] 3. Create `ContextPanelDataProvider` implementation mapping `IPlanManager` tasks to `ContextPanelData` hierarchy
+- [x] 4. Wire `IContextPanelDataProvider` into `TuiApplication` with throttled refresh (same pattern as top panel)
+- [x] 5. Register `ContextPanelDataProvider` in DI (`ServiceCollectionExtensions`)
+- [x] 6. Write unit tests for `ContextPanelDataProvider` — 30 tests
+- [x] 7. Write integration tests for `TuiApplication` context panel data wiring — 2 tests
+- [x] 8. Run full test suite — 1,692 tests pass, 0 failures
+- [x] 9. Update module state and commit

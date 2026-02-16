@@ -145,7 +145,16 @@
         "JOB-011"
       ],
       "notes": "GetCurrentBranchAsync added to IGitService. AddTopPanelDataProvider() DI method. Async data (branch, auth) cached, sync data (tokens, workflow) read fresh each frame."
+    },
+    "context_panel_data_provider": {
+      "status": "complete",
+      "implementation": "ContextPanelDataProvider maps IPlanManager tasks to ContextPanelData hierarchy. TuiApplication refreshes with 1s throttle. SetActiveModule() for module switching.",
+      "tests": "ContextPanelDataProviderTests (30 unit tests) + TuiApplication integration tests (2 tests)",
+      "jobs": [
+        "JOB-012"
+      ],
+      "notes": "Level 0=components, Level 1=tasks, Level 2+=subtasks. First incomplete item at each level marked InProgress. Resources placeholder (empty list) until IDocumentManager is implemented."
     }
   },
-  "last_updated": "2026-02-16T20:50:00Z"
+  "last_updated": "2026-02-16T21:20:00Z"
 }
