@@ -355,9 +355,9 @@
     "requirement_code": "TUI-04",
     "requirement_module": "tui",
     "description": "Wire ActivityPanelComponent to display scrolling workflow activity with progressive disclosure",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "ActivityPanelComponent supports scrolling, expand/collapse, entry-kind prefixes, auto-scroll. Needs to be connected to real workflow events."
+    "notes": "IActivityPanelDataProvider + ActivityPanelDataProvider (ConcurrentQueue, thread-safe). Wired into TuiApplication render loop. Progressive disclosure via IsExpanded/Details. Auto-scroll on new entries. DI via AddActivityPanelDataProvider(). 24 new tests. All 1789 tests pass."
   },
   {
     "id": "JOB-041",

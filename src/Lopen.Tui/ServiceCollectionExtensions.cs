@@ -80,4 +80,14 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IContextPanelDataProvider, ContextPanelDataProvider>();
         return services;
     }
+
+    /// <summary>
+    /// Registers <see cref="ActivityPanelDataProvider"/> to supply live data to the activity panel.
+    /// Call after all module registrations.
+    /// </summary>
+    public static IServiceCollection AddActivityPanelDataProvider(this IServiceCollection services)
+    {
+        services.AddSingleton<IActivityPanelDataProvider, ActivityPanelDataProvider>();
+        return services;
+    }
 }

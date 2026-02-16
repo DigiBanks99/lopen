@@ -29,11 +29,13 @@
     },
     "activity_panel": {
       "status": "complete",
-      "implementation": "ActivityPanelComponent + ActivityPanelData",
-      "tests": "ActivityPanelComponentTests (21)",
+      "implementation": "ActivityPanelComponent + ActivityPanelData + IActivityPanelDataProvider + ActivityPanelDataProvider",
+      "tests": "ActivityPanelComponentTests (21) + ActivityPanelDataProviderTests (24)",
       "jobs": [
-        "JOB-087"
-      ]
+        "JOB-087",
+        "JOB-040"
+      ],
+      "notes": "Thread-safe ConcurrentQueue for workflow events. Auto-scroll on new entries. Progressive disclosure via IsExpanded/Details. Wired into TuiApplication render loop. DI via AddActivityPanelDataProvider()."
     },
     "prompt_area": {
       "status": "complete",
@@ -159,5 +161,5 @@
       "notes": "Level 0=components, Level 1=tasks, Level 2+=subtasks. First incomplete item at each level marked InProgress. Resources placeholder (empty list) until IDocumentManager is implemented."
     }
   },
-  "last_updated": "2026-02-16T21:30:00Z"
+  "last_updated": "2026-02-16T22:15:00Z"
 }

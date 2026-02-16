@@ -17,6 +17,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly KeyboardHandler _keyboardHandler;
     private readonly ITopPanelDataProvider? _topPanelDataProvider;
     private readonly IContextPanelDataProvider? _contextPanelDataProvider;
+    private readonly IActivityPanelDataProvider? _activityPanelDataProvider;
     private readonly ISlashCommandExecutor? _slashCommandExecutor;
     private readonly IPauseController? _pauseController;
     private readonly ILogger<TuiApplication> _logger;
@@ -54,6 +55,7 @@ internal sealed class TuiApplication : ITuiApplication
         ILogger<TuiApplication> logger,
         ITopPanelDataProvider? topPanelDataProvider = null,
         IContextPanelDataProvider? contextPanelDataProvider = null,
+        IActivityPanelDataProvider? activityPanelDataProvider = null,
         ISlashCommandExecutor? slashCommandExecutor = null,
         IPauseController? pauseController = null)
     {
@@ -65,6 +67,7 @@ internal sealed class TuiApplication : ITuiApplication
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _topPanelDataProvider = topPanelDataProvider;
         _contextPanelDataProvider = contextPanelDataProvider;
+        _activityPanelDataProvider = activityPanelDataProvider;
         _slashCommandExecutor = slashCommandExecutor;
         _pauseController = pauseController;
     }
@@ -101,6 +104,9 @@ internal sealed class TuiApplication : ITuiApplication
 
                 // 2b. Refresh context panel data from provider (throttled)
                 await RefreshContextPanelDataAsync(ct).ConfigureAwait(false);
+
+                // 2c. Refresh activity panel data from provider
+                RefreshActivityPanelData();
 
                 // 3. Render frame
                 renderer.Draw((ctx, _) => RenderFrame(ctx));
@@ -182,6 +188,12 @@ internal sealed class TuiApplication : ITuiApplication
         }
 
         _contextData = _contextPanelDataProvider.GetCurrentData();
+    }
+
+    private void RefreshActivityPanelData()
+    {
+        if (_activityPanelDataProvider is not null)
+            _activityData = _activityPanelDataProvider.GetCurrentData();
     }
 
     /// <summary>
@@ -299,8 +311,15 @@ internal sealed class TuiApplication : ITuiApplication
                 Kind = kind
             };
 
-            var entries = _activityData.Entries.Append(entry).ToList();
-            _activityData = new ActivityPanelData { Entries = entries, ScrollOffset = _activityData.ScrollOffset };
+            if (_activityPanelDataProvider is not null)
+            {
+                _activityPanelDataProvider.AddEntry(entry);
+            }
+            else
+            {
+                var entries = _activityData.Entries.Append(entry).ToList();
+                _activityData = new ActivityPanelData { Entries = entries, ScrollOffset = _activityData.ScrollOffset };
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
