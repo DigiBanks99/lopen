@@ -1,0 +1,17 @@
+{
+  "module": "auth",
+  "description": "Authentication for GitHub Copilot SDK access",
+  "status": "in_progress",
+  "components": {
+    "token_renewal": {
+      "status": "complete",
+      "implementation": "AuthErrorHandler in LLM module handles SDK OnErrorOccurred",
+      "tests": "AuthErrorHandlerTests (12 tests)",
+      "jobs": [
+        "JOB-018"
+      ],
+      "notes": "Token renewal via SDK retry mechanism; failed renewal saves state and aborts"
+    }
+  },
+  "last_updated": "2026-02-16T03:58:37Z"
+}

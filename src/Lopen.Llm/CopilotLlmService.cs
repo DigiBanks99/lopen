@@ -12,13 +12,16 @@ internal sealed class CopilotLlmService : ILlmService
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(10);
 
     private readonly ICopilotClientProvider _clientProvider;
+    private readonly IAuthErrorHandler _authErrorHandler;
     private readonly ILogger<CopilotLlmService> _logger;
 
     public CopilotLlmService(
         ICopilotClientProvider clientProvider,
+        IAuthErrorHandler authErrorHandler,
         ILogger<CopilotLlmService> logger)
     {
         _clientProvider = clientProvider ?? throw new ArgumentNullException(nameof(clientProvider));
+        _authErrorHandler = authErrorHandler ?? throw new ArgumentNullException(nameof(authErrorHandler));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -66,6 +69,14 @@ internal sealed class CopilotLlmService : ILlmService
                 Mode = SystemMessageMode.Replace,
             },
             Streaming = false,
+            Hooks = new SessionHooks
+            {
+                OnErrorOccurred = async (input, _) =>
+                {
+                    var result = await _authErrorHandler.HandleErrorAsync(input, cancellationToken);
+                    return result ?? new ErrorOccurredHookOutput();
+                },
+            },
         };
 
         // Track usage via events

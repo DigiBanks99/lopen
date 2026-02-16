@@ -17,6 +17,8 @@ public static class ServiceCollectionExtensions
         // Consumers can register their own IGitHubTokenProvider before calling this.
         services.TryAddSingleton<IGitHubTokenProvider, NullGitHubTokenProvider>();
         services.TryAddSingleton<ICopilotClientProvider, CopilotClientProvider>();
+        services.TryAddSingleton<ISessionStateSaver, NullSessionStateSaver>();
+        services.AddSingleton<IAuthErrorHandler, AuthErrorHandler>();
         services.AddSingleton<ILlmService, CopilotLlmService>();
         services.AddSingleton<IModelSelector, DefaultModelSelector>();
         services.AddSingleton<ITokenTracker, InMemoryTokenTracker>();

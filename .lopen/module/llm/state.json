@@ -1,91 +1,138 @@
 {
-    "module": "llm",
-    "description": "LLM integration module using GitHub Copilot SDK",
-    "status": "in_progress",
-    "components": {
-        "prompt_builder": {
-            "status": "complete",
-            "implementation": "DefaultPromptBuilder",
-            "tests": "DefaultPromptBuilderTests (13 tests)",
-            "jobs": ["JOB-048"]
-        },
-        "tool_registry": {
-            "status": "complete",
-            "implementation": "DefaultToolRegistry",
-            "tests": "DefaultToolRegistryTests (18 tests)",
-            "jobs": ["JOB-050", "JOB-053"]
-        },
-        "verification_tracker": {
-            "status": "complete",
-            "implementation": "VerificationTracker",
-            "tests": "VerificationTrackerTests (14 tests)",
-            "jobs": ["JOB-052"]
-        },
-        "task_status_gate": {
-            "status": "complete",
-            "implementation": "TaskStatusGate (ITaskStatusGate)",
-            "tests": "TaskStatusGateTests (14 tests)",
-            "jobs": ["JOB-052"],
-            "notes": "Validates update_task_status(complete) by checking IVerificationTracker.IsVerified(). Returns scope-specific rejection messages referencing correct verify_*_completion tool."
-        },
-        "oracle_verifier": {
-            "status": "complete",
-            "implementation": "OracleVerifier",
-            "tests": "OracleVerifierTests (30 tests)",
-            "jobs": ["JOB-051"],
-            "notes": "Dispatches sub-agent via ILlmService with standard-tier oracle model (gpt-5-mini). Parses JSON pass/fail+gaps. No tools registered for oracle. AC2 (same invocation) resolved at SDK integration level."
-        },
-        "model_selector": {
-            "status": "complete",
-            "implementation": "DefaultModelSelector",
-            "tests": "DefaultModelSelectorTests (9 tests)",
-            "jobs": ["JOB-054"]
-        },
-        "token_tracker": {
-            "status": "complete",
-            "implementation": "InMemoryTokenTracker",
-            "tests": "InMemoryTokenTrackerTests (8 tests)",
-            "jobs": ["JOB-055"]
-        },
-        "section_extractor": {
-            "status": "complete",
-            "implementation": "SectionExtractor",
-            "tests": "SectionExtractorTests (17 tests)",
-            "jobs": ["JOB-049"]
-        },
-        "context_budget_manager": {
-            "status": "complete",
-            "implementation": "ContextBudgetManager",
-            "tests": "ContextBudgetManagerTests (12 tests)",
-            "jobs": ["JOB-056"]
-        },
-        "copilot_client_provider": {
-            "status": "complete",
-            "implementation": "CopilotClientProvider (GitHub.Copilot.SDK v0.1.23)",
-            "tests": "CopilotClientProviderTests (6 tests)",
-            "jobs": ["JOB-046"],
-            "notes": "Manages singleton CopilotClient lifecycle. Injects GitHub token from IGitHubTokenProvider into CopilotClientOptions. Falls back to SDK built-in credential chain."
-        },
-        "llm_service": {
-            "status": "complete",
-            "implementation": "CopilotLlmService (replaces StubLlmService)",
-            "tests": "CopilotLlmServiceTests (11 tests)",
-            "jobs": ["JOB-046", "JOB-047", "JOB-101"],
-            "notes": "Uses ICopilotClientProvider for auth. Creates fresh sessions per invocation. IsPremiumModel excludes -mini variants."
-        },
-        "token_provider": {
-            "status": "complete",
-            "implementation": "IGitHubTokenProvider + NullGitHubTokenProvider",
-            "tests": "NullGitHubTokenProviderTests (1 test), ServiceCollectionExtensionsTests (2 new tests)",
-            "jobs": ["JOB-046"],
-            "notes": "Decouples LLM module from Auth module. Composition root can register custom provider."
-        }
+  "module": "llm",
+  "description": "LLM integration module using GitHub Copilot SDK",
+  "status": "in_progress",
+  "components": {
+    "prompt_builder": {
+      "status": "complete",
+      "implementation": "DefaultPromptBuilder",
+      "tests": "DefaultPromptBuilderTests (13 tests)",
+      "jobs": [
+        "JOB-048"
+      ]
     },
-    "last_updated": "2026-02-15T19:30:00Z",
-    "acceptance_criteria_tests": {
-        "status": "complete",
-        "implementation": "LlmAcceptanceCriteriaTests (22 tests)",
-        "tests": "22 tests mapping AC1-AC14 from SPECIFICATION.md",
-        "jobs": ["JOB-057"]
+    "tool_registry": {
+      "status": "complete",
+      "implementation": "DefaultToolRegistry",
+      "tests": "DefaultToolRegistryTests (18 tests)",
+      "jobs": [
+        "JOB-050",
+        "JOB-053"
+      ]
+    },
+    "verification_tracker": {
+      "status": "complete",
+      "implementation": "VerificationTracker",
+      "tests": "VerificationTrackerTests (14 tests)",
+      "jobs": [
+        "JOB-052"
+      ]
+    },
+    "task_status_gate": {
+      "status": "complete",
+      "implementation": "TaskStatusGate (ITaskStatusGate)",
+      "tests": "TaskStatusGateTests (14 tests)",
+      "jobs": [
+        "JOB-052"
+      ],
+      "notes": "Validates update_task_status(complete) by checking IVerificationTracker.IsVerified(). Returns scope-specific rejection messages referencing correct verify_*_completion tool."
+    },
+    "oracle_verifier": {
+      "status": "complete",
+      "implementation": "OracleVerifier",
+      "tests": "OracleVerifierTests (30 tests)",
+      "jobs": [
+        "JOB-051"
+      ],
+      "notes": "Dispatches sub-agent via ILlmService with standard-tier oracle model (gpt-5-mini). Parses JSON pass/fail+gaps. No tools registered for oracle. AC2 (same invocation) resolved at SDK integration level."
+    },
+    "model_selector": {
+      "status": "complete",
+      "implementation": "DefaultModelSelector",
+      "tests": "DefaultModelSelectorTests (9 tests)",
+      "jobs": [
+        "JOB-054"
+      ]
+    },
+    "token_tracker": {
+      "status": "complete",
+      "implementation": "InMemoryTokenTracker",
+      "tests": "InMemoryTokenTrackerTests (8 tests)",
+      "jobs": [
+        "JOB-055"
+      ]
+    },
+    "section_extractor": {
+      "status": "complete",
+      "implementation": "SectionExtractor",
+      "tests": "SectionExtractorTests (17 tests)",
+      "jobs": [
+        "JOB-049"
+      ]
+    },
+    "context_budget_manager": {
+      "status": "complete",
+      "implementation": "ContextBudgetManager",
+      "tests": "ContextBudgetManagerTests (12 tests)",
+      "jobs": [
+        "JOB-056"
+      ]
+    },
+    "copilot_client_provider": {
+      "status": "complete",
+      "implementation": "CopilotClientProvider (GitHub.Copilot.SDK v0.1.23)",
+      "tests": "CopilotClientProviderTests (6 tests)",
+      "jobs": [
+        "JOB-046"
+      ],
+      "notes": "Manages singleton CopilotClient lifecycle. Injects GitHub token from IGitHubTokenProvider into CopilotClientOptions. Falls back to SDK built-in credential chain."
+    },
+    "llm_service": {
+      "status": "complete",
+      "implementation": "CopilotLlmService (replaces StubLlmService)",
+      "tests": "CopilotLlmServiceTests (11 tests)",
+      "jobs": [
+        "JOB-046",
+        "JOB-047",
+        "JOB-101"
+      ],
+      "notes": "Uses ICopilotClientProvider for auth. Creates fresh sessions per invocation. IsPremiumModel excludes -mini variants."
+    },
+    "token_provider": {
+      "status": "complete",
+      "implementation": "IGitHubTokenProvider + NullGitHubTokenProvider",
+      "tests": "NullGitHubTokenProviderTests (1 test), ServiceCollectionExtensionsTests (2 new tests)",
+      "jobs": [
+        "JOB-046"
+      ],
+      "notes": "Decouples LLM module from Auth module. Composition root can register custom provider."
+    },
+    "auth_error_handler": {
+      "status": "complete",
+      "implementation": "AuthErrorHandler (OnErrorOccurred hook, retry/abort)",
+      "tests": "AuthErrorHandlerTests (12 tests)",
+      "jobs": [
+        "JOB-018"
+      ],
+      "notes": "Detects auth errors (401/403), retries once for recoverable, saves state + aborts for non-recoverable. ISessionStateSaver decouples from Storage."
+    },
+    "session_state_saver": {
+      "status": "complete",
+      "implementation": "ISessionStateSaver + NullSessionStateSaver",
+      "tests": "NullSessionStateSaverTests (1 test)",
+      "jobs": [
+        "JOB-018"
+      ],
+      "notes": "Callback interface to save session state; composition root wires real implementation"
     }
+  },
+  "last_updated": "2026-02-16T03:58:37Z",
+  "acceptance_criteria_tests": {
+    "status": "complete",
+    "implementation": "LlmAcceptanceCriteriaTests (22 tests)",
+    "tests": "22 tests mapping AC1-AC14 from SPECIFICATION.md",
+    "jobs": [
+      "JOB-057"
+    ]
+  }
 }

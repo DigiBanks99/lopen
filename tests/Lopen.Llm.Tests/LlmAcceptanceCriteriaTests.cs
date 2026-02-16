@@ -54,7 +54,7 @@ public class LlmAcceptanceCriteriaTests
     {
         var counter = new CountingClientProvider();
         var service = new CopilotLlmService(
-            counter, NullLogger<CopilotLlmService>.Instance);
+            counter, new StubAuthErrorHandler(), NullLogger<CopilotLlmService>.Instance);
 
         try { await service.InvokeAsync("prompt1", "model1", [], default); } catch { }
         try { await service.InvokeAsync("prompt2", "model2", [], default); } catch { }
@@ -372,5 +372,13 @@ public class LlmAcceptanceCriteriaTests
             Task.FromResult(true);
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class StubAuthErrorHandler : IAuthErrorHandler
+    {
+        public Task<GitHub.Copilot.SDK.ErrorOccurredHookOutput?> HandleErrorAsync(
+            GitHub.Copilot.SDK.ErrorOccurredHookInput input,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<GitHub.Copilot.SDK.ErrorOccurredHookOutput?>(null);
     }
 }

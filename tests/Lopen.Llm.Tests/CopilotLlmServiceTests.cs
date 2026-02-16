@@ -9,6 +9,7 @@ public class CopilotLlmServiceTests
     {
         return new CopilotLlmService(
             clientProvider ?? new FakeClientProvider(),
+            new StubAuthErrorHandler(),
             NullLogger<CopilotLlmService>.Instance);
     }
 
@@ -16,14 +17,21 @@ public class CopilotLlmServiceTests
     public void Constructor_NullClientProvider_ThrowsArgumentNull()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            new CopilotLlmService(null!, NullLogger<CopilotLlmService>.Instance));
+            new CopilotLlmService(null!, new StubAuthErrorHandler(), NullLogger<CopilotLlmService>.Instance));
+    }
+
+    [Fact]
+    public void Constructor_NullAuthErrorHandler_ThrowsArgumentNull()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new CopilotLlmService(new FakeClientProvider(), null!, NullLogger<CopilotLlmService>.Instance));
     }
 
     [Fact]
     public void Constructor_NullLogger_ThrowsArgumentNull()
     {
         Assert.Throws<ArgumentNullException>(() =>
-            new CopilotLlmService(new FakeClientProvider(), null!));
+            new CopilotLlmService(new FakeClientProvider(), new StubAuthErrorHandler(), null!));
     }
 
     [Fact]
@@ -208,5 +216,13 @@ public class CopilotLlmServiceTests
             => Task.FromResult(false);
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class StubAuthErrorHandler : IAuthErrorHandler
+    {
+        public Task<ErrorOccurredHookOutput?> HandleErrorAsync(
+            ErrorOccurredHookInput input,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<ErrorOccurredHookOutput?>(null);
     }
 }
