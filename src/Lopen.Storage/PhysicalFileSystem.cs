@@ -52,6 +52,9 @@ internal sealed class PhysicalFileSystem : IFileSystem
         return info.LinkTarget;
     }
 
+    public void DeleteDirectory(string path, bool recursive = true) =>
+        Directory.Delete(path, recursive);
+
     public DateTime GetLastWriteTimeUtc(string path) =>
         File.GetLastWriteTimeUtc(path);
 }

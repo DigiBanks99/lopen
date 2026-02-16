@@ -286,6 +286,22 @@ internal sealed class SessionManager : ISessionManager
         return pruned;
     }
 
+    public Task DeleteSessionAsync(SessionId sessionId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sessionId);
+
+        var sessionDir = StoragePaths.GetSessionDirectory(_projectRoot, sessionId);
+        if (!_fileSystem.DirectoryExists(sessionDir))
+        {
+            throw new StorageException($"Session not found: {sessionId}", sessionDir);
+        }
+
+        _fileSystem.DeleteDirectory(sessionDir, recursive: true);
+        _logger.LogInformation("Deleted session {SessionId}", sessionId);
+
+        return Task.CompletedTask;
+    }
+
     private Task<int> GetNextCounterAsync(string module, DateOnly date, CancellationToken cancellationToken)
     {
         var sessionsDir = StoragePaths.GetSessionsDirectory(_projectRoot);

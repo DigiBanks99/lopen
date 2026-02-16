@@ -96,6 +96,28 @@ internal sealed class InMemoryFileSystem : IFileSystem
         return _symlinks.TryGetValue(normalized, out var target) ? target : null;
     }
 
+    public void DeleteDirectory(string path, bool recursive = true)
+    {
+        var normalized = NormalizePath(path);
+        _directories.Remove(normalized);
+
+        if (recursive)
+        {
+            var prefix = normalized + "/";
+            var filesToRemove = _files.Keys.Where(f => f.StartsWith(prefix, StringComparison.Ordinal)).ToList();
+            foreach (var file in filesToRemove)
+                _files.Remove(file);
+
+            var dirsToRemove = _directories.Where(d => d.StartsWith(prefix, StringComparison.Ordinal)).ToList();
+            foreach (var dir in dirsToRemove)
+                _directories.Remove(dir);
+
+            var symlinksToRemove = _symlinks.Keys.Where(s => s.StartsWith(prefix, StringComparison.Ordinal)).ToList();
+            foreach (var symlink in symlinksToRemove)
+                _symlinks.Remove(symlink);
+        }
+    }
+
     public DateTime GetLastWriteTimeUtc(string path)
     {
         var normalized = NormalizePath(path);

@@ -136,6 +136,7 @@ public class ModuleScannerTests
         public IEnumerable<string> GetFiles(string path, string searchPattern = "*") => [];
         public void MoveFile(string source, string dest) { }
         public void DeleteFile(string path) { }
+        public void DeleteDirectory(string path, bool recursive = true) { }
         public void CreateSymlink(string linkPath, string targetPath) { }
         public string? GetSymlinkTarget(string linkPath) => null;
         public DateTime GetLastWriteTimeUtc(string path) => DateTime.UtcNow;

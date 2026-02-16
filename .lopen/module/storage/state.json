@@ -5,9 +5,10 @@
   "components": {
     "session_manager": {
       "status": "complete",
-      "implementation": "SessionManager (atomic file I/O)",
-      "tests": "SessionManagerTests",
-      "jobs": ["JOB-034", "JOB-035"]
+      "implementation": "SessionManager (atomic file I/O) + DeleteSessionAsync + DeleteDirectory on IFileSystem",
+      "tests": "SessionManagerTests (incl. 3 delete tests)",
+      "jobs": ["JOB-034", "JOB-035", "JOB-080"],
+      "notes": "Added DeleteSessionAsync and DeleteDirectory to support CLI session delete command."
     },
     "storage_initializer": {
       "status": "complete",
@@ -44,5 +45,5 @@
       "notes": "Scope-based invalidation. Tracks per-file timestamps. Any file change in scope invalidates. Corrupted entries silently removed."
     }
   },
-  "last_updated": "2026-02-15T18:00:00Z"
+  "last_updated": "2026-02-16T04:45:00Z"
 }

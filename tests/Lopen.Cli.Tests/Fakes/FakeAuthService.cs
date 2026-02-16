@@ -21,21 +21,24 @@ internal sealed class FakeAuthService : IAuthService
     public Task LoginAsync(CancellationToken cancellationToken = default)
     {
         LoginCalled = true;
-        if (LoginException is not null) throw LoginException;
+        if (LoginException is not null)
+            throw LoginException;
         return Task.CompletedTask;
     }
 
     public Task LogoutAsync(CancellationToken cancellationToken = default)
     {
         LogoutCalled = true;
-        if (LogoutException is not null) throw LogoutException;
+        if (LogoutException is not null)
+            throw LogoutException;
         return Task.CompletedTask;
     }
 
     public Task<AuthStatusResult> GetStatusAsync(CancellationToken cancellationToken = default)
     {
         GetStatusCalled = true;
-        if (StatusException is not null) throw StatusException;
+        if (StatusException is not null)
+            throw StatusException;
         return Task.FromResult(StatusResult);
     }
 

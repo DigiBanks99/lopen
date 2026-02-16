@@ -26,6 +26,7 @@ rootCommand.SetAction((_) =>
 });
 
 rootCommand.Add(AuthCommand.Create(host.Services));
+rootCommand.Add(SessionCommand.Create(host.Services));
 
 var config = new CommandLineConfiguration(rootCommand);
 

@@ -54,4 +54,9 @@ public interface ISessionManager
     /// Prunes old sessions, keeping the most recent <paramref name="retentionCount"/>.
     /// </summary>
     Task<int> PruneSessionsAsync(int retentionCount, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a session and all its files.
+    /// </summary>
+    Task DeleteSessionAsync(SessionId sessionId, CancellationToken cancellationToken = default);
 }

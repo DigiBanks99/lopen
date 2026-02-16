@@ -1,93 +1,54 @@
 # Implementation Plan
 
-## Current Job: JOB-079 — Implement `lopen auth` CLI Subcommands
+## Current Job: JOB-080 — Implement `lopen session` CLI Subcommands
 
 **Module**: cli  
 **Priority**: P4  
-**Description**: Implement `lopen auth login`, `lopen auth status`, and `lopen auth logout` subcommands wired to the Auth module's `IAuthService`. This is the first CLI command implementation and establishes the command pattern for all future commands.
+**Status**: ✅ Complete  
+**Description**: Implement `lopen session list`, `show`, `resume`, `delete`, and `prune` subcommands wired to the Storage module's `ISessionManager`.
 
 ### Acceptance Criteria
 
-- AC1: `lopen auth login` initiates the Copilot SDK device flow via `IAuthService.LoginAsync`
-- AC2: `lopen auth status` reports current authentication state via `IAuthService.GetStatusAsync`
-- AC3: `lopen auth logout` clears SDK-managed credentials via `IAuthService.LogoutAsync`
-- AC4: Exit code 0 on success, 1 on failure for all auth subcommands
-- AC5: The CLI command pattern (closure-captured `IServiceProvider`, thin handlers) is established and reusable
+- [x] AC9: `lopen session list` lists all sessions (active and completed) with latest marker
+- [x] AC10: `lopen session show [id]` displays session details with optional `--format md|json|yaml` flag
+- [x] AC11: `lopen session resume [id]` sets the session as latest (validates not complete)
+- [x] AC12: `lopen session delete <id>` deletes a session via new `DeleteSessionAsync`
+- [x] AC13: `lopen session prune` removes sessions beyond configured `session_retention` limit
 
 ### Tasks
 
-- [x] **1. Create `AuthCommand.cs`** in `src/Lopen/Commands/` — static factory method that builds the `auth` parent `Command` with three subcommands (`login`, `status`, `logout`). Each subcommand's `SetAction` resolves `IAuthService` from the closure-captured `IServiceProvider` and delegates to the corresponding method. Returns exit code 0 on success, 1 on exception.
-- [x] **2. Update `Program.cs`** — add `auth` command to `rootCommand` via `rootCommand.Add(AuthCommand.Create(host.Services))`. Import `Lopen.Commands` namespace.
-- [x] **3. Format status output** — `lopen auth status` writes State, Source, User (if present), Error (if present) to stdout.
-- [x] **4. Write unit tests** in `tests/Lopen.Cli.Tests/Commands/AuthCommandTests.cs` — 8 tests covering login/status/logout success and failure paths with FakeAuthService.
-- [x] **5. Validate** — `dotnet build` and `dotnet test` pass (391 tests total).
+- [x] **1. Add `DeleteDirectory` to `IFileSystem`** — New method in interface, `PhysicalFileSystem`, and all test implementations
+- [x] **2. Add `DeleteSessionAsync` to `ISessionManager`** — Interface + `SessionManager` implementation using `DeleteDirectory`
+- [x] **3. Create `SessionCommand.cs`** in `src/Lopen/Commands/` — 5 subcommands following AuthCommand pattern with TextWriter injection
+- [x] **4. Wire in `Program.cs`** — `rootCommand.Add(SessionCommand.Create(host.Services))`
+- [x] **5. Implement `FormatSession` output** — Markdown (default), JSON, and YAML formatters for session show
+- [x] **6. Create `FakeSessionManager`** in `tests/Lopen.Cli.Tests/Fakes/` — Configurable test double
+- [x] **7. Write `SessionCommandTests`** — 28 tests covering all subcommands, formats, error paths
+- [x] **8. Write `SessionManager` delete tests** — 3 tests (happy path, not found, null)
+- [x] **9. Validate** — `dotnet build`, `dotnet test` (1113 tests), `dotnet format` all pass
 
-### Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Closure-captured `IServiceProvider` | `System.CommandLine.Hosting` integration is deprecated in 2.0.0-beta5; passing the provider via closure is the simplest pattern that works with `SetAction` |
-| Static factory `AuthCommand.Create(IServiceProvider)` | Keeps command construction testable and separate from `Program.cs`; returns a fully-configured `Command` |
-| `src/Lopen/Commands/` directory | Groups CLI command definitions; mirrors the convention of one file per command group |
-| Thin handlers, all logic in `IAuthService` | CLI layer is a pass-through; no business logic in command handlers. Matches the spec's "thin CLI commands" principle |
-| `Console.Out` for status output (no `IConsole`) | Auth commands don't need TUI; simple console writes are sufficient and avoid unnecessary abstraction at this stage |
-| Hand-rolled `FakeAuthService` | Matches existing test patterns (no mocking library); fake can record calls and return canned results |
-| Test via `CommandLineConfiguration.InvokeAsync` | Tests the full command parsing + dispatch pipeline, not just handler methods |
-
-### Files to Create/Modify
+### Files Created/Modified
 
 | File | Action |
 |------|--------|
-| `src/Lopen/Commands/AuthCommand.cs` | **Create** — `auth` parent command with `login`, `status`, `logout` subcommands |
-| `src/Lopen/Program.cs` | **Modify** — wire `AuthCommand.Create(host.Services)` into `rootCommand` |
-| `tests/Lopen.Cli.Tests/Commands/AuthCommandTests.cs` | **Create** — unit/integration tests for all three subcommands |
-| `tests/Lopen.Cli.Tests/Fakes/FakeAuthService.cs` | **Create** — hand-rolled test double for `IAuthService` |
-
-### Command Pattern Reference
-
-This is the pattern all future CLI commands should follow:
-
-```csharp
-// src/Lopen/Commands/AuthCommand.cs
-public static class AuthCommand
-{
-    public static Command Create(IServiceProvider services)
-    {
-        var auth = new Command("auth", "Manage authentication");
-
-        var login = new Command("login", "Authenticate via Copilot SDK device flow");
-        login.SetAction(async (parseResult, cancellationToken) =>
-        {
-            var authService = services.GetRequiredService<IAuthService>();
-            try
-            {
-                await authService.LoginAsync(cancellationToken);
-                return 0;
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine(ex.Message);
-                return 1;
-            }
-        });
-
-        auth.AddCommand(login);
-        // ... status, logout follow same pattern
-        return auth;
-    }
-}
-```
-
-```csharp
-// Program.cs addition
-rootCommand.AddCommand(AuthCommand.Create(host.Services));
-```
+| `src/Lopen/Commands/SessionCommand.cs` | **Created** — 5 subcommands with format support |
+| `src/Lopen/Program.cs` | **Modified** — wired SessionCommand |
+| `src/Lopen.Storage/IFileSystem.cs` | **Modified** — added `DeleteDirectory` |
+| `src/Lopen.Storage/PhysicalFileSystem.cs` | **Modified** — implemented `DeleteDirectory` |
+| `src/Lopen.Storage/ISessionManager.cs` | **Modified** — added `DeleteSessionAsync` |
+| `src/Lopen.Storage/SessionManager.cs` | **Modified** — implemented `DeleteSessionAsync` |
+| `tests/Lopen.Cli.Tests/Commands/SessionCommandTests.cs` | **Created** — 28 tests |
+| `tests/Lopen.Cli.Tests/Fakes/FakeSessionManager.cs` | **Created** — test double |
+| `tests/Lopen.Storage.Tests/SessionManagerTests.cs` | **Modified** — 3 delete tests |
+| `tests/Lopen.Storage.Tests/InMemoryFileSystem.cs` | **Modified** — `DeleteDirectory` |
+| `tests/Lopen.Core.Tests/InMemoryFileSystem.cs` | **Modified** — `DeleteDirectory` |
+| Various test stubs | **Modified** — added `DeleteDirectory`/`DeleteSessionAsync` |
 
 ### Recently Completed Jobs
 
 | Job | Module | Description |
 |-----|--------|-------------|
+| JOB-080 | cli | Session CLI subcommands (list/show/resume/delete/prune) |
 | JOB-079 | cli | Auth CLI subcommands (login/status/logout) |
 | JOB-075 | core | Core AC tests (all 24 ACs) |
 | JOB-018 | llm | Automatic token renewal and failed renewal handling |
-| JOB-057 | llm | LLM AC tests (all 14 ACs) |

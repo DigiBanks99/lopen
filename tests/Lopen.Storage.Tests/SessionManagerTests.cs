@@ -339,6 +339,35 @@ public class SessionManagerTests
             _manager.PruneSessionsAsync(0));
     }
 
+    // === DeleteSessionAsync ===
+
+    [Fact]
+    public async Task DeleteSessionAsync_ExistingSession_RemovesDirectory()
+    {
+        var session = await _manager.CreateSessionAsync("auth");
+        await _manager.DeleteSessionAsync(session);
+
+        // Session should no longer appear in list
+        var sessions = await _manager.ListSessionsAsync();
+        Assert.DoesNotContain(sessions, s => s.Equals(session));
+    }
+
+    [Fact]
+    public async Task DeleteSessionAsync_NonexistentSession_ThrowsStorageException()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 99);
+
+        await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.DeleteSessionAsync(sessionId));
+    }
+
+    [Fact]
+    public async Task DeleteSessionAsync_NullSessionId_Throws()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _manager.DeleteSessionAsync(null!));
+    }
+
     // === IO Error Wrapping ===
 
     [Fact]
@@ -397,6 +426,7 @@ public class SessionManagerTests
         public IEnumerable<string> GetDirectories(string path) => [];
         public void MoveFile(string src, string dst) => throw new IOException("Disk full");
         public void DeleteFile(string path) { }
+        public void DeleteDirectory(string path, bool recursive = true) { }
         public void CreateSymlink(string linkPath, string targetPath) { }
         public string? GetSymlinkTarget(string linkPath) => null;
         public DateTime GetLastWriteTimeUtc(string path) => DateTime.MinValue;

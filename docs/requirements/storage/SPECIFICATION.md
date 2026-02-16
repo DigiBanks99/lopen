@@ -94,6 +94,7 @@ State is auto-saved after:
 4. **Resume** — On startup, Lopen checks for existing sessions and offers to resume (see [Configuration § Resume Behavior](../configuration/SPECIFICATION.md))
 5. **Complete** — Session marked as complete when module workflow finishes; retained for reference
 6. **Cleanup** — Old completed sessions can be pruned (configurable retention policy)
+7. **Delete** — Individual sessions can be explicitly deleted via CLI
 
 ### Resume Behavior
 
@@ -210,6 +211,7 @@ This specification defines **where and how Lopen stores its state**. It does not
 - [ ] Disk full / write failure is treated as a critical system error and pauses the workflow
 - [ ] Corrupted cache entries are silently invalidated and regenerated
 - [ ] Completed sessions are retained up to the configured `session_retention` limit, then pruned
+- [ ] Individual sessions can be deleted via `DeleteSessionAsync`, removing the session directory and all files
 - [ ] Research documents are stored at `docs/requirements/{module}/RESEARCH-{topic}.md` (in source, not `.lopen/`)
 - [ ] Storage format is compact JSON by default, with on-demand prettification via `lopen session show --format`
 

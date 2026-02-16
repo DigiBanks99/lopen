@@ -55,6 +55,7 @@ internal sealed class InMemoryFileSystem : IFileSystem
     }
 
     public void DeleteFile(string path) => _files.Remove(Normalize(path));
+    public void DeleteDirectory(string path, bool recursive = true) => _directories.Remove(Normalize(path));
     public void CreateSymlink(string linkPath, string targetPath) { }
     public string? GetSymlinkTarget(string linkPath) => null;
     public DateTime GetLastWriteTimeUtc(string path) => DateTime.UtcNow;

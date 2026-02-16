@@ -638,9 +638,9 @@
     "id": "JOB-080",
     "requirement_module": "cli",
     "description": "Implement lopen session list/show/resume/delete/prune subcommands wired to Storage module",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: Session subcommands with --format flag support"
+    "notes": "Implemented SessionCommand with list/show/resume/delete/prune subcommands. 28 tests. Added DeleteSessionAsync to ISessionManager."
   },
   {
     "id": "JOB-081",

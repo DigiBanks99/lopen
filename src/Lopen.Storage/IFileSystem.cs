@@ -38,6 +38,9 @@ public interface IFileSystem
     /// <summary>Resolves the target of a symbolic link.</summary>
     string? GetSymlinkTarget(string linkPath);
 
+    /// <summary>Deletes a directory and all its contents.</summary>
+    void DeleteDirectory(string path, bool recursive = true);
+
     /// <summary>Returns the last write time of a file in UTC.</summary>
     DateTime GetLastWriteTimeUtc(string path);
 }

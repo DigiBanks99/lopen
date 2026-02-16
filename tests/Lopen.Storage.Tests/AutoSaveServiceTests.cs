@@ -196,6 +196,9 @@ public sealed class AutoSaveServiceTests
 
         public Task<int> PruneSessionsAsync(int retentionCount, CancellationToken ct = default)
             => Task.FromResult(0);
+
+        public Task DeleteSessionAsync(SessionId sessionId, CancellationToken ct = default)
+            => Task.CompletedTask;
     }
 
     private sealed class ThrowingSessionManager : ISessionManager
@@ -212,5 +215,6 @@ public sealed class AutoSaveServiceTests
         public Task SetLatestAsync(SessionId sessionId, CancellationToken ct = default) => Task.CompletedTask;
         public Task QuarantineCorruptedSessionAsync(SessionId sessionId, CancellationToken ct = default) => Task.CompletedTask;
         public Task<int> PruneSessionsAsync(int retentionCount, CancellationToken ct = default) => Task.FromResult(0);
+        public Task DeleteSessionAsync(SessionId sessionId, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

@@ -9,7 +9,14 @@
       "tests": "AuthCommandTests (8 tests)",
       "jobs": ["JOB-079"],
       "notes": "Closure-captured IServiceProvider pattern. TextWriter injection for testability. Wired in Program.cs."
+    },
+    "session_commands": {
+      "status": "complete",
+      "implementation": "SessionCommand (list/show/resume/delete/prune subcommands)",
+      "tests": "SessionCommandTests (28 tests)",
+      "jobs": ["JOB-080"],
+      "notes": "Follows AuthCommand pattern. show supports --format md/json/yaml. resume validates session is not complete. delete wired to new ISessionManager.DeleteSessionAsync. prune uses LopenOptions.Session.SessionRetention."
     }
   },
-  "last_updated": "2026-02-16T04:15:00Z"
+  "last_updated": "2026-02-16T04:45:00Z"
 }
