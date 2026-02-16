@@ -746,6 +746,7 @@ Every TUI component must be designed so that it can be rendered with injected st
 - [ ] [TUI-46] Components accept injected data with no live dependencies in preview
 - [ ] [TUI-47] Components self-register with gallery for automatic listing
 - [ ] [TUI-48] Stub data exercises multiple visual states (empty, populated, error, loading)
+- [ ] [TUI-49] All components tested via the `lopen test tui` command and fully functional
 
 ---
 

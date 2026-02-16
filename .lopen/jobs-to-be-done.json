@@ -311,7 +311,7 @@
     "requirement_module": "tui",
     "description": "Create 'lopen test tui' CLI command that launches the interactive component gallery",
     "status": "open",
-    "priority": 2,
+    "priority": 1,
     "notes": "ComponentGallery registry exists with self-registered components, but no CLI command exposes it. TUI-42 requires 'lopen test tui' to launch an interactive gallery."
   },
   {
