@@ -635,7 +635,140 @@ public class ToolHandlerBinderTests
         Assert.Contains("verify_task_completion", result);
     }
 
+    [Fact]
+    public async Task HandleReadResearch_TopicFileNotFound_ReturnsError()
+    {
+        _fileSystem.Directories.Add("/test/project/docs/requirements/core");
+        var binder = CreateBinder();
+
+        var result = await binder.HandleReadResearch("""{"module":"core","topic":"missing"}""", CancellationToken.None);
+        Assert.Contains("error", result);
+        Assert.Contains("RESEARCH-missing.md", result);
+    }
+
+    [Fact]
+    public async Task HandleReadResearch_DirectoryNotFound_ReturnsError()
+    {
+        var binder = CreateBinder();
+        var result = await binder.HandleReadResearch("""{"module":"nonexistent"}""", CancellationToken.None);
+        Assert.Contains("error", result);
+        Assert.Contains("Research directory not found", result);
+    }
+
+    [Fact]
+    public async Task HandleReadSpec_SectionNoMatch_ReturnsError()
+    {
+        _fileSystem.Files["/test/project/docs/requirements/core/SPECIFICATION.md"] = "# Spec\n## Other\nContent";
+        _sectionExtractor.Sections = [];
+        var binder = CreateBinder();
+
+        var result = await binder.HandleReadSpec("""{"module":"core","section":"NonExistent"}""", CancellationToken.None);
+        Assert.Contains("error", result);
+        Assert.Contains("NonExistent", result);
+        Assert.Contains("not found in specification", result);
+    }
+
+    [Fact]
+    public async Task HandleReadSpec_MissingModuleParam_ReturnsError()
+    {
+        var binder = CreateBinder();
+        var result = await binder.HandleReadSpec("{}", CancellationToken.None);
+        Assert.Contains("error", result);
+        Assert.Contains("Specification not found", result);
+    }
+
+    [Fact]
+    public async Task HandleVerifyComponentCompletion_MissingComponentId_ReturnsError()
+    {
+        var binder = CreateBinder();
+        var result = await binder.HandleVerifyComponentCompletion("{}", CancellationToken.None);
+        Assert.Contains("error", result);
+        Assert.Contains("component_id is required", result);
+    }
+
+    [Fact]
+    public async Task HandleVerifyModuleCompletion_MissingModuleId_ReturnsError()
+    {
+        var binder = CreateBinder();
+        var result = await binder.HandleVerifyModuleCompletion("{}", CancellationToken.None);
+        Assert.Contains("error", result);
+        Assert.Contains("module_id is required", result);
+    }
+
+    [Fact]
+    public async Task HandleLogResearch_DefaultTopicWhenNotSpecified()
+    {
+        var binder = CreateBinder();
+
+        var result = await binder.HandleLogResearch("""{"module":"core","content":"# Findings"}""", CancellationToken.None);
+        Assert.Contains("success", result);
+        Assert.Contains("RESEARCH-general.md", result);
+        Assert.True(_fileSystem.Files.ContainsKey("/test/project/docs/requirements/core/RESEARCH-general.md"));
+    }
+
+    [Fact]
+    public async Task HandleLogResearch_MissingParams_ReturnsError()
+    {
+        var binder = CreateBinder();
+        var result = await binder.HandleLogResearch("{}", CancellationToken.None);
+        Assert.Contains("error", result);
+        Assert.Contains("content is required", result);
+    }
+
+    [Fact]
+    public async Task HandleUpdateTaskStatus_MissingTaskId_ReturnsError()
+    {
+        var binder = CreateBinder();
+        var result = await binder.HandleUpdateTaskStatus("""{"status":"in-progress"}""", CancellationToken.None);
+        Assert.Contains("error", result);
+        Assert.Contains("task_id and status are required", result);
+    }
+
+    [Fact]
+    public async Task HandleReportProgress_MissingSummary_FallsBackToRawParameters()
+    {
+        var binder = CreateBinder();
+        var result = await binder.HandleReportProgress("raw progress text", CancellationToken.None);
+        Assert.Contains("success", result);
+        Assert.Contains("raw progress text", result);
+    }
+
+    [Fact]
+    public async Task HandleGetCurrentContext_ReturnsJsonWithAllFields()
+    {
+        _engine.CurrentStep = WorkflowStep.DraftSpecification;
+        _engine.IsComplete = false;
+        var binder = CreateBinder();
+
+        var result = await binder.HandleGetCurrentContext("{}", CancellationToken.None);
+        var context = JsonSerializer.Deserialize<Dictionary<string, string>>(result);
+
+        Assert.NotNull(context);
+        Assert.Equal("DraftSpecification", context["step"]);
+        Assert.Equal("RequirementGathering", context["phase"]);
+        Assert.Equal("False", context["is_complete"]);
+        Assert.Contains("permitted_triggers", context.Keys);
+    }
+
+    [Fact]
+    public void BindHandler_UnknownToolName_ReturnsFalse()
+    {
+        var registry = new RegisteredOnlyToolRegistry();
+        var result = registry.BindHandler("nonexistent_tool", (_, _) => Task.FromResult(""));
+        Assert.False(result);
+    }
+
     // --- Stubs ---
+
+    private sealed class RegisteredOnlyToolRegistry : IToolRegistry
+    {
+        private readonly HashSet<string> _registered = new(StringComparer.OrdinalIgnoreCase);
+        public void RegisterTool(LopenToolDefinition tool) => _registered.Add(tool.Name);
+        public IReadOnlyList<LopenToolDefinition> GetToolsForPhase(WorkflowPhase phase) => [];
+        public IReadOnlyList<LopenToolDefinition> GetAllTools() => [];
+        public bool BindHandler(string toolName, Func<string, CancellationToken, Task<string>> handler) =>
+            _registered.Contains(toolName);
+    }
 
     private sealed class StubOracleVerifier : Lopen.Llm.IOracleVerifier
     {

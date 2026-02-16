@@ -841,9 +841,9 @@
     "requirement_code": "LLM-05",
     "requirement_module": "llm",
     "description": "Write unit tests for all tool handler implementations",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Once tool handlers are implemented (JOB-003), each handler needs unit tests verifying correct behavior."
+    "notes": "12 new edge case tests for tool handlers: missing params, file-not-found, section-no-match, default topics, unknown tool binding. 57 total tool handler tests. All 1987 tests pass."
   },
   {
     "id": "JOB-095",
