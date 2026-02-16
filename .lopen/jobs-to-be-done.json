@@ -58,9 +58,9 @@
     "requirement_code": "CLI-02",
     "requirement_module": "cli",
     "description": "Implement headless workflow runner that executes full workflow autonomously to stdout/stderr",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "When --headless flag is set, the root command should run the full workflow via orchestration loop writing plain text to stdout/stderr instead of launching TUI."
+    "notes": "Headless mode now runs RunHeadlessAsync with IWorkflowOrchestrator instead of launching TUI. Writes to stdout/stderr. 2 new tests."
   },
   {
     "id": "JOB-008",

@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Lopen.Core.Workflow;
 using Lopen.Storage;
 using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,8 @@ public static class RootCommandHandler
                             services, parseResult, stderr, cancellationToken);
                         if (headlessError is not null)
                             return headlessError.Value;
+
+                        return await RunHeadlessAsync(services, parseResult, stdout, stderr, cancellationToken);
                     }
 
                     var (sessionId, resolveError) = await PhaseCommands.ResolveSessionAsync(
@@ -60,5 +63,57 @@ public static class RootCommandHandler
                 }
             });
         };
+    }
+
+    /// <summary>
+    /// Runs the full workflow autonomously in headless mode, writing plain text to stdout/stderr.
+    /// </summary>
+    internal static async Task<int> RunHeadlessAsync(
+        IServiceProvider services, ParseResult parseResult,
+        TextWriter stdout, TextWriter stderr, CancellationToken cancellationToken)
+    {
+        var (sessionId, resolveError) = await PhaseCommands.ResolveSessionAsync(
+            services, parseResult, cancellationToken);
+        if (resolveError is not null)
+        {
+            await stderr.WriteLineAsync(resolveError);
+            return ExitCodes.Failure;
+        }
+
+        if (sessionId is not null)
+        {
+            await stdout.WriteLineAsync($"Resuming session: {sessionId}");
+        }
+
+        var orchestrator = services.GetService<IWorkflowOrchestrator>();
+        if (orchestrator is null)
+        {
+            await stderr.WriteLineAsync("Workflow engine not available. Ensure project root is configured.");
+            return ExitCodes.Failure;
+        }
+
+        var module = await PhaseCommands.ResolveModuleNameAsync(services, sessionId, cancellationToken);
+        if (module is null)
+        {
+            await stderr.WriteLineAsync("No module specified. Create or resume a session first.");
+            return ExitCodes.Failure;
+        }
+
+        await stdout.WriteLineAsync($"Running headless workflow for module: {module}");
+        var result = await orchestrator.RunAsync(module, cancellationToken);
+
+        if (result.IsComplete)
+        {
+            await stdout.WriteLineAsync($"Module '{module}' completed after {result.IterationCount} iterations.");
+            return ExitCodes.Success;
+        }
+
+        if (result.WasInterrupted)
+        {
+            await stderr.WriteLineAsync(result.Summary ?? "Workflow interrupted.");
+            return ExitCodes.Failure;
+        }
+
+        return ExitCodes.Success;
     }
 }

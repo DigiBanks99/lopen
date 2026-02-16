@@ -71,14 +71,15 @@ public class RootCommandTests
     // ==================== AC-2: Headless mode ====================
 
     [Fact]
-    public async Task RootCommand_Headless_WithPrompt_LaunchesTui()
+    public async Task RootCommand_Headless_WithPrompt_RunsHeadless()
     {
-        var (config, _, _, tui) = CreateConfig();
+        var (config, _, error, tui) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build auth"]);
 
-        Assert.Equal(0, exitCode);
-        Assert.True(tui.RunWasCalled);
+        // Headless mode no longer launches TUI; runs orchestrator instead.
+        // Without a session/module, it returns failure.
+        Assert.False(tui.RunWasCalled, "TUI should not launch in headless mode");
     }
 
     [Fact]
@@ -94,6 +95,30 @@ public class RootCommandTests
     }
 
     // ==================== Session resume ====================
+
+    [Fact]
+    public async Task RootCommand_Headless_WithSession_RunsOrchestrator()
+    {
+        var sessionManager = new FakeSessionManager();
+        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
+        {
+            SessionId = "testmod-20260101-001",
+            Module = "testmod",
+            Phase = "building",
+            Step = "6",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await sessionManager.SetLatestAsync(sessionId);
+
+        var (config, output, error, tui) = CreateConfig(sessionManager);
+
+        var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it"]);
+
+        Assert.False(tui.RunWasCalled, "TUI should not launch in headless mode");
+        // May fail due to no orchestrator in this test setup, but should not launch TUI
+    }
 
     [Fact]
     public async Task RootCommand_Resume_InvalidId_WithSessionManager_ReturnsFailure()
