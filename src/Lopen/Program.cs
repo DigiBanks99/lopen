@@ -29,6 +29,9 @@ rootCommand.Add(AuthCommand.Create(host.Services));
 rootCommand.Add(SessionCommand.Create(host.Services));
 rootCommand.Add(ConfigCommand.Create(host.Services));
 rootCommand.Add(RevertCommand.Create(host.Services));
+rootCommand.Add(PhaseCommands.CreateSpec(host.Services));
+rootCommand.Add(PhaseCommands.CreatePlan(host.Services));
+rootCommand.Add(PhaseCommands.CreateBuild(host.Services));
 
 var config = new CommandLineConfiguration(rootCommand);
 

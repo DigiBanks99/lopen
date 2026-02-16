@@ -30,7 +30,14 @@
       "tests": "RevertCommandTests (7 tests)",
       "jobs": ["JOB-081"],
       "notes": "Resolves last commit SHA from session state. Updates session state after revert (clears LastTaskCompletionCommitSha)."
+    },
+    "phase_commands": {
+      "status": "complete",
+      "implementation": "PhaseCommands (spec/plan/build subcommands with prerequisite validation)",
+      "tests": "PhaseCommandTests (9 tests)",
+      "jobs": ["JOB-078"],
+      "notes": "spec starts requirement gathering. plan validates spec exists via IModuleScanner. build validates spec + plan via IModuleScanner and IPlanManager. Workflow engine wiring deferred to TUI/headless jobs."
     }
   },
-  "last_updated": "2026-02-16T05:00:00Z"
+  "last_updated": "2026-02-16T06:00:00Z"
 }

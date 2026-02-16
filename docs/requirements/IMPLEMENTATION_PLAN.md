@@ -1,30 +1,32 @@
 # Implementation Plan
 
-## Current Job: JOB-081 — Implement `lopen config show` and `lopen revert` Subcommands
+## Current Job: JOB-078 — Implement spec/plan/build Phase Subcommands
 
 **Module**: cli  
 **Priority**: P4  
 **Status**: ✅ Complete  
-**Description**: Implement `lopen config show` (with `--json` flag) and `lopen revert` subcommands wired to Configuration and Core modules.
+**Description**: Implement `lopen spec`, `lopen plan`, `lopen build` subcommands with prerequisite validation (plan requires spec, build requires spec + plan).
 
 ### Acceptance Criteria
 
-- [x] AC14: `lopen config show` displays resolved configuration with sources (table format default, `--json` for JSON)
-- [x] AC15: `lopen revert` rolls back to the last task-completion commit and updates session state
+- [x] AC-01: `lopen spec` starts requirement-gathering phase
+- [x] AC-04: `lopen plan` validates spec exists before proceeding
+- [x] AC-06: `lopen build` validates spec + plan exist before proceeding
+- [x] Error messages guide user to run prerequisite commands
 
 ### Tasks
 
-- [x] **1. Register `IConfigurationRoot` in DI** — Updated `AddLopenConfiguration` to preserve and register it
-- [x] **2. Create `ConfigCommand.cs`** — `config show` with `--json` option using `ConfigurationDiagnostics`
-- [x] **3. Create `RevertCommand.cs`** — Resolves commit SHA from session state, calls `IRevertService`, updates session state
-- [x] **4. Wire in `Program.cs`** — Add both commands to root
-- [x] **5. Write tests** — 4 ConfigCommandTests + 7 RevertCommandTests + FakeRevertService
-- [x] **6. Validate** — 1124 tests pass, formatting clean
+- [x] **1. Create `PhaseCommands.cs`** — Factory methods for spec/plan/build with prerequisite validation
+- [x] **2. Wire in `Program.cs`** — Add all three commands to root
+- [x] **3. Create test fakes** — FakeModuleScanner + FakePlanManager
+- [x] **4. Write tests** — 9 PhaseCommandTests covering success and all failure paths
+- [x] **5. Validate** — 1133 tests pass, formatting clean
 
 ### Recently Completed Jobs
 
 | Job | Module | Description |
 |-----|--------|-------------|
+| JOB-078 | cli | Phase subcommands (spec/plan/build) with prerequisite validation |
 | JOB-081 | cli | Config show + revert subcommands |
 | JOB-080 | cli | Session CLI subcommands (list/show/resume/delete/prune) |
 | JOB-079 | cli | Auth CLI subcommands (login/status/logout) |

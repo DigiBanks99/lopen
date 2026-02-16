@@ -56,8 +56,12 @@ public class LlmAcceptanceCriteriaTests
         var service = new CopilotLlmService(
             counter, new StubAuthErrorHandler(), NullLogger<CopilotLlmService>.Instance);
 
-        try { await service.InvokeAsync("prompt1", "model1", [], default); } catch { }
-        try { await service.InvokeAsync("prompt2", "model2", [], default); } catch { }
+        try
+        { await service.InvokeAsync("prompt1", "model1", [], default); }
+        catch { }
+        try
+        { await service.InvokeAsync("prompt2", "model2", [], default); }
+        catch { }
 
         Assert.Equal(2, counter.GetClientCallCount);
     }
