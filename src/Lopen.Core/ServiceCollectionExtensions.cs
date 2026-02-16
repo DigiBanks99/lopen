@@ -36,6 +36,7 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IModuleLister, ModuleLister>();
             services.AddSingleton<IStateAssessor, CodebaseStateAssessor>();
             services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
+            services.AddSingleton<IWorkflowOrchestrator, WorkflowOrchestrator>();
         }
 
         services.AddSingleton<IPhaseTransitionController, PhaseTransitionController>();

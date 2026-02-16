@@ -79,7 +79,16 @@
         "JOB-001"
       ],
       "notes": "IStateAssessor and IWorkflowEngine conditional on projectRoot (depend on IFileSystem, IModuleScanner). IPhaseTransitionController registered unconditionally."
+    },
+    "orchestration_loop": {
+      "status": "complete",
+      "implementation": "WorkflowOrchestrator (IWorkflowOrchestrator) + OrchestrationResult",
+      "tests": "WorkflowOrchestratorTests (21 tests)",
+      "jobs": [
+        "JOB-002"
+      ],
+      "notes": "Drives assess \u2192 guardrails \u2192 LLM invoke \u2192 transition loop. Human gate for spec step. Registered in DI via AddLopenCore()."
     }
   },
-  "last_updated": "2026-02-16T16:30:00Z"
+  "last_updated": "2026-02-16T16:40:00Z"
 }

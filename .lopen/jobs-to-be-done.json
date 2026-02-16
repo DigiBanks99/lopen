@@ -13,9 +13,9 @@
     "requirement_code": "CORE-02",
     "requirement_module": "core",
     "description": "Implement the main orchestration loop that drives workflow steps from start to completion",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "No main loop exists. Need an orchestrator that: (1) determines current step via IStateAssessor, (2) invokes ILlmService for each step, (3) evaluates guardrails, (4) triggers state transitions, (5) auto-saves state. This is the critical missing 'assembler' connecting all modules."
+    "notes": "Implemented WorkflowOrchestrator with IWorkflowOrchestrator interface. Loop: assess \u2192 guardrails \u2192 LLM invoke \u2192 transition \u2192 render. 21 tests. Registered in DI."
   },
   {
     "id": "JOB-003",

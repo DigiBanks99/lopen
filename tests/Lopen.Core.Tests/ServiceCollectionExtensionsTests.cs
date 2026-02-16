@@ -156,6 +156,24 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddLopenCore_WithProjectRoot_RegistersWorkflowOrchestrator()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddSingleton<Lopen.Llm.ILlmService, NullLlmService>();
+        services.AddSingleton<Lopen.Llm.IPromptBuilder, NullPromptBuilder>();
+        services.AddSingleton<Lopen.Llm.IToolRegistry, NullToolRegistry>();
+        services.AddSingleton<Lopen.Llm.IModelSelector, NullModelSelector>();
+        services.AddLopenCore(projectRoot: "/tmp");
+
+        var provider = services.BuildServiceProvider();
+        var service = provider.GetService<IWorkflowOrchestrator>();
+
+        Assert.NotNull(service);
+    }
+
+    [Fact]
     public void AddLopenCore_WorkflowEngine_IsSingleton()
     {
         var services = new ServiceCollection();
@@ -211,5 +229,31 @@ public class ServiceCollectionExtensionsTests
         public void CreateSymlink(string linkPath, string targetPath) { }
         public string? GetSymlinkTarget(string linkPath) => null;
         public DateTime GetLastWriteTimeUtc(string path) => DateTime.UtcNow;
+    }
+
+    private sealed class NullLlmService : Lopen.Llm.ILlmService
+    {
+        public Task<Lopen.Llm.LlmInvocationResult> InvokeAsync(string systemPrompt, string model,
+            IReadOnlyList<Lopen.Llm.LopenToolDefinition> tools, CancellationToken ct = default) =>
+            Task.FromResult(new Lopen.Llm.LlmInvocationResult("", new Lopen.Llm.TokenUsage(0, 0, 0, 0, false), 0, true));
+    }
+
+    private sealed class NullPromptBuilder : Lopen.Llm.IPromptBuilder
+    {
+        public string BuildSystemPrompt(Lopen.Llm.WorkflowPhase phase, string module, string? component, string? task,
+            IReadOnlyDictionary<string, string>? contextSections = null) => "";
+    }
+
+    private sealed class NullToolRegistry : Lopen.Llm.IToolRegistry
+    {
+        public IReadOnlyList<Lopen.Llm.LopenToolDefinition> GetToolsForPhase(Lopen.Llm.WorkflowPhase phase) => [];
+        public void RegisterTool(Lopen.Llm.LopenToolDefinition tool) { }
+        public IReadOnlyList<Lopen.Llm.LopenToolDefinition> GetAllTools() => [];
+    }
+
+    private sealed class NullModelSelector : Lopen.Llm.IModelSelector
+    {
+        public Lopen.Llm.ModelFallbackResult SelectModel(Lopen.Llm.WorkflowPhase phase) =>
+            new("gpt-4", false);
     }
 }
