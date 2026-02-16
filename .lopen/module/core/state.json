@@ -228,7 +228,16 @@
         "JOB-037"
       ],
       "notes": "Pause gate in orchestrator's main loop: checks IsPaused, auto-saves with UserPause, renders Paused/Resumed messages, blocks via WaitIfPausedAsync. DI registered as singleton."
+    },
+    "module_selection": {
+      "status": "complete",
+      "implementation": "IModuleSelectionService + ModuleSelectionService. Lists modules via IModuleLister with status indicators (○/◐/●) and progress counts. Selection by number or name. Wired into PhaseCommands.ResolveModuleNameAsync as fallback.",
+      "tests": "ModuleSelectionServiceTests (17 tests)",
+      "jobs": [
+        "JOB-074"
+      ],
+      "notes": "DI registered in AddLopenCore(). Headless mode gracefully returns null (PromptAsync returns null). Interactive mode prompts user with numbered list."
     }
   },
-  "last_updated": "2026-02-16T21:45:00Z"
+  "last_updated": "2026-02-16T22:00:00Z"
 }

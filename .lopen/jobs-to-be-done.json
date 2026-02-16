@@ -661,9 +661,9 @@
     "requirement_code": "CORE-24",
     "requirement_module": "core",
     "description": "Implement module selection UI listing modules with current state for user choice",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "ModuleLister can list modules. Need to present selection UI in TUI (SelectionModal) or prompt in headless mode."
+    "notes": "IModuleSelectionService + ModuleSelectionService created. Lists modules with status indicators (\u25cb/\u25d0/\u25cf), progress counts, selection by number or name. Wired into PhaseCommands.ResolveModuleNameAsync as fallback. DI registered in AddLopenCore(). 17 new tests. All 1765 tests pass."
   },
   {
     "id": "JOB-075",

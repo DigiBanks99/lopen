@@ -36,6 +36,7 @@ public static class ServiceCollectionExtensions
                     sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ModuleScanner>>(),
                     projectRoot));
             services.AddSingleton<IModuleLister, ModuleLister>();
+            services.AddSingleton<IModuleSelectionService, ModuleSelectionService>();
             services.AddSingleton<IStateAssessor, CodebaseStateAssessor>();
             services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
             services.AddSingleton<IFailureHandler>(sp =>

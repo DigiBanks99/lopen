@@ -390,19 +390,30 @@ public static class PhaseCommands
     }
 
     /// <summary>
-    /// Resolves the module name from the session state.
+    /// Resolves the module name from the session state, falling back to module selection if needed.
     /// </summary>
     internal static async Task<string?> ResolveModuleNameAsync(
         IServiceProvider services, SessionId? sessionId, CancellationToken cancellationToken)
     {
-        if (sessionId is null)
-            return null;
+        // Try to resolve from session state first
+        if (sessionId is not null)
+        {
+            var sessionManager = services.GetService<ISessionManager>();
+            if (sessionManager is not null)
+            {
+                var state = await sessionManager.LoadSessionStateAsync(sessionId, cancellationToken);
+                if (state?.Module is not null)
+                    return state.Module;
+            }
+        }
 
-        var sessionManager = services.GetService<ISessionManager>();
-        if (sessionManager is null)
-            return null;
+        // Fall back to interactive module selection (CORE-24)
+        var moduleSelector = services.GetService<IModuleSelectionService>();
+        if (moduleSelector is not null)
+        {
+            return await moduleSelector.SelectModuleAsync(cancellationToken);
+        }
 
-        var state = await sessionManager.LoadSessionStateAsync(sessionId, cancellationToken);
-        return state?.Module;
+        return null;
     }
 }
