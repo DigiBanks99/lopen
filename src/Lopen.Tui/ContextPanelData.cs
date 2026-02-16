@@ -86,4 +86,4 @@ public sealed record ModuleSectionData
 }
 
 /// <summary>An active resource document.</summary>
-public sealed record ResourceItem(string Label);
+public sealed record ResourceItem(string Label, string? Content = null);

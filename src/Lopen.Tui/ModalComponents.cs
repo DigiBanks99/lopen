@@ -116,3 +116,59 @@ public sealed class SessionResumeModalComponent : ITuiComponent
         return text.Length >= width ? text[..width] : text.PadRight(width);
     }
 }
+
+/// <summary>
+/// Renders the resource viewer modal showing scrollable content of an active resource.
+/// Displays title bar, content lines with scroll, and footer with Esc/arrow hints.
+/// </summary>
+public sealed class ResourceViewerModalComponent : ITuiComponent
+{
+    public string Name => "ResourceViewer";
+    public string Description => "Resource viewer modal with scrollable content";
+
+    /// <summary>
+    /// Renders the resource viewer as an array of plain-text lines.
+    /// </summary>
+    public string[] Render(ResourceViewerData data, ScreenRect region)
+    {
+        if (region.Width <= 0 || region.Height <= 0)
+            return [];
+
+        var lines = new List<string>();
+        var width = region.Width;
+        // Reserve 3 lines: title, separator, footer
+        var contentHeight = Math.Max(0, region.Height - 3);
+
+        // Title bar
+        var title = $" 📄 {data.Label} ";
+        var bar = title.Length < width
+            ? title + new string('─', width - title.Length)
+            : title[..width];
+        lines.Add(bar);
+
+        // Content lines with scroll
+        var offset = Math.Clamp(data.ScrollOffset, 0, Math.Max(0, data.Lines.Count - contentHeight));
+        var visible = data.Lines.Skip(offset).Take(contentHeight);
+        foreach (var line in visible)
+        {
+            lines.Add(line.Length >= width ? line[..width] : line);
+        }
+
+        // Pad if content doesn't fill region
+        while (lines.Count < region.Height - 1)
+            lines.Add(string.Empty);
+
+        // Footer
+        var scrollInfo = data.Lines.Count > contentHeight
+            ? $"Line {offset + 1}-{Math.Min(offset + contentHeight, data.Lines.Count)} of {data.Lines.Count}"
+            : "All content visible";
+        lines.Add($" Esc: Close  ↑/↓: Scroll  {scrollInfo}");
+
+        return lines.Take(region.Height).Select(l => PadToWidth(l, width)).ToArray();
+    }
+
+    private static string PadToWidth(string text, int width)
+    {
+        return text.Length >= width ? text[..width] : text.PadRight(width);
+    }
+}

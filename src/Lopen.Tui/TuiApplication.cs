@@ -11,7 +11,8 @@ internal enum TuiModalState
 {
     None,
     LandingPage,
-    SessionResume
+    SessionResume,
+    ResourceViewer
 }
 
 /// <summary>
@@ -33,6 +34,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly IUserPromptQueue? _userPromptQueue;
     private readonly LandingPageComponent _landingPage;
     private readonly SessionResumeModalComponent _sessionResumeModal;
+    private readonly ResourceViewerModalComponent _resourceViewerModal;
     private readonly ISessionDetector? _sessionDetector;
     private readonly bool _showLandingPage;
     private readonly ILogger<TuiApplication> _logger;
@@ -56,6 +58,7 @@ internal sealed class TuiApplication : ITuiApplication
     {
         ModuleName = "", PhaseName = "", StepProgress = "", TaskProgress = "", LastActivity = ""
     };
+    private ResourceViewerData _resourceViewerData = new() { Label = "" };
 
     // Throttle for data provider refresh (avoid calling async services every frame)
     private DateTime _lastProviderRefresh = DateTime.MinValue;
@@ -97,6 +100,7 @@ internal sealed class TuiApplication : ITuiApplication
         _userPromptQueue = userPromptQueue;
         _landingPage = new LandingPageComponent();
         _sessionResumeModal = new SessionResumeModalComponent();
+        _resourceViewerModal = new ResourceViewerModalComponent();
         _sessionDetector = sessionDetector;
         _showLandingPage = showLandingPage;
     }
@@ -263,6 +267,11 @@ internal sealed class TuiApplication : ITuiApplication
     public void UpdatePromptArea(PromptAreaData data) => _promptData = data;
 
     /// <summary>
+    /// Updates the context panel data for the next render frame.
+    /// </summary>
+    public void UpdateContextData(ContextPanelData data) => _contextData = data;
+
+    /// <summary>
     /// Updates the landing page data for the modal overlay.
     /// </summary>
     public void UpdateLandingPage(LandingPageData data) => _landingPageData = data;
@@ -290,6 +299,13 @@ internal sealed class TuiApplication : ITuiApplication
             if (_modalState == TuiModalState.SessionResume)
             {
                 HandleSessionResumeInput(keyInfo);
+                continue;
+            }
+
+            // Resource viewer modal: Esc closes, Up/Down scrolls
+            if (_modalState == TuiModalState.ResourceViewer)
+            {
+                HandleResourceViewerInput(keyInfo);
                 continue;
             }
 
@@ -383,6 +399,18 @@ internal sealed class TuiApplication : ITuiApplication
                     };
                 }
                 break;
+
+            case KeyAction.ViewResource1:
+            case KeyAction.ViewResource2:
+            case KeyAction.ViewResource3:
+            case KeyAction.ViewResource4:
+            case KeyAction.ViewResource5:
+            case KeyAction.ViewResource6:
+            case KeyAction.ViewResource7:
+            case KeyAction.ViewResource8:
+            case KeyAction.ViewResource9:
+                OpenResourceViewer(action - KeyAction.ViewResource1);
+                break;
         }
     }
 
@@ -402,6 +430,13 @@ internal sealed class TuiApplication : ITuiApplication
         {
             var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
             RenderRegion(ctx, region, _sessionResumeModal.Render(_sessionResumeData, region));
+            return;
+        }
+
+        if (_modalState == TuiModalState.ResourceViewer)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _resourceViewerModal.Render(_resourceViewerData, region));
             return;
         }
 
@@ -504,6 +539,47 @@ internal sealed class TuiApplication : ITuiApplication
         var entry = entries[idx];
         entries[idx] = entry with { IsExpanded = !entry.IsExpanded };
         _activityData = _activityData with { Entries = entries };
+    }
+
+    internal void OpenResourceViewer(int resourceIndex)
+    {
+        if (resourceIndex < 0 || resourceIndex >= _contextData.Resources.Count)
+            return;
+
+        var resource = _contextData.Resources[resourceIndex];
+        var contentLines = (resource.Content ?? "(No content available)")
+            .Split('\n')
+            .ToList();
+
+        _resourceViewerData = new ResourceViewerData
+        {
+            Label = resource.Label,
+            Lines = contentLines,
+            ScrollOffset = 0
+        };
+        _modalState = TuiModalState.ResourceViewer;
+    }
+
+    private void HandleResourceViewerInput(ConsoleKeyInfo keyInfo)
+    {
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+            case ConsoleKey.UpArrow:
+                _resourceViewerData = _resourceViewerData with
+                {
+                    ScrollOffset = Math.Max(0, _resourceViewerData.ScrollOffset - 1)
+                };
+                break;
+            case ConsoleKey.DownArrow:
+                _resourceViewerData = _resourceViewerData with
+                {
+                    ScrollOffset = _resourceViewerData.ScrollOffset + 1
+                };
+                break;
+        }
     }
 
     private async Task CheckForActiveSessionAsync(CancellationToken cancellationToken)

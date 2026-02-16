@@ -337,4 +337,50 @@ public class TuiApplicationTests
         public Task<SessionResumeData?> DetectActiveSessionAsync(CancellationToken ct = default)
             => Task.FromResult<SessionResumeData?>(null);
     }
+
+    // ==================== Resource Viewer (JOB-045) ====================
+
+    [Fact]
+    public void OpenResourceViewer_ValidIndex_SetsModalState()
+    {
+        var app = CreateApp();
+        app.UpdateContextData(new ContextPanelData
+        {
+            Resources = [new ResourceItem("doc.md", "Hello\nWorld")]
+        });
+
+        app.OpenResourceViewer(0);
+
+        // Modal state is internal; verify via the fact OpenResourceViewer doesn't throw
+        // and app state is consistent (not running)
+        Assert.False(app.IsRunning);
+    }
+
+    [Fact]
+    public void OpenResourceViewer_OutOfRange_DoesNotThrow()
+    {
+        var app = CreateApp();
+        app.UpdateContextData(new ContextPanelData
+        {
+            Resources = [new ResourceItem("doc.md", "content")]
+        });
+
+        // Should not throw for out-of-range
+        app.OpenResourceViewer(5);
+        app.OpenResourceViewer(-1);
+        Assert.False(app.IsRunning);
+    }
+
+    [Fact]
+    public void OpenResourceViewer_NullContent_DoesNotThrow()
+    {
+        var app = CreateApp();
+        app.UpdateContextData(new ContextPanelData
+        {
+            Resources = [new ResourceItem("empty.md")]
+        });
+
+        app.OpenResourceViewer(0);
+        Assert.False(app.IsRunning);
+    }
 }

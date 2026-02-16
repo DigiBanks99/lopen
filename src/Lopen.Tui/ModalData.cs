@@ -54,3 +54,18 @@ public sealed record SessionResumeData
     /// <summary>Currently selected option index (0=Resume, 1=Start New, 2=View Details).</summary>
     public int SelectedOption { get; init; }
 }
+
+/// <summary>
+/// Immutable data bag consumed by <see cref="ResourceViewerModalComponent"/> for rendering.
+/// </summary>
+public sealed record ResourceViewerData
+{
+    /// <summary>Resource label/title.</summary>
+    public required string Label { get; init; }
+
+    /// <summary>Resource content lines.</summary>
+    public IReadOnlyList<string> Lines { get; init; } = [];
+
+    /// <summary>Current scroll offset (0-based line index at top of viewport).</summary>
+    public int ScrollOffset { get; init; }
+}

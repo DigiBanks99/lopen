@@ -400,9 +400,9 @@
     "requirement_code": "TUI-12",
     "requirement_module": "tui",
     "description": "Implement numbered resource access (1-9 keys) for active resources in context panel",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "KeyboardHandler maps 1-9 to resource access. ContextPanelComponent lists active resources. Need to wire key events to resource display."
+    "notes": "Added ResourceViewerModalComponent (scrollable, Esc-dismissable), ResourceViewerData, ResourceItem.Content, OpenResourceViewer/HandleResourceViewerInput in TuiApplication. 13 new tests. All 1884 tests pass."
   },
   {
     "id": "JOB-046",

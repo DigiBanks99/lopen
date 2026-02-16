@@ -229,3 +229,99 @@ public class ModalComponentTests
         SelectedOption = 0,
     };
 }
+
+/// <summary>
+/// Tests for ResourceViewerModalComponent.
+/// Covers AC: [TUI-12] Numbered resource access (press 1-9 to view active resources).
+/// </summary>
+public class ResourceViewerModalComponentTests
+{
+    private readonly ResourceViewerModalComponent _component = new();
+    private readonly ScreenRect _region = new(0, 0, 60, 20);
+
+    [Fact]
+    public void Render_ZeroRegion_ReturnsEmpty()
+    {
+        var data = new ResourceViewerData { Label = "test.md" };
+        var lines = _component.Render(data, new ScreenRect(0, 0, 0, 0));
+        Assert.Empty(lines);
+    }
+
+    [Fact]
+    public void Render_ShowsTitleBar()
+    {
+        var data = new ResourceViewerData { Label = "README.md", Lines = ["Line 1"] };
+        var lines = _component.Render(data, _region);
+        Assert.Contains(lines, l => l.Contains("📄 README.md"));
+    }
+
+    [Fact]
+    public void Render_ShowsContentLines()
+    {
+        var data = new ResourceViewerData { Label = "file.txt", Lines = ["Hello", "World"] };
+        var lines = _component.Render(data, _region);
+        Assert.Contains(lines, l => l.TrimEnd().Contains("Hello"));
+        Assert.Contains(lines, l => l.TrimEnd().Contains("World"));
+    }
+
+    [Fact]
+    public void Render_ShowsFooterWithEscHint()
+    {
+        var data = new ResourceViewerData { Label = "file.txt", Lines = ["Line 1"] };
+        var lines = _component.Render(data, _region);
+        Assert.Contains(lines, l => l.Contains("Esc: Close"));
+    }
+
+    [Fact]
+    public void Render_ShowsAllContentVisible_WhenFitsInRegion()
+    {
+        var data = new ResourceViewerData { Label = "file.txt", Lines = ["Line 1", "Line 2"] };
+        var lines = _component.Render(data, _region);
+        Assert.Contains(lines, l => l.Contains("All content visible"));
+    }
+
+    [Fact]
+    public void Render_ShowsLineCount_WhenContentExceedsRegion()
+    {
+        var contentLines = Enumerable.Range(1, 50).Select(i => $"Line {i}").ToList();
+        var data = new ResourceViewerData { Label = "big.txt", Lines = contentLines };
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 10));
+        Assert.Contains(lines, l => l.Contains("of 50"));
+    }
+
+    [Fact]
+    public void Render_ScrollOffset_SkipsLines()
+    {
+        var contentLines = Enumerable.Range(1, 50).Select(i => $"Line {i}").ToList();
+        var data = new ResourceViewerData { Label = "big.txt", Lines = contentLines, ScrollOffset = 10 };
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 10));
+        Assert.Contains(lines, l => l.TrimEnd().Contains("Line 11"));
+        Assert.DoesNotContain(lines, l => l.TrimEnd() == "Line 1");
+    }
+
+    [Fact]
+    public void Render_NoContent_ShowsPlaceholder()
+    {
+        var data = new ResourceViewerData { Label = "empty.txt" };
+        var lines = _component.Render(data, _region);
+        // Empty Lines defaults to [], so content area is just padding
+        Assert.Equal(_region.Height, lines.Length);
+    }
+
+    [Fact]
+    public void Render_TruncatesLongLines()
+    {
+        var longLine = new string('A', 200);
+        var data = new ResourceViewerData { Label = "wide.txt", Lines = [longLine] };
+        var lines = _component.Render(data, new ScreenRect(0, 0, 40, 10));
+        Assert.All(lines, l => Assert.True(l.Length <= 40));
+    }
+
+    [Fact]
+    public void Render_PadsToRegionHeight()
+    {
+        var data = new ResourceViewerData { Label = "small.txt", Lines = ["One line"] };
+        var lines = _component.Render(data, _region);
+        Assert.Equal(_region.Height, lines.Length);
+    }
+}
