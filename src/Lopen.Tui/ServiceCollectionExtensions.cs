@@ -67,4 +67,15 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITopPanelDataProvider, TopPanelDataProvider>();
         return services;
     }
+
+    /// <summary>
+    /// Registers <see cref="ContextPanelDataProvider"/> to supply live data to the context panel.
+    /// Requires IPlanManager and IWorkflowEngine to be registered.
+    /// Call after all module registrations.
+    /// </summary>
+    public static IServiceCollection AddContextPanelDataProvider(this IServiceCollection services)
+    {
+        services.AddSingleton<IContextPanelDataProvider, ContextPanelDataProvider>();
+        return services;
+    }
 }

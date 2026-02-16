@@ -15,6 +15,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly PromptAreaComponent _promptArea;
     private readonly KeyboardHandler _keyboardHandler;
     private readonly ITopPanelDataProvider? _topPanelDataProvider;
+    private readonly IContextPanelDataProvider? _contextPanelDataProvider;
     private readonly ILogger<TuiApplication> _logger;
 
     private volatile bool _running;
@@ -33,6 +34,7 @@ internal sealed class TuiApplication : ITuiApplication
 
     // Throttle for data provider refresh (avoid calling async services every frame)
     private DateTime _lastProviderRefresh = DateTime.MinValue;
+    private DateTime _lastContextProviderRefresh = DateTime.MinValue;
     internal static readonly TimeSpan ProviderRefreshInterval = TimeSpan.FromSeconds(1);
 
     public bool IsRunning => _running;
@@ -47,7 +49,8 @@ internal sealed class TuiApplication : ITuiApplication
         PromptAreaComponent promptArea,
         KeyboardHandler keyboardHandler,
         ILogger<TuiApplication> logger,
-        ITopPanelDataProvider? topPanelDataProvider = null)
+        ITopPanelDataProvider? topPanelDataProvider = null,
+        IContextPanelDataProvider? contextPanelDataProvider = null)
     {
         _topPanel = topPanel ?? throw new ArgumentNullException(nameof(topPanel));
         _activityPanel = activityPanel ?? throw new ArgumentNullException(nameof(activityPanel));
@@ -56,6 +59,7 @@ internal sealed class TuiApplication : ITuiApplication
         _keyboardHandler = keyboardHandler ?? throw new ArgumentNullException(nameof(keyboardHandler));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _topPanelDataProvider = topPanelDataProvider;
+        _contextPanelDataProvider = contextPanelDataProvider;
     }
 
     public async Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
@@ -87,6 +91,9 @@ internal sealed class TuiApplication : ITuiApplication
 
                 // 2. Refresh top panel data from provider (throttled)
                 await RefreshTopPanelDataAsync(ct).ConfigureAwait(false);
+
+                // 2b. Refresh context panel data from provider (throttled)
+                await RefreshContextPanelDataAsync(ct).ConfigureAwait(false);
 
                 // 3. Render frame
                 renderer.Draw((ctx, _) => RenderFrame(ctx));
@@ -146,6 +153,28 @@ internal sealed class TuiApplication : ITuiApplication
 
         // Always read synchronous data (tokens, workflow) fresh each frame
         _topData = _topPanelDataProvider.GetCurrentData();
+    }
+
+    private async Task RefreshContextPanelDataAsync(CancellationToken cancellationToken)
+    {
+        if (_contextPanelDataProvider is null)
+            return;
+
+        var now = DateTime.UtcNow;
+        if (now - _lastContextProviderRefresh >= ProviderRefreshInterval)
+        {
+            _lastContextProviderRefresh = now;
+            try
+            {
+                await _contextPanelDataProvider.RefreshAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogDebug(ex, "Failed to refresh context panel async data");
+            }
+        }
+
+        _contextData = _contextPanelDataProvider.GetCurrentData();
     }
 
     /// <summary>
