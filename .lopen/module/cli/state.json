@@ -7,44 +7,45 @@
       "status": "complete",
       "implementation": "AuthCommand (login/status/logout subcommands)",
       "tests": "AuthCommandTests (8 tests)",
-      "jobs": ["JOB-079"],
-      "notes": "Closure-captured IServiceProvider pattern. TextWriter injection for testability. Wired in Program.cs."
+      "jobs": ["JOB-079"]
     },
     "session_commands": {
       "status": "complete",
       "implementation": "SessionCommand (list/show/resume/delete/prune subcommands)",
       "tests": "SessionCommandTests (28 tests)",
-      "jobs": ["JOB-080"],
-      "notes": "Follows AuthCommand pattern. show supports --format md/json/yaml. resume validates session is not complete. delete wired to new ISessionManager.DeleteSessionAsync. prune uses LopenOptions.Session.SessionRetention."
+      "jobs": ["JOB-080"]
     },
     "config_commands": {
       "status": "complete",
       "implementation": "ConfigCommand (show with --json flag)",
       "tests": "ConfigCommandTests (4 tests)",
-      "jobs": ["JOB-081"],
-      "notes": "Uses ConfigurationDiagnostics for formatting. IConfigurationRoot now registered in DI."
+      "jobs": ["JOB-081"]
     },
     "revert_command": {
       "status": "complete",
       "implementation": "RevertCommand (revert to last task-completion commit)",
       "tests": "RevertCommandTests (7 tests)",
-      "jobs": ["JOB-081"],
-      "notes": "Resolves last commit SHA from session state. Updates session state after revert (clears LastTaskCompletionCommitSha)."
+      "jobs": ["JOB-081"]
     },
     "phase_commands": {
       "status": "complete",
-      "implementation": "PhaseCommands (spec/plan/build subcommands with prerequisite validation)",
+      "implementation": "PhaseCommands (spec/plan/build with prerequisite + headless validation)",
       "tests": "PhaseCommandTests (15 tests)",
-      "jobs": ["JOB-078"],
-      "notes": "spec starts requirement gathering. plan validates spec exists via IModuleScanner. build validates spec + plan via IModuleScanner and IPlanManager. Headless mode validates --prompt or active session (AC-19)."
+      "jobs": ["JOB-078"]
     },
     "global_options": {
       "status": "complete",
       "implementation": "GlobalOptions (--headless/--quiet/-q, --prompt/-p) + ExitCodes (0/1/2)",
-      "tests": "GlobalOptionsTests (6 tests) + PhaseCommandTests headless/prompt tests",
-      "jobs": ["JOB-082"],
-      "notes": "Recursive options available on all commands. --help/--version provided by System.CommandLine. Exit code 2 defined but behavioral use deferred to --unattended mode."
+      "tests": "GlobalOptionsTests (6 tests)",
+      "jobs": ["JOB-082"]
+    },
+    "integration_tests": {
+      "status": "complete",
+      "implementation": "CliIntegrationTests covering DI wiring, command registration, global flags",
+      "tests": "CliIntegrationTests (12 tests)",
+      "jobs": ["JOB-083"],
+      "notes": "20/25 ACs covered. TUI, CI-level, and full E2E workflow ACs deferred."
     }
   },
-  "last_updated": "2026-02-16T07:00:00Z"
+  "last_updated": "2026-02-16T08:00:00Z"
 }
