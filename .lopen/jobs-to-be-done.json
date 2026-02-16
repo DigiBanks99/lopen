@@ -694,9 +694,9 @@
     "id": "JOB-087",
     "requirement_module": "tui",
     "description": "Implement main activity area with scrolling, progressive disclosure (expand current, collapse previous to summaries)",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: Scrollable activity area; current action expanded, previous collapsed"
+    "notes": "ActivityPanelComponent with scrolling, progressive disclosure (expand/collapse), entry kind prefixes. 21 tests."
   },
   {
     "id": "JOB-088",

@@ -17,10 +17,16 @@
     },
     "context_panel": {
       "status": "complete",
-      "implementation": "ContextPanelComponent + ContextPanelData (TaskSectionData, ComponentSectionData, ModuleSectionData, ResourceItem, TaskState)",
+      "implementation": "ContextPanelComponent + ContextPanelData",
       "tests": "ContextPanelComponentTests (21)",
-      "jobs": ["JOB-086"],
-      "notes": "Renders task tree (✓/▶/○/✗), component/module hierarchy, numbered resources [1-9]."
+      "jobs": ["JOB-086"]
+    },
+    "activity_panel": {
+      "status": "complete",
+      "implementation": "ActivityPanelComponent + ActivityPanelData (ActivityEntry, ActivityEntryKind)",
+      "tests": "ActivityPanelComponentTests (21)",
+      "jobs": ["JOB-087"],
+      "notes": "Scrolling, progressive disclosure, entry kind prefixes (●/$✓/◆/⚠). Auto-scroll and manual offset."
     },
     "component_gallery": {
       "status": "complete",
