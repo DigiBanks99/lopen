@@ -144,7 +144,16 @@
         "JOB-021"
       ],
       "notes": "RecordUsage called after LLM invocation. GetSessionMetrics mapped to SessionMetrics for auto-save. TUI pipeline: TopPanelData already has fields, data flows via orchestrator."
+    },
+    "prompt_injection": {
+      "status": "complete",
+      "implementation": "WorkflowOrchestrator accepts userPrompt and passes to IPromptBuilder via contextSections",
+      "tests": "RunAsync_PassesUserPromptToPromptBuilder, RunStepAsync_PassesUserPromptToPromptBuilder, RunAsync_WithNullPrompt_PassesNullContextSections",
+      "jobs": [
+        "JOB-031"
+      ],
+      "notes": "userPrompt stored as _userPrompt field, passed as contextSections[user_prompt] to BuildSystemPrompt"
     }
   },
-  "last_updated": "2026-02-16T19:00:00Z"
+  "last_updated": "2026-02-16T21:00:00Z"
 }

@@ -52,8 +52,24 @@ public class StubTuiApplicationTests
     public async Task RunAsync_WithCancellationToken_CompletesImmediately()
     {
         using var cts = new CancellationTokenSource();
-        await _app.RunAsync(cts.Token);
+        await _app.RunAsync(cancellationToken: cts.Token);
 
         Assert.True(_app.IsRunning);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithInitialPrompt_StoresPrompt()
+    {
+        await _app.RunAsync(initialPrompt: "Focus on auth module");
+
+        Assert.Equal("Focus on auth module", _app.InitialPrompt);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithoutPrompt_InitialPromptIsNull()
+    {
+        await _app.RunAsync();
+
+        Assert.Null(_app.InitialPrompt);
     }
 }

@@ -51,7 +51,7 @@ internal sealed class TuiApplication : ITuiApplication
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task RunAsync(CancellationToken cancellationToken = default)
+    public async Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
     {
         if (_running)
         {

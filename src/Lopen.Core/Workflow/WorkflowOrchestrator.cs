@@ -33,6 +33,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
     private int _iterationCount;
     private SessionId? _sessionId;
+    private string? _userPrompt;
 
     public WorkflowOrchestrator(
         IWorkflowEngine engine,
@@ -68,10 +69,11 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _tokenTracker = tokenTracker;
     }
 
-    public async Task<OrchestrationResult> RunAsync(string moduleName, CancellationToken cancellationToken = default)
+    public async Task<OrchestrationResult> RunAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
 
+        _userPrompt = userPrompt;
         _iterationCount = 0;
 
         // Ensure module-specific git branch before starting
@@ -112,7 +114,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         while (!_engine.IsComplete && !cancellationToken.IsCancellationRequested)
         {
-            var stepResult = await RunStepAsync(moduleName, cancellationToken);
+            var stepResult = await RunStepAsync(moduleName, cancellationToken: cancellationToken);
 
             if (!stepResult.Success)
             {
@@ -165,9 +167,11 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         return OrchestrationResult.Completed(_iterationCount, _engine.CurrentStep);
     }
 
-    public async Task<StepResult> RunStepAsync(string moduleName, CancellationToken cancellationToken = default)
+    public async Task<StepResult> RunStepAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
+        if (userPrompt is not null)
+            _userPrompt = userPrompt;
         _iterationCount++;
 
         var currentStep = _engine.CurrentStep;
@@ -312,7 +316,10 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         var model = _modelSelector.SelectModel(phase);
         var tools = _toolRegistry.GetToolsForPhase(phase);
-        var systemPrompt = _promptBuilder.BuildSystemPrompt(phase, moduleName, null, null);
+        var contextSections = _userPrompt is not null
+            ? new Dictionary<string, string> { ["user_prompt"] = _userPrompt }
+            : null;
+        var systemPrompt = _promptBuilder.BuildSystemPrompt(phase, moduleName, null, null, contextSections);
 
         // OTEL-03: SDK invocation span
         using var sdkActivity = SpanFactory.StartSdkInvocation(model.SelectedModel);

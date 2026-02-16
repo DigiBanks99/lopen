@@ -10,15 +10,17 @@ public interface IWorkflowOrchestrator
     /// Runs the orchestration loop for a module until completion or interruption.
     /// </summary>
     /// <param name="moduleName">The module to orchestrate.</param>
+    /// <param name="userPrompt">Optional user prompt to inject into LLM context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The final result of the orchestration run.</returns>
-    Task<OrchestrationResult> RunAsync(string moduleName, CancellationToken cancellationToken = default);
+    Task<OrchestrationResult> RunAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Runs a single step of the orchestration loop.
     /// </summary>
     /// <param name="moduleName">The module being orchestrated.</param>
+    /// <param name="userPrompt">Optional user prompt to inject into LLM context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The result of executing the current step.</returns>
-    Task<StepResult> RunStepAsync(string moduleName, CancellationToken cancellationToken = default);
+    Task<StepResult> RunStepAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default);
 }

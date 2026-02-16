@@ -9,8 +9,9 @@ public interface ITuiApplication
     /// <summary>
     /// Starts the TUI application, entering the rendering loop.
     /// </summary>
+    /// <param name="initialPrompt">Optional text to pre-populate the input field.</param>
     /// <param name="cancellationToken">Token to signal application shutdown.</param>
-    Task RunAsync(CancellationToken cancellationToken = default);
+    Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Requests graceful shutdown of the TUI application.

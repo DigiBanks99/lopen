@@ -5,14 +5,14 @@
   "components": {
     "phase_commands_wiring": {
       "status": "complete",
-      "implementation": "PhaseCommands.cs wired to IWorkflowOrchestrator",
-      "tests": "PhaseCommandTests (99 tests including 3 orchestrator wiring tests)",
+      "implementation": "PhaseCommands.cs wired to IWorkflowOrchestrator with prompt injection",
+      "tests": "PhaseCommandTests (including orchestrator wiring, prompt passing, exit codes)",
       "jobs": [
         "JOB-004",
         "JOB-005",
         "JOB-006"
       ],
-      "notes": "spec/plan/build commands invoke WorkflowOrchestrator.RunAsync when session and module are available."
+      "notes": "spec/plan/build commands invoke WorkflowOrchestrator.RunAsync with prompt when session and module are available."
     },
     "root_tui_wiring": {
       "status": "complete",
@@ -22,7 +22,35 @@
         "JOB-077"
       ],
       "notes": "UseRealTui replaces stub with TuiApplication for real CLI. Tests/headless use stub."
+    },
+    "prompt_injection": {
+      "status": "complete",
+      "implementation": "--prompt flag wired through IWorkflowOrchestrator to IPromptBuilder contextSections, and to ITuiApplication.RunAsync for TUI pre-population",
+      "tests": "Spec_WithPrompt_PassesPromptToOrchestrator, RootCommand_WithPrompt_PassesPromptToTui, StubTuiApplication prompt tests",
+      "jobs": [
+        "JOB-031",
+        "JOB-032"
+      ],
+      "notes": "Headless: prompt injected via contextSections[user_prompt]. TUI: prompt passed as initialPrompt parameter."
+    },
+    "headless_validation": {
+      "status": "complete",
+      "implementation": "ValidateHeadlessPromptAsync checks headless mode requires --prompt or active session",
+      "tests": "Headless_NoPrompt_NoSession_ReturnsExitCode1",
+      "jobs": [
+        "JOB-033"
+      ],
+      "notes": "Returns ExitCodes.Failure with guidance message."
+    },
+    "exit_codes": {
+      "status": "complete",
+      "implementation": "ExitCodes.Success=0, Failure=1, UserInterventionRequired=2. WasInterrupted in headless returns code 2.",
+      "tests": "ExitCodes_AreCorrect, headless interrupt paths",
+      "jobs": [
+        "JOB-034"
+      ],
+      "notes": "Phase commands and RootCommandHandler both return code 2 when headless + WasInterrupted."
     }
   },
-  "last_updated": "2026-02-16T18:00:00Z"
+  "last_updated": "2026-02-16T21:00:00Z"
 }

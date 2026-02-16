@@ -64,7 +64,8 @@ public static class RootCommandHandler
                         }
 
                         var app = services.GetRequiredService<ITuiApplication>();
-                        await app.RunAsync(cancellationToken);
+                        var prompt = parseResult.GetValue(GlobalOptions.Prompt);
+                        await app.RunAsync(prompt, cancellationToken);
                         exitCode = ExitCodes.Success;
                     }
 
@@ -120,8 +121,10 @@ public static class RootCommandHandler
             return ExitCodes.Failure;
         }
 
+        var prompt = parseResult.GetValue(GlobalOptions.Prompt);
+
         await stdout.WriteLineAsync($"Running headless workflow for module: {module}");
-        var result = await orchestrator.RunAsync(module, cancellationToken);
+        var result = await orchestrator.RunAsync(module, prompt, cancellationToken);
 
         if (result.IsComplete)
         {
@@ -131,8 +134,8 @@ public static class RootCommandHandler
 
         if (result.WasInterrupted)
         {
-            await stderr.WriteLineAsync(result.Summary ?? "Workflow interrupted.");
-            return ExitCodes.Failure;
+            await stderr.WriteLineAsync(result.Summary ?? "Workflow interrupted. User intervention may be required.");
+            return ExitCodes.UserInterventionRequired;
         }
 
         return ExitCodes.Success;

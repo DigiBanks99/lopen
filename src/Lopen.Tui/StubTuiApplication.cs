@@ -10,12 +10,16 @@ internal sealed class StubTuiApplication(ILogger<StubTuiApplication> logger) : I
 {
     public bool IsRunning { get; private set; }
 
-    public Task RunAsync(CancellationToken cancellationToken = default)
+    public Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
     {
         IsRunning = true;
+        InitialPrompt = initialPrompt;
         logger.LogDebug("StubTuiApplication started (headless mode)");
         return Task.CompletedTask;
     }
+
+    /// <summary>Gets the initial prompt that was passed to RunAsync, for testing.</summary>
+    public string? InitialPrompt { get; private set; }
 
     public Task StopAsync()
     {

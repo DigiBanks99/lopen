@@ -210,17 +210,43 @@ public class RootCommandTests
         Assert.Contains("TUI startup failed", error.ToString());
     }
 
+    // ==================== CLI-18: --prompt populates TUI input ====================
+
+    [Fact]
+    public async Task RootCommand_WithPrompt_PassesPromptToTui()
+    {
+        var (config, output, error, tui) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["--prompt", "Focus on auth"]);
+
+        Assert.True(tui.RunWasCalled);
+        Assert.Equal("Focus on auth", tui.InitialPrompt);
+    }
+
+    [Fact]
+    public async Task RootCommand_NoPrompt_TuiGetsNullPrompt()
+    {
+        var (config, output, error, tui) = CreateConfig();
+
+        await config.InvokeAsync([]);
+
+        Assert.True(tui.RunWasCalled);
+        Assert.Null(tui.InitialPrompt);
+    }
+
     // ==================== Test Fakes ====================
 
     private sealed class FakeTuiApplication : ITuiApplication
     {
         public bool RunWasCalled { get; private set; }
         public bool IsRunning { get; private set; }
+        public string? InitialPrompt { get; private set; }
 
-        public Task RunAsync(CancellationToken cancellationToken = default)
+        public Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
         {
             RunWasCalled = true;
             IsRunning = true;
+            InitialPrompt = initialPrompt;
             return Task.CompletedTask;
         }
 
@@ -235,7 +261,7 @@ public class RootCommandTests
     {
         public bool IsRunning => false;
 
-        public Task RunAsync(CancellationToken cancellationToken = default)
+        public Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
             => throw new InvalidOperationException("TUI startup failed");
 
         public Task StopAsync() => Task.CompletedTask;

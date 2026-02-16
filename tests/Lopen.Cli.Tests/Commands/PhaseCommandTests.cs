@@ -381,4 +381,34 @@ public class PhaseCommandTests
         Assert.Equal(0, exitCode);
         Assert.DoesNotContain("Resuming session", output.ToString());
     }
+
+    // ==================== CLI-17: --prompt injection ====================
+
+    [Fact]
+    public async Task Spec_WithPrompt_PassesPromptToOrchestrator()
+    {
+        _fakeSessionManager.AddSession(Session1, ActiveState);
+        _fakeSessionManager.SetLatestSessionId(Session1);
+        _fakeModuleScanner.AddModule("auth", hasSpec: true);
+        var (config, output, _) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["spec", "--prompt", "Focus on auth module"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("Focus on auth module", _fakeOrchestrator.LastPrompt);
+    }
+
+    [Fact]
+    public async Task Spec_NoPrompt_OrchestratorGetsNullPrompt()
+    {
+        _fakeSessionManager.AddSession(Session1, ActiveState);
+        _fakeSessionManager.SetLatestSessionId(Session1);
+        _fakeModuleScanner.AddModule("auth", hasSpec: true);
+        var (config, output, _) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["spec"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Null(_fakeOrchestrator.LastPrompt);
+    }
 }

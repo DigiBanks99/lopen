@@ -45,13 +45,20 @@ public static class PhaseCommands
 
                 var orchestrator = services.GetService<IWorkflowOrchestrator>();
                 var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
+                var prompt = parseResult.GetValue(GlobalOptions.Prompt);
 
                 if (orchestrator is not null && module is not null)
                 {
-                    var result = await orchestrator.RunAsync(module, cancellationToken);
+                    var result = await orchestrator.RunAsync(module, prompt, cancellationToken);
                     if (!result.IsComplete && result.WasInterrupted)
                     {
                         await stdout.WriteLineAsync(result.Summary ?? "Requirement gathering paused.");
+                        if (parseResult.GetValue(GlobalOptions.Headless))
+                        {
+                            LopenTelemetryDiagnostics.CommandDuration.Record(
+                                sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "spec"));
+                            return ExitCodes.UserInterventionRequired;
+                        }
                     }
                 }
 
@@ -113,13 +120,20 @@ public static class PhaseCommands
 
                 var orchestrator = services.GetService<IWorkflowOrchestrator>();
                 var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
+                var prompt = parseResult.GetValue(GlobalOptions.Prompt);
 
                 if (orchestrator is not null && module is not null)
                 {
-                    var result = await orchestrator.RunAsync(module, cancellationToken);
+                    var result = await orchestrator.RunAsync(module, prompt, cancellationToken);
                     if (!result.IsComplete && result.WasInterrupted)
                     {
                         await stdout.WriteLineAsync(result.Summary ?? "Planning paused.");
+                        if (parseResult.GetValue(GlobalOptions.Headless))
+                        {
+                            LopenTelemetryDiagnostics.CommandDuration.Record(
+                                sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "plan"));
+                            return ExitCodes.UserInterventionRequired;
+                        }
                     }
                 }
 
@@ -188,13 +202,20 @@ public static class PhaseCommands
 
                 var orchestrator = services.GetService<IWorkflowOrchestrator>();
                 var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
+                var prompt = parseResult.GetValue(GlobalOptions.Prompt);
 
                 if (orchestrator is not null && module is not null)
                 {
-                    var result = await orchestrator.RunAsync(module, cancellationToken);
+                    var result = await orchestrator.RunAsync(module, prompt, cancellationToken);
                     if (!result.IsComplete && result.WasInterrupted)
                     {
                         await stdout.WriteLineAsync(result.Summary ?? "Building paused.");
+                        if (parseResult.GetValue(GlobalOptions.Headless))
+                        {
+                            LopenTelemetryDiagnostics.CommandDuration.Record(
+                                sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "build"));
+                            return ExitCodes.UserInterventionRequired;
+                        }
                     }
                 }
 

@@ -150,7 +150,7 @@ public class WorkflowOrchestratorTests
         cts.Cancel();
         var sut = CreateOrchestrator();
 
-        var result = await sut.RunAsync("test-module", cts.Token);
+        var result = await sut.RunAsync("test-module", cancellationToken: cts.Token);
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -660,6 +660,45 @@ public class WorkflowOrchestratorTests
         Assert.True(taskDuration >= 0, "Task duration should be recorded");
     }
 
+    [Fact]
+    public async Task RunAsync_PassesUserPromptToPromptBuilder()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var sut = CreateOrchestrator();
+
+        await sut.RunAsync("test-module", userPrompt: "Focus on auth module");
+
+        Assert.NotNull(_promptBuilder.LastContextSections);
+        Assert.True(_promptBuilder.LastContextSections!.ContainsKey("user_prompt"));
+        Assert.Equal("Focus on auth module", _promptBuilder.LastContextSections["user_prompt"]);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_PassesUserPromptToPromptBuilder()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var sut = CreateOrchestrator();
+
+        await sut.RunStepAsync("test-module", userPrompt: "Focus on auth module");
+
+        Assert.NotNull(_promptBuilder.LastContextSections);
+        Assert.True(_promptBuilder.LastContextSections!.ContainsKey("user_prompt"));
+        Assert.Equal("Focus on auth module", _promptBuilder.LastContextSections["user_prompt"]);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithNullPrompt_PassesNullContextSections()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var sut = CreateOrchestrator();
+
+        await sut.RunAsync("test-module");
+
+        Assert.Null(_promptBuilder.LastContextSections);
+    }
+
     // --- Stubs ---
 
     private sealed class StubWorkflowEngine : IWorkflowEngine
@@ -744,11 +783,13 @@ public class WorkflowOrchestratorTests
     private sealed class StubPromptBuilder : IPromptBuilder
     {
         public int BuildCount { get; private set; }
+        public IReadOnlyDictionary<string, string>? LastContextSections { get; private set; }
 
         public string BuildSystemPrompt(WorkflowPhase phase, string module, string? component, string? task,
             IReadOnlyDictionary<string, string>? contextSections = null)
         {
             BuildCount++;
+            LastContextSections = contextSections;
             return "Test prompt";
         }
     }

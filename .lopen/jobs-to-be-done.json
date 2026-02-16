@@ -274,7 +274,7 @@
     "requirement_code": "CLI-17",
     "requirement_module": "cli",
     "description": "Implement --prompt flag injection into LLM context for headless mode",
-    "status": "open",
+    "status": "done",
     "priority": 2,
     "notes": "--prompt flag exists in CLI but the text is not injected into the LLM system prompt. Must pass prompt text to IPromptBuilder for inclusion in context."
   },
@@ -283,7 +283,7 @@
     "requirement_code": "CLI-18",
     "requirement_module": "cli",
     "description": "Implement --prompt flag populating TUI input field for user review before submission",
-    "status": "open",
+    "status": "done",
     "priority": 2,
     "notes": "In TUI mode, --prompt should pre-populate the PromptAreaComponent input field rather than auto-submitting."
   },
@@ -292,7 +292,7 @@
     "requirement_code": "CLI-19",
     "requirement_module": "cli",
     "description": "Implement headless error when no --prompt and no active session",
-    "status": "open",
+    "status": "done",
     "priority": 2,
     "notes": "In headless mode without --prompt and no active session, should error with guidance about providing a prompt or resuming a session."
   },
@@ -301,7 +301,7 @@
     "requirement_code": "CLI-20",
     "requirement_module": "cli",
     "description": "Implement consistent exit codes: 0 success, 1 failure, 2 user intervention required",
-    "status": "open",
+    "status": "done",
     "priority": 2,
     "notes": "Exit codes need to be consistently applied across all commands, especially for the workflow phase commands."
   },

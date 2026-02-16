@@ -48,7 +48,7 @@ public class TuiApplicationTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        await app.RunAsync(cts.Token);
+        await app.RunAsync(cancellationToken: cts.Token);
         Assert.False(app.IsRunning); // After cancellation, should not be running
     }
 
