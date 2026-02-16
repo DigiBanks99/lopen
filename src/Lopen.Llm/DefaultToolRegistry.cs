@@ -40,6 +40,23 @@ internal sealed class DefaultToolRegistry : IToolRegistry
 
     public IReadOnlyList<LopenToolDefinition> GetAllTools() => _tools.AsReadOnly();
 
+    public bool BindHandler(string toolName, Func<string, CancellationToken, Task<string>> handler)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(toolName);
+        ArgumentNullException.ThrowIfNull(handler);
+
+        var index = _tools.FindIndex(t => t.Name == toolName);
+        if (index < 0)
+        {
+            _logger.LogWarning("Cannot bind handler: tool '{ToolName}' not found", toolName);
+            return false;
+        }
+
+        _tools[index] = _tools[index] with { Handler = handler };
+        _logger.LogDebug("Bound handler to tool '{ToolName}'", toolName);
+        return true;
+    }
+
     private void RegisterBuiltInTools()
     {
         var allPhases = new[]

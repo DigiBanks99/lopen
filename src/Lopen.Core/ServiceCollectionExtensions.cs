@@ -2,6 +2,7 @@ using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
+using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -37,6 +38,14 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IStateAssessor, CodebaseStateAssessor>();
             services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
             services.AddSingleton<IWorkflowOrchestrator, WorkflowOrchestrator>();
+            services.AddSingleton<IToolHandlerBinder>(sp =>
+                new ToolHandlerBinder(
+                    sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
+                    sp.GetRequiredService<ISectionExtractor>(),
+                    sp.GetRequiredService<IWorkflowEngine>(),
+                    sp.GetRequiredService<Lopen.Llm.IVerificationTracker>(),
+                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ToolHandlerBinder>>(),
+                    projectRoot));
         }
 
         services.AddSingleton<IPhaseTransitionController, PhaseTransitionController>();

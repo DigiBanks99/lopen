@@ -13,4 +13,10 @@ public interface IToolRegistry
 
     /// <summary>Returns all registered tool definitions.</summary>
     IReadOnlyList<LopenToolDefinition> GetAllTools();
+
+    /// <summary>Binds a handler to an existing tool definition by name.</summary>
+    /// <param name="toolName">Name of the tool to bind the handler to.</param>
+    /// <param name="handler">The handler function: takes parameters JSON, returns result string.</param>
+    /// <returns>True if the tool was found and handler bound; false otherwise.</returns>
+    bool BindHandler(string toolName, Func<string, CancellationToken, Task<string>> handler);
 }

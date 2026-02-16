@@ -249,6 +249,7 @@ public class ServiceCollectionExtensionsTests
         public IReadOnlyList<Lopen.Llm.LopenToolDefinition> GetToolsForPhase(Lopen.Llm.WorkflowPhase phase) => [];
         public void RegisterTool(Lopen.Llm.LopenToolDefinition tool) { }
         public IReadOnlyList<Lopen.Llm.LopenToolDefinition> GetAllTools() => [];
+        public bool BindHandler(string toolName, Func<string, CancellationToken, Task<string>> handler) => true;
     }
 
     private sealed class NullModelSelector : Lopen.Llm.IModelSelector

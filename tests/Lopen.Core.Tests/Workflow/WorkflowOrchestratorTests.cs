@@ -364,6 +364,7 @@ public class WorkflowOrchestratorTests
 
         public void RegisterTool(LopenToolDefinition tool) { }
         public IReadOnlyList<LopenToolDefinition> GetAllTools() => [];
+        public bool BindHandler(string toolName, Func<string, CancellationToken, Task<string>> handler) => true;
     }
 
     private sealed class StubModelSelector : IModelSelector

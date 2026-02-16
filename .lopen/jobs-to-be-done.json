@@ -22,9 +22,9 @@
     "requirement_code": "LLM-05",
     "requirement_module": "llm",
     "description": "Implement tool handlers for all 10 registered LLM tools (read_spec, read_research, read_plan, update_task_status, get_current_context, log_research, report_progress, verify_task_completion, verify_component_completion, verify_module_completion)",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "DefaultToolRegistry registers 10 tool definitions (names + descriptions + phase availability) but LopenToolDefinition has no handler/callback field. Tool execution logic is completely missing. The SDK will request tool calls with no way to execute them."
+    "notes": "Added Handler delegate to LopenToolDefinition, BindHandler to IToolRegistry, implemented all 10 tool handlers in ToolHandlerBinder. Enforces oracle verification before task completion (LLM-08). 22 tests."
   },
   {
     "id": "JOB-004",

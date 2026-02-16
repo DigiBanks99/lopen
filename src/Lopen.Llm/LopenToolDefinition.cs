@@ -7,4 +7,5 @@ public sealed record LopenToolDefinition(
     string Name,
     string Description,
     string? ParameterSchema = null,
-    IReadOnlyList<WorkflowPhase>? AvailableInPhases = null);
+    IReadOnlyList<WorkflowPhase>? AvailableInPhases = null,
+    Func<string, CancellationToken, Task<string>>? Handler = null);
