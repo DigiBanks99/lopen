@@ -23,10 +23,16 @@
     },
     "activity_panel": {
       "status": "complete",
-      "implementation": "ActivityPanelComponent + ActivityPanelData (ActivityEntry, ActivityEntryKind)",
+      "implementation": "ActivityPanelComponent + ActivityPanelData",
       "tests": "ActivityPanelComponentTests (21)",
-      "jobs": ["JOB-087"],
-      "notes": "Scrolling, progressive disclosure, entry kind prefixes (●/$✓/◆/⚠). Auto-scroll and manual offset."
+      "jobs": ["JOB-087"]
+    },
+    "prompt_area": {
+      "status": "complete",
+      "implementation": "PromptAreaComponent + PromptAreaData",
+      "tests": "PromptAreaComponentTests (16)",
+      "jobs": ["JOB-088"],
+      "notes": "Multi-line input, keyboard hints bar, pause/resume toggle, text wrapping, custom hints."
     },
     "component_gallery": {
       "status": "complete",

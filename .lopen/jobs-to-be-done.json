@@ -702,9 +702,9 @@
     "id": "JOB-088",
     "requirement_module": "tui",
     "description": "Implement multi-line prompt area with Alt+Enter for newlines and keyboard hints at bottom",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: Multi-line prompt input with Alt+Enter; keyboard hints displayed"
+    "notes": "PromptAreaComponent with multi-line input, keyboard hints, pause/resume, text wrapping. 16 tests."
   },
   {
     "id": "JOB-089",
