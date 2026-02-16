@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Workflow;
@@ -791,7 +792,150 @@ public class WorkflowOrchestratorTests
         Assert.True(failureHandler.ResetCalled);
     }
 
-    // --- Stubs ---
+    // --- CORE-22: Repeated Failure Escalation Tests ---
+
+    [Fact]
+    public async Task RunAsync_PromptUser_UserConfirmsY_ContinuesRetrying()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        // Fail threshold times, then succeed after user confirms
+        _llmService.FailUntilInvokeCount = 3; // Fails 3 times, succeeds on 4th
+        _renderer.PromptResponse = "y";
+        var failureHandler = new StubFailureHandler { Threshold = 3 };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete);
+        Assert.False(result.WasInterrupted);
+        Assert.Single(_renderer.PromptMessages); // Prompted once at threshold
+    }
+
+    [Fact]
+    public async Task RunAsync_PromptUser_UserConfirmsYes_ContinuesRetrying()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.FailUntilInvokeCount = 3;
+        _renderer.PromptResponse = "yes";
+        var failureHandler = new StubFailureHandler { Threshold = 3 };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete);
+    }
+
+    [Fact]
+    public async Task RunAsync_PromptUser_UserDeclinesN_Interrupts()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _renderer.PromptResponse = "n";
+        var failureHandler = new StubFailureHandler { Threshold = 2 };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+        Assert.Single(_renderer.PromptMessages);
+    }
+
+    [Fact]
+    public async Task RunAsync_PromptUser_HeadlessNullResponse_Interrupts()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _renderer.PromptResponse = null; // Headless — no user interaction
+        var failureHandler = new StubFailureHandler { Threshold = 2 };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+        Assert.Single(_renderer.PromptMessages);
+    }
+
+    [Fact]
+    public async Task RunAsync_PromptUser_UnattendedMode_ContinuesWithoutPrompt()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.FailUntilInvokeCount = 3;
+        var failureHandler = new StubFailureHandler { Threshold = 3 };
+        var options = new WorkflowOptions { Unattended = true };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler,
+            workflowOptions: options);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete);
+        Assert.Empty(_renderer.PromptMessages); // No prompt in unattended mode
+    }
+
+    [Fact]
+    public async Task RunAsync_PromptUser_PromptMessageIncludesTaskNameAndCount()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _renderer.PromptResponse = "n";
+        var failureHandler = new StubFailureHandler { Threshold = 2 };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        await sut.RunAsync("test-module");
+
+        var prompt = Assert.Single(_renderer.PromptMessages);
+        Assert.Contains("DetermineDependencies", prompt);
+        Assert.Contains("2", prompt); // Failure count
+        Assert.Contains("Continue?", prompt);
+    }
+
+    [Fact]
+    public async Task RunAsync_PromptUser_UserConfirms_ResetsFailureCount()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.FailUntilInvokeCount = 2;
+        _renderer.PromptResponse = "y";
+        var failureHandler = new StubFailureHandler { Threshold = 2 };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        await sut.RunAsync("test-module");
+
+        // Failure count was reset after user confirmed (allowing fresh retry cycle)
+        Assert.True(failureHandler.ResetCalled);
+    }
 
     private sealed class StubWorkflowEngine : IWorkflowEngine
     {
@@ -926,6 +1070,8 @@ public class WorkflowOrchestratorTests
         public int ProgressCount { get; private set; }
         public List<string> ErrorMessages { get; } = [];
         public List<string> ResultMessages { get; } = [];
+        public List<string> PromptMessages { get; } = [];
+        public string? PromptResponse { get; set; }
 
         public Task RenderProgressAsync(string phase, string step, double progress, CancellationToken ct = default)
         {
@@ -945,8 +1091,11 @@ public class WorkflowOrchestratorTests
             return Task.CompletedTask;
         }
 
-        public Task<string?> PromptAsync(string message, CancellationToken ct = default) =>
-            Task.FromResult<string?>(null);
+        public Task<string?> PromptAsync(string message, CancellationToken ct = default)
+        {
+            PromptMessages.Add(message);
+            return Task.FromResult(PromptResponse);
+        }
     }
 
     private sealed class StubPhaseTransitionController : IPhaseTransitionController

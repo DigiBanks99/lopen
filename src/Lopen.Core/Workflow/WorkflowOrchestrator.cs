@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
@@ -30,6 +31,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly ISessionManager? _sessionManager;
     private readonly ITokenTracker? _tokenTracker;
     private readonly IFailureHandler? _failureHandler;
+    private readonly WorkflowOptions? _workflowOptions;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
     private int _iterationCount;
@@ -52,7 +54,8 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IAutoSaveService? autoSaveService = null,
         ISessionManager? sessionManager = null,
         ITokenTracker? tokenTracker = null,
-        IFailureHandler? failureHandler = null)
+        IFailureHandler? failureHandler = null,
+        WorkflowOptions? workflowOptions = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _assessor = assessor ?? throw new ArgumentNullException(nameof(assessor));
@@ -70,6 +73,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _sessionManager = sessionManager;
         _tokenTracker = tokenTracker;
         _failureHandler = failureHandler;
+        _workflowOptions = workflowOptions;
     }
 
     public async Task<OrchestrationResult> RunAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
@@ -139,9 +143,41 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                         continue; // Let the LLM retry on next iteration
                     }
 
-                    _logger.LogWarning(
-                        "Failure escalated: {Action} — {Message}",
-                        classification.Action, classification.Message);
+                    // CORE-22: Prompt user for intervention on repeated failures
+                    if (classification.Action == FailureAction.PromptUser)
+                    {
+                        if (_workflowOptions?.Unattended == true)
+                        {
+                            _logger.LogWarning(
+                                "Unattended mode — suppressing intervention prompt, continuing: {Message}",
+                                classification.Message);
+                            continue;
+                        }
+
+                        var promptMessage = $"Task '{taskId}' has failed {classification.ConsecutiveFailures} consecutive times. Continue? [y/N]";
+                        var response = await _renderer.PromptAsync(promptMessage, cancellationToken);
+
+                        if (response is not null &&
+                            response.Trim().Equals("y", StringComparison.OrdinalIgnoreCase) ||
+                            response?.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            _logger.LogInformation(
+                                "User confirmed continuation after repeated failure: {TaskId}",
+                                taskId);
+                            _failureHandler.ResetFailureCount(taskId);
+                            continue;
+                        }
+
+                        _logger.LogWarning(
+                            "User declined continuation after repeated failure: {TaskId}",
+                            taskId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Failure escalated: {Action} — {Message}",
+                            classification.Action, classification.Message);
+                    }
                 }
 
                 return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,

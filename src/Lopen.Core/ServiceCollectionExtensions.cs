@@ -84,7 +84,8 @@ public static class ServiceCollectionExtensions
                     autoSave,
                     sessionMgr,
                     tokenTracker,
-                    failureHandler);
+                    failureHandler,
+                    sp.GetService<WorkflowOptions>());
             });
             services.AddSingleton<ISpecificationDriftService, SpecificationDriftService>();
             services.AddSingleton<IToolHandlerBinder>(sp =>
