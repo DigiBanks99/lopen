@@ -579,4 +579,44 @@ public class ActivityPanelDataProviderTests
         // Error entry should stay expanded
         Assert.True(data.Entries[0].IsExpanded);
     }
+
+    // ==================== Consecutive Failure Counter (JOB-055 / TUI-26) ====================
+
+    [Fact]
+    public void ConsecutiveFailureCount_InitiallyZero()
+    {
+        var provider = new ActivityPanelDataProvider();
+        Assert.Equal(0, provider.ConsecutiveFailureCount);
+    }
+
+    [Fact]
+    public void ConsecutiveFailureCount_IncrementsOnError()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddTaskFailure("Task1", "Error 1");
+        Assert.Equal(1, provider.ConsecutiveFailureCount);
+
+        provider.AddTaskFailure("Task2", "Error 2");
+        Assert.Equal(2, provider.ConsecutiveFailureCount);
+    }
+
+    [Fact]
+    public void ConsecutiveFailureCount_ResetsOnNonError()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddTaskFailure("Task1", "Error 1");
+        provider.AddTaskFailure("Task2", "Error 2");
+        Assert.Equal(2, provider.ConsecutiveFailureCount);
+
+        provider.AddEntry(new ActivityEntry { Summary = "Success" });
+        Assert.Equal(0, provider.ConsecutiveFailureCount);
+    }
+
+    [Fact]
+    public void ConsecutiveFailureCount_TracksViaAddEntry()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddEntry(new ActivityEntry { Summary = "Error", Kind = ActivityEntryKind.Error });
+        Assert.Equal(1, provider.ConsecutiveFailureCount);
+    }
 }

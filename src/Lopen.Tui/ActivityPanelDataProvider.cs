@@ -10,6 +10,9 @@ internal sealed class ActivityPanelDataProvider : IActivityPanelDataProvider
 {
     private readonly ConcurrentQueue<ActivityEntry> _entries = new();
     private volatile int _scrollOffset = -1; // -1 = auto-scroll
+    private volatile int _consecutiveFailures;
+
+    public int ConsecutiveFailureCount => _consecutiveFailures;
 
     public ActivityPanelData GetCurrentData()
     {
@@ -24,6 +27,12 @@ internal sealed class ActivityPanelDataProvider : IActivityPanelDataProvider
     public void AddEntry(ActivityEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
+
+        // Track consecutive failures
+        if (entry.Kind == ActivityEntryKind.Error)
+            Interlocked.Increment(ref _consecutiveFailures);
+        else
+            Interlocked.Exchange(ref _consecutiveFailures, 0);
 
         // Auto-expand errors/warnings and the latest entry
         var shouldExpand = entry.Kind == ActivityEntryKind.Error || entry.Details.Count > 0;

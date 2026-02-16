@@ -3,7 +3,7 @@ namespace Lopen.Tui;
 /// <summary>
 /// Renders the bottom prompt area with multi-line input and keyboard hints.
 /// </summary>
-public sealed class PromptAreaComponent : ITuiComponent
+public sealed class PromptAreaComponent : IPreviewableComponent
 {
     /// <summary>Default keyboard hints shown below the input.</summary>
     internal static readonly string[] DefaultHints =
@@ -14,6 +14,16 @@ public sealed class PromptAreaComponent : ITuiComponent
         "Tab: Focus panel",
         "Ctrl+P: Pause",
     ];
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new PromptAreaData
+        {
+            Text = "lopen build --module auth",
+            CursorPosition = 10,
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
 
     public string Name => "PromptArea";
     public string Description => "Multi-line prompt area with keyboard hints at bottom";
@@ -33,19 +43,31 @@ public sealed class PromptAreaComponent : ITuiComponent
         // Input area: region.Height - 1 for hints row
         var inputHeight = Math.Max(1, region.Height - 1);
 
-        // Build input lines
-        var inputText = string.IsNullOrEmpty(data.Text)
-            ? $"> {data.Placeholder}"
-            : $"> {data.Text}";
-
-        var inputLines = WrapText(inputText, width);
-
-        // Take up to inputHeight lines
-        for (int i = 0; i < inputHeight; i++)
+        // Spinner replaces input when active
+        if (data.Spinner is not null)
         {
-            lines.Add(i < inputLines.Count
-                ? PadToWidth(inputLines[i], width)
-                : PadToWidth(string.Empty, width));
+            var spinnerComponent = new SpinnerComponent();
+            var spinnerLine = spinnerComponent.Render(data.Spinner, width);
+            lines.Add(PadToWidth(spinnerLine, width));
+            for (int i = 1; i < inputHeight; i++)
+                lines.Add(PadToWidth(string.Empty, width));
+        }
+        else
+        {
+            // Build input lines
+            var inputText = string.IsNullOrEmpty(data.Text)
+                ? $"> {data.Placeholder}"
+                : $"> {data.Text}";
+
+            var inputLines = WrapText(inputText, width);
+
+            // Take up to inputHeight lines
+            for (int i = 0; i < inputHeight; i++)
+            {
+                lines.Add(i < inputLines.Count
+                    ? PadToWidth(inputLines[i], width)
+                    : PadToWidth(string.Empty, width));
+            }
         }
 
         // Keyboard hints row (always last if region allows)

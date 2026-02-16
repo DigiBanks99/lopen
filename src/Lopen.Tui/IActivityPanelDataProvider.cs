@@ -35,4 +35,9 @@ public interface IActivityPanelDataProvider
     /// Adds a task failure entry that auto-expands with error details.
     /// </summary>
     void AddTaskFailure(string taskName, string errorMessage, IReadOnlyList<string>? details = null);
+
+    /// <summary>
+    /// Gets the count of consecutive task failures.
+    /// </summary>
+    int ConsecutiveFailureCount { get; }
 }

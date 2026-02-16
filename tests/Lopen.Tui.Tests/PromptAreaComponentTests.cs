@@ -166,4 +166,40 @@ public class PromptAreaComponentTests
             Assert.Equal(60, line.Length);
         }
     }
+
+    // ==================== Spinner integration (JOB-057 / TUI-28) ====================
+
+    [Fact]
+    public void Render_WithSpinner_ShowsSpinnerInsteadOfInput()
+    {
+        var data = new PromptAreaData
+        {
+            Text = "Some input",
+            Spinner = new SpinnerData { Message = "Processing...", Frame = 0 }
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 3));
+        Assert.Contains(lines, l => l.Contains("Processing..."));
+        Assert.DoesNotContain(lines, l => l.Contains("Some input"));
+    }
+
+    [Fact]
+    public void Render_WithSpinner_IncludesSpinnerFrame()
+    {
+        var data = new PromptAreaData
+        {
+            Spinner = new SpinnerData { Message = "Loading", Frame = 2 }
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 3));
+        Assert.Contains(lines, l => l.Contains(SpinnerComponent.Frames[2]));
+    }
+
+    [Fact]
+    public void Render_NullSpinner_ShowsNormalInput()
+    {
+        var data = new PromptAreaData { Text = "Hello" };
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 3));
+        Assert.Contains(lines, l => l.Contains("Hello"));
+    }
 }

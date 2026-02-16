@@ -4,7 +4,7 @@ namespace Lopen.Tui;
 /// Renders the main activity area (left pane) with scrolling and progressive disclosure.
 /// Current action expanded, previous actions collapsed to summaries.
 /// </summary>
-public sealed class ActivityPanelComponent : ITuiComponent
+public sealed class ActivityPanelComponent : IPreviewableComponent
 {
     public string Name => "ActivityPanel";
     public string Description => "Main activity area with scrolling and progressive disclosure";
@@ -68,6 +68,28 @@ public sealed class ActivityPanelComponent : ITuiComponent
         return visibleLines
             .Select(l => PadToWidth(l, region.Width))
             .ToArray();
+    }
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new ActivityPanelData
+        {
+            Entries =
+            [
+                new ActivityEntry { Summary = "Reading project structure", Kind = ActivityEntryKind.Action },
+                new ActivityEntry
+                {
+                    Summary = "Edited src/Auth/JwtValidator.cs",
+                    Kind = ActivityEntryKind.FileEdit,
+                    IsExpanded = true,
+                    Details = ["+ Added token expiry check", "+ Added signing key validation"],
+                },
+                new ActivityEntry { Summary = "dotnet build src/Auth/", Kind = ActivityEntryKind.Command },
+                new ActivityEntry { Summary = "Build failed: missing reference", Kind = ActivityEntryKind.Error },
+                new ActivityEntry { Summary = "Researching JWT best practices", Kind = ActivityEntryKind.Research },
+            ],
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
     }
 
     /// <summary>

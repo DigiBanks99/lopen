@@ -4,8 +4,24 @@ namespace Lopen.Tui;
 /// Renders the landing page modal shown on first startup.
 /// Displays logo, version, quick commands, and auth status.
 /// </summary>
-public sealed class LandingPageComponent : ITuiComponent
+public sealed class LandingPageComponent : IPreviewableComponent
 {
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new LandingPageData
+        {
+            Version = "v0.1.0",
+            IsAuthenticated = true,
+            QuickCommands =
+            [
+                new QuickCommand("build", "Build a module from spec"),
+                new QuickCommand("plan", "Generate a project plan"),
+                new QuickCommand("research", "Research a topic"),
+            ],
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string Name => "LandingPage";
     public string Description => "Landing page modal with quick commands and auth status";
 
@@ -68,10 +84,25 @@ public sealed class LandingPageComponent : ITuiComponent
 /// Renders the session resume modal when a previous active session is detected.
 /// Shows session details and [Resume] [Start New] [View Details] options.
 /// </summary>
-public sealed class SessionResumeModalComponent : ITuiComponent
+public sealed class SessionResumeModalComponent : IPreviewableComponent
 {
     /// <summary>Option labels for the resume modal.</summary>
     internal static readonly string[] Options = ["Resume", "Start New", "View Details"];
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new SessionResumeData
+        {
+            ModuleName = "Authentication",
+            PhaseName = "Building",
+            StepProgress = "3/5",
+            TaskProgress = "7/12 tasks",
+            LastActivity = "2 hours ago",
+            ProgressPercent = 58,
+            SelectedOption = 0,
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
 
     public string Name => "SessionResumeModal";
     public string Description => "Session resume modal with Resume/Start New/View Details options";
@@ -121,8 +152,29 @@ public sealed class SessionResumeModalComponent : ITuiComponent
 /// Renders the resource viewer modal showing scrollable content of an active resource.
 /// Displays title bar, content lines with scroll, and footer with Esc/arrow hints.
 /// </summary>
-public sealed class ResourceViewerModalComponent : ITuiComponent
+public sealed class ResourceViewerModalComponent : IPreviewableComponent
 {
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new ResourceViewerData
+        {
+            Label = "SPECIFICATION.md",
+            Lines =
+            [
+                "# Authentication Module",
+                "",
+                "## Overview",
+                "This module handles JWT-based authentication.",
+                "",
+                "## Requirements",
+                "- Token validation with RS256",
+                "- Refresh token rotation",
+                "- Role-based access control",
+            ],
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string Name => "ResourceViewer";
     public string Description => "Resource viewer modal with scrollable content";
 

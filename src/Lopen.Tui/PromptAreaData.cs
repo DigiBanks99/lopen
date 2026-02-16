@@ -19,4 +19,7 @@ public sealed record PromptAreaData
 
     /// <summary>Custom keyboard hints. If null, uses default hints.</summary>
     public IReadOnlyList<string>? CustomHints { get; init; }
+
+    /// <summary>Spinner data for async operation feedback. Null when no operation is running.</summary>
+    public SpinnerData? Spinner { get; init; }
 }

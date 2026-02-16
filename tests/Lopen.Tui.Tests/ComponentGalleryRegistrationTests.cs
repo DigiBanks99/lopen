@@ -183,4 +183,66 @@ public class ComponentGalleryRegistrationTests
         var type = typeof(IPreviewableComponent);
         Assert.True(type.IsAssignableTo(typeof(ITuiComponent)));
     }
+
+    // ==================== RenderPreview (JOB-065 / TUI-44) ====================
+
+    [Theory]
+    [InlineData(typeof(TopPanelComponent))]
+    [InlineData(typeof(ContextPanelComponent))]
+    [InlineData(typeof(ActivityPanelComponent))]
+    [InlineData(typeof(PromptAreaComponent))]
+    [InlineData(typeof(LandingPageComponent))]
+    [InlineData(typeof(SessionResumeModalComponent))]
+    [InlineData(typeof(ResourceViewerModalComponent))]
+    [InlineData(typeof(DiffViewerComponent))]
+    [InlineData(typeof(PhaseTransitionComponent))]
+    [InlineData(typeof(ResearchDisplayComponent))]
+    [InlineData(typeof(FilePickerComponent))]
+    [InlineData(typeof(SelectionModalComponent))]
+    [InlineData(typeof(ConfirmationModalComponent))]
+    [InlineData(typeof(ErrorModalComponent))]
+    [InlineData(typeof(SpinnerComponent))]
+    public void RenderPreview_ReturnsNonEmptyOutput(Type componentType)
+    {
+        var component = (IPreviewableComponent)Activator.CreateInstance(componentType)!;
+        var lines = component.RenderPreview(80, 24);
+        Assert.NotNull(lines);
+        Assert.NotEmpty(lines);
+    }
+
+    [Theory]
+    [InlineData(typeof(TopPanelComponent))]
+    [InlineData(typeof(ContextPanelComponent))]
+    [InlineData(typeof(ActivityPanelComponent))]
+    [InlineData(typeof(PromptAreaComponent))]
+    [InlineData(typeof(LandingPageComponent))]
+    [InlineData(typeof(SessionResumeModalComponent))]
+    [InlineData(typeof(ResourceViewerModalComponent))]
+    [InlineData(typeof(DiffViewerComponent))]
+    [InlineData(typeof(PhaseTransitionComponent))]
+    [InlineData(typeof(ResearchDisplayComponent))]
+    [InlineData(typeof(FilePickerComponent))]
+    [InlineData(typeof(SelectionModalComponent))]
+    [InlineData(typeof(ConfirmationModalComponent))]
+    [InlineData(typeof(ErrorModalComponent))]
+    [InlineData(typeof(SpinnerComponent))]
+    public void RenderPreview_AllComponentsArePreviewable(Type componentType)
+    {
+        var component = Activator.CreateInstance(componentType)!;
+        Assert.IsAssignableFrom<IPreviewableComponent>(component);
+    }
+
+    [Fact]
+    public void AllGalleryComponents_ArePreviewable()
+    {
+        var services = new ServiceCollection();
+        services.AddLopenTui();
+        var sp = services.BuildServiceProvider();
+        var gallery = sp.GetRequiredService<IComponentGallery>();
+
+        foreach (var component in gallery.GetAll())
+        {
+            Assert.IsAssignableFrom<IPreviewableComponent>(component);
+        }
+    }
 }

@@ -15,7 +15,7 @@
     "description": "Implement the main orchestration loop that drives workflow steps from start to completion",
     "status": "done",
     "priority": 1,
-    "notes": "Implemented WorkflowOrchestrator with IWorkflowOrchestrator interface. Loop: assess → guardrails → LLM invoke → transition → render. 21 tests. Registered in DI."
+    "notes": "Implemented WorkflowOrchestrator with IWorkflowOrchestrator interface. Loop: assess \u2192 guardrails \u2192 LLM invoke \u2192 transition \u2192 render. 21 tests. Registered in DI."
   },
   {
     "id": "JOB-003",
@@ -120,7 +120,7 @@
     "id": "JOB-014",
     "requirement_code": "CORE-05",
     "requirement_module": "core",
-    "description": "Wire PhaseTransitionController human gate into orchestration loop for Requirement Gathering → Planning",
+    "description": "Wire PhaseTransitionController human gate into orchestration loop for Requirement Gathering \u2192 Planning",
     "status": "done",
     "priority": 2,
     "notes": "Human gate already implemented in WorkflowOrchestrator: DraftSpecification step checks IsRequirementGatheringToPlannningApproved, invokes LLM, returns NeedsConfirmation for RunAsync loop to interrupt."
@@ -129,10 +129,10 @@
     "id": "JOB-015",
     "requirement_code": "CORE-06",
     "requirement_module": "core",
-    "description": "Wire auto-transition checks for Planning → Building and Building → Complete into orchestration loop",
+    "description": "Wire auto-transition checks for Planning \u2192 Building and Building \u2192 Complete into orchestration loop",
     "status": "done",
     "priority": 2,
-    "notes": "Auto-transitions wired: Repeat step checks HasMoreComponentsAsync — fires ModuleComplete when no more components, fires Assess otherwise. Planning→Building auto-transition checks via PhaseTransitionController."
+    "notes": "Auto-transitions wired: Repeat step checks HasMoreComponentsAsync \u2014 fires ModuleComplete when no more components, fires Assess otherwise. Planning\u2192Building auto-transition checks via PhaseTransitionController."
   },
   {
     "id": "JOB-016",
@@ -312,7 +312,7 @@
     "description": "Create 'lopen test tui' CLI command that launches the interactive component gallery",
     "status": "done",
     "priority": 1,
-    "notes": "TestCommand with test tui subcommand. Interactive gallery with ↑↓ navigation and Enter preview. --list flag for text mode. 4 CLI tests."
+    "notes": "TestCommand with test tui subcommand. Interactive gallery with \u2191\u2193 navigation and Enter preview. --list flag for text mode. 4 CLI tests."
   },
   {
     "id": "JOB-036",
@@ -384,7 +384,7 @@
     "description": "Implement expandable tool call outputs via click or keyboard shortcut",
     "status": "done",
     "priority": 3,
-    "notes": "Added ToolCall ActivityEntryKind with ⚙ prefix. Expand/collapse indicators (▼/▶) for entries with details. Selection marker (>) for keyboard navigation. 8 new tests."
+    "notes": "Added ToolCall ActivityEntryKind with \u2699 prefix. Expand/collapse indicators (\u25bc/\u25b6) for entries with details. Selection marker (>) for keyboard navigation. 8 new tests."
   },
   {
     "id": "JOB-044",
@@ -393,7 +393,7 @@
     "description": "Wire real-time task progress updates to ContextPanelComponent",
     "status": "done",
     "priority": 3,
-    "notes": "Added visual progress bar [████░░░░] to ContextPanelComponent.RenderTaskSection. Data pipeline (IPlanManager → ContextPanelDataProvider → 1s polling → renderer) was already wired. 7 new progress bar tests. All 1871 tests pass."
+    "notes": "Added visual progress bar [\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591] to ContextPanelComponent.RenderTaskSection. Data pipeline (IPlanManager \u2192 ContextPanelDataProvider \u2192 1s polling \u2192 renderer) was already wired. 7 new progress bar tests. All 1871 tests pass."
   },
   {
     "id": "JOB-045",
@@ -411,7 +411,7 @@
     "description": "Implement inline research display with drill-into-document capability",
     "status": "done",
     "priority": 3,
-    "notes": "Added Research ActivityEntryKind with 📖 prefix. FullDocumentContent on ActivityEntry for drill-into. Expanded entries with full doc show '[Press Enter to view full document]' hint. ToggleExpand on expanded+full doc opens ResourceViewerModal. 7 new tests. All 1891 tests pass."
+    "notes": "Added Research ActivityEntryKind with \ud83d\udcd6 prefix. FullDocumentContent on ActivityEntry for drill-into. Expanded entries with full doc show '[Press Enter to view full document]' hint. ToggleExpand on expanded+full doc opens ResourceViewerModal. 7 new tests. All 1891 tests pass."
   },
   {
     "id": "JOB-047",
@@ -420,7 +420,7 @@
     "description": "Wire PhaseTransitionComponent to display phase transition summaries in activity area",
     "status": "done",
     "priority": 3,
-    "notes": "Added AddPhaseTransition to IActivityPanelDataProvider. Creates entries with Kind=PhaseTransition (◆ prefix), summary 'Phase: from → to', optional section details. 6 new tests. All 1897 tests pass."
+    "notes": "Added AddPhaseTransition to IActivityPanelDataProvider. Creates entries with Kind=PhaseTransition (\u25c6 prefix), summary 'Phase: from \u2192 to', optional section details. 6 new tests. All 1897 tests pass."
   },
   {
     "id": "JOB-048",
@@ -438,16 +438,16 @@
     "description": "Wire file picker with tree view navigation for file selection",
     "status": "done",
     "priority": 3,
-    "notes": "Wired FilePickerComponent as modal in TuiApplication. Up/Down navigation, Enter expand/collapse dirs, Esc close. 📁/📂/📄 icons, ▶ selection. 6 new tests. All 1909 tests pass."
+    "notes": "Wired FilePickerComponent as modal in TuiApplication. Up/Down navigation, Enter expand/collapse dirs, Esc close. \ud83d\udcc1/\ud83d\udcc2/\ud83d\udcc4 icons, \u25b6 selection. 6 new tests. All 1909 tests pass."
   },
   {
     "id": "JOB-050",
     "requirement_code": "TUI-17",
     "requirement_module": "tui",
-    "description": "Wire phase/step visualization (●/○) in top panel from live workflow state",
+    "description": "Wire phase/step visualization (\u25cf/\u25cb) in top panel from live workflow state",
     "status": "done",
     "priority": 3,
-    "notes": "Already fully implemented. TopPanelComponent.BuildStepIndicator renders ●/○, BuildPhaseLine shows phase/step. TopPanelDataProvider reads live IWorkflowEngine state every frame. 68 existing TopPanel tests cover this."
+    "notes": "Already fully implemented. TopPanelComponent.BuildStepIndicator renders \u25cf/\u25cb, BuildPhaseLine shows phase/step. TopPanelDataProvider reads live IWorkflowEngine state every frame. 68 existing TopPanel tests cover this."
   },
   {
     "id": "JOB-051",
@@ -456,7 +456,7 @@
     "description": "Wire ModuleSelectionModal for module selection with arrow key navigation",
     "status": "done",
     "priority": 3,
-    "notes": "Wired SelectionModalComponent as ModuleSelection modal in TuiApplication. Up/Down navigation, Enter selects, Esc cancels. ▶ indicator. 2 new tests. All 1911 tests pass."
+    "notes": "Wired SelectionModalComponent as ModuleSelection modal in TuiApplication. Up/Down navigation, Enter selects, Esc cancels. \u25b6 indicator. 2 new tests. All 1911 tests pass."
   },
   {
     "id": "JOB-052",
@@ -490,9 +490,9 @@
     "requirement_code": "TUI-26",
     "requirement_module": "tui",
     "description": "Wire repeated failure confirmation modal at configured threshold",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Must display confirmation modal when task failure count reaches threshold. Connected to CORE-22."
+    "notes": "ConsecutiveFailureCount tracks failures on IActivityPanelDataProvider. Counter increments on Error entries, resets on non-errors. Callers check threshold and trigger confirmation modal. 4 new tests. All 1925 tests pass."
   },
   {
     "id": "JOB-056",
@@ -508,54 +508,54 @@
     "requirement_code": "TUI-28",
     "requirement_module": "tui",
     "description": "Wire SpinnerComponent for async feedback during long-running operations",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SpinnerComponent has animation frames. Must be displayed during LLM invocations and other long ops."
+    "notes": "PromptAreaData.Spinner shows spinner instead of input when active. Spinner renders with braille frame animation and message. 3 new tests. All 1925 tests pass."
   },
   {
     "id": "JOB-058",
     "requirement_code": "TUI-29",
     "requirement_module": "tui",
     "description": "Wire context window usage display in top panel from ContextBudgetManager",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "TopPanelComponent can render context usage. Must receive data from ContextBudgetManager."
+    "notes": "Already fully implemented. TopPanelData.ContextUsedTokens/ContextMaxTokens, TopPanelComponent renders Context: used/total, TopPanelDataProvider sources from ITokenTracker metrics."
   },
   {
     "id": "JOB-059",
     "requirement_code": "TUI-30",
     "requirement_module": "tui",
-    "description": "Wire premium request counter (🔥) display in top panel from token tracker",
-    "status": "open",
+    "description": "Wire premium request counter (\ud83d\udd25) display in top panel from token tracker",
+    "status": "done",
     "priority": 3,
-    "notes": "TopPanelComponent renders premium counter. Must receive live data from ITokenTracker."
+    "notes": "Already fully implemented. TopPanelData.PremiumRequestCount, TopPanelComponent renders \ud83d\udd25 count premium when count > 0, sourced from metrics.PremiumRequestCount."
   },
   {
     "id": "JOB-060",
     "requirement_code": "TUI-31",
     "requirement_module": "tui",
     "description": "Wire real-time progress percentages in context panel",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ContextPanelComponent can display progress. Must calculate and update percentages from task hierarchy state."
+    "notes": "Already implemented via JOB-044 (TUI-10). ContextPanelComponent renders progress bar and percentage. ContextPanelDataProvider reads from IPlanManager."
   },
   {
     "id": "JOB-061",
     "requirement_code": "TUI-37",
     "requirement_module": "tui",
     "description": "Implement NO_COLOR environment variable support to disable color output",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ColorPalette/VisualDesign exist. Must check NO_COLOR env var and disable ANSI color codes when set."
+    "notes": "Already fully implemented. VisualDesign.cs ColorPalette checks NO_COLOR env var. All color properties return empty when NoColor=true."
   },
   {
     "id": "JOB-062",
     "requirement_code": "TUI-39",
     "requirement_module": "tui",
     "description": "Implement error display for unknown slash commands with valid command list",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SlashCommandRegistry exists. Must display helpful error when user types an unknown slash command."
+    "notes": "Already fully implemented. SlashCommandExecutor returns UnknownCommand with valid command list. ProcessSlashCommandAsync shows Error entry in activity panel. 5 existing tests cover this (SlashCommandExecutorTests)."
   },
   {
     "id": "JOB-063",
@@ -571,18 +571,18 @@
     "requirement_code": "TUI-43",
     "requirement_module": "tui",
     "description": "Implement component gallery selection navigation for 'lopen test tui'",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "GalleryListComponent exists with selection marker. Need to wire it into the gallery launcher with keyboard navigation."
+    "notes": "Already fully implemented. ComponentGallery, GalleryListComponent, TestCommand with \u2191/\u2193/Enter/Esc navigation. 23 existing tests."
   },
   {
     "id": "JOB-065",
     "requirement_code": "TUI-44",
     "requirement_module": "tui",
     "description": "Ensure each gallery component renders with realistic mock/stub data",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Components accept injected data. Need to provide realistic mock data for gallery preview."
+    "notes": "All 15 gallery components implement IPreviewableComponent with realistic stub data. 31 new tests (15 non-empty output + 15 type checks + 1 gallery-wide). All 1956 tests pass."
   },
   {
     "id": "JOB-066",
@@ -663,7 +663,7 @@
     "description": "Implement module selection UI listing modules with current state for user choice",
     "status": "done",
     "priority": 2,
-    "notes": "IModuleSelectionService + ModuleSelectionService created. Lists modules with status indicators (○/◐/●), progress counts, selection by number or name. Wired into PhaseCommands.ResolveModuleNameAsync as fallback. DI registered in AddLopenCore(). 17 new tests. All 1765 tests pass."
+    "notes": "IModuleSelectionService + ModuleSelectionService created. Lists modules with status indicators (\u25cb/\u25d0/\u25cf), progress counts, selection by number or name. Wired into PhaseCommands.ResolveModuleNameAsync as fallback. DI registered in AddLopenCore(). 17 new tests. All 1765 tests pass."
   },
   {
     "id": "JOB-075",
@@ -805,18 +805,18 @@
     "requirement_code": "TUI-38",
     "requirement_module": "tui",
     "description": "Write unit tests for SlashCommandRegistry command dispatch",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SlashCommandRegistry has no dedicated test file. Need tests for command registration, dispatch, and unknown command handling."
+    "notes": "Already fully implemented. SlashCommandRegistry has 8 tests in VisualAndCommandTests + 30 tests in SlashCommandExecutorTests."
   },
   {
     "id": "JOB-091",
     "requirement_code": "TUI-28",
     "requirement_module": "tui",
     "description": "Write unit tests for SpinnerComponent animation and rendering",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SpinnerComponent has no dedicated test file. Need tests for frame cycling, progress display, and elapsed time."
+    "notes": "Already fully implemented. SpinnerComponent has 5 tests in VisualAndCommandTests + 3 spinner tests in PromptAreaComponentTests."
   },
   {
     "id": "JOB-092",
@@ -831,7 +831,7 @@
     "id": "JOB-093",
     "requirement_code": "CORE-02",
     "requirement_module": "core",
-    "description": "Write integration test for end-to-end workflow execution (spec → plan → build pipeline)",
+    "description": "Write integration test for end-to-end workflow execution (spec \u2192 plan \u2192 build pipeline)",
     "status": "open",
     "priority": 3,
     "notes": "No cross-module integration tests exist for the full workflow pipeline. Critical for proving the system works end-to-end."

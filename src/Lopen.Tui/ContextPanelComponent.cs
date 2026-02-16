@@ -4,7 +4,7 @@ namespace Lopen.Tui;
 /// Renders the context panel (right pane) with current task, component/module hierarchy,
 /// and active resources.
 /// </summary>
-public sealed class ContextPanelComponent : ITuiComponent
+public sealed class ContextPanelComponent : IPreviewableComponent
 {
     public string Name => "ContextPanel";
     public string Description => "Context panel with task tree, completion states, and active resources";
@@ -52,6 +52,32 @@ public sealed class ContextPanelComponent : ITuiComponent
             .Take(region.Height)
             .Select(l => PadToWidth(l, region.Width))
             .ToArray();
+    }
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new ContextPanelData
+        {
+            CurrentTask = new TaskSectionData
+            {
+                Name = "Implement JWT validation",
+                ProgressPercent = 65,
+                CompletedSubtasks = 2,
+                TotalSubtasks = 3,
+                Subtasks =
+                [
+                    new SubtaskItem("Parse token claims", TaskState.Complete),
+                    new SubtaskItem("Validate expiration", TaskState.InProgress),
+                    new SubtaskItem("Check signing key", TaskState.Pending),
+                ],
+            },
+            Resources =
+            [
+                new ResourceItem("SPEC.md"),
+                new ResourceItem("RESEARCH.md"),
+            ],
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
     }
 
     private static void RenderTaskSection(TaskSectionData task, List<string> lines)

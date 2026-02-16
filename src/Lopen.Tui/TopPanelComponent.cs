@@ -6,7 +6,7 @@ namespace Lopen.Tui;
 /// Renders the top panel containing logo, version, model, context usage,
 /// premium requests, git branch, auth status, phase, and step progress.
 /// </summary>
-public sealed class TopPanelComponent : ITuiComponent
+public sealed class TopPanelComponent : IPreviewableComponent
 {
     /// <summary>ASCII art logo lines.</summary>
     internal static readonly string[] LogoLines =
@@ -133,6 +133,25 @@ public sealed class TopPanelComponent : ITuiComponent
             < 1_000_000 => $"{tokens / 1000.0:0.#}K",
             _ => $"{tokens / 1_000_000.0:0.#}M",
         };
+    }
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new TopPanelData
+        {
+            Version = "v0.1.0",
+            ModelName = "claude-sonnet-4",
+            ContextUsedTokens = 45000,
+            ContextMaxTokens = 200000,
+            PremiumRequestCount = 12,
+            GitBranch = "feat/auth",
+            IsAuthenticated = true,
+            PhaseName = "Building",
+            CurrentStep = 3,
+            TotalSteps = 5,
+            StepLabel = "Iterate Tasks",
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
     }
 
     private static string CombineLogoAndContent(string logo, string content, int width)

@@ -18,10 +18,16 @@ public sealed record SpinnerData
 /// <summary>
 /// Renders a spinner with optional progress percentage for async feedback.
 /// </summary>
-public sealed class SpinnerComponent : ITuiComponent
+public sealed class SpinnerComponent : IPreviewableComponent
 {
     /// <summary>Spinner animation frames.</summary>
     internal static readonly string[] Frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new SpinnerData { Message = "Analyzing codebase...", ProgressPercent = 45 };
+        return [Render(data, width)];
+    }
 
     public string Name => "Spinner";
     public string Description => "Async feedback spinner with optional progress percentage";

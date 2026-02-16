@@ -3,10 +3,28 @@ namespace Lopen.Tui;
 /// <summary>
 /// Renders a file picker with tree view.
 /// </summary>
-public sealed class FilePickerComponent : ITuiComponent
+public sealed class FilePickerComponent : IPreviewableComponent
 {
     public string Name => "FilePicker";
     public string Description => "File picker with tree view and navigation";
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new FilePickerData
+        {
+            RootPath = "src/Auth",
+            Nodes =
+            [
+                new FileNode("Auth", true, 0, true),
+                new FileNode("JwtValidator.cs", false, 1),
+                new FileNode("TokenService.cs", false, 1),
+                new FileNode("Models", true, 1, true),
+                new FileNode("AuthToken.cs", false, 2),
+            ],
+            SelectedIndex = 1,
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
 
     public string[] Render(FilePickerData data, ScreenRect region)
     {
@@ -37,10 +55,21 @@ public sealed class FilePickerComponent : ITuiComponent
 /// <summary>
 /// Renders a module/component selection modal with arrow key navigation.
 /// </summary>
-public sealed class SelectionModalComponent : ITuiComponent
+public sealed class SelectionModalComponent : IPreviewableComponent
 {
     public string Name => "SelectionModal";
     public string Description => "Module/component selection modal with arrow key navigation";
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new ModuleSelectionData
+        {
+            Title = "Select Module",
+            Options = ["Authentication", "Database", "API Gateway", "Notifications"],
+            SelectedIndex = 0,
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
 
     public string[] Render(ModuleSelectionData data, ScreenRect region)
     {
@@ -69,10 +98,21 @@ public sealed class SelectionModalComponent : ITuiComponent
 /// <summary>
 /// Renders confirmation modals (Yes/No/Always/Other).
 /// </summary>
-public sealed class ConfirmationModalComponent : ITuiComponent
+public sealed class ConfirmationModalComponent : IPreviewableComponent
 {
     public string Name => "ConfirmationModal";
     public string Description => "Confirmation modal with Yes/No/Always options";
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new ConfirmationData
+        {
+            Title = "Apply Changes?",
+            Message = "This will modify 3 files in src/Auth/",
+            SelectedIndex = 0,
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
 
     public string[] Render(ConfirmationData data, ScreenRect region)
     {
@@ -109,10 +149,21 @@ public sealed class ConfirmationModalComponent : ITuiComponent
 /// <summary>
 /// Renders error/failure modals with recovery options.
 /// </summary>
-public sealed class ErrorModalComponent : ITuiComponent
+public sealed class ErrorModalComponent : IPreviewableComponent
 {
     public string Name => "ErrorModal";
     public string Description => "Error modal with recovery options (Retry/Skip/Abort)";
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var data = new ErrorModalData
+        {
+            Title = "Build Failed",
+            Message = "error CS1061: 'AuthToken' does not contain a definition for 'Expiry'",
+            SelectedIndex = 0,
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
 
     public string[] Render(ErrorModalData data, ScreenRect region)
     {
