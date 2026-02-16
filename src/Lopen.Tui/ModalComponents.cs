@@ -6,6 +6,50 @@ namespace Lopen.Tui;
 /// </summary>
 public sealed class LandingPageComponent : IPreviewableComponent
 {
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated", "error", "loading"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new LandingPageData
+            {
+                Version = "v0.1.0",
+                IsAuthenticated = true,
+                QuickCommands = [],
+            },
+            "error" => new LandingPageData
+            {
+                Version = "v0.1.0",
+                IsAuthenticated = false,
+                QuickCommands =
+                [
+                    new QuickCommand("build", "Build a module from spec"),
+                    new QuickCommand("plan", "Generate a project plan"),
+                    new QuickCommand("research", "Research a topic"),
+                ],
+            },
+            "loading" => new LandingPageData
+            {
+                Version = "v0.1.0",
+                IsAuthenticated = false,
+                QuickCommands = [],
+            },
+            _ => new LandingPageData
+            {
+                Version = "v0.1.0",
+                IsAuthenticated = true,
+                QuickCommands =
+                [
+                    new QuickCommand("build", "Build a module from spec"),
+                    new QuickCommand("plan", "Generate a project plan"),
+                    new QuickCommand("research", "Research a topic"),
+                ],
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new LandingPageData
@@ -89,6 +133,36 @@ public sealed class SessionResumeModalComponent : IPreviewableComponent
     /// <summary>Option labels for the resume modal.</summary>
     internal static readonly string[] Options = ["Resume", "Start New", "View Details"];
 
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new SessionResumeData
+            {
+                ModuleName = "Unknown",
+                PhaseName = "N/A",
+                StepProgress = "0/0",
+                TaskProgress = "0/0 tasks",
+                LastActivity = "Unknown",
+                ProgressPercent = 0,
+                SelectedOption = 0,
+            },
+            _ => new SessionResumeData
+            {
+                ModuleName = "Authentication",
+                PhaseName = "Building",
+                StepProgress = "3/5",
+                TaskProgress = "7/12 tasks",
+                LastActivity = "2 hours ago",
+                ProgressPercent = 58,
+                SelectedOption = 0,
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new SessionResumeData
@@ -154,6 +228,37 @@ public sealed class SessionResumeModalComponent : IPreviewableComponent
 /// </summary>
 public sealed class ResourceViewerModalComponent : IPreviewableComponent
 {
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new ResourceViewerData
+            {
+                Label = "EMPTY.md",
+                Lines = [],
+            },
+            _ => new ResourceViewerData
+            {
+                Label = "SPECIFICATION.md",
+                Lines =
+                [
+                    "# Authentication Module",
+                    "",
+                    "## Overview",
+                    "This module handles JWT-based authentication.",
+                    "",
+                    "## Requirements",
+                    "- Token validation with RS256",
+                    "- Refresh token rotation",
+                    "- Role-based access control",
+                ],
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new ResourceViewerData

@@ -5,6 +5,44 @@ namespace Lopen.Tui;
 /// </summary>
 public sealed class DiffViewerComponent : IPreviewableComponent
 {
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new DiffViewerData
+            {
+                FilePath = "src/Auth/JwtValidator.cs",
+                LinesAdded = 0,
+                LinesRemoved = 0,
+                Hunks = [],
+            },
+            _ => new DiffViewerData
+            {
+                FilePath = "src/Auth/JwtValidator.cs",
+                LinesAdded = 3,
+                LinesRemoved = 1,
+                Hunks =
+                [
+                    new DiffHunk
+                    {
+                        StartLine = 12,
+                        Lines =
+                        [
+                            " public bool Validate(string token)",
+                            "-    return token != null;",
+                            "+    if (token is null) return false;",
+                            "+    var claims = ParseClaims(token);",
+                            "+    return !IsExpired(claims);",
+                        ],
+                    },
+                ],
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new DiffViewerData
@@ -83,6 +121,32 @@ public sealed class DiffViewerComponent : IPreviewableComponent
 /// </summary>
 public sealed class PhaseTransitionComponent : IPreviewableComponent
 {
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new PhaseTransitionData
+            {
+                FromPhase = "Research",
+                ToPhase = "Building",
+                Sections = [],
+            },
+            _ => new PhaseTransitionData
+            {
+                FromPhase = "Research",
+                ToPhase = "Building",
+                Sections =
+                [
+                    new TransitionSection("Completed", ["Analyzed 12 source files", "Identified 3 integration points"]),
+                    new TransitionSection("Next Steps", ["Create JWT middleware", "Add unit tests"]),
+                ],
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new PhaseTransitionData
@@ -137,6 +201,32 @@ public sealed class PhaseTransitionComponent : IPreviewableComponent
 /// </summary>
 public sealed class ResearchDisplayComponent : IPreviewableComponent
 {
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new ResearchDisplayData
+            {
+                Topic = "JWT Best Practices",
+                Findings = [],
+            },
+            _ => new ResearchDisplayData
+            {
+                Topic = "JWT Best Practices",
+                Findings =
+                [
+                    "Use RS256 over HS256 for public APIs",
+                    "Set short expiration (15 min) with refresh tokens",
+                    "Always validate issuer and audience claims",
+                ],
+                HasFullDocument = true,
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new ResearchDisplayData

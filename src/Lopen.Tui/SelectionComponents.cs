@@ -8,6 +8,34 @@ public sealed class FilePickerComponent : IPreviewableComponent
     public string Name => "FilePicker";
     public string Description => "File picker with tree view and navigation";
 
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new FilePickerData
+            {
+                RootPath = "src/Auth",
+                Nodes = [],
+            },
+            _ => new FilePickerData
+            {
+                RootPath = "src/Auth",
+                Nodes =
+                [
+                    new FileNode("Auth", true, 0, true),
+                    new FileNode("JwtValidator.cs", false, 1),
+                    new FileNode("TokenService.cs", false, 1),
+                    new FileNode("Models", true, 1, true),
+                    new FileNode("AuthToken.cs", false, 2),
+                ],
+                SelectedIndex = 1,
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new FilePickerData
@@ -59,6 +87,27 @@ public sealed class SelectionModalComponent : IPreviewableComponent
 {
     public string Name => "SelectionModal";
     public string Description => "Module/component selection modal with arrow key navigation";
+
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new ModuleSelectionData
+            {
+                Title = "Select Module",
+                Options = [],
+            },
+            _ => new ModuleSelectionData
+            {
+                Title = "Select Module",
+                Options = ["Authentication", "Database", "API Gateway", "Notifications"],
+                SelectedIndex = 0,
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
 
     public string[] RenderPreview(int width, int height)
     {

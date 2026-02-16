@@ -23,6 +23,18 @@ public sealed class SpinnerComponent : IPreviewableComponent
     /// <summary>Spinner animation frames.</summary>
     internal static readonly string[] Frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
+    public IReadOnlyList<string> GetPreviewStates() => ["populated", "loading"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "loading" => new SpinnerData { Message = "Analyzing codebase..." },
+            _ => new SpinnerData { Message = "Analyzing codebase...", ProgressPercent = 45 },
+        };
+        return [Render(data, width)];
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new SpinnerData { Message = "Analyzing codebase...", ProgressPercent = 45 };

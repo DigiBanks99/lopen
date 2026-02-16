@@ -245,4 +245,61 @@ public class ComponentGalleryRegistrationTests
             Assert.IsAssignableFrom<IPreviewableComponent>(component);
         }
     }
+
+    // ==================== Multi-State Previews (JOB-066 / TUI-48) ====================
+
+    [Theory]
+    [InlineData(typeof(TopPanelComponent), new[] { "empty", "populated", "error", "loading" })]
+    [InlineData(typeof(ContextPanelComponent), new[] { "empty", "populated", "error", "loading" })]
+    [InlineData(typeof(ActivityPanelComponent), new[] { "empty", "populated", "error", "loading" })]
+    [InlineData(typeof(PromptAreaComponent), new[] { "empty", "populated", "error", "loading" })]
+    [InlineData(typeof(LandingPageComponent), new[] { "empty", "populated", "error", "loading" })]
+    public void GetPreviewStates_FourStateComponents_HaveAllStates(Type componentType, string[] expectedStates)
+    {
+        var component = (IPreviewableComponent)Activator.CreateInstance(componentType)!;
+        var states = component.GetPreviewStates();
+        foreach (var expected in expectedStates)
+        {
+            Assert.Contains(expected, states);
+        }
+    }
+
+    [Theory]
+    [InlineData(typeof(TopPanelComponent))]
+    [InlineData(typeof(ContextPanelComponent))]
+    [InlineData(typeof(ActivityPanelComponent))]
+    [InlineData(typeof(PromptAreaComponent))]
+    [InlineData(typeof(LandingPageComponent))]
+    [InlineData(typeof(SessionResumeModalComponent))]
+    [InlineData(typeof(ResourceViewerModalComponent))]
+    [InlineData(typeof(DiffViewerComponent))]
+    [InlineData(typeof(PhaseTransitionComponent))]
+    [InlineData(typeof(ResearchDisplayComponent))]
+    [InlineData(typeof(FilePickerComponent))]
+    [InlineData(typeof(SelectionModalComponent))]
+    [InlineData(typeof(SpinnerComponent))]
+    public void RenderPreview_AllStates_ReturnNonNull(Type componentType)
+    {
+        var component = (IPreviewableComponent)Activator.CreateInstance(componentType)!;
+        foreach (var state in component.GetPreviewStates())
+        {
+            var lines = component.RenderPreview(state, 80, 24);
+            Assert.NotNull(lines);
+        }
+    }
+
+    [Fact]
+    public void GetPreviewStates_AllComponents_IncludePopulated()
+    {
+        var services = new ServiceCollection();
+        services.AddLopenTui();
+        var sp = services.BuildServiceProvider();
+        var gallery = sp.GetRequiredService<IComponentGallery>();
+
+        foreach (var component in gallery.GetAll())
+        {
+            var previewable = (IPreviewableComponent)component;
+            Assert.Contains("populated", previewable.GetPreviewStates());
+        }
+    }
 }

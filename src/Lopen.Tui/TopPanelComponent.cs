@@ -135,6 +135,48 @@ public sealed class TopPanelComponent : IPreviewableComponent
         };
     }
 
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated", "error", "loading"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new TopPanelData
+            {
+                Version = "v0.1.0",
+            },
+            "error" => new TopPanelData
+            {
+                Version = "v0.1.0",
+                IsAuthenticated = false,
+                ContextMaxTokens = 200000,
+            },
+            "loading" => new TopPanelData
+            {
+                Version = "v0.1.0",
+                ModelName = "Loading...",
+                ContextMaxTokens = 200000,
+                IsAuthenticated = true,
+                PhaseName = "Initializing",
+            },
+            _ => new TopPanelData
+            {
+                Version = "v0.1.0",
+                ModelName = "claude-sonnet-4",
+                ContextUsedTokens = 45000,
+                ContextMaxTokens = 200000,
+                PremiumRequestCount = 12,
+                GitBranch = "feat/auth",
+                IsAuthenticated = true,
+                PhaseName = "Building",
+                CurrentStep = 3,
+                TotalSteps = 5,
+                StepLabel = "Iterate Tasks",
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new TopPanelData

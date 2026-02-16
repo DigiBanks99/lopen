@@ -589,9 +589,9 @@
     "requirement_code": "TUI-48",
     "requirement_module": "tui",
     "description": "Ensure gallery stub data exercises multiple visual states (empty, populated, error, loading)",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Components should be previewable in multiple states to verify visual correctness."
+    "notes": "IPreviewableComponent extended with GetPreviewStates() and RenderPreview(state). 5 core components have 4 states (empty/populated/error/loading), others have 2. 19 new tests. All 1975 tests pass."
   },
   {
     "id": "JOB-067",

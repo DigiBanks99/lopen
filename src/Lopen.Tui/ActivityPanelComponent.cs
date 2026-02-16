@@ -70,6 +70,50 @@ public sealed class ActivityPanelComponent : IPreviewableComponent
             .ToArray();
     }
 
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated", "error", "loading"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new ActivityPanelData(),
+            "error" => new ActivityPanelData
+            {
+                Entries =
+                [
+                    new ActivityEntry { Summary = "Reading project structure", Kind = ActivityEntryKind.Action },
+                    new ActivityEntry { Summary = "Build failed: missing reference", Kind = ActivityEntryKind.Error },
+                    new ActivityEntry { Summary = "error CS1061: 'AuthToken' does not contain 'Expiry'", Kind = ActivityEntryKind.Error },
+                ],
+            },
+            "loading" => new ActivityPanelData
+            {
+                Entries =
+                [
+                    new ActivityEntry { Summary = "Processing...", Kind = ActivityEntryKind.Action },
+                ],
+            },
+            _ => new ActivityPanelData
+            {
+                Entries =
+                [
+                    new ActivityEntry { Summary = "Reading project structure", Kind = ActivityEntryKind.Action },
+                    new ActivityEntry
+                    {
+                        Summary = "Edited src/Auth/JwtValidator.cs",
+                        Kind = ActivityEntryKind.FileEdit,
+                        IsExpanded = true,
+                        Details = ["+ Added token expiry check", "+ Added signing key validation"],
+                    },
+                    new ActivityEntry { Summary = "dotnet build src/Auth/", Kind = ActivityEntryKind.Command },
+                    new ActivityEntry { Summary = "Build failed: missing reference", Kind = ActivityEntryKind.Error },
+                    new ActivityEntry { Summary = "Researching JWT best practices", Kind = ActivityEntryKind.Research },
+                ],
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new ActivityPanelData

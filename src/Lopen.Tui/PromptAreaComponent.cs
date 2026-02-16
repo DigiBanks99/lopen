@@ -15,6 +15,27 @@ public sealed class PromptAreaComponent : IPreviewableComponent
         "Ctrl+P: Pause",
     ];
 
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated", "error", "loading"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new PromptAreaData(),
+            "error" => new PromptAreaData(),
+            "loading" => new PromptAreaData
+            {
+                Spinner = new SpinnerData { Message = "Analyzing..." },
+            },
+            _ => new PromptAreaData
+            {
+                Text = "lopen build --module auth",
+                CursorPosition = 10,
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new PromptAreaData

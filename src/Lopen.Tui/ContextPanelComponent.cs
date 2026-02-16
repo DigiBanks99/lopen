@@ -54,6 +54,70 @@ public sealed class ContextPanelComponent : IPreviewableComponent
             .ToArray();
     }
 
+    public IReadOnlyList<string> GetPreviewStates() => ["empty", "populated", "error", "loading"];
+
+    public string[] RenderPreview(string state, int width, int height)
+    {
+        var data = state switch
+        {
+            "empty" => new ContextPanelData(),
+            "error" => new ContextPanelData
+            {
+                CurrentTask = new TaskSectionData
+                {
+                    Name = "Implement JWT validation",
+                    ProgressPercent = 40,
+                    CompletedSubtasks = 1,
+                    TotalSubtasks = 3,
+                    Subtasks =
+                    [
+                        new SubtaskItem("Parse token claims", TaskState.Complete),
+                        new SubtaskItem("Validate expiration", TaskState.Failed),
+                        new SubtaskItem("Check signing key", TaskState.Pending),
+                    ],
+                },
+            },
+            "loading" => new ContextPanelData
+            {
+                CurrentTask = new TaskSectionData
+                {
+                    Name = "Implement JWT validation",
+                    ProgressPercent = 0,
+                    CompletedSubtasks = 0,
+                    TotalSubtasks = 3,
+                    Subtasks =
+                    [
+                        new SubtaskItem("Parse token claims", TaskState.InProgress),
+                        new SubtaskItem("Validate expiration", TaskState.Pending),
+                        new SubtaskItem("Check signing key", TaskState.Pending),
+                    ],
+                },
+            },
+            _ => new ContextPanelData
+            {
+                CurrentTask = new TaskSectionData
+                {
+                    Name = "Implement JWT validation",
+                    ProgressPercent = 65,
+                    CompletedSubtasks = 2,
+                    TotalSubtasks = 3,
+                    Subtasks =
+                    [
+                        new SubtaskItem("Parse token claims", TaskState.Complete),
+                        new SubtaskItem("Validate expiration", TaskState.InProgress),
+                        new SubtaskItem("Check signing key", TaskState.Pending),
+                    ],
+                },
+                Resources =
+                [
+                    new ResourceItem("SPEC.md"),
+                    new ResourceItem("RESEARCH.md"),
+                ],
+            },
+        };
+        return Render(data, new ScreenRect(0, 0, width, height));
+    }
+
     public string[] RenderPreview(int width, int height)
     {
         var data = new ContextPanelData

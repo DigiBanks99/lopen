@@ -24,7 +24,17 @@ public interface ITuiComponent
 public interface IPreviewableComponent : ITuiComponent
 {
     /// <summary>
-    /// Renders a preview of the component with realistic stub data.
+    /// Renders a preview of the component with realistic stub data (populated state).
     /// </summary>
     string[] RenderPreview(int width, int height);
+
+    /// <summary>
+    /// Returns the available preview state names (e.g., "empty", "populated", "error", "loading").
+    /// </summary>
+    IReadOnlyList<string> GetPreviewStates() => ["populated"];
+
+    /// <summary>
+    /// Renders a preview for a specific visual state.
+    /// </summary>
+    string[] RenderPreview(string state, int width, int height) => RenderPreview(width, height);
 }
