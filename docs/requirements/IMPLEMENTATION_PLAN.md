@@ -1,19 +1,18 @@
-# Implementation Plan — JOB-082 (LLM-06): Wire OracleVerifier Tool Handlers
+# Implementation Plan — JOB-079 (STOR-09): Wire PlanManager into Orchestration Loop
 
-**Goal:** Wire the three oracle verification tool handlers (`verify_task_completion`, `verify_component_completion`, `verify_module_completion`) in `ToolHandlerBinder` to actually dispatch `IOracleVerifier.VerifyAsync()` instead of auto-passing. Record the real verdict in `IVerificationTracker`.
+**Goal:** Wire the already-implemented `IPlanManager` into `WorkflowOrchestrator` so that plans are persisted to `.lopen/modules/{module}/plan.md` with checkbox task hierarchy during the workflow.
 
 ## Acceptance Criteria
-- [LLM-06] Oracle verification tools dispatch a sub-agent and return pass/fail verdicts
-- [LLM-07] Oracle verification runs within the same SDK invocation (no additional premium request)
-- [LLM-08] `update_task_status(complete)` rejected without prior passing verification (already implemented)
+- [STOR-09] Plans stored at `.lopen/modules/{module}/plan.md` with checkbox task hierarchy
+- [STOR-10] Plan checkboxes are updated programmatically by Lopen, not by the LLM (already implemented in ToolHandlerBinder)
 
 ## Tasks
 
-- [x] 1. Add `IOracleVerifier?` as optional constructor parameter to `ToolHandlerBinder`
-- [x] 2. Update DI registration in `ServiceCollectionExtensions.cs` to resolve and pass `IOracleVerifier`
-- [x] 3. Update `HandleVerifyTaskCompletion` to call `IOracleVerifier.VerifyAsync()` with evidence/criteria, record real verdict
-- [x] 4. Update `HandleVerifyComponentCompletion` to call `IOracleVerifier.VerifyAsync()` with evidence/criteria, record real verdict
-- [x] 5. Update `HandleVerifyModuleCompletion` to call `IOracleVerifier.VerifyAsync()` with evidence/criteria, record real verdict
-- [x] 6. Handle graceful fallback when `IOracleVerifier` is null (auto-pass with warning, maintaining backward compat)
-- [x] 7. Update existing tests and add new tests for oracle dispatch scenarios
-- [x] 8. Run full test suite — 1,192 tests pass, 0 failures
+- [x] 1. Add `IPlanManager?` as optional constructor parameter to `WorkflowOrchestrator`
+- [x] 2. Update DI registration in `ServiceCollectionExtensions.cs` to resolve and pass `IPlanManager`
+- [x] 3. After `BreakIntoTasks` step succeeds, persist plan content via `WritePlanAsync` (append to existing plan for multi-component workflows)
+- [x] 4. Update test helper `CreateOrchestrator()` to compile with new parameter
+- [x] 5. Add tests for plan writing after BreakIntoTasks succeeds
+- [x] 6. Add test for plan appending when existing plan content exists
+- [x] 7. Add test for graceful no-op when IPlanManager is null
+- [x] 8. Run full test suite — 1,627 tests pass, 0 failures

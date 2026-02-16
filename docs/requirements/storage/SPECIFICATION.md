@@ -201,7 +201,7 @@ This specification defines **where and how Lopen stores its state**. It does not
 - [ ] [STOR-06] State is auto-saved after: step completion, task completion/failure, phase transition, component completion, user pause/switch
 - [ ] [STOR-07] Session resume loads state from `.lopen/sessions/latest` and offers resume or start fresh
 - [ ] [STOR-08] `--resume {id}` resumes a specific session; `--no-resume` starts fresh
-- [ ] [STOR-09] Plans are stored at `.lopen/modules/{module}/plan.md` with checkbox task hierarchy
+- [x] [STOR-09] Plans are stored at `.lopen/modules/{module}/plan.md` with checkbox task hierarchy
 - [ ] [STOR-10] Plan checkboxes are updated programmatically by Lopen, not by the LLM
 - [ ] [STOR-11] Section cache (`.lopen/cache/sections/`) is keyed by file path + section header + modification timestamp
 - [ ] [STOR-12] Section cache is invalidated when the source file changes

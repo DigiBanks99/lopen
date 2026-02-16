@@ -706,9 +706,9 @@
     "requirement_code": "STOR-09",
     "requirement_module": "storage",
     "description": "Wire PlanManager into orchestration loop for creating plans at .lopen/modules/{module}/plan.md",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "PlanManager exists but plan creation is not triggered from the workflow. Must create plan.md with checkbox hierarchy during Planning phase."
+    "notes": "IPlanManager wired into WorkflowOrchestrator. Plan content persisted after BreakIntoTasks step with append support for multi-component workflows. Graceful null fallback. Write failures logged but do not block workflow. 7 new tests. All 1,627 tests pass."
   },
   {
     "id": "JOB-080",
