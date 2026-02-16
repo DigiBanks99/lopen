@@ -1,14 +1,19 @@
-# Implementation Plan — JOB-073 (CORE-23): Critical System Error Handling
+# Implementation Plan — JOB-082 (LLM-06): Wire OracleVerifier Tool Handlers
 
-**Goal:** Ensure critical system errors (disk full, auth failure, SDK errors, unrecoverable exceptions) block workflow execution and require user action. The orchestrator must detect critical errors, call `RecordCriticalError()`, render a clear blocking message, auto-save session, and return an interrupted result.
+**Goal:** Wire the three oracle verification tool handlers (`verify_task_completion`, `verify_component_completion`, `verify_module_completion`) in `ToolHandlerBinder` to actually dispatch `IOracleVerifier.VerifyAsync()` instead of auto-passing. Record the real verdict in `IVerificationTracker`.
+
+## Acceptance Criteria
+- [LLM-06] Oracle verification tools dispatch a sub-agent and return pass/fail verdicts
+- [LLM-07] Oracle verification runs within the same SDK invocation (no additional premium request)
+- [LLM-08] `update_task_status(complete)` rejected without prior passing verification (already implemented)
 
 ## Tasks
 
-- [x] 1. Add `IsCriticalException` helper to classify exceptions as critical (IOException, UnauthorizedAccessException, OutOfMemoryException, SecurityException)
-- [x] 2. Update `InvokeLlmForStepAsync` catch block to detect critical exceptions and mark `StepResult` with `IsCriticalError` flag
-- [x] 3. Update `StepResult` with `IsCriticalError` property and `CriticalFailure` factory method
-- [x] 4. Update `RunAsync` failure handling to call `RecordCriticalError()` when `stepResult.IsCriticalError` is true, render critical error message, auto-save, and return `OrchestrationResult.CriticalError`
-- [x] 5. Add `IsCriticalError` property and `CriticalError` factory to `OrchestrationResult`
-- [x] 6. Write unit tests for critical error flow through orchestrator (12 scenarios)
-- [x] 7. Update AC-23 acceptance tests (3 tests: handler classification, OrchestrationResult, StepResult)
-- [x] 8. Run full test suite — 1,534 tests pass, 0 failures
+- [x] 1. Add `IOracleVerifier?` as optional constructor parameter to `ToolHandlerBinder`
+- [x] 2. Update DI registration in `ServiceCollectionExtensions.cs` to resolve and pass `IOracleVerifier`
+- [x] 3. Update `HandleVerifyTaskCompletion` to call `IOracleVerifier.VerifyAsync()` with evidence/criteria, record real verdict
+- [x] 4. Update `HandleVerifyComponentCompletion` to call `IOracleVerifier.VerifyAsync()` with evidence/criteria, record real verdict
+- [x] 5. Update `HandleVerifyModuleCompletion` to call `IOracleVerifier.VerifyAsync()` with evidence/criteria, record real verdict
+- [x] 6. Handle graceful fallback when `IOracleVerifier` is null (auto-pass with warning, maintaining backward compat)
+- [x] 7. Update existing tests and add new tests for oracle dispatch scenarios
+- [x] 8. Run full test suite — 1,192 tests pass, 0 failures

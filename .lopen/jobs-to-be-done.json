@@ -733,9 +733,9 @@
     "requirement_code": "LLM-06",
     "requirement_module": "llm",
     "description": "Wire OracleVerifier tool handler to dispatch verification sub-agent and return verdicts",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "OracleVerifier.VerifyAsync exists. The verify_task_completion, verify_component_completion, and verify_module_completion tool handlers must call it."
+    "notes": "Wired IOracleVerifier into ToolHandlerBinder. Three verify handlers now call VerifyAsync() with evidence/criteria, record real verdicts. Graceful auto-pass fallback when oracle unavailable. DI updated. 12 new tests. All 1,192 tests pass."
   },
   {
     "id": "JOB-083",
