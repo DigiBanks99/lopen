@@ -1,0 +1,32 @@
+{
+  "module": "otel",
+  "description": "OpenTelemetry observability with Aspire Dashboard",
+  "status": "complete",
+  "components": {
+    "diagnostics": {
+      "status": "complete",
+      "implementation": "LopenTelemetryDiagnostics (6 ActivitySources, 1 Meter, 10 counters, 5 histograms, 2 gauges)",
+      "tests": "LopenTelemetryDiagnosticsTests (13)",
+      "jobs": ["JOB-099"]
+    },
+    "span_factory": {
+      "status": "complete",
+      "implementation": "SpanFactory (9 span types with full attribute coverage)",
+      "tests": "SpanFactoryTests (26)",
+      "jobs": ["JOB-099"]
+    },
+    "service_extensions": {
+      "status": "complete",
+      "implementation": "AddLopenOtel (master/signal toggles, OTLP conditional, service name precedence)",
+      "tests": "ServiceCollectionExtensionsTests (16) + OtlpExportTests (10)",
+      "jobs": ["JOB-100"]
+    },
+    "aspire_apphost": {
+      "status": "complete",
+      "implementation": "Lopen.AppHost (Aspire SDK 13.1.1, project reference to Lopen)",
+      "tests": "OtlpExportTests (file existence + content checks)",
+      "jobs": ["JOB-100"]
+    }
+  },
+  "last_updated": "2026-02-16T19:00:00Z"
+}

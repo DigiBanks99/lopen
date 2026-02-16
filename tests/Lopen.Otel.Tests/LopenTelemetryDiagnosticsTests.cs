@@ -3,6 +3,7 @@ using System.Diagnostics.Metrics;
 
 namespace Lopen.Otel.Tests;
 
+[Collection("ActivityListener")]
 public class LopenTelemetryDiagnosticsTests
 {
     // --- ActivitySource Tests ---

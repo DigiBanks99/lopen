@@ -790,7 +790,7 @@
     "id": "JOB-099",
     "requirement_module": "otel",
     "description": "Implement OTEL span hierarchy (command, phase, sdk invocation, tool, oracle, task, backpressure), counters, histograms, structured logs with TraceId/SpanId",
-    "status": "not_started",
+    "status": "complete",
     "priority": 5,
     "notes": "AC: All 7 span types with correct attributes; all counter/histogram metrics; structured logs with correlation"
   },
@@ -798,7 +798,7 @@
     "id": "JOB-100",
     "requirement_module": "otel",
     "description": "Implement OTLP export, Aspire Dashboard integration, config toggles (enabled, traces, metrics, logs), env var precedence, and <5ms overhead verification with tests",
-    "status": "not_started",
+    "status": "complete",
     "priority": 5,
     "notes": "AC: OTLP conditional export; aspire run integration; individual signal toggles; env var precedence; performance verification; tests for all 17 OTEL ACs"
   },

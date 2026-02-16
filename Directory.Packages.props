@@ -31,6 +31,8 @@
     <PackageVersion Include="Spectre.Console" Version="0.54.0" />
     <PackageVersion Include="Spectre.Console.Json" Version="0.54.0" />
     <PackageVersion Include="Spectre.Tui" Version="0.0.0-preview.0.46" />
+    <!-- Aspire -->
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.1.1" />
     <!-- Testing -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
