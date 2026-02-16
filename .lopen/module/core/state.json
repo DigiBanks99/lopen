@@ -98,7 +98,16 @@
         "JOB-015"
       ],
       "notes": "Human gate for spec approval. Auto-transition from Repeat\u2192Complete when no more components. Planning\u2192Building via PhaseTransitionController."
+    },
+    "drift_detection_wiring": {
+      "status": "complete",
+      "implementation": "ISpecificationDriftService + SpecificationDriftService in Lopen.Core/Documents. Wired into WorkflowOrchestrator.RunStepAsync step 2.",
+      "tests": "SpecificationDriftServiceTests (9 tests) + 2 orchestrator drift tests",
+      "jobs": [
+        "JOB-013"
+      ],
+      "notes": "Bridges IDriftDetector with in-memory section hash cache. Renders drift warnings to user via IOutputRenderer."
     }
   },
-  "last_updated": "2026-02-16T17:10:00Z"
+  "last_updated": "2026-02-16T17:30:00Z"
 }

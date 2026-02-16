@@ -38,6 +38,7 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IStateAssessor, CodebaseStateAssessor>();
             services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
             services.AddSingleton<IWorkflowOrchestrator, WorkflowOrchestrator>();
+            services.AddSingleton<ISpecificationDriftService, SpecificationDriftService>();
             services.AddSingleton<IToolHandlerBinder>(sp =>
                 new ToolHandlerBinder(
                     sp.GetRequiredService<Lopen.Storage.IFileSystem>(),

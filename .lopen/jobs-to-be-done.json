@@ -112,9 +112,9 @@
     "requirement_code": "CORE-04",
     "requirement_module": "core",
     "description": "Wire DriftDetector into workflow re-entry to flag specification changes between iterations",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "DriftDetector is implemented and tested but never called from production code. Must be invoked during the re-entrant assessment step of the orchestration loop."
+    "notes": "SpecificationDriftService created to bridge ISectionCache and IDriftDetector. Wired into WorkflowOrchestrator.RunStepAsync as step 2 (after guardrails). Drift warnings rendered to user. 11 tests."
   },
   {
     "id": "JOB-014",

@@ -1,4 +1,5 @@
 using Lopen.Core.BackPressure;
+using Lopen.Core.Documents;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -16,10 +17,12 @@ public class WorkflowOrchestratorTests
     private readonly StubGuardrailPipeline _guardrailPipeline = new();
     private readonly StubOutputRenderer _renderer = new();
     private readonly StubPhaseTransitionController _phaseController = new();
+    private readonly StubSpecificationDriftService _driftService = new();
 
     private WorkflowOrchestrator CreateOrchestrator() => new(
         _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
         _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+        _driftService,
         NullLogger<WorkflowOrchestrator>.Instance);
 
     [Fact]
@@ -251,6 +254,7 @@ public class WorkflowOrchestratorTests
         Assert.Throws<ArgumentNullException>(() => new WorkflowOrchestrator(
             null!, _assessor, _llmService, _promptBuilder, _toolRegistry,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService,
             NullLogger<WorkflowOrchestrator>.Instance));
     }
 
@@ -260,6 +264,7 @@ public class WorkflowOrchestratorTests
         Assert.Throws<ArgumentNullException>(() => new WorkflowOrchestrator(
             _engine, _assessor, null!, _promptBuilder, _toolRegistry,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService,
             NullLogger<WorkflowOrchestrator>.Instance));
     }
 
@@ -287,6 +292,38 @@ public class WorkflowOrchestratorTests
         await sut.RunAsync("test-module");
 
         Assert.Contains(WorkflowTrigger.Assess, _engine.FiredTriggers);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_RendersDriftWarnings_WhenDriftDetected()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        _driftService.DriftResults =
+        [
+            new DriftResult("Acceptance Criteria", "abc", "xyz", false, false),
+            new DriftResult("New Section", null, "def", true, false),
+        ];
+        var sut = CreateOrchestrator();
+
+        await sut.RunStepAsync("test-module");
+
+        Assert.Equal(2, _renderer.ErrorMessages.Count(m => m.Contains("drift", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [Fact]
+    public async Task RunStepAsync_ContinuesNormally_WhenNoDrift()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        _driftService.DriftResults = [];
+        var sut = CreateOrchestrator();
+
+        var result = await sut.RunStepAsync("test-module");
+
+        Assert.True(result.Success);
+        Assert.DoesNotContain(_renderer.ErrorMessages,
+            m => m.Contains("drift", StringComparison.OrdinalIgnoreCase));
     }
 
     // --- Stubs ---
@@ -452,5 +489,14 @@ public class WorkflowOrchestratorTests
             hasComponentsIdentified && hasTasksBreakdown;
         public bool CanAutoTransitionToComplete(bool allComponentsBuilt, bool allAcceptanceCriteriaPassed) =>
             allComponentsBuilt && allAcceptanceCriteriaPassed;
+    }
+
+    private sealed class StubSpecificationDriftService : ISpecificationDriftService
+    {
+        public IReadOnlyList<DriftResult> DriftResults { get; set; } = [];
+
+        public Task<IReadOnlyList<DriftResult>> CheckDriftAsync(
+            string moduleName, CancellationToken cancellationToken = default) =>
+            Task.FromResult(DriftResults);
     }
 }

@@ -1,4 +1,5 @@
 using Lopen.Core.BackPressure;
+using Lopen.Core.Documents;
 using Lopen.Llm;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +20,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IGuardrailPipeline _guardrailPipeline;
     private readonly IOutputRenderer _renderer;
     private readonly IPhaseTransitionController _phaseController;
+    private readonly ISpecificationDriftService _driftService;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
     private int _iterationCount;
@@ -33,6 +35,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IGuardrailPipeline guardrailPipeline,
         IOutputRenderer renderer,
         IPhaseTransitionController phaseController,
+        ISpecificationDriftService driftService,
         ILogger<WorkflowOrchestrator> logger)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
@@ -44,6 +47,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _guardrailPipeline = guardrailPipeline ?? throw new ArgumentNullException(nameof(guardrailPipeline));
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         _phaseController = phaseController ?? throw new ArgumentNullException(nameof(phaseController));
+        _driftService = driftService ?? throw new ArgumentNullException(nameof(driftService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -128,7 +132,20 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             }
         }
 
-        // 2. Check phase-specific transition rules
+        // 2. Assess specification drift at re-entry
+        var driftResults = await _driftService.CheckDriftAsync(moduleName, cancellationToken);
+        if (driftResults.Count > 0)
+        {
+            foreach (var drift in driftResults)
+            {
+                var action = drift.IsNew ? "added" : drift.IsRemoved ? "removed" : "changed";
+                _logger.LogWarning("Spec drift: section '{Header}' was {Action}", drift.Header, action);
+                await _renderer.RenderErrorAsync(
+                    $"Specification drift detected: section '{drift.Header}' was {action}");
+            }
+        }
+
+        // 3. Check phase-specific transition rules
         if (currentStep == WorkflowStep.DraftSpecification)
         {
             if (!_phaseController.IsRequirementGatheringToPlannningApproved)
@@ -144,11 +161,11 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             return StepResult.Succeeded(WorkflowTrigger.SpecApproved, "Specification approved");
         }
 
-        // 3. Invoke LLM for current step
+        // 4. Invoke LLM for current step
         var llmResult = await InvokeLlmForStepAsync(moduleName, currentStep, currentPhase, cancellationToken);
         if (!llmResult.Success) return llmResult;
 
-        // 4. Check auto-transition conditions
+        // 5. Check auto-transition conditions
         if (currentStep == WorkflowStep.BreakIntoTasks)
         {
             // Check if planning is structurally complete for auto-transition to building
@@ -170,7 +187,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             }
         }
 
-        // 5. Determine next trigger based on current step
+        // 6. Determine next trigger based on current step
         var nextTrigger = DetermineNextTrigger(currentStep);
         if (nextTrigger.HasValue)
         {
