@@ -30,4 +30,9 @@ public interface IActivityPanelDataProvider
     /// Adds a file edit entry with diff details for display in the activity panel.
     /// </summary>
     void AddFileEdit(string filePath, int linesAdded, int linesRemoved, IReadOnlyList<string>? diffLines = null);
+
+    /// <summary>
+    /// Adds a task failure entry that auto-expands with error details.
+    /// </summary>
+    void AddTaskFailure(string taskName, string errorMessage, IReadOnlyList<string>? details = null);
 }

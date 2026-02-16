@@ -15,7 +15,7 @@
     "description": "Implement the main orchestration loop that drives workflow steps from start to completion",
     "status": "done",
     "priority": 1,
-    "notes": "Implemented WorkflowOrchestrator with IWorkflowOrchestrator interface. Loop: assess \u2192 guardrails \u2192 LLM invoke \u2192 transition \u2192 render. 21 tests. Registered in DI."
+    "notes": "Implemented WorkflowOrchestrator with IWorkflowOrchestrator interface. Loop: assess → guardrails → LLM invoke → transition → render. 21 tests. Registered in DI."
   },
   {
     "id": "JOB-003",
@@ -120,7 +120,7 @@
     "id": "JOB-014",
     "requirement_code": "CORE-05",
     "requirement_module": "core",
-    "description": "Wire PhaseTransitionController human gate into orchestration loop for Requirement Gathering \u2192 Planning",
+    "description": "Wire PhaseTransitionController human gate into orchestration loop for Requirement Gathering → Planning",
     "status": "done",
     "priority": 2,
     "notes": "Human gate already implemented in WorkflowOrchestrator: DraftSpecification step checks IsRequirementGatheringToPlannningApproved, invokes LLM, returns NeedsConfirmation for RunAsync loop to interrupt."
@@ -129,10 +129,10 @@
     "id": "JOB-015",
     "requirement_code": "CORE-06",
     "requirement_module": "core",
-    "description": "Wire auto-transition checks for Planning \u2192 Building and Building \u2192 Complete into orchestration loop",
+    "description": "Wire auto-transition checks for Planning → Building and Building → Complete into orchestration loop",
     "status": "done",
     "priority": 2,
-    "notes": "Auto-transitions wired: Repeat step checks HasMoreComponentsAsync \u2014 fires ModuleComplete when no more components, fires Assess otherwise. Planning\u2192Building auto-transition checks via PhaseTransitionController."
+    "notes": "Auto-transitions wired: Repeat step checks HasMoreComponentsAsync — fires ModuleComplete when no more components, fires Assess otherwise. Planning→Building auto-transition checks via PhaseTransitionController."
   },
   {
     "id": "JOB-016",
@@ -312,7 +312,7 @@
     "description": "Create 'lopen test tui' CLI command that launches the interactive component gallery",
     "status": "done",
     "priority": 1,
-    "notes": "TestCommand with test tui subcommand. Interactive gallery with \u2191\u2193 navigation and Enter preview. --list flag for text mode. 4 CLI tests."
+    "notes": "TestCommand with test tui subcommand. Interactive gallery with ↑↓ navigation and Enter preview. --list flag for text mode. 4 CLI tests."
   },
   {
     "id": "JOB-036",
@@ -384,7 +384,7 @@
     "description": "Implement expandable tool call outputs via click or keyboard shortcut",
     "status": "done",
     "priority": 3,
-    "notes": "Added ToolCall ActivityEntryKind with \u2699 prefix. Expand/collapse indicators (\u25bc/\u25b6) for entries with details. Selection marker (>) for keyboard navigation. 8 new tests."
+    "notes": "Added ToolCall ActivityEntryKind with ⚙ prefix. Expand/collapse indicators (▼/▶) for entries with details. Selection marker (>) for keyboard navigation. 8 new tests."
   },
   {
     "id": "JOB-044",
@@ -444,7 +444,7 @@
     "id": "JOB-050",
     "requirement_code": "TUI-17",
     "requirement_module": "tui",
-    "description": "Wire phase/step visualization (\u25cf/\u25cb) in top panel from live workflow state",
+    "description": "Wire phase/step visualization (●/○) in top panel from live workflow state",
     "status": "done",
     "priority": 3,
     "notes": "Already fully implemented. TopPanelComponent.BuildStepIndicator renders ●/○, BuildPhaseLine shows phase/step. TopPanelDataProvider reads live IWorkflowEngine state every frame. 68 existing TopPanel tests cover this."
@@ -472,18 +472,18 @@
     "requirement_code": "TUI-23",
     "requirement_module": "tui",
     "description": "Wire confirmation modals with Yes/No/Always/Other options for user decisions",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Confirmation modal component exists. Must be triggered by human gates and back-pressure events."
+    "notes": "Wired ConfirmationModalComponent as Confirmation modal in TuiApplication. Left/Right navigation, Enter selects, Esc cancels. 1 new test. All 1918 tests pass."
   },
   {
     "id": "JOB-054",
     "requirement_code": "TUI-25",
     "requirement_module": "tui",
     "description": "Wire task failure display - inline auto-expanded failure details in activity panel",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ActivityPanelComponent supports expand/collapse. Must auto-expand failed task entries."
+    "notes": "Added AddTaskFailure to IActivityPanelDataProvider. Creates Error kind entries that auto-expand with error details. 5 new tests. All 1918 tests pass."
   },
   {
     "id": "JOB-055",
@@ -499,9 +499,9 @@
     "requirement_code": "TUI-27",
     "requirement_module": "tui",
     "description": "Wire critical error modal with details and recovery options",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Error modal component exists. Must be displayed when CORE-23 critical errors occur."
+    "notes": "Wired ErrorModalComponent as ErrorModal in TuiApplication. Left/Right navigation between Retry/Skip/Abort, Enter selects, Esc closes. 1 new test. All 1918 tests pass."
   },
   {
     "id": "JOB-057",
@@ -525,7 +525,7 @@
     "id": "JOB-059",
     "requirement_code": "TUI-30",
     "requirement_module": "tui",
-    "description": "Wire premium request counter (\ud83d\udd25) display in top panel from token tracker",
+    "description": "Wire premium request counter (🔥) display in top panel from token tracker",
     "status": "open",
     "priority": 3,
     "notes": "TopPanelComponent renders premium counter. Must receive live data from ITokenTracker."
@@ -663,7 +663,7 @@
     "description": "Implement module selection UI listing modules with current state for user choice",
     "status": "done",
     "priority": 2,
-    "notes": "IModuleSelectionService + ModuleSelectionService created. Lists modules with status indicators (\u25cb/\u25d0/\u25cf), progress counts, selection by number or name. Wired into PhaseCommands.ResolveModuleNameAsync as fallback. DI registered in AddLopenCore(). 17 new tests. All 1765 tests pass."
+    "notes": "IModuleSelectionService + ModuleSelectionService created. Lists modules with status indicators (○/◐/●), progress counts, selection by number or name. Wired into PhaseCommands.ResolveModuleNameAsync as fallback. DI registered in AddLopenCore(). 17 new tests. All 1765 tests pass."
   },
   {
     "id": "JOB-075",
@@ -831,7 +831,7 @@
     "id": "JOB-093",
     "requirement_code": "CORE-02",
     "requirement_module": "core",
-    "description": "Write integration test for end-to-end workflow execution (spec \u2192 plan \u2192 build pipeline)",
+    "description": "Write integration test for end-to-end workflow execution (spec → plan → build pipeline)",
     "status": "open",
     "priority": 3,
     "notes": "No cross-module integration tests exist for the full workflow pipeline. Critical for proving the system works end-to-end."

@@ -14,7 +14,9 @@ internal enum TuiModalState
     SessionResume,
     ResourceViewer,
     FilePicker,
-    ModuleSelection
+    ModuleSelection,
+    Confirmation,
+    ErrorModal
 }
 
 /// <summary>
@@ -39,6 +41,8 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly ResourceViewerModalComponent _resourceViewerModal;
     private readonly FilePickerComponent _filePickerComponent;
     private readonly SelectionModalComponent _selectionModalComponent;
+    private readonly ConfirmationModalComponent _confirmationModalComponent;
+    private readonly ErrorModalComponent _errorModalComponent;
     private readonly ISessionDetector? _sessionDetector;
     private readonly bool _showLandingPage;
     private readonly ILogger<TuiApplication> _logger;
@@ -65,6 +69,8 @@ internal sealed class TuiApplication : ITuiApplication
     private ResourceViewerData _resourceViewerData = new() { Label = "" };
     private FilePickerData _filePickerData = new() { RootPath = "" };
     private ModuleSelectionData _moduleSelectionData = new() { Title = "" };
+    private ConfirmationData _confirmationData = new() { Title = "" };
+    private ErrorModalData _errorModalData = new() { Title = "", Message = "" };
 
     // Throttle for data provider refresh (avoid calling async services every frame)
     private DateTime _lastProviderRefresh = DateTime.MinValue;
@@ -109,6 +115,8 @@ internal sealed class TuiApplication : ITuiApplication
         _resourceViewerModal = new ResourceViewerModalComponent();
         _filePickerComponent = new FilePickerComponent();
         _selectionModalComponent = new SelectionModalComponent();
+        _confirmationModalComponent = new ConfirmationModalComponent();
+        _errorModalComponent = new ErrorModalComponent();
         _sessionDetector = sessionDetector;
         _showLandingPage = showLandingPage;
     }
@@ -331,6 +339,20 @@ internal sealed class TuiApplication : ITuiApplication
                 continue;
             }
 
+            // Confirmation modal: Left/Right navigates, Enter selects, Esc cancels
+            if (_modalState == TuiModalState.Confirmation)
+            {
+                HandleConfirmationInput(keyInfo);
+                continue;
+            }
+
+            // Error modal: Left/Right navigates, Enter selects, Esc closes
+            if (_modalState == TuiModalState.ErrorModal)
+            {
+                HandleErrorModalInput(keyInfo);
+                continue;
+            }
+
             var input = new KeyInput
             {
                 Key = keyInfo.Key,
@@ -473,6 +495,20 @@ internal sealed class TuiApplication : ITuiApplication
         {
             var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
             RenderRegion(ctx, region, _selectionModalComponent.Render(_moduleSelectionData, region));
+            return;
+        }
+
+        if (_modalState == TuiModalState.Confirmation)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _confirmationModalComponent.Render(_confirmationData, region));
+            return;
+        }
+
+        if (_modalState == TuiModalState.ErrorModal)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _errorModalComponent.Render(_errorModalData, region));
             return;
         }
 
@@ -718,6 +754,86 @@ internal sealed class TuiApplication : ITuiApplication
                     _moduleSelectionData = _moduleSelectionData with
                     {
                         SelectedIndex = Math.Min(_moduleSelectionData.Options.Count - 1, _moduleSelectionData.SelectedIndex + 1)
+                    };
+                }
+                break;
+            case ConsoleKey.Enter:
+                _modalState = TuiModalState.None;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Opens the confirmation modal with the specified data.
+    /// </summary>
+    internal void OpenConfirmation(ConfirmationData data)
+    {
+        _confirmationData = data;
+        _modalState = TuiModalState.Confirmation;
+    }
+
+    private void HandleConfirmationInput(ConsoleKeyInfo keyInfo)
+    {
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+            case ConsoleKey.LeftArrow:
+                if (_confirmationData.Options.Count > 0)
+                {
+                    _confirmationData = _confirmationData with
+                    {
+                        SelectedIndex = Math.Max(0, _confirmationData.SelectedIndex - 1)
+                    };
+                }
+                break;
+            case ConsoleKey.RightArrow:
+                if (_confirmationData.Options.Count > 0)
+                {
+                    _confirmationData = _confirmationData with
+                    {
+                        SelectedIndex = Math.Min(_confirmationData.Options.Count - 1, _confirmationData.SelectedIndex + 1)
+                    };
+                }
+                break;
+            case ConsoleKey.Enter:
+                _modalState = TuiModalState.None;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Opens the error modal with the specified data.
+    /// </summary>
+    internal void OpenErrorModal(ErrorModalData data)
+    {
+        _errorModalData = data;
+        _modalState = TuiModalState.ErrorModal;
+    }
+
+    private void HandleErrorModalInput(ConsoleKeyInfo keyInfo)
+    {
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+            case ConsoleKey.LeftArrow:
+                if (_errorModalData.RecoveryOptions.Count > 0)
+                {
+                    _errorModalData = _errorModalData with
+                    {
+                        SelectedIndex = Math.Max(0, _errorModalData.SelectedIndex - 1)
+                    };
+                }
+                break;
+            case ConsoleKey.RightArrow:
+                if (_errorModalData.RecoveryOptions.Count > 0)
+                {
+                    _errorModalData = _errorModalData with
+                    {
+                        SelectedIndex = Math.Min(_errorModalData.RecoveryOptions.Count - 1, _errorModalData.SelectedIndex + 1)
                     };
                 }
                 break;

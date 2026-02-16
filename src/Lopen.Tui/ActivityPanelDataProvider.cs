@@ -101,4 +101,21 @@ internal sealed class ActivityPanelDataProvider : IActivityPanelDataProvider
             FullDocumentContent = diffLines is { Count: > 0 } ? string.Join("\n", diffLines) : null
         });
     }
+
+    public void AddTaskFailure(string taskName, string errorMessage, IReadOnlyList<string>? details = null)
+    {
+        var allDetails = new List<string> { $"Error: {errorMessage}" };
+        if (details is { Count: > 0 })
+        {
+            foreach (var detail in details)
+                allDetails.Add(detail);
+        }
+
+        AddEntry(new ActivityEntry
+        {
+            Summary = $"✗ Task failed: {taskName}",
+            Kind = ActivityEntryKind.Error,
+            Details = allDetails
+        });
+    }
 }

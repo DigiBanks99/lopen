@@ -456,4 +456,33 @@ public class TuiApplicationTests
         app.OpenModuleSelection(new ModuleSelectionData { Title = "No modules" });
         Assert.False(app.IsRunning);
     }
+
+    // ==================== Confirmation Modal (JOB-053) ====================
+
+    [Fact]
+    public void OpenConfirmation_SetsModalState()
+    {
+        var app = CreateApp();
+        app.OpenConfirmation(new ConfirmationData
+        {
+            Title = "Apply changes?",
+            Options = ["Yes", "No", "Always"]
+        });
+        Assert.False(app.IsRunning);
+    }
+
+    // ==================== Error Modal (JOB-056) ====================
+
+    [Fact]
+    public void OpenErrorModal_SetsModalState()
+    {
+        var app = CreateApp();
+        app.OpenErrorModal(new ErrorModalData
+        {
+            Title = "Build Failed",
+            Message = "Compilation error in auth.ts",
+            RecoveryOptions = ["Retry", "Skip", "Abort"]
+        });
+        Assert.False(app.IsRunning);
+    }
 }

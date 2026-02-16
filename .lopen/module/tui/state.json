@@ -195,6 +195,25 @@
         "JOB-051"
       ],
       "notes": "Module selection modal with ▶ indicator, Up/Down nav, Enter select, Esc cancel."
+    },
+    "confirmation_modal": {
+      "status": "complete",
+      "implementation": "ConfirmationModalComponent + ConfirmationData + TuiApplication modal",
+      "tests": "SelectionComponentTests (confirmation: 4) + TuiApplicationTests (1)",
+      "jobs": [
+        "JOB-053"
+      ],
+      "notes": "Confirmation modal with [>selected<] highlighting, Left/Right nav, Enter select, Esc cancel."
+    },
+    "error_modal": {
+      "status": "complete",
+      "implementation": "ErrorModalComponent + ErrorModalData + TuiApplication modal + AddTaskFailure",
+      "tests": "SelectionComponentTests (error: 5) + ActivityPanelDataProviderTests (5) + TuiApplicationTests (1)",
+      "jobs": [
+        "JOB-054",
+        "JOB-056"
+      ],
+      "notes": "Error modal with Retry/Skip/Abort recovery options. AddTaskFailure creates Error entries that auto-expand."
     }
   },
   "last_updated": "2026-02-17T03:00:00Z"

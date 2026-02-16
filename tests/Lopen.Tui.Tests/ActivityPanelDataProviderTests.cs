@@ -522,4 +522,61 @@ public class ActivityPanelDataProviderTests
 
         Assert.True(data.Entries[0].IsExpanded);
     }
+
+    // ==================== Task Failure (JOB-054 / TUI-25) ====================
+
+    [Fact]
+    public void AddTaskFailure_CreatesErrorKindEntry()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddTaskFailure("Build project", "Compilation failed");
+        var data = provider.GetCurrentData();
+
+        Assert.Single(data.Entries);
+        Assert.Equal(ActivityEntryKind.Error, data.Entries[0].Kind);
+    }
+
+    [Fact]
+    public void AddTaskFailure_SummaryContainsTaskName()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddTaskFailure("Run tests", "3 tests failed");
+        var data = provider.GetCurrentData();
+
+        Assert.Contains("Run tests", data.Entries[0].Summary);
+        Assert.Contains("✗", data.Entries[0].Summary);
+    }
+
+    [Fact]
+    public void AddTaskFailure_DetailsIncludeErrorMessage()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddTaskFailure("Build", "Missing dependency", ["Stack trace line 1"]);
+        var data = provider.GetCurrentData();
+
+        Assert.Contains(data.Entries[0].Details, d => d.Contains("Missing dependency"));
+        Assert.Contains(data.Entries[0].Details, d => d.Contains("Stack trace line 1"));
+    }
+
+    [Fact]
+    public void AddTaskFailure_AutoExpands()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddTaskFailure("Deploy", "Connection timeout");
+        var data = provider.GetCurrentData();
+
+        Assert.True(data.Entries[0].IsExpanded);
+    }
+
+    [Fact]
+    public void AddTaskFailure_StaysExpandedWhenNewEntryAdded()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddTaskFailure("Build", "Error");
+        provider.AddEntry(new ActivityEntry { Summary = "Next action" });
+        var data = provider.GetCurrentData();
+
+        // Error entry should stay expanded
+        Assert.True(data.Entries[0].IsExpanded);
+    }
 }
