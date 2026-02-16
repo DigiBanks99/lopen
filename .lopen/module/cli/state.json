@@ -50,7 +50,16 @@
         "JOB-034"
       ],
       "notes": "Phase commands and RootCommandHandler both return code 2 when headless + WasInterrupted."
+    },
+    "quiet_flag": {
+      "status": "complete",
+      "implementation": "GlobalOptions --headless/-q/--quiet, HeadlessRenderer, RootCommandHandler headless path, PhaseCommands headless validation",
+      "tests": "GlobalOptionsTests (alias verification), RootCommandTests (headless paths), PhaseCommandTests (headless validation), HeadlessRendererTests, CliIntegrationTests",
+      "jobs": [
+        "JOB-078"
+      ],
+      "notes": "Already fully implemented prior to JOB-078 being tracked."
     }
   },
-  "last_updated": "2026-02-16T21:00:00Z"
+  "last_updated": "2026-02-16T20:50:00Z"
 }

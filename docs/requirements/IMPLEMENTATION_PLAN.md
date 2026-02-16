@@ -1,18 +1,20 @@
-# Implementation Plan — JOB-079 (STOR-09): Wire PlanManager into Orchestration Loop
+# Implementation Plan — JOB-011 (TUI-02): Wire TopPanelComponent to Live Data Sources
 
-**Goal:** Wire the already-implemented `IPlanManager` into `WorkflowOrchestrator` so that plans are persisted to `.lopen/modules/{module}/plan.md` with checkbox task hierarchy during the workflow.
+**Goal:** Connect the TopPanelComponent to real-time data from ITokenTracker, IGitService, IAuthService, IWorkflowEngine, and IModelSelector so the top panel displays live information.
 
 ## Acceptance Criteria
-- [STOR-09] Plans stored at `.lopen/modules/{module}/plan.md` with checkbox task hierarchy
-- [STOR-10] Plan checkboxes are updated programmatically by Lopen, not by the LLM (already implemented in ToolHandlerBinder)
+- [TUI-02] Top panel displays logo, version, model, context usage, premium requests, git branch, auth status, phase, and step
+- [TUI-29] Context window usage displayed in top panel (subset of TUI-02)
 
 ## Tasks
 
-- [x] 1. Add `IPlanManager?` as optional constructor parameter to `WorkflowOrchestrator`
-- [x] 2. Update DI registration in `ServiceCollectionExtensions.cs` to resolve and pass `IPlanManager`
-- [x] 3. After `BreakIntoTasks` step succeeds, persist plan content via `WritePlanAsync` (append to existing plan for multi-component workflows)
-- [x] 4. Update test helper `CreateOrchestrator()` to compile with new parameter
-- [x] 5. Add tests for plan writing after BreakIntoTasks succeeds
-- [x] 6. Add test for plan appending when existing plan content exists
-- [x] 7. Add test for graceful no-op when IPlanManager is null
-- [x] 8. Run full test suite — 1,627 tests pass, 0 failures
+- [x] 1. Add `GetCurrentBranchAsync` to `IGitService` interface and implement in `GitCliService`
+- [x] 2. Create `ITopPanelDataProvider` interface in `Lopen.Tui` with `TopPanelData GetCurrentData()` and `Task RefreshAsync(CancellationToken)`
+- [x] 3. Create `TopPanelDataProvider` implementation that aggregates ITokenTracker, IGitService, IAuthService, IWorkflowEngine, IModelSelector
+- [x] 4. Add `Lopen.Auth` project reference to `Lopen.Tui.csproj`
+- [x] 5. Modify `TuiApplication` to accept `ITopPanelDataProvider` and refresh top panel data with throttling (every ~1s, not every frame)
+- [x] 6. Register `TopPanelDataProvider` in DI (`ServiceCollectionExtensions`)
+- [x] 7. Write unit tests for `TopPanelDataProvider` — 31 tests
+- [x] 8. Write integration tests for `TuiApplication` data provider wiring — 4 tests
+- [x] 9. Run full test suite — 1,662 tests pass, 0 failures
+- [x] 10. Update module state and commit

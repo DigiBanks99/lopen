@@ -1,224 +1,225 @@
 {
-    "module": "core",
-    "description": "Core workflow engine, back-pressure, git, and document management",
-    "status": "in_progress",
-    "components": {
-        "workflow_engine": {
-            "status": "complete",
-            "implementation": "WorkflowEngine (Stateless state machine)",
-            "tests": "WorkflowEngineTests (20 tests)",
-            "jobs": [
-                "JOB-059"
-            ]
-        },
-        "codebase_state_assessor": {
-            "status": "complete",
-            "implementation": "CodebaseStateAssessor",
-            "tests": "CodebaseStateAssessorTests (16 tests)",
-            "jobs": [
-                "JOB-060"
-            ]
-        },
-        "quality_gate_guardrail": {
-            "status": "complete",
-            "implementation": "QualityGateGuardrail + GuardrailPipeline",
-            "tests": "QualityGateGuardrailTests (9 tests)",
-            "jobs": [
-                "JOB-065"
-            ]
-        },
-        "git_cli_service": {
-            "status": "complete",
-            "implementation": "GitCliService (Process-based)",
-            "tests": "GitCliServiceTests (7 tests)",
-            "jobs": [
-                "JOB-070"
-            ]
-        },
-        "git_workflow_service": {
-            "status": "complete",
-            "implementation": "GitWorkflowService",
-            "tests": "GitWorkflowServiceTests (25 tests)",
-            "jobs": [
-                "JOB-070"
-            ],
-            "notes": "Auto-commit on task completion, branch-per-module (lopen/{module}), conventional commit messages"
-        },
-        "lopen_revert": {
-            "status": "complete",
-            "implementation": "RevertService + RevertResult + SessionState.LastTaskCompletionCommitSha",
-            "tests": "RevertServiceTests (11 tests)",
-            "jobs": [
-                "JOB-071"
-            ],
-            "notes": "Rolls back to specified commit SHA via git reset --hard. SessionState tracks LastTaskCompletionCommitSha. Handles git disabled, failures, exceptions."
-        },
-        "acceptance_criteria_tests": {
-            "status": "complete",
-            "implementation": "CoreAcceptanceCriteriaTests (28 tests mapping all 24 ACs)",
-            "tests": "CoreAcceptanceCriteriaTests.cs",
-            "jobs": [
-                "JOB-075"
-            ],
-            "notes": "Explicit test mapping for AC-01 through AC-24 per SPECIFICATION.md"
-        },
-        "output_renderer": {
-            "status": "complete",
-            "implementation": "IOutputRenderer interface + HeadlessRenderer (plain text)",
-            "tests": "HeadlessRendererTests (7 tests) + ServiceCollectionExtensionsTests (1 test)",
-            "jobs": [
-                "JOB-077"
-            ],
-            "notes": "HeadlessRenderer writes to stdout/stderr. PromptAsync returns null (non-interactive). Registered as default in DI via TryAddSingleton."
-        },
-        "di_registration": {
-            "status": "complete",
-            "implementation": "AddLopenCore() registers IWorkflowEngine, IStateAssessor, IPhaseTransitionController",
-            "tests": "ServiceCollectionExtensionsTests (14 tests)",
-            "jobs": [
-                "JOB-001"
-            ],
-            "notes": "IStateAssessor and IWorkflowEngine conditional on projectRoot (depend on IFileSystem, IModuleScanner). IPhaseTransitionController registered unconditionally."
-        },
-        "orchestration_loop": {
-            "status": "complete",
-            "implementation": "WorkflowOrchestrator (IWorkflowOrchestrator) + OrchestrationResult",
-            "tests": "WorkflowOrchestratorTests (21 tests)",
-            "jobs": [
-                "JOB-002"
-            ],
-            "notes": "Drives assess \u2192 guardrails \u2192 LLM invoke \u2192 transition loop. Human gate for spec step. Registered in DI via AddLopenCore()."
-        },
-        "auto_transitions": {
-            "status": "complete",
-            "implementation": "WorkflowOrchestrator auto-transition checks in RunStepAsync",
-            "tests": "WorkflowOrchestratorTests (2 new tests for Repeat\u2192ModuleComplete and Repeat\u2192Assess)",
-            "jobs": [
-                "JOB-014",
-                "JOB-015"
-            ],
-            "notes": "Human gate for spec approval. Auto-transition from Repeat\u2192Complete when no more components. Planning\u2192Building via PhaseTransitionController."
-        },
-        "drift_detection_wiring": {
-            "status": "complete",
-            "implementation": "ISpecificationDriftService + SpecificationDriftService in Lopen.Core/Documents. Wired into WorkflowOrchestrator.RunStepAsync step 2.",
-            "tests": "SpecificationDriftServiceTests (9 tests) + 2 orchestrator drift tests",
-            "jobs": [
-                "JOB-013"
-            ],
-            "notes": "Bridges IDriftDetector with in-memory section hash cache. Renders drift warnings to user via IOutputRenderer."
-        },
-        "git_workflow_wiring": {
-            "status": "complete",
-            "implementation": "IGitWorkflowService wired into ToolHandlerBinder (CommitTaskCompletion) and WorkflowOrchestrator (EnsureModuleBranch)",
-            "tests": "ToolHandlerBinderTests (4 new git tests) + WorkflowOrchestratorTests (2 branch tests)",
-            "jobs": [
-                "JOB-016",
-                "JOB-017"
-            ],
-            "notes": "CommitTaskCompletionAsync called after verified task completion with module/component params. EnsureModuleBranchAsync called before engine init in RunAsync."
-        },
-        "autosave_wiring": {
-            "status": "complete",
-            "implementation": "IAutoSaveService wired into WorkflowOrchestrator RunAsync loop",
-            "tests": "WorkflowOrchestratorTests (3 new autosave tests)",
-            "jobs": [
-                "JOB-019"
-            ],
-            "notes": "Auto-saves on step completion, task failure, user pause, phase transition, cancellation. Exception-safe."
-        },
-        "session_resume_wiring": {
-            "status": "complete",
-            "implementation": "ISessionManager wired into WorkflowOrchestrator.RunAsync for session resume/create",
-            "tests": "WorkflowOrchestratorTests (2 new session tests)",
-            "jobs": [
-                "JOB-020"
-            ],
-            "notes": "Checks for latest session by module. Resumes if incomplete. Creates new session otherwise."
-        },
-        "token_metrics_wiring": {
-            "status": "complete",
-            "implementation": "ITokenTracker wired into WorkflowOrchestrator for token recording + SessionMetrics persistence via AutoSaveService",
-            "tests": "WorkflowOrchestratorTests (2 new token tests)",
-            "jobs": [
-                "JOB-021"
-            ],
-            "notes": "RecordUsage called after LLM invocation. GetSessionMetrics mapped to SessionMetrics for auto-save. TUI pipeline: TopPanelData already has fields, data flows via orchestrator."
-        },
-        "prompt_injection": {
-            "status": "complete",
-            "implementation": "WorkflowOrchestrator accepts userPrompt and passes to IPromptBuilder via contextSections",
-            "tests": "RunAsync_PassesUserPromptToPromptBuilder, RunStepAsync_PassesUserPromptToPromptBuilder, RunAsync_WithNullPrompt_PassesNullContextSections",
-            "jobs": [
-                "JOB-031"
-            ],
-            "notes": "userPrompt stored as _userPrompt field, passed as contextSections[user_prompt] to BuildSystemPrompt"
-        },
-        "module_scanner_wiring": {
-            "status": "complete",
-            "implementation": "IModuleScanner used in ModuleLister, CodebaseStateAssessor, SpecificationDriftService, PhaseCommands",
-            "tests": "Existing ModuleScannerTests + integration through other tests",
-            "jobs": [
-                "JOB-067"
-            ],
-            "notes": "Already wired upstream - orchestrator receives moduleName as parameter"
-        },
-        "state_assessor_wiring": {
-            "status": "complete",
-            "implementation": "IStateAssessor wired into WorkflowEngine.InitializeAsync and WorkflowOrchestrator for HasMoreComponentsAsync",
-            "tests": "WorkflowEngineTests + WorkflowOrchestratorTests",
-            "jobs": [
-                "JOB-068"
-            ],
-            "notes": "GetCurrentStepAsync called on engine init, HasMoreComponentsAsync in orchestrator transitions"
-        },
-        "task_status_gate_wiring": {
-            "status": "complete",
-            "implementation": "ITaskStatusGate wired into ToolHandlerBinder. ValidateCompletion called before allowing task completion, falls back to direct tracker check.",
-            "tests": "HandleUpdateTaskStatus_UsesTaskStatusGateWhenProvided, HandleUpdateTaskStatus_TaskStatusGateAllowed_Succeeds",
-            "jobs": [
-                "JOB-069"
-            ],
-            "notes": "Optional dependency - when present, replaces inline verification tracker check"
-        },
-        "plan_manager_wiring": {
-            "status": "complete",
-            "implementation": "IPlanManager wired into ToolHandlerBinder. UpdateCheckboxAsync called after task completion.",
-            "tests": "HandleUpdateTaskStatus_CallsPlanManagerOnCompletion, HandleUpdateTaskStatus_SkipsPlanManagerWhenNotProvided",
-            "jobs": [
-                "JOB-070",
-                "JOB-079"
-            ],
-            "notes": "Optional dependency - updates plan.md checkbox when task marked complete IPlanManager now wired into WorkflowOrchestrator. Plan content persisted after BreakIntoTasks. Appends to existing plan. Graceful fallback when null. DI resolves optionally."
-        },
-        "failure_handler_wiring": {
-            "status": "complete",
-            "implementation": "IFailureHandler wired into WorkflowOrchestrator. On step failure: RecordFailure() \u2192 SelfCorrect continues loop, PromptUser prompts user or auto-continues in unattended mode, Block interrupts. ResetFailureCount on success.",
-            "tests": "WorkflowOrchestratorTests (12 failure handler tests) + ServiceCollectionExtensionsTests (2 DI tests)",
-            "jobs": [
-                "JOB-071",
-                "JOB-072"
-            ],
-            "notes": "CORE-21: SelfCorrect on single failure. CORE-22: PromptUser at threshold prompts via IOutputRenderer.PromptAsync \u2014 user confirms y/yes to continue (resets count), declines/null to interrupt. Unattended mode suppresses prompt and continues. WorkflowOptions passed to orchestrator via DI."
-        },
-        "budget_enforcement_wiring": {
-            "status": "complete",
-            "implementation": "WorkflowOrchestrator.CheckBudgetAsync() \u2014 IBudgetEnforcer + ITokenTracker pre-invocation check",
-            "tests": "WorkflowOrchestratorTests (10 budget tests) + ServiceCollectionExtensionsTests (1 DI test)",
-            "jobs": [
-                "JOB-084"
-            ],
-            "notes": "Budget check before each LLM invocation. Handles Ok/Warning/ConfirmationRequired/Exceeded. Auto-saves on halt for session resume."
-        },
-        "critical_error_handling": {
-            "status": "complete",
-            "implementation": "IsCriticalException detection in WorkflowOrchestrator, StepResult.CriticalFailure, OrchestrationResult.CriticalError",
-            "tests": "WorkflowOrchestratorTests (12 critical error tests) + CoreAcceptanceCriteriaTests (3 AC-23 tests)",
-            "jobs": [
-                "JOB-073"
-            ],
-            "notes": "Critical exceptions (IOException, UnauthorizedAccessException, OutOfMemoryException, SecurityException) bypass self-correction and block immediately via RecordCriticalError."
-        }
+  "module": "core",
+  "description": "Core workflow engine, back-pressure, git, and document management",
+  "status": "in_progress",
+  "components": {
+    "workflow_engine": {
+      "status": "complete",
+      "implementation": "WorkflowEngine (Stateless state machine)",
+      "tests": "WorkflowEngineTests (20 tests)",
+      "jobs": [
+        "JOB-059"
+      ]
     },
-    "last_updated": "2026-02-16T20:30:00Z"
+    "codebase_state_assessor": {
+      "status": "complete",
+      "implementation": "CodebaseStateAssessor",
+      "tests": "CodebaseStateAssessorTests (16 tests)",
+      "jobs": [
+        "JOB-060"
+      ]
+    },
+    "quality_gate_guardrail": {
+      "status": "complete",
+      "implementation": "QualityGateGuardrail + GuardrailPipeline",
+      "tests": "QualityGateGuardrailTests (9 tests)",
+      "jobs": [
+        "JOB-065"
+      ]
+    },
+    "git_cli_service": {
+      "status": "complete",
+      "implementation": "GitCliService (Process-based)",
+      "tests": "GitCliServiceTests (7 tests)",
+      "jobs": [
+        "JOB-070"
+      ],
+      "notes": " GetCurrentBranchAsync added to IGitService for TUI-02."
+    },
+    "git_workflow_service": {
+      "status": "complete",
+      "implementation": "GitWorkflowService",
+      "tests": "GitWorkflowServiceTests (25 tests)",
+      "jobs": [
+        "JOB-070"
+      ],
+      "notes": "Auto-commit on task completion, branch-per-module (lopen/{module}), conventional commit messages"
+    },
+    "lopen_revert": {
+      "status": "complete",
+      "implementation": "RevertService + RevertResult + SessionState.LastTaskCompletionCommitSha",
+      "tests": "RevertServiceTests (11 tests)",
+      "jobs": [
+        "JOB-071"
+      ],
+      "notes": "Rolls back to specified commit SHA via git reset --hard. SessionState tracks LastTaskCompletionCommitSha. Handles git disabled, failures, exceptions."
+    },
+    "acceptance_criteria_tests": {
+      "status": "complete",
+      "implementation": "CoreAcceptanceCriteriaTests (28 tests mapping all 24 ACs)",
+      "tests": "CoreAcceptanceCriteriaTests.cs",
+      "jobs": [
+        "JOB-075"
+      ],
+      "notes": "Explicit test mapping for AC-01 through AC-24 per SPECIFICATION.md"
+    },
+    "output_renderer": {
+      "status": "complete",
+      "implementation": "IOutputRenderer interface + HeadlessRenderer (plain text)",
+      "tests": "HeadlessRendererTests (7 tests) + ServiceCollectionExtensionsTests (1 test)",
+      "jobs": [
+        "JOB-077"
+      ],
+      "notes": "HeadlessRenderer writes to stdout/stderr. PromptAsync returns null (non-interactive). Registered as default in DI via TryAddSingleton."
+    },
+    "di_registration": {
+      "status": "complete",
+      "implementation": "AddLopenCore() registers IWorkflowEngine, IStateAssessor, IPhaseTransitionController",
+      "tests": "ServiceCollectionExtensionsTests (14 tests)",
+      "jobs": [
+        "JOB-001"
+      ],
+      "notes": "IStateAssessor and IWorkflowEngine conditional on projectRoot (depend on IFileSystem, IModuleScanner). IPhaseTransitionController registered unconditionally."
+    },
+    "orchestration_loop": {
+      "status": "complete",
+      "implementation": "WorkflowOrchestrator (IWorkflowOrchestrator) + OrchestrationResult",
+      "tests": "WorkflowOrchestratorTests (21 tests)",
+      "jobs": [
+        "JOB-002"
+      ],
+      "notes": "Drives assess \u2192 guardrails \u2192 LLM invoke \u2192 transition loop. Human gate for spec step. Registered in DI via AddLopenCore()."
+    },
+    "auto_transitions": {
+      "status": "complete",
+      "implementation": "WorkflowOrchestrator auto-transition checks in RunStepAsync",
+      "tests": "WorkflowOrchestratorTests (2 new tests for Repeat\u2192ModuleComplete and Repeat\u2192Assess)",
+      "jobs": [
+        "JOB-014",
+        "JOB-015"
+      ],
+      "notes": "Human gate for spec approval. Auto-transition from Repeat\u2192Complete when no more components. Planning\u2192Building via PhaseTransitionController."
+    },
+    "drift_detection_wiring": {
+      "status": "complete",
+      "implementation": "ISpecificationDriftService + SpecificationDriftService in Lopen.Core/Documents. Wired into WorkflowOrchestrator.RunStepAsync step 2.",
+      "tests": "SpecificationDriftServiceTests (9 tests) + 2 orchestrator drift tests",
+      "jobs": [
+        "JOB-013"
+      ],
+      "notes": "Bridges IDriftDetector with in-memory section hash cache. Renders drift warnings to user via IOutputRenderer."
+    },
+    "git_workflow_wiring": {
+      "status": "complete",
+      "implementation": "IGitWorkflowService wired into ToolHandlerBinder (CommitTaskCompletion) and WorkflowOrchestrator (EnsureModuleBranch)",
+      "tests": "ToolHandlerBinderTests (4 new git tests) + WorkflowOrchestratorTests (2 branch tests)",
+      "jobs": [
+        "JOB-016",
+        "JOB-017"
+      ],
+      "notes": "CommitTaskCompletionAsync called after verified task completion with module/component params. EnsureModuleBranchAsync called before engine init in RunAsync."
+    },
+    "autosave_wiring": {
+      "status": "complete",
+      "implementation": "IAutoSaveService wired into WorkflowOrchestrator RunAsync loop",
+      "tests": "WorkflowOrchestratorTests (3 new autosave tests)",
+      "jobs": [
+        "JOB-019"
+      ],
+      "notes": "Auto-saves on step completion, task failure, user pause, phase transition, cancellation. Exception-safe."
+    },
+    "session_resume_wiring": {
+      "status": "complete",
+      "implementation": "ISessionManager wired into WorkflowOrchestrator.RunAsync for session resume/create",
+      "tests": "WorkflowOrchestratorTests (2 new session tests)",
+      "jobs": [
+        "JOB-020"
+      ],
+      "notes": "Checks for latest session by module. Resumes if incomplete. Creates new session otherwise."
+    },
+    "token_metrics_wiring": {
+      "status": "complete",
+      "implementation": "ITokenTracker wired into WorkflowOrchestrator for token recording + SessionMetrics persistence via AutoSaveService",
+      "tests": "WorkflowOrchestratorTests (2 new token tests)",
+      "jobs": [
+        "JOB-021"
+      ],
+      "notes": "RecordUsage called after LLM invocation. GetSessionMetrics mapped to SessionMetrics for auto-save. TUI pipeline: TopPanelData already has fields, data flows via orchestrator."
+    },
+    "prompt_injection": {
+      "status": "complete",
+      "implementation": "WorkflowOrchestrator accepts userPrompt and passes to IPromptBuilder via contextSections",
+      "tests": "RunAsync_PassesUserPromptToPromptBuilder, RunStepAsync_PassesUserPromptToPromptBuilder, RunAsync_WithNullPrompt_PassesNullContextSections",
+      "jobs": [
+        "JOB-031"
+      ],
+      "notes": "userPrompt stored as _userPrompt field, passed as contextSections[user_prompt] to BuildSystemPrompt"
+    },
+    "module_scanner_wiring": {
+      "status": "complete",
+      "implementation": "IModuleScanner used in ModuleLister, CodebaseStateAssessor, SpecificationDriftService, PhaseCommands",
+      "tests": "Existing ModuleScannerTests + integration through other tests",
+      "jobs": [
+        "JOB-067"
+      ],
+      "notes": "Already wired upstream - orchestrator receives moduleName as parameter"
+    },
+    "state_assessor_wiring": {
+      "status": "complete",
+      "implementation": "IStateAssessor wired into WorkflowEngine.InitializeAsync and WorkflowOrchestrator for HasMoreComponentsAsync",
+      "tests": "WorkflowEngineTests + WorkflowOrchestratorTests",
+      "jobs": [
+        "JOB-068"
+      ],
+      "notes": "GetCurrentStepAsync called on engine init, HasMoreComponentsAsync in orchestrator transitions"
+    },
+    "task_status_gate_wiring": {
+      "status": "complete",
+      "implementation": "ITaskStatusGate wired into ToolHandlerBinder. ValidateCompletion called before allowing task completion, falls back to direct tracker check.",
+      "tests": "HandleUpdateTaskStatus_UsesTaskStatusGateWhenProvided, HandleUpdateTaskStatus_TaskStatusGateAllowed_Succeeds",
+      "jobs": [
+        "JOB-069"
+      ],
+      "notes": "Optional dependency - when present, replaces inline verification tracker check"
+    },
+    "plan_manager_wiring": {
+      "status": "complete",
+      "implementation": "IPlanManager wired into ToolHandlerBinder. UpdateCheckboxAsync called after task completion.",
+      "tests": "HandleUpdateTaskStatus_CallsPlanManagerOnCompletion, HandleUpdateTaskStatus_SkipsPlanManagerWhenNotProvided",
+      "jobs": [
+        "JOB-070",
+        "JOB-079"
+      ],
+      "notes": "Optional dependency - updates plan.md checkbox when task marked complete IPlanManager now wired into WorkflowOrchestrator. Plan content persisted after BreakIntoTasks. Appends to existing plan. Graceful fallback when null. DI resolves optionally."
+    },
+    "failure_handler_wiring": {
+      "status": "complete",
+      "implementation": "IFailureHandler wired into WorkflowOrchestrator. On step failure: RecordFailure() \u2192 SelfCorrect continues loop, PromptUser prompts user or auto-continues in unattended mode, Block interrupts. ResetFailureCount on success.",
+      "tests": "WorkflowOrchestratorTests (12 failure handler tests) + ServiceCollectionExtensionsTests (2 DI tests)",
+      "jobs": [
+        "JOB-071",
+        "JOB-072"
+      ],
+      "notes": "CORE-21: SelfCorrect on single failure. CORE-22: PromptUser at threshold prompts via IOutputRenderer.PromptAsync \u2014 user confirms y/yes to continue (resets count), declines/null to interrupt. Unattended mode suppresses prompt and continues. WorkflowOptions passed to orchestrator via DI."
+    },
+    "budget_enforcement_wiring": {
+      "status": "complete",
+      "implementation": "WorkflowOrchestrator.CheckBudgetAsync() \u2014 IBudgetEnforcer + ITokenTracker pre-invocation check",
+      "tests": "WorkflowOrchestratorTests (10 budget tests) + ServiceCollectionExtensionsTests (1 DI test)",
+      "jobs": [
+        "JOB-084"
+      ],
+      "notes": "Budget check before each LLM invocation. Handles Ok/Warning/ConfirmationRequired/Exceeded. Auto-saves on halt for session resume."
+    },
+    "critical_error_handling": {
+      "status": "complete",
+      "implementation": "IsCriticalException detection in WorkflowOrchestrator, StepResult.CriticalFailure, OrchestrationResult.CriticalError",
+      "tests": "WorkflowOrchestratorTests (12 critical error tests) + CoreAcceptanceCriteriaTests (3 AC-23 tests)",
+      "jobs": [
+        "JOB-073"
+      ],
+      "notes": "Critical exceptions (IOException, UnauthorizedAccessException, OutOfMemoryException, SecurityException) bypass self-correction and block immediately via RecordCriticalError."
+    }
+  },
+  "last_updated": "2026-02-16T20:50:00Z"
 }

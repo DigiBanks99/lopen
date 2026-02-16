@@ -136,7 +136,16 @@
         "JOB-035"
       ],
       "notes": "Interactive arrow key navigation + Enter preview. --list for CI/text mode."
+    },
+    "top_panel_data_provider": {
+      "status": "complete",
+      "implementation": "TopPanelDataProvider aggregates ITokenTracker, IGitService, IAuthService, IWorkflowEngine, IModelSelector into TopPanelData. TuiApplication refreshes with 1s throttle.",
+      "tests": "TopPanelDataProviderTests (31 tests) + TuiApplicationTests (4 new integration tests)",
+      "jobs": [
+        "JOB-011"
+      ],
+      "notes": "GetCurrentBranchAsync added to IGitService. AddTopPanelDataProvider() DI method. Async data (branch, auth) cached, sync data (tokens, workflow) read fresh each frame."
     }
   },
-  "last_updated": "2026-02-16T17:50:00Z"
+  "last_updated": "2026-02-16T20:50:00Z"
 }

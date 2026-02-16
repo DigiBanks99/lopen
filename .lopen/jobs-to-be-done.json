@@ -94,9 +94,9 @@
     "requirement_code": "TUI-02",
     "requirement_module": "tui",
     "description": "Connect TopPanelComponent to live data sources (model, context usage, premium requests, git branch, auth, phase)",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "TopPanelComponent renders correctly with injected data in tests. Need to wire it to real ITokenTracker, IGitService, IAuthService, WorkflowEngine state."
+    "notes": "TopPanelDataProvider wires ITokenTracker, IGitService, IAuthService, IWorkflowEngine, IModelSelector to TopPanelData. TuiApplication refreshes data with 1s throttle. 35 new tests added."
   },
   {
     "id": "JOB-012",
@@ -697,9 +697,9 @@
     "requirement_code": "CLI-16",
     "requirement_module": "cli",
     "description": "Implement --quiet/-q flag to suppress TUI and output plain text",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "Flag may exist but needs to consistently switch from TUI to plain text output across all commands."
+    "notes": "Already fully implemented: GlobalOptions --headless/-q/--quiet, HeadlessRenderer, StubTuiApplication, extensive test coverage."
   },
   {
     "id": "JOB-079",
