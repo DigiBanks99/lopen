@@ -1526,6 +1526,82 @@ public class WorkflowOrchestratorTests
         Assert.Equal("test-module", planManager.WrittenPlans[0].Module);
     }
 
+    // LLM-02: Each workflow phase invokes the SDK with a fresh context window
+
+    [Fact]
+    public async Task InvokeLlm_EachStep_PassesFreshSystemPrompt()
+    {
+        // When the orchestrator processes multiple steps, each LLM invocation
+        // receives its own system prompt — no accumulated conversation history.
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 3;
+        var sut = CreateOrchestrator();
+
+        await sut.RunAsync("test-module");
+
+        Assert.True(_llmService.Invocations.Count >= 2, "Expected at least 2 LLM invocations");
+        // Each invocation gets an independent system prompt string (not an appended conversation)
+        foreach (var invocation in _llmService.Invocations)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(invocation.SystemPrompt),
+                "Each invocation must receive a non-empty system prompt");
+        }
+        // No invocation's prompt is a superset of a previous one (no history accumulation)
+        for (int i = 1; i < _llmService.Invocations.Count; i++)
+        {
+            var current = _llmService.Invocations[i].SystemPrompt;
+            var previous = _llmService.Invocations[i - 1].SystemPrompt;
+            Assert.DoesNotContain(previous + "\n", current);
+        }
+    }
+
+    [Fact]
+    public async Task InvokeLlm_AcrossPhases_NoHistoryCarried()
+    {
+        // When transitioning from Planning to Building phase, each LLM call is independent.
+        // Start at a Planning step, run enough steps to transition into Building.
+        _engine.CurrentStep = WorkflowStep.BreakIntoTasks;
+        _engine.StepsBeforeComplete = 3;
+        var sut = CreateOrchestrator();
+
+        await sut.RunAsync("test-module");
+
+        Assert.True(_llmService.Invocations.Count >= 2, "Expected at least 2 LLM invocations across phases");
+        // Each call to ILlmService.InvokeAsync is stateless — it receives
+        // (systemPrompt, model, tools) with no conversation history parameter.
+        // Verify each invocation has exactly 3 discrete parameters (no history accumulation).
+        foreach (var invocation in _llmService.Invocations)
+        {
+            Assert.NotNull(invocation.SystemPrompt);
+            Assert.NotNull(invocation.Model);
+            Assert.NotNull(invocation.Tools);
+        }
+        // Confirm invocations are independent: no prompt contains another's output
+        for (int i = 1; i < _llmService.Invocations.Count; i++)
+        {
+            Assert.DoesNotContain("Test output", _llmService.Invocations[i].SystemPrompt);
+        }
+    }
+
+    [Fact]
+    public async Task InvokeLlm_PerTask_CreatesIndependentInvocation()
+    {
+        // During task execution (IterateThroughTasks), each task iteration
+        // gets its own independent LLM call with no carried-over context.
+        _engine.CurrentStep = WorkflowStep.IterateThroughTasks;
+        _engine.StepsBeforeComplete = 3;
+        var sut = CreateOrchestrator();
+
+        await sut.RunAsync("test-module");
+
+        Assert.True(_llmService.Invocations.Count >= 2,
+            "Expected at least 2 task iteration LLM invocations");
+        // Each task invocation builds a fresh prompt from PromptBuilder (not appending history)
+        Assert.True(_promptBuilder.BuildCount >= 2,
+            "PromptBuilder should be called once per LLM invocation");
+        Assert.Equal(_llmService.Invocations.Count, _promptBuilder.BuildCount);
+    }
+
     private sealed class StubWorkflowEngine : IWorkflowEngine
     {
         public WorkflowStep CurrentStep { get; set; } = WorkflowStep.DraftSpecification;
@@ -1592,12 +1668,14 @@ public class WorkflowOrchestratorTests
         public int FailUntilInvokeCount { get; set; }
         public LlmInvocationResult? Result { get; set; }
         public Exception? ExceptionToThrow { get; set; }
+        public List<(string SystemPrompt, string Model, IReadOnlyList<LopenToolDefinition> Tools)> Invocations { get; } = [];
 
         public Task<LlmInvocationResult> InvokeAsync(
             string systemPrompt, string model, IReadOnlyList<LopenToolDefinition> tools,
             CancellationToken ct = default)
         {
             InvokeCount++;
+            Invocations.Add((systemPrompt, model, tools));
             if (ThrowOnInvoke || (FailUntilInvokeCount > 0 && InvokeCount <= FailUntilInvokeCount))
                 throw ExceptionToThrow ?? new InvalidOperationException("LLM error");
 

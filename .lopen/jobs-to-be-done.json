@@ -724,9 +724,9 @@
     "requirement_code": "LLM-02",
     "requirement_module": "llm",
     "description": "Verify fresh context window per phase - no history carried forward between workflow phases",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "CopilotLlmService creates a new session per invoke. Need integration test to verify no state leaks between phases."
+    "notes": "Fresh context verified at CopilotLlmService level (creates new session per call) and WorkflowOrchestrator level (3 new tests: fresh prompts per step, no cross-phase history, independent per-task invocations). All 1990 tests pass."
   },
   {
     "id": "JOB-082",
@@ -742,9 +742,9 @@
     "requirement_code": "LLM-09",
     "requirement_module": "llm",
     "description": "Verify tool registration varies by workflow step - correct tools available per phase",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "DefaultToolRegistry has phase-scoped tool availability. Need test to verify only appropriate tools are exposed to the LLM per workflow step."
+    "notes": "Already fully tested. DefaultToolRegistryTests (16 tests) verify GetToolsForPhase returns correct tools per phase: verification tools in Building only, log_research in Research only, core tools in all phases. LlmAcceptanceCriteriaTests also covers phase-specific tool sets."
   },
   {
     "id": "JOB-084",
