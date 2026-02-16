@@ -595,9 +595,10 @@
     "id": "JOB-075",
     "requirement_module": "core",
     "description": "Write unit tests for all core acceptance criteria (workflow, assessment, drift, transitions, back-pressure, git, failures)",
-    "status": "not_started",
+    "status": "done",
     "priority": 3,
-    "notes": "Tests for all 24 core ACs"
+    "notes": "Tests for all 24 core ACs",
+    "completed_date": "2026-02-16T03:45:35Z"
   },
   {
     "id": "JOB-076",
