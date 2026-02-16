@@ -107,6 +107,10 @@ public static class ServiceCollectionExtensions
                 try { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
                 catch { /* Plan manager optional */ }
 
+                Lopen.Llm.IOracleVerifier? oracleVerifier = null;
+                try { oracleVerifier = sp.GetService<Lopen.Llm.IOracleVerifier>(); }
+                catch { /* Oracle verifier optional */ }
+
                 return new ToolHandlerBinder(
                     sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
                     sp.GetRequiredService<ISectionExtractor>(),
@@ -116,7 +120,8 @@ public static class ServiceCollectionExtensions
                     projectRoot,
                     gitSvc,
                     taskGate,
-                    planMgr);
+                    planMgr,
+                    oracleVerifier);
             });
         }
 

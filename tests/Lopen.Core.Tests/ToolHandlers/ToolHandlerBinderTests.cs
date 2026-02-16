@@ -20,10 +20,11 @@ public class ToolHandlerBinderTests
     private ToolHandlerBinder CreateBinder(
         StubGitWorkflowService? git = null,
         StubTaskStatusGate? gate = null,
-        StubPlanManager? planManager = null) => new(
+        StubPlanManager? planManager = null,
+        StubOracleVerifier? oracleVerifier = null) => new(
         _fileSystem, _sectionExtractor, _engine, _verificationTracker,
         NullLogger<ToolHandlerBinder>.Instance, ProjectRoot,
-        git, gate, planManager);
+        git, gate, planManager, oracleVerifier);
 
     [Fact]
     public void BindAll_BindsAllTenTools()
@@ -473,7 +474,184 @@ public class ToolHandlerBinderTests
         Assert.Contains("success", result);
     }
 
+    [Fact]
+    public async Task HandleVerifyTaskCompletion_DispatchesOracleWhenAvailable()
+    {
+        var oracle = new StubOracleVerifier { Verdict = new Lopen.Llm.OracleVerdict(true, [], Lopen.Llm.VerificationScope.Task) };
+        var binder = CreateBinder(oracleVerifier: oracle);
+
+        var result = await binder.HandleVerifyTaskCompletion(
+            """{"task_id":"task-1","evidence":"diff here","acceptance_criteria":"must pass"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+        Assert.Single(oracle.Invocations);
+        Assert.Equal(Lopen.Llm.VerificationScope.Task, oracle.Invocations[0].Scope);
+        Assert.Equal("diff here", oracle.Invocations[0].Evidence);
+        Assert.Equal("must pass", oracle.Invocations[0].AcceptanceCriteria);
+        Assert.Contains(("Task", "task-1"), _verificationTracker.RecordedVerifications);
+    }
+
+    [Fact]
+    public async Task HandleVerifyTaskCompletion_OracleFails_RecordsFailure()
+    {
+        var oracle = new StubOracleVerifier
+        {
+            Verdict = new Lopen.Llm.OracleVerdict(false, ["Missing tests"], Lopen.Llm.VerificationScope.Task)
+        };
+        var binder = CreateBinder(oracleVerifier: oracle);
+
+        var result = await binder.HandleVerifyTaskCompletion(
+            """{"task_id":"task-1","evidence":"diff","acceptance_criteria":"criteria"}""", CancellationToken.None);
+
+        Assert.Contains("fail", result);
+        Assert.Contains("Missing tests", result);
+        // Verification should be recorded as failed
+        Assert.False(_verificationTracker.IsVerified(Lopen.Llm.VerificationScope.Task, "task-1"));
+    }
+
+    [Fact]
+    public async Task HandleVerifyTaskCompletion_NoOracle_AutoPasses()
+    {
+        var binder = CreateBinder(); // No oracle
+        var result = await binder.HandleVerifyTaskCompletion(
+            """{"task_id":"task-1","evidence":"diff","acceptance_criteria":"criteria"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+        Assert.True(_verificationTracker.IsVerified(Lopen.Llm.VerificationScope.Task, "task-1"));
+    }
+
+    [Fact]
+    public async Task HandleVerifyTaskCompletion_OraclePresent_NoEvidence_AutoPasses()
+    {
+        var oracle = new StubOracleVerifier();
+        var binder = CreateBinder(oracleVerifier: oracle);
+
+        var result = await binder.HandleVerifyTaskCompletion(
+            """{"task_id":"task-1"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+        Assert.Empty(oracle.Invocations); // Oracle should NOT be called
+        Assert.True(_verificationTracker.IsVerified(Lopen.Llm.VerificationScope.Task, "task-1"));
+    }
+
+    [Fact]
+    public async Task HandleVerifyComponentCompletion_DispatchesOracleWhenAvailable()
+    {
+        var oracle = new StubOracleVerifier { Verdict = new Lopen.Llm.OracleVerdict(true, [], Lopen.Llm.VerificationScope.Component) };
+        var binder = CreateBinder(oracleVerifier: oracle);
+
+        var result = await binder.HandleVerifyComponentCompletion(
+            """{"component_id":"comp-1","evidence":"component diff","acceptance_criteria":"component criteria"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+        Assert.Single(oracle.Invocations);
+        Assert.Equal(Lopen.Llm.VerificationScope.Component, oracle.Invocations[0].Scope);
+        Assert.Contains(("Component", "comp-1"), _verificationTracker.RecordedVerifications);
+    }
+
+    [Fact]
+    public async Task HandleVerifyComponentCompletion_OracleFails_RecordsFailure()
+    {
+        var oracle = new StubOracleVerifier
+        {
+            Verdict = new Lopen.Llm.OracleVerdict(false, ["Regression found"], Lopen.Llm.VerificationScope.Component)
+        };
+        var binder = CreateBinder(oracleVerifier: oracle);
+
+        var result = await binder.HandleVerifyComponentCompletion(
+            """{"component_id":"comp-1","evidence":"diff","acceptance_criteria":"criteria"}""", CancellationToken.None);
+
+        Assert.Contains("fail", result);
+        Assert.Contains("Regression found", result);
+    }
+
+    [Fact]
+    public async Task HandleVerifyModuleCompletion_DispatchesOracleWhenAvailable()
+    {
+        var oracle = new StubOracleVerifier { Verdict = new Lopen.Llm.OracleVerdict(true, [], Lopen.Llm.VerificationScope.Module) };
+        var binder = CreateBinder(oracleVerifier: oracle);
+
+        var result = await binder.HandleVerifyModuleCompletion(
+            """{"module_id":"core","evidence":"module diff","acceptance_criteria":"module criteria"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+        Assert.Single(oracle.Invocations);
+        Assert.Equal(Lopen.Llm.VerificationScope.Module, oracle.Invocations[0].Scope);
+        Assert.Contains(("Module", "core"), _verificationTracker.RecordedVerifications);
+    }
+
+    [Fact]
+    public async Task HandleVerifyModuleCompletion_OracleFails_RecordsFailure()
+    {
+        var oracle = new StubOracleVerifier
+        {
+            Verdict = new Lopen.Llm.OracleVerdict(false, ["Spec not met"], Lopen.Llm.VerificationScope.Module)
+        };
+        var binder = CreateBinder(oracleVerifier: oracle);
+
+        var result = await binder.HandleVerifyModuleCompletion(
+            """{"module_id":"core","evidence":"diff","acceptance_criteria":"criteria"}""", CancellationToken.None);
+
+        Assert.Contains("fail", result);
+        Assert.Contains("Spec not met", result);
+        Assert.False(_verificationTracker.IsVerified(Lopen.Llm.VerificationScope.Module, "core"));
+    }
+
+    [Fact]
+    public async Task HandleVerifyTaskCompletion_OraclePass_ThenUpdateTaskStatus_Succeeds()
+    {
+        var oracle = new StubOracleVerifier { Verdict = new Lopen.Llm.OracleVerdict(true, [], Lopen.Llm.VerificationScope.Task) };
+        var binder = CreateBinder(oracleVerifier: oracle);
+
+        // First, verify the task
+        await binder.HandleVerifyTaskCompletion(
+            """{"task_id":"task-1","evidence":"diff","acceptance_criteria":"criteria"}""", CancellationToken.None);
+
+        // Then, try to complete it
+        var result = await binder.HandleUpdateTaskStatus(
+            """{"task_id":"task-1","status":"complete"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+    }
+
+    [Fact]
+    public async Task HandleVerifyTaskCompletion_OracleFail_ThenUpdateTaskStatus_Rejected()
+    {
+        var oracle = new StubOracleVerifier
+        {
+            Verdict = new Lopen.Llm.OracleVerdict(false, ["Gaps exist"], Lopen.Llm.VerificationScope.Task)
+        };
+        var binder = CreateBinder(oracleVerifier: oracle);
+
+        // Verify the task (will fail)
+        await binder.HandleVerifyTaskCompletion(
+            """{"task_id":"task-1","evidence":"diff","acceptance_criteria":"criteria"}""", CancellationToken.None);
+
+        // Try to complete - should be rejected
+        var result = await binder.HandleUpdateTaskStatus(
+            """{"task_id":"task-1","status":"complete"}""", CancellationToken.None);
+
+        Assert.Contains("error", result);
+        Assert.Contains("verify_task_completion", result);
+    }
+
     // --- Stubs ---
+
+    private sealed class StubOracleVerifier : Lopen.Llm.IOracleVerifier
+    {
+        public Lopen.Llm.OracleVerdict Verdict { get; set; } =
+            new(true, [], Lopen.Llm.VerificationScope.Task);
+
+        public List<(Lopen.Llm.VerificationScope Scope, string Evidence, string AcceptanceCriteria)> Invocations { get; } = [];
+
+        public Task<Lopen.Llm.OracleVerdict> VerifyAsync(
+            Lopen.Llm.VerificationScope scope, string evidence, string acceptanceCriteria,
+            CancellationToken cancellationToken = default)
+        {
+            Invocations.Add((scope, evidence, acceptanceCriteria));
+            return Task.FromResult(new Lopen.Llm.OracleVerdict(Verdict.Passed, Verdict.Gaps, scope));
+        }
+    }
 
     private sealed class StubGitWorkflowService : Lopen.Core.Git.IGitWorkflowService
     {

@@ -22,6 +22,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
     private readonly IGitWorkflowService? _gitWorkflowService;
     private readonly ITaskStatusGate? _taskStatusGate;
     private readonly IPlanManager? _planManager;
+    private readonly IOracleVerifier? _oracleVerifier;
     private readonly ILogger<ToolHandlerBinder> _logger;
     private readonly string _projectRoot;
 
@@ -34,7 +35,8 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         string projectRoot,
         IGitWorkflowService? gitWorkflowService = null,
         ITaskStatusGate? taskStatusGate = null,
-        IPlanManager? planManager = null)
+        IPlanManager? planManager = null,
+        IOracleVerifier? oracleVerifier = null)
     {
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         _sectionExtractor = sectionExtractor ?? throw new ArgumentNullException(nameof(sectionExtractor));
@@ -45,6 +47,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         _gitWorkflowService = gitWorkflowService;
         _taskStatusGate = taskStatusGate;
         _planManager = planManager;
+        _oracleVerifier = oracleVerifier;
     }
 
     public void BindAll(IToolRegistry registry)
@@ -289,44 +292,110 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         return Task.FromResult(JsonResult("success", $"Progress recorded: {summary}"));
     }
 
-    internal Task<string> HandleVerifyTaskCompletion(string parameters, CancellationToken ct)
+    internal async Task<string> HandleVerifyTaskCompletion(string parameters, CancellationToken ct)
     {
         var args = ParseArgs(parameters);
         var taskId = args.GetValueOrDefault("task_id") ?? "";
 
         if (string.IsNullOrWhiteSpace(taskId))
-            return Task.FromResult(JsonResult("error", "task_id is required"));
+            return JsonResult("error", "task_id is required");
 
-        // Record that verification was requested (actual oracle dispatch is separate)
+        var evidence = args.GetValueOrDefault("evidence") ?? "";
+        var acceptanceCriteria = args.GetValueOrDefault("acceptance_criteria") ?? "";
+
+        if (_oracleVerifier is not null
+            && !string.IsNullOrWhiteSpace(evidence)
+            && !string.IsNullOrWhiteSpace(acceptanceCriteria))
+        {
+            var verdict = await _oracleVerifier.VerifyAsync(
+                VerificationScope.Task, evidence, acceptanceCriteria, ct);
+            _verificationTracker.RecordVerification(VerificationScope.Task, taskId, verdict.Passed);
+            _logger.LogInformation("Oracle task verification for {TaskId}: Passed={Passed}, Gaps={GapCount}",
+                taskId, verdict.Passed, verdict.Gaps.Count);
+
+            if (!verdict.Passed)
+            {
+                var gapList = string.Join("; ", verdict.Gaps);
+                return JsonResult("fail", $"Task '{taskId}' verification failed. Gaps: {gapList}");
+            }
+
+            return JsonResult("success", $"Task '{taskId}' verification passed");
+        }
+
+        // Fallback: auto-pass when oracle not available or evidence/criteria not provided
         _verificationTracker.RecordVerification(VerificationScope.Task, taskId, true);
-        _logger.LogInformation("Task verification recorded: {TaskId}", taskId);
-        return Task.FromResult(JsonResult("success", $"Task '{taskId}' verification passed"));
+        _logger.LogWarning("Task verification auto-passed (oracle not available or evidence missing): {TaskId}", taskId);
+        return JsonResult("success", $"Task '{taskId}' verification passed");
     }
 
-    internal Task<string> HandleVerifyComponentCompletion(string parameters, CancellationToken ct)
+    internal async Task<string> HandleVerifyComponentCompletion(string parameters, CancellationToken ct)
     {
         var args = ParseArgs(parameters);
         var componentId = args.GetValueOrDefault("component_id") ?? "";
 
         if (string.IsNullOrWhiteSpace(componentId))
-            return Task.FromResult(JsonResult("error", "component_id is required"));
+            return JsonResult("error", "component_id is required");
+
+        var evidence = args.GetValueOrDefault("evidence") ?? "";
+        var acceptanceCriteria = args.GetValueOrDefault("acceptance_criteria") ?? "";
+
+        if (_oracleVerifier is not null
+            && !string.IsNullOrWhiteSpace(evidence)
+            && !string.IsNullOrWhiteSpace(acceptanceCriteria))
+        {
+            var verdict = await _oracleVerifier.VerifyAsync(
+                VerificationScope.Component, evidence, acceptanceCriteria, ct);
+            _verificationTracker.RecordVerification(VerificationScope.Component, componentId, verdict.Passed);
+            _logger.LogInformation("Oracle component verification for {ComponentId}: Passed={Passed}, Gaps={GapCount}",
+                componentId, verdict.Passed, verdict.Gaps.Count);
+
+            if (!verdict.Passed)
+            {
+                var gapList = string.Join("; ", verdict.Gaps);
+                return JsonResult("fail", $"Component '{componentId}' verification failed. Gaps: {gapList}");
+            }
+
+            return JsonResult("success", $"Component '{componentId}' verification passed");
+        }
 
         _verificationTracker.RecordVerification(VerificationScope.Component, componentId, true);
-        _logger.LogInformation("Component verification recorded: {ComponentId}", componentId);
-        return Task.FromResult(JsonResult("success", $"Component '{componentId}' verification passed"));
+        _logger.LogWarning("Component verification auto-passed (oracle not available or evidence missing): {ComponentId}", componentId);
+        return JsonResult("success", $"Component '{componentId}' verification passed");
     }
 
-    internal Task<string> HandleVerifyModuleCompletion(string parameters, CancellationToken ct)
+    internal async Task<string> HandleVerifyModuleCompletion(string parameters, CancellationToken ct)
     {
         var args = ParseArgs(parameters);
         var moduleId = args.GetValueOrDefault("module_id") ?? "";
 
         if (string.IsNullOrWhiteSpace(moduleId))
-            return Task.FromResult(JsonResult("error", "module_id is required"));
+            return JsonResult("error", "module_id is required");
+
+        var evidence = args.GetValueOrDefault("evidence") ?? "";
+        var acceptanceCriteria = args.GetValueOrDefault("acceptance_criteria") ?? "";
+
+        if (_oracleVerifier is not null
+            && !string.IsNullOrWhiteSpace(evidence)
+            && !string.IsNullOrWhiteSpace(acceptanceCriteria))
+        {
+            var verdict = await _oracleVerifier.VerifyAsync(
+                VerificationScope.Module, evidence, acceptanceCriteria, ct);
+            _verificationTracker.RecordVerification(VerificationScope.Module, moduleId, verdict.Passed);
+            _logger.LogInformation("Oracle module verification for {ModuleId}: Passed={Passed}, Gaps={GapCount}",
+                moduleId, verdict.Passed, verdict.Gaps.Count);
+
+            if (!verdict.Passed)
+            {
+                var gapList = string.Join("; ", verdict.Gaps);
+                return JsonResult("fail", $"Module '{moduleId}' verification failed. Gaps: {gapList}");
+            }
+
+            return JsonResult("success", $"Module '{moduleId}' verification passed");
+        }
 
         _verificationTracker.RecordVerification(VerificationScope.Module, moduleId, true);
-        _logger.LogInformation("Module verification recorded: {ModuleId}", moduleId);
-        return Task.FromResult(JsonResult("success", $"Module '{moduleId}' verification passed"));
+        _logger.LogWarning("Module verification auto-passed (oracle not available or evidence missing): {ModuleId}", moduleId);
+        return JsonResult("success", $"Module '{moduleId}' verification passed");
     }
 
     private static Dictionary<string, string> ParseArgs(string parameters)
