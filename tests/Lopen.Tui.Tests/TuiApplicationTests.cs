@@ -192,6 +192,26 @@ public class TuiApplicationTests
     }
 
     [Fact]
+    public void Constructor_AcceptsShowLandingPageFalse()
+    {
+        var app = new TuiApplication(
+            new TopPanelComponent(), new ActivityPanelComponent(),
+            new ContextPanelComponent(), new PromptAreaComponent(),
+            new KeyboardHandler(), NullLogger<TuiApplication>.Instance,
+            showLandingPage: false);
+        Assert.False(app.IsRunning);
+    }
+
+    [Fact]
+    public void UpdateLandingPage_SetsData()
+    {
+        var app = CreateApp();
+        var data = new LandingPageData { Version = "2.0.0", IsAuthenticated = true };
+        app.UpdateLandingPage(data);
+        Assert.False(app.IsRunning);
+    }
+
+    [Fact]
     public void AddTopPanelDataProvider_RegistersProvider()
     {
         var services = new ServiceCollection();

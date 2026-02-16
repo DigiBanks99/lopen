@@ -337,9 +337,9 @@
     "requirement_code": "TUI-06",
     "requirement_module": "tui",
     "description": "Wire LandingPageComponent to display on first TUI startup with quick commands",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "LandingPageComponent renders correctly in tests but is not shown in the TUI app (which is a stub). Must display on startup, skippable with --no-welcome."
+    "notes": "Added TuiModalState enum, modal overlay rendering in RenderFrame, keypress dismissal in DrainKeyboardInput, showLandingPage param for --no-welcome. 15 new tests."
   },
   {
     "id": "JOB-039",

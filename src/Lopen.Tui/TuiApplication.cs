@@ -5,6 +5,15 @@ using Spectre.Tui;
 namespace Lopen.Tui;
 
 /// <summary>
+/// Tracks which modal overlay (if any) is currently displayed.
+/// </summary>
+internal enum TuiModalState
+{
+    None,
+    LandingPage
+}
+
+/// <summary>
 /// Real TUI application shell using Spectre.Tui for full-screen cell-based rendering.
 /// Manages the render loop, keyboard input, layout calculation, and component rendering.
 /// </summary>
@@ -21,6 +30,8 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly ISlashCommandExecutor? _slashCommandExecutor;
     private readonly IPauseController? _pauseController;
     private readonly IUserPromptQueue? _userPromptQueue;
+    private readonly LandingPageComponent _landingPage;
+    private readonly bool _showLandingPage;
     private readonly ILogger<TuiApplication> _logger;
 
     private volatile bool _running;
@@ -30,12 +41,14 @@ internal sealed class TuiApplication : ITuiApplication
     private FocusPanel _focus = FocusPanel.Prompt;
     private bool _isPaused;
     private int _splitPercent = 60;
+    private TuiModalState _modalState = TuiModalState.None;
 
     // Data bags for each panel (updated externally or by keyboard events)
     private TopPanelData _topData = new() { Version = "0.0.0" };
     private ActivityPanelData _activityData = new();
     private ContextPanelData _contextData = new();
     private PromptAreaData _promptData = new();
+    private LandingPageData _landingPageData = new() { Version = "0.0.0" };
 
     // Throttle for data provider refresh (avoid calling async services every frame)
     private DateTime _lastProviderRefresh = DateTime.MinValue;
@@ -59,7 +72,8 @@ internal sealed class TuiApplication : ITuiApplication
         IActivityPanelDataProvider? activityPanelDataProvider = null,
         ISlashCommandExecutor? slashCommandExecutor = null,
         IPauseController? pauseController = null,
-        IUserPromptQueue? userPromptQueue = null)
+        IUserPromptQueue? userPromptQueue = null,
+        bool showLandingPage = true)
     {
         _topPanel = topPanel ?? throw new ArgumentNullException(nameof(topPanel));
         _activityPanel = activityPanel ?? throw new ArgumentNullException(nameof(activityPanel));
@@ -73,6 +87,8 @@ internal sealed class TuiApplication : ITuiApplication
         _slashCommandExecutor = slashCommandExecutor;
         _pauseController = pauseController;
         _userPromptQueue = userPromptQueue;
+        _landingPage = new LandingPageComponent();
+        _showLandingPage = showLandingPage;
     }
 
     public async Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
@@ -88,6 +104,10 @@ internal sealed class TuiApplication : ITuiApplication
         var ct = _stopCts.Token;
 
         _logger.LogInformation("Starting TUI application");
+
+        // Show landing page on startup (unless disabled via --no-welcome)
+        if (_showLandingPage)
+            _modalState = TuiModalState.LandingPage;
 
         ITerminal? terminal = null;
         try
@@ -175,6 +195,16 @@ internal sealed class TuiApplication : ITuiApplication
 
         // Always read synchronous data (tokens, workflow) fresh each frame
         _topData = _topPanelDataProvider.GetCurrentData();
+
+        // Keep landing page version in sync
+        if (_modalState == TuiModalState.LandingPage)
+        {
+            _landingPageData = _landingPageData with
+            {
+                Version = _topData.Version,
+                IsAuthenticated = _topData.IsAuthenticated
+            };
+        }
     }
 
     private async Task RefreshContextPanelDataAsync(CancellationToken cancellationToken)
@@ -220,11 +250,24 @@ internal sealed class TuiApplication : ITuiApplication
     /// </summary>
     public void UpdatePromptArea(PromptAreaData data) => _promptData = data;
 
+    /// <summary>
+    /// Updates the landing page data for the modal overlay.
+    /// </summary>
+    public void UpdateLandingPage(LandingPageData data) => _landingPageData = data;
+
     private void DrainKeyboardInput()
     {
         while (Console.KeyAvailable)
         {
             var keyInfo = Console.ReadKey(intercept: true);
+
+            // While a modal is active, any keypress dismisses it
+            if (_modalState != TuiModalState.None)
+            {
+                _modalState = TuiModalState.None;
+                continue;
+            }
+
             var input = new KeyInput
             {
                 Key = keyInfo.Key,
@@ -295,6 +338,15 @@ internal sealed class TuiApplication : ITuiApplication
     internal void RenderFrame(RenderContext ctx)
     {
         var viewport = ctx.Viewport;
+
+        // If a modal is active, render it fullscreen
+        if (_modalState == TuiModalState.LandingPage)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _landingPage.Render(_landingPageData, region));
+            return;
+        }
+
         var regions = LayoutCalculator.Calculate(
             viewport.Width, viewport.Height, _splitPercent);
 

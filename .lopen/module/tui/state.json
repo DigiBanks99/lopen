@@ -49,12 +49,13 @@
     },
     "modals": {
       "status": "complete",
-      "implementation": "LandingPageComponent + SessionResumeModalComponent + ModalData",
-      "tests": "ModalComponentTests (22)",
+      "implementation": "LandingPageComponent + SessionResumeModalComponent + ModalData + TuiModalState",
+      "tests": "ModalComponentTests (22) + TuiLandingPageTests (13)",
       "jobs": [
-        "JOB-089"
+        "JOB-089",
+        "JOB-038"
       ],
-      "notes": "Landing page with quick commands, auth status. Resume modal with session details, option selection."
+      "notes": "Landing page shows on startup as fullscreen modal. Dismissed on any keypress. Skippable via showLandingPage=false (--no-welcome). Version/auth synced from TopPanelDataProvider."
     },
     "tool_outputs": {
       "status": "complete",
@@ -133,9 +134,10 @@
       "jobs": [
         "JOB-008",
         "JOB-037",
-        "JOB-041"
+        "JOB-041",
+        "JOB-038"
       ],
-      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI. Ctrl+P toggles IPauseController. Slash commands wired via ISlashCommandExecutor. Context-aware hints wired each frame. Non-slash prompts flow to IUserPromptQueue."
+      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI. Ctrl+P toggles IPauseController. Slash commands wired via ISlashCommandExecutor. Context-aware hints wired each frame. Non-slash prompts flow to IUserPromptQueue. Landing page modal state machine in DrainKeyboardInput and RenderFrame."
     },
     "component_gallery_command": {
       "status": "complete",
@@ -165,5 +167,5 @@
       "notes": "Level 0=components, Level 1=tasks, Level 2+=subtasks. First incomplete item at each level marked InProgress. Resources placeholder (empty list) until IDocumentManager is implemented."
     }
   },
-  "last_updated": "2026-02-17T01:00:00Z"
+  "last_updated": "2026-02-17T01:30:00Z"
 }
