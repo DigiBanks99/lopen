@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Lopen.Core.Workflow;
+using Lopen.Otel;
 using Lopen.Storage;
 using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,40 +25,54 @@ public static class RootCommandHandler
         {
             rootCommand.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
             {
+                var headless = parseResult.GetValue(GlobalOptions.Headless);
+
+                // OTEL-01: Root command span
+                using var activity = SpanFactory.StartCommand("lopen", headless);
+
                 try
                 {
-                    var headless = parseResult.GetValue(GlobalOptions.Headless);
-
+                    int exitCode;
                     if (headless)
                     {
                         var headlessError = await PhaseCommands.ValidateHeadlessPromptAsync(
                             services, parseResult, stderr, cancellationToken);
                         if (headlessError is not null)
+                        {
+                            SpanFactory.SetCommandExitCode(activity, headlessError.Value);
                             return headlessError.Value;
+                        }
 
-                        return await RunHeadlessAsync(services, parseResult, stdout, stderr, cancellationToken);
+                        exitCode = await RunHeadlessAsync(services, parseResult, stdout, stderr, cancellationToken);
                     }
-
-                    var (sessionId, resolveError) = await PhaseCommands.ResolveSessionAsync(
-                        services, parseResult, cancellationToken);
-                    if (resolveError is not null)
+                    else
                     {
-                        await stderr.WriteLineAsync(resolveError);
-                        return ExitCodes.Failure;
+                        var (sessionId, resolveError) = await PhaseCommands.ResolveSessionAsync(
+                            services, parseResult, cancellationToken);
+                        if (resolveError is not null)
+                        {
+                            await stderr.WriteLineAsync(resolveError);
+                            SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
+                            return ExitCodes.Failure;
+                        }
+
+                        if (sessionId is not null)
+                        {
+                            await stdout.WriteLineAsync($"Resuming session: {sessionId}");
+                        }
+
+                        var app = services.GetRequiredService<ITuiApplication>();
+                        await app.RunAsync(cancellationToken);
+                        exitCode = ExitCodes.Success;
                     }
 
-                    if (sessionId is not null)
-                    {
-                        await stdout.WriteLineAsync($"Resuming session: {sessionId}");
-                    }
-
-                    var app = services.GetRequiredService<ITuiApplication>();
-                    await app.RunAsync(cancellationToken);
-
-                    return ExitCodes.Success;
+                    SpanFactory.SetCommandExitCode(activity, exitCode);
+                    return exitCode;
                 }
                 catch (Exception ex)
                 {
+                    activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+                    SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
                     await stderr.WriteLineAsync(ex.Message);
                     return ExitCodes.Failure;
                 }

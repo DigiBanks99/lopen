@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Lopen.Core.Workflow;
+using Lopen.Otel;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,6 +20,7 @@ public static class PhaseCommands
         var spec = new Command("spec", "Run the Requirement Gathering phase (step 1)");
         spec.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
+            using var activity = SpanFactory.StartCommand("spec");
             try
             {
                 var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
@@ -55,6 +57,8 @@ public static class PhaseCommands
             }
             catch (Exception ex)
             {
+                activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+                SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
                 await stderr.WriteLineAsync(ex.Message);
                 return ExitCodes.Failure;
             }
@@ -71,6 +75,7 @@ public static class PhaseCommands
         var plan = new Command("plan", "Run the Planning phase (steps 2–5)");
         plan.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
+            using var activity = SpanFactory.StartCommand("plan");
             try
             {
                 var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
@@ -114,6 +119,8 @@ public static class PhaseCommands
             }
             catch (Exception ex)
             {
+                activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+                SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
                 await stderr.WriteLineAsync(ex.Message);
                 return ExitCodes.Failure;
             }
@@ -130,6 +137,7 @@ public static class PhaseCommands
         var build = new Command("build", "Run the Building phase (steps 6–7)");
         build.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
+            using var activity = SpanFactory.StartCommand("build");
             try
             {
                 var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
@@ -180,6 +188,8 @@ public static class PhaseCommands
             }
             catch (Exception ex)
             {
+                activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+                SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
                 await stderr.WriteLineAsync(ex.Message);
                 return ExitCodes.Failure;
             }

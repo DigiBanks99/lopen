@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Lopen.Core.Documents;
 using Lopen.Core.ToolHandlers;
@@ -299,6 +300,53 @@ public class ToolHandlerBinderTests
         var binder = CreateBinder();
         var result = await binder.HandleReadSpec("not json", CancellationToken.None);
         Assert.NotNull(result);
+    }
+
+    [Fact]
+    public async Task BindAll_TracedHandlers_CreateToolSpans()
+    {
+        var activities = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = a => activities.Add(a)
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        _fileSystem.Files["/test/project/docs/requirements/IMPLEMENTATION_PLAN.md"] = "# Plan";
+        var binder = CreateBinder();
+        var registry = new TrackingToolRegistry();
+        binder.BindAll(registry);
+
+        // Invoke a traced handler through the registry
+        var handler = registry.BoundHandlers["read_plan"];
+        await handler("{}", CancellationToken.None);
+
+        Assert.Contains(activities, a => a.OperationName == "lopen.tool.read_plan");
+    }
+
+    [Fact]
+    public async Task BindAll_VerifyHandlers_CreateOracleSpans()
+    {
+        var activities = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = a => activities.Add(a)
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var binder = CreateBinder();
+        var registry = new TrackingToolRegistry();
+        binder.BindAll(registry);
+
+        // Invoke verify handler
+        var handler = registry.BoundHandlers["verify_task_completion"];
+        await handler("""{"task_id":"t1"}""", CancellationToken.None);
+
+        Assert.Contains(activities, a => a.OperationName == "lopen.oracle.verification");
     }
 
     // --- Stubs ---

@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
 using Lopen.Llm;
+using Lopen.Otel;
 using Lopen.Storage;
 using Microsoft.Extensions.Logging;
 
@@ -170,6 +172,11 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         var currentStep = _engine.CurrentStep;
         var currentPhase = _engine.CurrentPhase;
+
+        // OTEL-02: Workflow phase span
+        using var phaseActivity = SpanFactory.StartWorkflowPhase(
+            currentPhase.ToString(), moduleName, _iterationCount);
+
         _logger.LogDebug("Iteration {Iteration}: step={Step}, phase={Phase}",
             _iterationCount, currentStep, currentPhase);
 
@@ -222,7 +229,23 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
 
         // 4. Invoke LLM for current step
+        // OTEL-06: Task execution span when iterating through tasks
+        Activity? taskActivity = null;
+        if (currentStep == WorkflowStep.IterateThroughTasks)
+        {
+            taskActivity = SpanFactory.StartTask(
+                $"iteration-{_iterationCount}", "current", moduleName);
+        }
+
         var llmResult = await InvokeLlmForStepAsync(moduleName, currentStep, currentPhase, cancellationToken);
+
+        if (taskActivity is not null)
+        {
+            SpanFactory.SetTaskResult(taskActivity,
+                llmResult.Success ? "success" : "failed", _iterationCount);
+            taskActivity.Dispose();
+        }
+
         if (!llmResult.Success) return llmResult;
 
         // 5. Check auto-transition conditions
@@ -268,6 +291,9 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         var tools = _toolRegistry.GetToolsForPhase(phase);
         var systemPrompt = _promptBuilder.BuildSystemPrompt(phase, moduleName, null, null);
 
+        // OTEL-03: SDK invocation span
+        using var sdkActivity = SpanFactory.StartSdkInvocation(model.SelectedModel);
+
         try
         {
             var result = await _llmService.InvokeAsync(systemPrompt, model.SelectedModel, tools, cancellationToken);
@@ -279,6 +305,10 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             // Record token usage for session metrics (LLM-13)
             _tokenTracker?.RecordUsage(result.TokenUsage);
 
+            SpanFactory.SetSdkResult(sdkActivity,
+                result.TokenUsage.InputTokens, result.TokenUsage.OutputTokens,
+                result.TokenUsage.IsPremiumRequest, result.ToolCallsMade);
+
             return StepResult.Succeeded(
                 DetermineNextTrigger(step) ?? WorkflowTrigger.Assess,
                 result.Output);
@@ -289,6 +319,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
         catch (Exception ex)
         {
+            sdkActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogError(ex, "LLM invocation failed at step {Step}", step);
             await _renderer.RenderErrorAsync($"LLM error: {ex.Message}", ex);
             return StepResult.Failed($"LLM invocation failed: {ex.Message}");

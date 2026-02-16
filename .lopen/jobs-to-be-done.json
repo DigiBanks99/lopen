@@ -193,54 +193,54 @@
     "requirement_code": "OTEL-01",
     "requirement_module": "otel",
     "description": "Instrument CLI command entry point with lopen.command root span",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "SpanFactory.StartCommandSpan exists but is never called from CLI Program.cs or command handlers. Must wrap CLI invocation with root span including command.name, headless, and exit_code attributes."
+    "notes": "SpanFactory calls wired into actual services. Tests verify span creation."
   },
   {
     "id": "JOB-023",
     "requirement_code": "OTEL-02",
     "requirement_module": "otel",
     "description": "Instrument workflow phases with lopen.workflow.phase spans",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "SpanFactory.StartWorkflowPhaseSpan exists but is never called. Must be invoked when the orchestration loop enters each phase."
+    "notes": "SpanFactory calls wired into actual services. Tests verify span creation."
   },
   {
     "id": "JOB-024",
     "requirement_code": "OTEL-03",
     "requirement_module": "otel",
     "description": "Instrument LLM SDK invocations with lopen.sdk.invocation spans including model, tokens, is_premium",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "SpanFactory.StartSdkInvocationSpan exists. Must wrap CopilotLlmService.InvokeAsync with span recording model, token counts, and premium status."
+    "notes": "SpanFactory calls wired into actual services. Tests verify span creation."
   },
   {
     "id": "JOB-025",
     "requirement_code": "OTEL-04",
     "requirement_module": "otel",
     "description": "Instrument LLM tool calls with lopen.tool.<tool_name> spans",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "SpanFactory.StartToolSpan exists. Must wrap each tool handler execution (once handlers are implemented per JOB-003)."
+    "notes": "SpanFactory calls wired into actual services. Tests verify span creation."
   },
   {
     "id": "JOB-026",
     "requirement_code": "OTEL-05",
     "requirement_module": "otel",
     "description": "Instrument oracle verification with lopen.oracle.verification spans",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "SpanFactory.StartOracleVerificationSpan exists. Must wrap OracleVerifier.VerifyAsync calls."
+    "notes": "SpanFactory calls wired into actual services. Tests verify span creation."
   },
   {
     "id": "JOB-027",
     "requirement_code": "OTEL-06",
     "requirement_module": "otel",
     "description": "Instrument task execution with lopen.task.execution spans including outcome and iterations",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "SpanFactory.StartTaskSpan exists. Must wrap task execution in orchestration loop."
+    "notes": "SpanFactory calls wired into actual services. Tests verify span creation."
   },
   {
     "id": "JOB-028",

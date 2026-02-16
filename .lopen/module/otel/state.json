@@ -1,32 +1,68 @@
 {
   "module": "otel",
-  "description": "OpenTelemetry observability with Aspire Dashboard",
-  "status": "complete",
+  "description": "OpenTelemetry instrumentation - tracing, metrics, and log export",
+  "status": "in_progress",
   "components": {
-    "diagnostics": {
-      "status": "complete",
-      "implementation": "LopenTelemetryDiagnostics (6 ActivitySources, 1 Meter, 10 counters, 5 histograms, 2 gauges)",
-      "tests": "LopenTelemetryDiagnosticsTests (13)",
-      "jobs": ["JOB-099"]
-    },
     "span_factory": {
       "status": "complete",
-      "implementation": "SpanFactory (9 span types with full attribute coverage)",
-      "tests": "SpanFactoryTests (26)",
-      "jobs": ["JOB-099"]
+      "implementation": "SpanFactory static methods for all span types",
+      "tests": "SpanFactoryTests (comprehensive)",
+      "notes": "Pre-existing, tested, ready for wiring"
     },
-    "service_extensions": {
+    "command_instrumentation": {
       "status": "complete",
-      "implementation": "AddLopenOtel (master/signal toggles, OTLP conditional, service name precedence)",
-      "tests": "ServiceCollectionExtensionsTests (16) + OtlpExportTests (10)",
-      "jobs": ["JOB-100"]
+      "implementation": "SpanFactory.StartCommand wired into RootCommandHandler and PhaseCommands",
+      "tests": "Verified via gpt-5-mini sub-agent",
+      "jobs": [
+        "JOB-022"
+      ],
+      "notes": "lopen.command span with exit code, error status on exceptions"
     },
-    "aspire_apphost": {
+    "workflow_phase_instrumentation": {
       "status": "complete",
-      "implementation": "Lopen.AppHost (Aspire SDK 13.1.1, project reference to Lopen)",
-      "tests": "OtlpExportTests (file existence + content checks)",
-      "jobs": ["JOB-100"]
+      "implementation": "SpanFactory.StartWorkflowPhase wired into WorkflowOrchestrator.RunStepAsync",
+      "tests": "WorkflowOrchestratorTests.RunStepAsync_CreatesWorkflowPhaseSpan",
+      "jobs": [
+        "JOB-023"
+      ],
+      "notes": "lopen.workflow.phase span per step iteration"
+    },
+    "sdk_invocation_instrumentation": {
+      "status": "complete",
+      "implementation": "SpanFactory.StartSdkInvocation wired into WorkflowOrchestrator.InvokeLlmForStepAsync",
+      "tests": "WorkflowOrchestratorTests.RunStepAsync_CreatesSdkInvocationSpan",
+      "jobs": [
+        "JOB-024"
+      ],
+      "notes": "lopen.sdk.invocation span with token/tool call attributes, error status on failure"
+    },
+    "tool_call_instrumentation": {
+      "status": "complete",
+      "implementation": "ToolHandlerBinder.Traced() wrapper creates lopen.tool.<name> spans",
+      "tests": "ToolHandlerBinderTests.BindAll_TracedHandlers_CreateToolSpans",
+      "jobs": [
+        "JOB-025"
+      ],
+      "notes": "All 7 non-verify handlers wrapped with tool spans"
+    },
+    "oracle_verification_instrumentation": {
+      "status": "complete",
+      "implementation": "ToolHandlerBinder.TracedVerify() wrapper creates lopen.oracle.verification spans",
+      "tests": "ToolHandlerBinderTests.BindAll_VerifyHandlers_CreateOracleSpans",
+      "jobs": [
+        "JOB-026"
+      ],
+      "notes": "All 3 verify handlers wrapped with oracle spans"
+    },
+    "task_execution_instrumentation": {
+      "status": "complete",
+      "implementation": "SpanFactory.StartTask in WorkflowOrchestrator for IterateThroughTasks step",
+      "tests": "WorkflowOrchestratorTests.RunStepAsync_CreatesTaskSpanForIterateThroughTasks",
+      "jobs": [
+        "JOB-027"
+      ],
+      "notes": "lopen.task.execution span with outcome and iteration count"
     }
   },
-  "last_updated": "2026-02-16T19:00:00Z"
+  "last_updated": "2026-02-16T19:30:00Z"
 }

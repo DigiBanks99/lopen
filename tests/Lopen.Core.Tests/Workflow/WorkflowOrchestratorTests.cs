@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Workflow;
@@ -494,6 +495,63 @@ public class WorkflowOrchestratorTests
         await sut.RunAsync("test-module");
 
         Assert.True(autoSave.MetricsIncluded);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_CreatesWorkflowPhaseSpan()
+    {
+        var activities = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = a => activities.Add(a)
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var sut = CreateOrchestrator();
+        await sut.RunStepAsync("test-module");
+
+        Assert.Contains(activities, a => a.OperationName == "lopen.workflow.phase");
+    }
+
+    [Fact]
+    public async Task RunStepAsync_CreatesSdkInvocationSpan()
+    {
+        var activities = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = a => activities.Add(a)
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var sut = CreateOrchestrator();
+        await sut.RunStepAsync("test-module");
+
+        Assert.Contains(activities, a => a.OperationName == "lopen.sdk.invocation");
+    }
+
+    [Fact]
+    public async Task RunStepAsync_CreatesTaskSpanForIterateThroughTasks()
+    {
+        var activities = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = a => activities.Add(a)
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        _engine.CurrentStep = WorkflowStep.IterateThroughTasks;
+        var sut = CreateOrchestrator();
+        await sut.RunStepAsync("test-module");
+
+        Assert.Contains(activities, a => a.OperationName == "lopen.task.execution");
     }
 
     // --- Stubs ---

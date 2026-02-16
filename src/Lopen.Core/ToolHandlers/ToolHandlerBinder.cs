@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
+using Lopen.Otel;
 using Lopen.Storage;
 using Microsoft.Extensions.Logging;
 
@@ -43,18 +45,69 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
     {
         ArgumentNullException.ThrowIfNull(registry);
 
-        registry.BindHandler("read_spec", HandleReadSpec);
-        registry.BindHandler("read_research", HandleReadResearch);
-        registry.BindHandler("read_plan", HandleReadPlan);
-        registry.BindHandler("update_task_status", HandleUpdateTaskStatus);
-        registry.BindHandler("get_current_context", HandleGetCurrentContext);
-        registry.BindHandler("log_research", HandleLogResearch);
-        registry.BindHandler("report_progress", HandleReportProgress);
-        registry.BindHandler("verify_task_completion", HandleVerifyTaskCompletion);
-        registry.BindHandler("verify_component_completion", HandleVerifyComponentCompletion);
-        registry.BindHandler("verify_module_completion", HandleVerifyModuleCompletion);
+        registry.BindHandler("read_spec", Traced("read_spec", HandleReadSpec));
+        registry.BindHandler("read_research", Traced("read_research", HandleReadResearch));
+        registry.BindHandler("read_plan", Traced("read_plan", HandleReadPlan));
+        registry.BindHandler("update_task_status", Traced("update_task_status", HandleUpdateTaskStatus));
+        registry.BindHandler("get_current_context", Traced("get_current_context", HandleGetCurrentContext));
+        registry.BindHandler("log_research", Traced("log_research", HandleLogResearch));
+        registry.BindHandler("report_progress", Traced("report_progress", HandleReportProgress));
+        registry.BindHandler("verify_task_completion", TracedVerify("verify_task_completion", HandleVerifyTaskCompletion));
+        registry.BindHandler("verify_component_completion", TracedVerify("verify_component_completion", HandleVerifyComponentCompletion));
+        registry.BindHandler("verify_module_completion", TracedVerify("verify_module_completion", HandleVerifyModuleCompletion));
 
         _logger.LogInformation("Bound handlers for all 10 built-in tools");
+    }
+
+    /// <summary>
+    /// Wraps a tool handler with an OTEL-05 tool span.
+    /// </summary>
+    private static Func<string, CancellationToken, Task<string>> Traced(
+        string toolName, Func<string, CancellationToken, Task<string>> handler)
+    {
+        return async (parameters, ct) =>
+        {
+            using var activity = SpanFactory.StartTool(toolName);
+            try
+            {
+                var result = await handler(parameters, ct);
+                var success = !result.Contains("\"error\"", StringComparison.Ordinal);
+                SpanFactory.SetToolResult(activity, success);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                SpanFactory.SetToolResult(activity, false, ex.Message);
+                throw;
+            }
+        };
+    }
+
+    /// <summary>
+    /// Wraps a verification handler with an OTEL-06 oracle verification span.
+    /// </summary>
+    private static Func<string, CancellationToken, Task<string>> TracedVerify(
+        string toolName, Func<string, CancellationToken, Task<string>> handler)
+    {
+        return async (parameters, ct) =>
+        {
+            using var activity = SpanFactory.StartOracleVerification(
+                toolName.Replace("verify_", "").Replace("_completion", ""), "oracle", 1);
+            try
+            {
+                var result = await handler(parameters, ct);
+                var success = result.Contains("\"success\"", StringComparison.Ordinal);
+                SpanFactory.SetOracleVerdict(activity, success ? "pass" : "fail");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                SpanFactory.SetOracleVerdict(activity, "error");
+                throw;
+            }
+        };
     }
 
     internal async Task<string> HandleReadSpec(string parameters, CancellationToken ct)
