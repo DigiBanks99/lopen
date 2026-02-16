@@ -13,7 +13,8 @@ internal enum TuiModalState
     LandingPage,
     SessionResume,
     ResourceViewer,
-    FilePicker
+    FilePicker,
+    ModuleSelection
 }
 
 /// <summary>
@@ -37,6 +38,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly SessionResumeModalComponent _sessionResumeModal;
     private readonly ResourceViewerModalComponent _resourceViewerModal;
     private readonly FilePickerComponent _filePickerComponent;
+    private readonly SelectionModalComponent _selectionModalComponent;
     private readonly ISessionDetector? _sessionDetector;
     private readonly bool _showLandingPage;
     private readonly ILogger<TuiApplication> _logger;
@@ -62,6 +64,7 @@ internal sealed class TuiApplication : ITuiApplication
     };
     private ResourceViewerData _resourceViewerData = new() { Label = "" };
     private FilePickerData _filePickerData = new() { RootPath = "" };
+    private ModuleSelectionData _moduleSelectionData = new() { Title = "" };
 
     // Throttle for data provider refresh (avoid calling async services every frame)
     private DateTime _lastProviderRefresh = DateTime.MinValue;
@@ -105,6 +108,7 @@ internal sealed class TuiApplication : ITuiApplication
         _sessionResumeModal = new SessionResumeModalComponent();
         _resourceViewerModal = new ResourceViewerModalComponent();
         _filePickerComponent = new FilePickerComponent();
+        _selectionModalComponent = new SelectionModalComponent();
         _sessionDetector = sessionDetector;
         _showLandingPage = showLandingPage;
     }
@@ -320,6 +324,13 @@ internal sealed class TuiApplication : ITuiApplication
                 continue;
             }
 
+            // Module selection modal: Up/Down navigates, Enter selects, Esc closes
+            if (_modalState == TuiModalState.ModuleSelection)
+            {
+                HandleModuleSelectionInput(keyInfo);
+                continue;
+            }
+
             var input = new KeyInput
             {
                 Key = keyInfo.Key,
@@ -455,6 +466,13 @@ internal sealed class TuiApplication : ITuiApplication
         {
             var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
             RenderRegion(ctx, region, _filePickerComponent.Render(_filePickerData, region));
+            return;
+        }
+
+        if (_modalState == TuiModalState.ModuleSelection)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _selectionModalComponent.Render(_moduleSelectionData, region));
             return;
         }
 
@@ -667,6 +685,46 @@ internal sealed class TuiApplication : ITuiApplication
         var nodes = _filePickerData.Nodes.ToList();
         nodes[idx] = node with { IsExpanded = !node.IsExpanded };
         _filePickerData = _filePickerData with { Nodes = nodes };
+    }
+
+    /// <summary>
+    /// Opens the module selection modal with the specified data.
+    /// </summary>
+    internal void OpenModuleSelection(ModuleSelectionData data)
+    {
+        _moduleSelectionData = data;
+        _modalState = TuiModalState.ModuleSelection;
+    }
+
+    private void HandleModuleSelectionInput(ConsoleKeyInfo keyInfo)
+    {
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+            case ConsoleKey.UpArrow:
+                if (_moduleSelectionData.Options.Count > 0)
+                {
+                    _moduleSelectionData = _moduleSelectionData with
+                    {
+                        SelectedIndex = Math.Max(0, _moduleSelectionData.SelectedIndex - 1)
+                    };
+                }
+                break;
+            case ConsoleKey.DownArrow:
+                if (_moduleSelectionData.Options.Count > 0)
+                {
+                    _moduleSelectionData = _moduleSelectionData with
+                    {
+                        SelectedIndex = Math.Min(_moduleSelectionData.Options.Count - 1, _moduleSelectionData.SelectedIndex + 1)
+                    };
+                }
+                break;
+            case ConsoleKey.Enter:
+                _modalState = TuiModalState.None;
+                break;
+        }
     }
 
     private async Task CheckForActiveSessionAsync(CancellationToken cancellationToken)

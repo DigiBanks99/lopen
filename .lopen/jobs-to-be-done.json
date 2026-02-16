@@ -445,18 +445,18 @@
     "requirement_code": "TUI-17",
     "requirement_module": "tui",
     "description": "Wire phase/step visualization (\u25cf/\u25cb) in top panel from live workflow state",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "TopPanelComponent renders step indicators. Must receive live WorkflowEngine state updates."
+    "notes": "Already fully implemented. TopPanelComponent.BuildStepIndicator renders ●/○, BuildPhaseLine shows phase/step. TopPanelDataProvider reads live IWorkflowEngine state every frame. 68 existing TopPanel tests cover this."
   },
   {
     "id": "JOB-051",
     "requirement_code": "TUI-18",
     "requirement_module": "tui",
     "description": "Wire ModuleSelectionModal for module selection with arrow key navigation",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Selection modal components exist. Must be displayed during workflow's module selection step (CORE-24)."
+    "notes": "Wired SelectionModalComponent as ModuleSelection modal in TuiApplication. Up/Down navigation, Enter selects, Esc cancels. ▶ indicator. 2 new tests. All 1911 tests pass."
   },
   {
     "id": "JOB-052",

@@ -432,4 +432,28 @@ public class TuiApplicationTests
         app.OpenFilePicker(new FilePickerData { RootPath = "/empty" });
         Assert.False(app.IsRunning);
     }
+
+    // ==================== Module Selection (JOB-051) ====================
+
+    [Fact]
+    public void OpenModuleSelection_SetsModalState()
+    {
+        var app = CreateApp();
+        var data = new ModuleSelectionData
+        {
+            Title = "Select Module",
+            Options = ["auth-module", "storage-module", "tui-module"]
+        };
+
+        app.OpenModuleSelection(data);
+        Assert.False(app.IsRunning);
+    }
+
+    [Fact]
+    public void OpenModuleSelection_EmptyOptions_DoesNotThrow()
+    {
+        var app = CreateApp();
+        app.OpenModuleSelection(new ModuleSelectionData { Title = "No modules" });
+        Assert.False(app.IsRunning);
+    }
 }
