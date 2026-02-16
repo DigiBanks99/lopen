@@ -204,4 +204,62 @@ public class SelectionComponentTests
     {
         Assert.Empty(_error.Render(new ErrorModalData { Title = "X", Message = "Y" }, new ScreenRect(0, 0, 0, 10)));
     }
+
+    // ==================== FilePickerComponent additional (JOB-049 / TUI-16) ====================
+
+    [Fact]
+    public void FilePicker_DirectoryCollapsed_ShowsFolderIcon()
+    {
+        var data = new FilePickerData
+        {
+            RootPath = "/project",
+            Nodes = [new FileNode("src", true, 0, false)]
+        };
+        var lines = _filePicker.Render(data, new ScreenRect(0, 0, 60, 5));
+        Assert.Contains(lines, l => l.Contains("📁 src"));
+    }
+
+    [Fact]
+    public void FilePicker_DirectoryExpanded_ShowsOpenFolderIcon()
+    {
+        var data = new FilePickerData
+        {
+            RootPath = "/project",
+            Nodes = [new FileNode("src", true, 0, true)]
+        };
+        var lines = _filePicker.Render(data, new ScreenRect(0, 0, 60, 5));
+        Assert.Contains(lines, l => l.Contains("📂 src"));
+    }
+
+    [Fact]
+    public void FilePicker_FileNode_ShowsFileIcon()
+    {
+        var data = new FilePickerData
+        {
+            RootPath = "/project",
+            Nodes = [new FileNode("readme.md", false, 0)]
+        };
+        var lines = _filePicker.Render(data, new ScreenRect(0, 0, 60, 5));
+        Assert.Contains(lines, l => l.Contains("📄 readme.md"));
+    }
+
+    [Fact]
+    public void FilePicker_Depth_IndentsCorrectly()
+    {
+        var data = new FilePickerData
+        {
+            RootPath = "/project",
+            Nodes = [
+                new FileNode("src", true, 0, true),
+                new FileNode("deep.ts", false, 2)
+            ]
+        };
+        var lines = _filePicker.Render(data, new ScreenRect(0, 0, 60, 5));
+        // Depth 2 should have more indentation than depth 0
+        var srcLine = lines.First(l => l.Contains("src"));
+        var deepLine = lines.First(l => l.Contains("deep.ts"));
+        var srcIndent = srcLine.IndexOf("📂");
+        var deepIndent = deepLine.IndexOf("📄");
+        Assert.True(deepIndent > srcIndent);
+    }
 }

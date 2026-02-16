@@ -12,7 +12,8 @@ internal enum TuiModalState
     None,
     LandingPage,
     SessionResume,
-    ResourceViewer
+    ResourceViewer,
+    FilePicker
 }
 
 /// <summary>
@@ -35,6 +36,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly LandingPageComponent _landingPage;
     private readonly SessionResumeModalComponent _sessionResumeModal;
     private readonly ResourceViewerModalComponent _resourceViewerModal;
+    private readonly FilePickerComponent _filePickerComponent;
     private readonly ISessionDetector? _sessionDetector;
     private readonly bool _showLandingPage;
     private readonly ILogger<TuiApplication> _logger;
@@ -59,6 +61,7 @@ internal sealed class TuiApplication : ITuiApplication
         ModuleName = "", PhaseName = "", StepProgress = "", TaskProgress = "", LastActivity = ""
     };
     private ResourceViewerData _resourceViewerData = new() { Label = "" };
+    private FilePickerData _filePickerData = new() { RootPath = "" };
 
     // Throttle for data provider refresh (avoid calling async services every frame)
     private DateTime _lastProviderRefresh = DateTime.MinValue;
@@ -101,6 +104,7 @@ internal sealed class TuiApplication : ITuiApplication
         _landingPage = new LandingPageComponent();
         _sessionResumeModal = new SessionResumeModalComponent();
         _resourceViewerModal = new ResourceViewerModalComponent();
+        _filePickerComponent = new FilePickerComponent();
         _sessionDetector = sessionDetector;
         _showLandingPage = showLandingPage;
     }
@@ -309,6 +313,13 @@ internal sealed class TuiApplication : ITuiApplication
                 continue;
             }
 
+            // File picker modal: Esc closes, Up/Down navigates, Enter expands/collapses
+            if (_modalState == TuiModalState.FilePicker)
+            {
+                HandleFilePickerInput(keyInfo);
+                continue;
+            }
+
             var input = new KeyInput
             {
                 Key = keyInfo.Key,
@@ -437,6 +448,13 @@ internal sealed class TuiApplication : ITuiApplication
         {
             var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
             RenderRegion(ctx, region, _resourceViewerModal.Render(_resourceViewerData, region));
+            return;
+        }
+
+        if (_modalState == TuiModalState.FilePicker)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _filePickerComponent.Render(_filePickerData, region));
             return;
         }
 
@@ -594,6 +612,61 @@ internal sealed class TuiApplication : ITuiApplication
                 };
                 break;
         }
+    }
+
+    /// <summary>
+    /// Opens the file picker modal with the specified data.
+    /// </summary>
+    internal void OpenFilePicker(FilePickerData data)
+    {
+        _filePickerData = data;
+        _modalState = TuiModalState.FilePicker;
+    }
+
+    private void HandleFilePickerInput(ConsoleKeyInfo keyInfo)
+    {
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+            case ConsoleKey.UpArrow:
+                if (_filePickerData.Nodes.Count > 0)
+                {
+                    _filePickerData = _filePickerData with
+                    {
+                        SelectedIndex = Math.Max(0, _filePickerData.SelectedIndex - 1)
+                    };
+                }
+                break;
+            case ConsoleKey.DownArrow:
+                if (_filePickerData.Nodes.Count > 0)
+                {
+                    _filePickerData = _filePickerData with
+                    {
+                        SelectedIndex = Math.Min(_filePickerData.Nodes.Count - 1, _filePickerData.SelectedIndex + 1)
+                    };
+                }
+                break;
+            case ConsoleKey.Enter:
+                ToggleFilePickerNode();
+                break;
+        }
+    }
+
+    private void ToggleFilePickerNode()
+    {
+        var idx = _filePickerData.SelectedIndex;
+        if (idx < 0 || idx >= _filePickerData.Nodes.Count)
+            return;
+
+        var node = _filePickerData.Nodes[idx];
+        if (!node.IsDirectory)
+            return;
+
+        var nodes = _filePickerData.Nodes.ToList();
+        nodes[idx] = node with { IsExpanded = !node.IsExpanded };
+        _filePickerData = _filePickerData with { Nodes = nodes };
     }
 
     private async Task CheckForActiveSessionAsync(CancellationToken cancellationToken)

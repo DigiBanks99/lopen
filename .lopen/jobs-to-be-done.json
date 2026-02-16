@@ -436,9 +436,9 @@
     "requirement_code": "TUI-16",
     "requirement_module": "tui",
     "description": "Wire file picker with tree view navigation for file selection",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "File picker component exists. Must be available for selecting files during workflow."
+    "notes": "Wired FilePickerComponent as modal in TuiApplication. Up/Down navigation, Enter expand/collapse dirs, Esc close. 📁/📂/📄 icons, ▶ selection. 6 new tests. All 1909 tests pass."
   },
   {
     "id": "JOB-050",

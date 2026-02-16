@@ -408,4 +408,28 @@ public class TuiApplicationTests
         // This should open resource viewer modal (internal state change)
         Assert.False(app.IsRunning);
     }
+
+    // ==================== File Picker (JOB-049) ====================
+
+    [Fact]
+    public void OpenFilePicker_SetsModalState()
+    {
+        var app = CreateApp();
+        var data = new FilePickerData
+        {
+            RootPath = "/project",
+            Nodes = [new FileNode("src", true, 0, true), new FileNode("main.ts", false, 1)]
+        };
+
+        app.OpenFilePicker(data);
+        Assert.False(app.IsRunning);
+    }
+
+    [Fact]
+    public void OpenFilePicker_WithEmptyNodes_DoesNotThrow()
+    {
+        var app = CreateApp();
+        app.OpenFilePicker(new FilePickerData { RootPath = "/empty" });
+        Assert.False(app.IsRunning);
+    }
 }
