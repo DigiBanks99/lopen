@@ -33,15 +33,16 @@
     "activity_panel": {
       "status": "complete",
       "implementation": "ActivityPanelComponent + ActivityPanelData + IActivityPanelDataProvider + ActivityPanelDataProvider",
-      "tests": "ActivityPanelComponentTests (27) + ActivityPanelDataProviderTests (24)",
+      "tests": "ActivityPanelComponentTests (27) + ActivityPanelDataProviderTests (30)",
       "jobs": [
         "JOB-087",
         "JOB-040",
         "JOB-042",
         "JOB-043",
-        "JOB-046"
+        "JOB-046",
+        "JOB-047"
       ],
-      "notes": "Thread-safe ConcurrentQueue for workflow events. Auto-scroll on new entries. Progressive disclosure via IsExpanded/Details. Wired into TuiApplication render loop. DI via AddActivityPanelDataProvider(). Progressive disclosure: latest entry auto-expanded, previous collapsed, errors stay expanded. SelectedEntryIndex for keyboard navigation. ToolCall kind with ⚙ prefix. ▼/▶ expand indicators. > selection marker. Research kind with 📖 prefix and FullDocumentContent drill-into via ResourceViewerModal."
+      "notes": "Thread-safe ConcurrentQueue for workflow events. Auto-scroll on new entries. Progressive disclosure via IsExpanded/Details. Wired into TuiApplication render loop. DI via AddActivityPanelDataProvider(). Progressive disclosure: latest entry auto-expanded, previous collapsed, errors stay expanded. SelectedEntryIndex for keyboard navigation. ToolCall kind with ⚙ prefix. ▼/▶ expand indicators. > selection marker. Research kind with 📖 prefix and FullDocumentContent drill-into via ResourceViewerModal. AddPhaseTransition method for phase transition summaries with ◆ prefix."
     },
     "prompt_area": {
       "status": "complete",

@@ -20,4 +20,9 @@ public interface IActivityPanelDataProvider
     /// Clears all entries.
     /// </summary>
     void Clear();
+
+    /// <summary>
+    /// Adds a phase transition entry with summary and section details.
+    /// </summary>
+    void AddPhaseTransition(string fromPhase, string toPhase, IReadOnlyList<string>? sections = null);
 }

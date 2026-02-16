@@ -418,9 +418,9 @@
     "requirement_code": "TUI-14",
     "requirement_module": "tui",
     "description": "Wire PhaseTransitionComponent to display phase transition summaries in activity area",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "PhaseTransitionComponent exists. Must be rendered in ActivityPanelComponent when phase transitions occur."
+    "notes": "Added AddPhaseTransition to IActivityPanelDataProvider. Creates entries with Kind=PhaseTransition (◆ prefix), summary 'Phase: from → to', optional section details. 6 new tests. All 1897 tests pass."
   },
   {
     "id": "JOB-048",

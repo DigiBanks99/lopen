@@ -1,17 +1,15 @@
-# Implementation Plan — JOB-046 (TUI-13): Inline Research Display
+# Implementation Plan — JOB-047 (TUI-14): Phase Transition Summaries
 
-**Goal:** Research entries inline in activity panel with drill-into full document.
+**Goal:** Phase transition summaries in activity area with ◆ prefix.
 
 ## Acceptance Criteria
-- [TUI-13] Inline research display with ability to drill into full document
+- [TUI-14] Phase transition summaries shown in activity area
 
 ## Tasks
 
-- [x] 1. Add Research to ActivityEntryKind enum with 📖 prefix
-- [x] 2. Add FullDocumentContent property to ActivityEntry
-- [x] 3. Show "[Press Enter to view full document]" hint when expanded + full doc exists
-- [x] 4. ToggleExpand on expanded entry with FullDocumentContent opens ResourceViewerModal
-- [x] 5. Write 7 new tests (6 component + 1 integration)
-- [x] 6. Run full test suite — 1,891 tests pass, 0 failures
-- [x] 7. Verify acceptance criteria with sub-agent
-- [x] 8. Update state.json, jobs-to-be-done.json, commit
+- [x] 1. Add AddPhaseTransition to IActivityPanelDataProvider interface
+- [x] 2. Implement AddPhaseTransition in ActivityPanelDataProvider
+- [x] 3. Write 6 new tests (kind, summary, details, expansion, collapse)
+- [x] 4. Run full test suite — 1,897 tests pass, 0 failures
+- [x] 5. Verify acceptance criteria with sub-agent
+- [x] 6. Update state.json, jobs-to-be-done.json, commit

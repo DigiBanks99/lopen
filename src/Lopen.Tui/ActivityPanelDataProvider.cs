@@ -57,4 +57,21 @@ internal sealed class ActivityPanelDataProvider : IActivityPanelDataProvider
     {
         while (_entries.TryDequeue(out _)) { }
     }
+
+    public void AddPhaseTransition(string fromPhase, string toPhase, IReadOnlyList<string>? sections = null)
+    {
+        var details = new List<string>();
+        if (sections is { Count: > 0 })
+        {
+            foreach (var section in sections)
+                details.Add(section);
+        }
+
+        AddEntry(new ActivityEntry
+        {
+            Summary = $"Phase: {fromPhase} → {toPhase}",
+            Kind = ActivityEntryKind.PhaseTransition,
+            Details = details
+        });
+    }
 }

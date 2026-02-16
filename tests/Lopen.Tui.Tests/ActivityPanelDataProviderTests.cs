@@ -383,4 +383,74 @@ public class ActivityPanelDataProviderTests
         Assert.False(data.Entries[1].IsExpanded);
         Assert.True(data.Entries[2].IsExpanded);
     }
+
+    // ==================== Phase Transition (JOB-047 / TUI-14) ====================
+
+    [Fact]
+    public void AddPhaseTransition_CreatesEntryWithCorrectKind()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddPhaseTransition("RequirementGathering", "Planning");
+        var data = provider.GetCurrentData();
+
+        Assert.Single(data.Entries);
+        Assert.Equal(ActivityEntryKind.PhaseTransition, data.Entries[0].Kind);
+    }
+
+    [Fact]
+    public void AddPhaseTransition_SummaryContainsPhaseNames()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddPhaseTransition("RequirementGathering", "Planning");
+        var data = provider.GetCurrentData();
+
+        Assert.Contains("RequirementGathering", data.Entries[0].Summary);
+        Assert.Contains("Planning", data.Entries[0].Summary);
+        Assert.Contains("→", data.Entries[0].Summary);
+    }
+
+    [Fact]
+    public void AddPhaseTransition_WithSections_IncludesDetails()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddPhaseTransition("Planning", "Building",
+            ["Research complete", "5 components identified"]);
+        var data = provider.GetCurrentData();
+
+        Assert.Equal(2, data.Entries[0].Details.Count);
+        Assert.Contains("Research complete", data.Entries[0].Details);
+        Assert.Contains("5 components identified", data.Entries[0].Details);
+    }
+
+    [Fact]
+    public void AddPhaseTransition_WithoutSections_HasNoDetails()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddPhaseTransition("Building", "Verification");
+        var data = provider.GetCurrentData();
+
+        Assert.Empty(data.Entries[0].Details);
+    }
+
+    [Fact]
+    public void AddPhaseTransition_AutoExpandsWithDetails()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddPhaseTransition("Planning", "Building", ["Section 1"]);
+        var data = provider.GetCurrentData();
+
+        Assert.True(data.Entries[0].IsExpanded);
+    }
+
+    [Fact]
+    public void AddPhaseTransition_CollapsesPrevious()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddPhaseTransition("Req", "Plan", ["Section A"]);
+        provider.AddPhaseTransition("Plan", "Build", ["Section B"]);
+        var data = provider.GetCurrentData();
+
+        Assert.False(data.Entries[0].IsExpanded);
+        Assert.True(data.Entries[1].IsExpanded);
+    }
 }
