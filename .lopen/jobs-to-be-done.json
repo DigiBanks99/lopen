@@ -346,9 +346,9 @@
     "requirement_code": "TUI-07",
     "requirement_module": "tui",
     "description": "Wire SessionResumeModal to display when previous active session detected",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "SessionResumeModal component exists. Must be displayed when the TUI detects a previous active session on startup."
+    "notes": "Added ISessionDetector/SessionDetector for session detection. TuiApplication shows session resume modal after landing page dismissal. Arrow keys navigate, Enter confirms, Escape dismisses. 20 new tests."
   },
   {
     "id": "JOB-040",

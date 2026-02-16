@@ -10,7 +10,8 @@ namespace Lopen.Tui;
 internal enum TuiModalState
 {
     None,
-    LandingPage
+    LandingPage,
+    SessionResume
 }
 
 /// <summary>
@@ -31,6 +32,8 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly IPauseController? _pauseController;
     private readonly IUserPromptQueue? _userPromptQueue;
     private readonly LandingPageComponent _landingPage;
+    private readonly SessionResumeModalComponent _sessionResumeModal;
+    private readonly ISessionDetector? _sessionDetector;
     private readonly bool _showLandingPage;
     private readonly ILogger<TuiApplication> _logger;
 
@@ -49,6 +52,10 @@ internal sealed class TuiApplication : ITuiApplication
     private ContextPanelData _contextData = new();
     private PromptAreaData _promptData = new();
     private LandingPageData _landingPageData = new() { Version = "0.0.0" };
+    private SessionResumeData _sessionResumeData = new()
+    {
+        ModuleName = "", PhaseName = "", StepProgress = "", TaskProgress = "", LastActivity = ""
+    };
 
     // Throttle for data provider refresh (avoid calling async services every frame)
     private DateTime _lastProviderRefresh = DateTime.MinValue;
@@ -73,7 +80,8 @@ internal sealed class TuiApplication : ITuiApplication
         ISlashCommandExecutor? slashCommandExecutor = null,
         IPauseController? pauseController = null,
         IUserPromptQueue? userPromptQueue = null,
-        bool showLandingPage = true)
+        bool showLandingPage = true,
+        ISessionDetector? sessionDetector = null)
     {
         _topPanel = topPanel ?? throw new ArgumentNullException(nameof(topPanel));
         _activityPanel = activityPanel ?? throw new ArgumentNullException(nameof(activityPanel));
@@ -88,6 +96,8 @@ internal sealed class TuiApplication : ITuiApplication
         _pauseController = pauseController;
         _userPromptQueue = userPromptQueue;
         _landingPage = new LandingPageComponent();
+        _sessionResumeModal = new SessionResumeModalComponent();
+        _sessionDetector = sessionDetector;
         _showLandingPage = showLandingPage;
     }
 
@@ -108,6 +118,8 @@ internal sealed class TuiApplication : ITuiApplication
         // Show landing page on startup (unless disabled via --no-welcome)
         if (_showLandingPage)
             _modalState = TuiModalState.LandingPage;
+        else
+            await CheckForActiveSessionAsync(ct).ConfigureAwait(false);
 
         ITerminal? terminal = null;
         try
@@ -255,16 +267,29 @@ internal sealed class TuiApplication : ITuiApplication
     /// </summary>
     public void UpdateLandingPage(LandingPageData data) => _landingPageData = data;
 
+    /// <summary>
+    /// Updates the session resume data for the modal overlay.
+    /// </summary>
+    public void UpdateSessionResume(SessionResumeData data) => _sessionResumeData = data;
+
     private void DrainKeyboardInput()
     {
         while (Console.KeyAvailable)
         {
             var keyInfo = Console.ReadKey(intercept: true);
 
-            // While a modal is active, any keypress dismisses it
-            if (_modalState != TuiModalState.None)
+            // Landing page: any keypress dismisses it, then check for session
+            if (_modalState == TuiModalState.LandingPage)
             {
                 _modalState = TuiModalState.None;
+                _ = CheckForActiveSessionAsync(_stopCts?.Token ?? CancellationToken.None);
+                continue;
+            }
+
+            // Session resume modal: arrow keys navigate, enter confirms
+            if (_modalState == TuiModalState.SessionResume)
+            {
+                HandleSessionResumeInput(keyInfo);
                 continue;
             }
 
@@ -347,6 +372,13 @@ internal sealed class TuiApplication : ITuiApplication
             return;
         }
 
+        if (_modalState == TuiModalState.SessionResume)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _sessionResumeModal.Render(_sessionResumeData, region));
+            return;
+        }
+
         var regions = LayoutCalculator.Calculate(
             viewport.Width, viewport.Height, _splitPercent);
 
@@ -397,6 +429,61 @@ internal sealed class TuiApplication : ITuiApplication
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(ex, "Error processing slash command: {Input}", input);
+        }
+    }
+
+    private void HandleSessionResumeInput(ConsoleKeyInfo keyInfo)
+    {
+        const int optionCount = 3; // Resume, Start New, View Details
+
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.LeftArrow:
+                _sessionResumeData = _sessionResumeData with
+                {
+                    SelectedOption = Math.Max(0, _sessionResumeData.SelectedOption - 1)
+                };
+                break;
+
+            case ConsoleKey.RightArrow:
+                _sessionResumeData = _sessionResumeData with
+                {
+                    SelectedOption = Math.Min(optionCount - 1, _sessionResumeData.SelectedOption + 1)
+                };
+                break;
+
+            case ConsoleKey.Enter:
+                var selected = _sessionResumeData.SelectedOption;
+                _modalState = TuiModalState.None;
+                _logger.LogInformation("Session resume option selected: {Option}",
+                    SessionResumeModalComponent.Options[selected]);
+                break;
+
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+        }
+    }
+
+    private async Task CheckForActiveSessionAsync(CancellationToken cancellationToken)
+    {
+        if (_sessionDetector is null)
+            return;
+
+        try
+        {
+            var resumeData = await _sessionDetector.DetectActiveSessionAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (resumeData is not null)
+            {
+                _sessionResumeData = resumeData;
+                _modalState = TuiModalState.SessionResume;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "Failed to detect active session");
         }
     }
 

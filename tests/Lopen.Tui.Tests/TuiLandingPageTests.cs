@@ -143,6 +143,7 @@ public class TuiLandingPageTests
     {
         Assert.Equal(0, (int)TuiModalState.None);
         Assert.Equal(1, (int)TuiModalState.LandingPage);
+        Assert.Equal(2, (int)TuiModalState.SessionResume);
     }
 
     // ==================== QuickCommand Record ====================

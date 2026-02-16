@@ -49,13 +49,14 @@
     },
     "modals": {
       "status": "complete",
-      "implementation": "LandingPageComponent + SessionResumeModalComponent + ModalData + TuiModalState",
-      "tests": "ModalComponentTests (22) + TuiLandingPageTests (13)",
+      "implementation": "LandingPageComponent + SessionResumeModalComponent + ModalData + TuiModalState + ISessionDetector + SessionDetector",
+      "tests": "ModalComponentTests (22) + TuiLandingPageTests (13) + SessionDetectorTests (16)",
       "jobs": [
         "JOB-089",
-        "JOB-038"
+        "JOB-038",
+        "JOB-039"
       ],
-      "notes": "Landing page shows on startup as fullscreen modal. Dismissed on any keypress. Skippable via showLandingPage=false (--no-welcome). Version/auth synced from TopPanelDataProvider."
+      "notes": "Landing page shows on startup as fullscreen modal. Session resume modal shown when active session detected. Arrow keys navigate options, Enter confirms, Escape dismisses. SessionDetector maps ISessionManager state to SessionResumeData."
     },
     "tool_outputs": {
       "status": "complete",
@@ -135,9 +136,10 @@
         "JOB-008",
         "JOB-037",
         "JOB-041",
-        "JOB-038"
+        "JOB-038",
+        "JOB-039"
       ],
-      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI. Ctrl+P toggles IPauseController. Slash commands wired via ISlashCommandExecutor. Context-aware hints wired each frame. Non-slash prompts flow to IUserPromptQueue. Landing page modal state machine in DrainKeyboardInput and RenderFrame."
+      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI. Ctrl+P toggles IPauseController. Slash commands wired via ISlashCommandExecutor. Context-aware hints wired each frame. Non-slash prompts flow to IUserPromptQueue. Landing page modal state machine in DrainKeyboardInput and RenderFrame. Session resume modal with option navigation."
     },
     "component_gallery_command": {
       "status": "complete",
@@ -167,5 +169,5 @@
       "notes": "Level 0=components, Level 1=tasks, Level 2+=subtasks. First incomplete item at each level marked InProgress. Resources placeholder (empty list) until IDocumentManager is implemented."
     }
   },
-  "last_updated": "2026-02-17T01:30:00Z"
+  "last_updated": "2026-02-17T02:00:00Z"
 }

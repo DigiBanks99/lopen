@@ -100,4 +100,14 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IUserPromptQueue, UserPromptQueue>();
         return services;
     }
+
+    /// <summary>
+    /// Registers <see cref="SessionDetector"/> to detect active sessions for the resume modal.
+    /// Requires ISessionManager to be registered.
+    /// </summary>
+    public static IServiceCollection AddSessionDetector(this IServiceCollection services)
+    {
+        services.AddSingleton<ISessionDetector, SessionDetector>();
+        return services;
+    }
 }

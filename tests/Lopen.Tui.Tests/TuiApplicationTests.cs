@@ -212,6 +212,33 @@ public class TuiApplicationTests
     }
 
     [Fact]
+    public void UpdateSessionResume_SetsData()
+    {
+        var app = CreateApp();
+        var data = new SessionResumeData
+        {
+            ModuleName = "core",
+            PhaseName = "Building",
+            StepProgress = "5/7",
+            TaskProgress = "3/5 tasks",
+            LastActivity = "2 hours ago"
+        };
+        app.UpdateSessionResume(data);
+        Assert.False(app.IsRunning);
+    }
+
+    [Fact]
+    public void Constructor_AcceptsSessionDetector()
+    {
+        var app = new TuiApplication(
+            new TopPanelComponent(), new ActivityPanelComponent(),
+            new ContextPanelComponent(), new PromptAreaComponent(),
+            new KeyboardHandler(), NullLogger<TuiApplication>.Instance,
+            sessionDetector: new StubSessionDetector());
+        Assert.False(app.IsRunning);
+    }
+
+    [Fact]
     public void AddTopPanelDataProvider_RegistersProvider()
     {
         var services = new ServiceCollection();
@@ -303,5 +330,11 @@ public class TuiApplicationTests
     {
         public Lopen.Llm.ModelFallbackResult SelectModel(Lopen.Llm.WorkflowPhase phase) =>
             new("stub-model", false);
+    }
+
+    private sealed class StubSessionDetector : ISessionDetector
+    {
+        public Task<SessionResumeData?> DetectActiveSessionAsync(CancellationToken ct = default)
+            => Task.FromResult<SessionResumeData?>(null);
     }
 }

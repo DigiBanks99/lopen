@@ -121,4 +121,47 @@ public class ServiceCollectionExtensionsTests
 
         Assert.Same(queue1, queue2);
     }
+
+    [Fact]
+    public void AddSessionDetector_RegistersDetector()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<Lopen.Storage.ISessionManager, StubSessionManager>();
+        services.AddSessionDetector();
+
+        using var provider = services.BuildServiceProvider();
+        var detector = provider.GetService<ISessionDetector>();
+
+        Assert.NotNull(detector);
+        Assert.IsType<SessionDetector>(detector);
+    }
+
+    [Fact]
+    public void AddSessionDetector_IsSingleton()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<Lopen.Storage.ISessionManager, StubSessionManager>();
+        services.AddSessionDetector();
+
+        using var provider = services.BuildServiceProvider();
+        var d1 = provider.GetRequiredService<ISessionDetector>();
+        var d2 = provider.GetRequiredService<ISessionDetector>();
+
+        Assert.Same(d1, d2);
+    }
+
+    private sealed class StubSessionManager : Lopen.Storage.ISessionManager
+    {
+        public Task<Lopen.Storage.SessionId?> GetLatestSessionIdAsync(CancellationToken ct = default) => Task.FromResult<Lopen.Storage.SessionId?>(null);
+        public Task<Lopen.Storage.SessionState?> LoadSessionStateAsync(Lopen.Storage.SessionId s, CancellationToken ct = default) => Task.FromResult<Lopen.Storage.SessionState?>(null);
+        public Task<Lopen.Storage.SessionId> CreateSessionAsync(string m, CancellationToken ct = default) => Task.FromResult(Lopen.Storage.SessionId.Generate(m, DateOnly.FromDateTime(DateTime.UtcNow), 1));
+        public Task SaveSessionStateAsync(Lopen.Storage.SessionId s, Lopen.Storage.SessionState st, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<Lopen.Storage.SessionMetrics?> LoadSessionMetricsAsync(Lopen.Storage.SessionId s, CancellationToken ct = default) => Task.FromResult<Lopen.Storage.SessionMetrics?>(null);
+        public Task SaveSessionMetricsAsync(Lopen.Storage.SessionId s, Lopen.Storage.SessionMetrics m, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<IReadOnlyList<Lopen.Storage.SessionId>> ListSessionsAsync(CancellationToken ct = default) => Task.FromResult<IReadOnlyList<Lopen.Storage.SessionId>>([]);
+        public Task SetLatestAsync(Lopen.Storage.SessionId s, CancellationToken ct = default) => Task.CompletedTask;
+        public Task QuarantineCorruptedSessionAsync(Lopen.Storage.SessionId s, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<int> PruneSessionsAsync(int m = 30, CancellationToken ct = default) => Task.FromResult(0);
+        public Task DeleteSessionAsync(Lopen.Storage.SessionId s, CancellationToken ct = default) => Task.CompletedTask;
+    }
 }
