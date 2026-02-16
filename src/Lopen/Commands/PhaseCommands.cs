@@ -21,6 +21,8 @@ public static class PhaseCommands
         spec.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
             using var activity = SpanFactory.StartCommand("spec");
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            LopenTelemetryDiagnostics.CommandCount.Add(1, new KeyValuePair<string, object?>("lopen.command.name", "spec"));
             try
             {
                 var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
@@ -53,10 +55,14 @@ public static class PhaseCommands
                     }
                 }
 
+                LopenTelemetryDiagnostics.CommandDuration.Record(
+                    sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "spec"));
                 return ExitCodes.Success;
             }
             catch (Exception ex)
             {
+                LopenTelemetryDiagnostics.CommandDuration.Record(
+                    sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "spec"));
                 activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
                 SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
                 await stderr.WriteLineAsync(ex.Message);
@@ -76,6 +82,8 @@ public static class PhaseCommands
         plan.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
             using var activity = SpanFactory.StartCommand("plan");
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            LopenTelemetryDiagnostics.CommandCount.Add(1, new KeyValuePair<string, object?>("lopen.command.name", "plan"));
             try
             {
                 var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
@@ -115,10 +123,14 @@ public static class PhaseCommands
                     }
                 }
 
+                LopenTelemetryDiagnostics.CommandDuration.Record(
+                    sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "plan"));
                 return ExitCodes.Success;
             }
             catch (Exception ex)
             {
+                LopenTelemetryDiagnostics.CommandDuration.Record(
+                    sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "plan"));
                 activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
                 SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
                 await stderr.WriteLineAsync(ex.Message);
@@ -138,6 +150,8 @@ public static class PhaseCommands
         build.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
             using var activity = SpanFactory.StartCommand("build");
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            LopenTelemetryDiagnostics.CommandCount.Add(1, new KeyValuePair<string, object?>("lopen.command.name", "build"));
             try
             {
                 var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
@@ -184,10 +198,14 @@ public static class PhaseCommands
                     }
                 }
 
+                LopenTelemetryDiagnostics.CommandDuration.Record(
+                    sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "build"));
                 return ExitCodes.Success;
             }
             catch (Exception ex)
             {
+                LopenTelemetryDiagnostics.CommandDuration.Record(
+                    sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "build"));
                 activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
                 SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
                 await stderr.WriteLineAsync(ex.Message);

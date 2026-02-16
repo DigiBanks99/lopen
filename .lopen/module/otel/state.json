@@ -62,7 +62,34 @@
         "JOB-027"
       ],
       "notes": "lopen.task.execution span with outcome and iteration count"
+    },
+    "backpressure_instrumentation": {
+      "status": "complete",
+      "implementation": "SpanFactory.StartBackpressure + BackPressureEventCount counter in WorkflowOrchestrator guardrail handling",
+      "tests": "WorkflowOrchestratorTests.RunStepAsync_RecordsBackPressureCounterOnBlock",
+      "jobs": [
+        "JOB-028"
+      ],
+      "notes": "lopen.backpressure span + counter on block/warn"
+    },
+    "counter_metrics": {
+      "status": "complete",
+      "implementation": "SdkInvocationCount, TokensConsumed, PremiumRequestCount, ToolCount, OracleVerdictCount, TasksCompletedCount, TasksFailedCount, CommandCount, GitCommitCount wired across orchestrator, binder, commands",
+      "tests": "RecordsSdkInvocationCounter, RecordsToolCounter, RecordsOracleCounter, RecordsBackPressureCounterOnBlock, RecordsTaskMetricsOnTaskCompletion",
+      "jobs": [
+        "JOB-029"
+      ],
+      "notes": "All 10 counters from LopenTelemetryDiagnostics wired to their respective code paths"
+    },
+    "histogram_gauge_metrics": {
+      "status": "complete",
+      "implementation": "SdkInvocationDuration, ToolDuration, TaskDuration, CommandDuration, OracleDuration histograms + SessionIteration, ContextWindowUtilization gauges wired",
+      "tests": "RecordsSdkInvocationDurationHistogram, RecordsToolDuration, RecordsTaskMetricsOnTaskCompletion",
+      "jobs": [
+        "JOB-030"
+      ],
+      "notes": "All 5 histograms and 2 gauges from LopenTelemetryDiagnostics wired with Stopwatch timing"
     }
   },
-  "last_updated": "2026-02-16T19:30:00Z"
+  "last_updated": "2026-02-16T20:00:00Z"
 }

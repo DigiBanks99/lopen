@@ -247,7 +247,7 @@
     "requirement_code": "OTEL-07",
     "requirement_module": "otel",
     "description": "Instrument back-pressure events with lopen.backpressure.event spans",
-    "status": "open",
+    "status": "done",
     "priority": 2,
     "notes": "SpanFactory has backpressure span support. Must be called when GuardrailPipeline fires a guardrail."
   },
@@ -256,7 +256,7 @@
     "requirement_code": "OTEL-08",
     "requirement_module": "otel",
     "description": "Wire OTEL counter metrics to actual code paths (10 counters: commands, tools, SDK invocations, etc.)",
-    "status": "open",
+    "status": "done",
     "priority": 2,
     "notes": "LopenTelemetryDiagnostics defines 10 counters but they're never incremented from production code. Each counter must be wired to its respective code path."
   },
@@ -265,7 +265,7 @@
     "requirement_code": "OTEL-09",
     "requirement_module": "otel",
     "description": "Wire OTEL histogram metrics to actual code paths (5 histograms for durations)",
-    "status": "open",
+    "status": "done",
     "priority": 2,
     "notes": "LopenTelemetryDiagnostics defines 5 histograms but they're never recorded from production code."
   },

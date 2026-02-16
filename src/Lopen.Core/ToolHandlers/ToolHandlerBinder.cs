@@ -60,7 +60,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
     }
 
     /// <summary>
-    /// Wraps a tool handler with an OTEL-05 tool span.
+    /// Wraps a tool handler with an OTEL-05 tool span and metrics.
     /// </summary>
     private static Func<string, CancellationToken, Task<string>> Traced(
         string toolName, Func<string, CancellationToken, Task<string>> handler)
@@ -68,11 +68,16 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         return async (parameters, ct) =>
         {
             using var activity = SpanFactory.StartTool(toolName);
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 var result = await handler(parameters, ct);
+                stopwatch.Stop();
                 var success = !result.Contains("\"error\"", StringComparison.Ordinal);
                 SpanFactory.SetToolResult(activity, success);
+                LopenTelemetryDiagnostics.ToolCount.Add(1, new KeyValuePair<string, object?>("lopen.tool.name", toolName));
+                LopenTelemetryDiagnostics.ToolDuration.Record(
+                    stopwatch.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.tool.name", toolName));
                 return result;
             }
             catch (Exception ex)
@@ -85,7 +90,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
     }
 
     /// <summary>
-    /// Wraps a verification handler with an OTEL-06 oracle verification span.
+    /// Wraps a verification handler with an OTEL-06 oracle verification span and metrics.
     /// </summary>
     private static Func<string, CancellationToken, Task<string>> TracedVerify(
         string toolName, Func<string, CancellationToken, Task<string>> handler)
@@ -94,11 +99,19 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         {
             using var activity = SpanFactory.StartOracleVerification(
                 toolName.Replace("verify_", "").Replace("_completion", ""), "oracle", 1);
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 var result = await handler(parameters, ct);
+                stopwatch.Stop();
                 var success = result.Contains("\"success\"", StringComparison.Ordinal);
                 SpanFactory.SetOracleVerdict(activity, success ? "pass" : "fail");
+                LopenTelemetryDiagnostics.OracleVerdictCount.Add(1,
+                    new KeyValuePair<string, object?>("lopen.oracle.verdict", success ? "pass" : "fail"));
+                var scope = toolName.Replace("verify_", "").Replace("_completion", "");
+                LopenTelemetryDiagnostics.OracleDuration.Record(
+                    stopwatch.Elapsed.TotalMilliseconds,
+                    new KeyValuePair<string, object?>("lopen.oracle.scope", scope));
                 return result;
             }
             catch (Exception ex)
@@ -199,6 +212,8 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
                 {
                     _logger.LogInformation("Git commit for task {TaskId}: {Success}",
                         taskId, commitResult.Success);
+                    if (commitResult.Success)
+                        LopenTelemetryDiagnostics.GitCommitCount.Add(1);
                 }
             }
         }

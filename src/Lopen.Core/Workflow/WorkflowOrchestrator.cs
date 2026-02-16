@@ -180,6 +180,9 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _logger.LogDebug("Iteration {Iteration}: step={Step}, phase={Phase}",
             _iterationCount, currentStep, currentPhase);
 
+        // OTEL gauge: current iteration
+        LopenTelemetryDiagnostics.SessionIteration.Record(_iterationCount);
+
         // 1. Evaluate guardrails before LLM invocation
         var guardrailContext = new GuardrailContext(moduleName, null, _iterationCount, 0);
         var guardrailResults = await _guardrailPipeline.EvaluateAsync(guardrailContext, cancellationToken);
@@ -188,12 +191,21 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         {
             if (result is GuardrailResult.Block block)
             {
+                // OTEL-07: Back-pressure event span + counter
+                using var bpActivity = SpanFactory.StartBackpressure("guardrail", "block", block.Message);
+                LopenTelemetryDiagnostics.BackPressureEventCount.Add(1,
+                    new KeyValuePair<string, object?>("lopen.backpressure.action", "block"));
+
                 _logger.LogWarning("Guardrail blocked: {Message}", block.Message);
                 return StepResult.Failed($"Blocked by guardrail: {block.Message}");
             }
 
             if (result is GuardrailResult.Warn warn)
             {
+                using var warnActivity = SpanFactory.StartBackpressure("guardrail", "warn", warn.Message);
+                LopenTelemetryDiagnostics.BackPressureEventCount.Add(1,
+                    new KeyValuePair<string, object?>("lopen.backpressure.action", "warn"));
+
                 _logger.LogWarning("Guardrail warning: {Message}", warn.Message);
                 await _renderer.RenderErrorAsync($"Warning: {warn.Message}");
             }
@@ -231,6 +243,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         // 4. Invoke LLM for current step
         // OTEL-06: Task execution span when iterating through tasks
         Activity? taskActivity = null;
+        var taskStopwatch = System.Diagnostics.Stopwatch.StartNew();
         if (currentStep == WorkflowStep.IterateThroughTasks)
         {
             taskActivity = SpanFactory.StartTask(
@@ -238,12 +251,22 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
 
         var llmResult = await InvokeLlmForStepAsync(moduleName, currentStep, currentPhase, cancellationToken);
+        taskStopwatch.Stop();
 
         if (taskActivity is not null)
         {
             SpanFactory.SetTaskResult(taskActivity,
                 llmResult.Success ? "success" : "failed", _iterationCount);
             taskActivity.Dispose();
+
+            // OTEL task counters + duration
+            if (llmResult.Success)
+                LopenTelemetryDiagnostics.TasksCompletedCount.Add(1);
+            else
+                LopenTelemetryDiagnostics.TasksFailedCount.Add(1);
+            LopenTelemetryDiagnostics.TaskDuration.Record(
+                taskStopwatch.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("lopen.task.module", moduleName));
         }
 
         if (!llmResult.Success) return llmResult;
@@ -293,11 +316,13 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         // OTEL-03: SDK invocation span
         using var sdkActivity = SpanFactory.StartSdkInvocation(model.SelectedModel);
+        var sdkStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         try
         {
             var result = await _llmService.InvokeAsync(systemPrompt, model.SelectedModel, tools, cancellationToken);
 
+            sdkStopwatch.Stop();
             _logger.LogInformation(
                 "LLM invocation complete: {Tokens} tokens, {ToolCalls} tool calls",
                 result.TokenUsage.TotalTokens, result.ToolCallsMade);
@@ -308,6 +333,24 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             SpanFactory.SetSdkResult(sdkActivity,
                 result.TokenUsage.InputTokens, result.TokenUsage.OutputTokens,
                 result.TokenUsage.IsPremiumRequest, result.ToolCallsMade);
+
+            // OTEL counters and histograms
+            LopenTelemetryDiagnostics.SdkInvocationCount.Add(1,
+                new KeyValuePair<string, object?>("lopen.sdk.model", model.SelectedModel));
+            LopenTelemetryDiagnostics.TokensConsumed.Add(result.TokenUsage.TotalTokens,
+                new KeyValuePair<string, object?>("lopen.sdk.model", model.SelectedModel));
+            LopenTelemetryDiagnostics.SdkInvocationDuration.Record(
+                sdkStopwatch.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("lopen.sdk.model", model.SelectedModel));
+            if (result.TokenUsage.IsPremiumRequest)
+            {
+                LopenTelemetryDiagnostics.PremiumRequestCount.Add(1);
+            }
+            if (result.TokenUsage.ContextWindowSize > 0)
+            {
+                LopenTelemetryDiagnostics.ContextWindowUtilization.Record(
+                    (double)result.TokenUsage.TotalTokens / result.TokenUsage.ContextWindowSize);
+            }
 
             return StepResult.Succeeded(
                 DetermineNextTrigger(step) ?? WorkflowTrigger.Assess,

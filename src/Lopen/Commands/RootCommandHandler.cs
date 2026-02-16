@@ -29,6 +29,8 @@ public static class RootCommandHandler
 
                 // OTEL-01: Root command span
                 using var activity = SpanFactory.StartCommand("lopen", headless);
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                LopenTelemetryDiagnostics.CommandCount.Add(1, new KeyValuePair<string, object?>("lopen.command.name", "lopen"));
 
                 try
                 {
@@ -67,10 +69,14 @@ public static class RootCommandHandler
                     }
 
                     SpanFactory.SetCommandExitCode(activity, exitCode);
+                    LopenTelemetryDiagnostics.CommandDuration.Record(
+                        sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "lopen"));
                     return exitCode;
                 }
                 catch (Exception ex)
                 {
+                    LopenTelemetryDiagnostics.CommandDuration.Record(
+                        sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "lopen"));
                     activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
                     SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
                     await stderr.WriteLineAsync(ex.Message);

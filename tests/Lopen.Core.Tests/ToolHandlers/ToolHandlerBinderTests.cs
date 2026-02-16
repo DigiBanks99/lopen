@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Text.Json;
 using Lopen.Core.Documents;
 using Lopen.Core.ToolHandlers;
@@ -347,6 +348,78 @@ public class ToolHandlerBinderTests
         await handler("""{"task_id":"t1"}""", CancellationToken.None);
 
         Assert.Contains(activities, a => a.OperationName == "lopen.oracle.verification");
+    }
+
+    [Fact]
+    public async Task BindAll_TracedToolHandler_RecordsToolCounter()
+    {
+        long count = 0;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Name == "lopen.tools.count")
+                l.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((_, measurement, _, _) => count += measurement);
+        listener.Start();
+
+        var binder = CreateBinder();
+        var registry = new TrackingToolRegistry();
+        binder.BindAll(registry);
+
+        var handler = registry.BoundHandlers["read_spec"];
+        await handler("""{"module":"test"}""", CancellationToken.None);
+        listener.RecordObservableInstruments();
+
+        Assert.True(count >= 1, "Tool counter should be incremented");
+    }
+
+    [Fact]
+    public async Task BindAll_TracedToolHandler_RecordsToolDuration()
+    {
+        double duration = -1;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Name == "lopen.tool.duration")
+                l.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<double>((_, measurement, _, _) => duration = measurement);
+        listener.Start();
+
+        var binder = CreateBinder();
+        var registry = new TrackingToolRegistry();
+        binder.BindAll(registry);
+
+        var handler = registry.BoundHandlers["read_spec"];
+        await handler("""{"module":"test"}""", CancellationToken.None);
+        listener.RecordObservableInstruments();
+
+        Assert.True(duration >= 0, "Tool duration should be recorded");
+    }
+
+    [Fact]
+    public async Task BindAll_TracedVerifyHandler_RecordsOracleCounter()
+    {
+        long count = 0;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Name == "lopen.oracle.verdicts.count")
+                l.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((_, measurement, _, _) => count += measurement);
+        listener.Start();
+
+        var binder = CreateBinder();
+        var registry = new TrackingToolRegistry();
+        binder.BindAll(registry);
+
+        var handler = registry.BoundHandlers["verify_task_completion"];
+        await handler("""{"task_id":"t1"}""", CancellationToken.None);
+        listener.RecordObservableInstruments();
+
+        Assert.True(count >= 1, "Oracle verdict counter should be incremented");
     }
 
     // --- Stubs ---

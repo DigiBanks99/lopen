@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Workflow;
@@ -552,6 +553,111 @@ public class WorkflowOrchestratorTests
         await sut.RunStepAsync("test-module");
 
         Assert.Contains(activities, a => a.OperationName == "lopen.task.execution");
+    }
+
+    [Fact]
+    public async Task RunStepAsync_RecordsSdkInvocationCounter()
+    {
+        long count = 0;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Name == "lopen.sdk.invocations.count")
+                l.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((_, measurement, _, _) => count += measurement);
+        listener.Start();
+
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var sut = CreateOrchestrator();
+        await sut.RunStepAsync("test-module");
+        listener.RecordObservableInstruments();
+
+        Assert.True(count >= 1, "SDK invocation counter should be incremented");
+    }
+
+    [Fact]
+    public async Task RunStepAsync_RecordsSdkInvocationDurationHistogram()
+    {
+        double duration = -1;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Name == "lopen.sdk.invocation.duration")
+                l.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<double>((_, measurement, _, _) => duration = measurement);
+        listener.Start();
+
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var sut = CreateOrchestrator();
+        await sut.RunStepAsync("test-module");
+        listener.RecordObservableInstruments();
+
+        Assert.True(duration >= 0, "SDK invocation duration should be recorded");
+    }
+
+    [Fact]
+    public async Task RunStepAsync_RecordsBackPressureCounterOnBlock()
+    {
+        long count = 0;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Name == "lopen.backpressure.events.count")
+                l.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((_, measurement, _, _) => count += measurement);
+        listener.Start();
+
+        _guardrailPipeline.Results = [new GuardrailResult.Block("test block")];
+        _engine.CurrentStep = WorkflowStep.DraftSpecification;
+        var sut = CreateOrchestrator();
+        await sut.RunStepAsync("test-module");
+        listener.RecordObservableInstruments();
+
+        Assert.True(count >= 1, "Backpressure counter should be incremented on block");
+    }
+
+    [Fact]
+    public async Task RunStepAsync_RecordsTaskMetricsOnTaskCompletion()
+    {
+        // ActivityListener needed because task metrics are inside `if (taskActivity is not null)` block
+        using var activityListener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded
+        };
+        ActivitySource.AddActivityListener(activityListener);
+
+        long completedCount = 0;
+        double taskDuration = -1;
+        using var counterListener = new MeterListener();
+        counterListener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Name == "lopen.tasks.completed.count")
+                l.EnableMeasurementEvents(instrument);
+        };
+        counterListener.SetMeasurementEventCallback<long>((_, measurement, _, _) => completedCount += measurement);
+        counterListener.Start();
+
+        using var histogramListener = new MeterListener();
+        histogramListener.InstrumentPublished = (instrument, l) =>
+        {
+            if (instrument.Name == "lopen.task.duration")
+                l.EnableMeasurementEvents(instrument);
+        };
+        histogramListener.SetMeasurementEventCallback<double>((_, measurement, _, _) => taskDuration = measurement);
+        histogramListener.Start();
+
+        _engine.CurrentStep = WorkflowStep.IterateThroughTasks;
+        var sut = CreateOrchestrator();
+        await sut.RunStepAsync("test-module");
+        counterListener.RecordObservableInstruments();
+        histogramListener.RecordObservableInstruments();
+
+        Assert.True(completedCount >= 1, "Task completed counter should be incremented");
+        Assert.True(taskDuration >= 0, "Task duration should be recorded");
     }
 
     // --- Stubs ---
