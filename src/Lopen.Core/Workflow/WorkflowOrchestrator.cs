@@ -136,6 +136,22 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 if (_failureHandler is not null)
                 {
                     var taskId = _engine.CurrentStep.ToString();
+
+                    // CORE-23: Critical system errors bypass normal failure tracking and block immediately
+                    if (stepResult.IsCriticalError)
+                    {
+                        var criticalClassification = _failureHandler.RecordCriticalError(
+                            stepResult.Summary ?? "Critical system error");
+                        _logger.LogCritical(
+                            "Critical system error — blocking execution: {Message}",
+                            criticalClassification.Message);
+                        await _renderer.RenderErrorAsync(
+                            $"CRITICAL ERROR — execution blocked: {criticalClassification.Message}");
+                        await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
+                        return OrchestrationResult.CriticalError(_iterationCount, _engine.CurrentStep,
+                            criticalClassification.Message);
+                    }
+
                     var classification = _failureHandler.RecordFailure(taskId, stepResult.Summary ?? "Step failed");
 
                     if (classification.Action == FailureAction.SelfCorrect)
@@ -437,6 +453,14 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         {
             throw;
         }
+        catch (Exception ex) when (IsCriticalException(ex))
+        {
+            // CORE-23: Critical system errors block execution
+            sdkActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogCritical(ex, "Critical system error at step {Step}", step);
+            await _renderer.RenderErrorAsync($"CRITICAL: {ex.Message}", ex);
+            return StepResult.CriticalFailure($"Critical system error: {ex.Message}");
+        }
         catch (Exception ex)
         {
             sdkActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
@@ -572,4 +596,15 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             _logger.LogWarning(ex, "Auto-save failed for trigger {Trigger}", trigger);
         }
     }
+
+    /// <summary>
+    /// Determines whether an exception represents a critical system error
+    /// that should block workflow execution (CORE-23).
+    /// Critical: I/O failures, permission errors, out-of-memory, security exceptions.
+    /// </summary>
+    private static bool IsCriticalException(Exception ex) =>
+        ex is IOException
+            or UnauthorizedAccessException
+            or OutOfMemoryException
+            or System.Security.SecurityException;
 }

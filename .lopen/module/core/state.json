@@ -208,6 +208,15 @@
         "JOB-084"
       ],
       "notes": "Budget check before each LLM invocation. Handles Ok/Warning/ConfirmationRequired/Exceeded. Auto-saves on halt for session resume."
+    },
+    "critical_error_handling": {
+      "status": "complete",
+      "implementation": "IsCriticalException detection in WorkflowOrchestrator, StepResult.CriticalFailure, OrchestrationResult.CriticalError",
+      "tests": "WorkflowOrchestratorTests (12 critical error tests) + CoreAcceptanceCriteriaTests (3 AC-23 tests)",
+      "jobs": [
+        "JOB-073"
+      ],
+      "notes": "Critical exceptions (IOException, UnauthorizedAccessException, OutOfMemoryException, SecurityException) bypass self-correction and block immediately via RecordCriticalError."
     }
   },
   "last_updated": "2026-02-16T19:55:00Z"

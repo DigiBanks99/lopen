@@ -415,6 +415,27 @@ public class CoreAcceptanceCriteriaTests
         Assert.Equal(FailureAction.Block, result.Action);
     }
 
+    [Fact]
+    public void AC23_OrchestrationResult_CriticalError_IsMarkedCritical()
+    {
+        var result = OrchestrationResult.CriticalError(
+            1, WorkflowStep.DetermineDependencies, "Disk full");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+        Assert.True(result.IsCriticalError);
+        Assert.Contains("CRITICAL ERROR", result.Summary);
+    }
+
+    [Fact]
+    public void AC23_StepResult_CriticalFailure_IsFlaggedCritical()
+    {
+        var result = StepResult.CriticalFailure("IO error: disk full");
+
+        Assert.False(result.Success);
+        Assert.True(result.IsCriticalError);
+    }
+
     // AC-24: Module selection lists modules with current state
 
     [Fact]

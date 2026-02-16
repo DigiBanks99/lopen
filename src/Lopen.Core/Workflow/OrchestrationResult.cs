@@ -23,6 +23,9 @@ public sealed record OrchestrationResult
     /// <summary>The reason for interruption, if applicable.</summary>
     public string? InterruptionReason { get; init; }
 
+    /// <summary>Whether the interruption was caused by a critical system error (CORE-23).</summary>
+    public bool IsCriticalError { get; init; }
+
     public static OrchestrationResult Completed(int iterations, WorkflowStep finalStep, string? summary = null) =>
         new()
         {
@@ -41,5 +44,20 @@ public sealed record OrchestrationResult
             WasInterrupted = true,
             InterruptionReason = reason,
             Summary = $"Orchestration interrupted: {reason}"
+        };
+
+    /// <summary>
+    /// Creates an interrupted result for a critical system error that blocked execution (CORE-23).
+    /// </summary>
+    public static OrchestrationResult CriticalError(int iterations, WorkflowStep finalStep, string reason) =>
+        new()
+        {
+            IsComplete = false,
+            IterationCount = iterations,
+            FinalStep = finalStep,
+            WasInterrupted = true,
+            IsCriticalError = true,
+            InterruptionReason = reason,
+            Summary = $"CRITICAL ERROR — execution blocked: {reason}"
         };
 }

@@ -652,9 +652,9 @@
     "requirement_code": "CORE-23",
     "requirement_module": "core",
     "description": "Implement critical system error handling - block execution and require user action",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "Critical errors (disk full, auth failure, SDK errors) should block the workflow and display an error modal or message requiring user action."
+    "notes": "Critical system errors (IOException, UnauthorizedAccessException, OutOfMemoryException, SecurityException) block execution immediately. 12 orchestrator tests + 3 AC tests. StepResult.CriticalFailure, OrchestrationResult.CriticalError, IsCriticalException helper."
   },
   {
     "id": "JOB-074",

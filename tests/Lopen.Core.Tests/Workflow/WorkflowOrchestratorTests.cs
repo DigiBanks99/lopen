@@ -1169,6 +1169,231 @@ public class WorkflowOrchestratorTests
         Assert.Equal(0, budgetEnforcer.CheckCallCount);
     }
 
+    // ==========================================
+    // CORE-23: Critical system errors block execution
+    // ==========================================
+
+    [Fact]
+    public async Task RunAsync_CriticalIOException_BlocksExecution()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _llmService.ExceptionToThrow = new IOException("Disk full");
+        var failureHandler = new StubFailureHandler();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+        Assert.True(result.IsCriticalError);
+        Assert.Contains("Disk full", result.InterruptionReason);
+    }
+
+    [Fact]
+    public async Task RunAsync_CriticalUnauthorizedAccessException_BlocksExecution()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _llmService.ExceptionToThrow = new UnauthorizedAccessException("Permission denied");
+        var failureHandler = new StubFailureHandler();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.IsCriticalError);
+        Assert.Contains("Permission denied", result.InterruptionReason);
+    }
+
+    [Fact]
+    public async Task RunAsync_CriticalError_RendersBlockingMessage()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _llmService.ExceptionToThrow = new IOException("No space left on device");
+        var failureHandler = new StubFailureHandler();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        await sut.RunAsync("test-module");
+
+        // Renders the critical error message (both from catch block and from RunAsync)
+        Assert.Contains(_renderer.ErrorMessages, m => m.Contains("CRITICAL"));
+    }
+
+    [Fact]
+    public async Task RunAsync_CriticalError_DoesNotSelfCorrect()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _llmService.ExceptionToThrow = new IOException("Disk full");
+        var failureHandler = new StubFailureHandler();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        await sut.RunAsync("test-module");
+
+        // Critical errors should NOT be recorded as normal failures — no self-correction attempts
+        Assert.Empty(failureHandler.RecordedFailures);
+        Assert.Equal(1, _llmService.InvokeCount); // Only tried once, no retry
+    }
+
+    [Fact]
+    public async Task RunAsync_CriticalError_DoesNotPromptUser()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _llmService.ExceptionToThrow = new IOException("Disk full");
+        var failureHandler = new StubFailureHandler();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        await sut.RunAsync("test-module");
+
+        // Critical errors block immediately — no user prompt
+        Assert.Empty(_renderer.PromptMessages);
+    }
+
+    [Fact]
+    public async Task RunAsync_CriticalError_AutoSavesSession()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _llmService.ExceptionToThrow = new IOException("Disk full");
+        var failureHandler = new StubFailureHandler();
+        var autoSave = new StubAutoSaveService();
+        var sessionManager = new StubSessionManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            autoSaveService: autoSave, sessionManager: sessionManager,
+            failureHandler: failureHandler);
+
+        await sut.RunAsync("test-module");
+
+        // Auto-save is triggered for the critical error (TaskFailure triggers)
+        Assert.True(autoSave.Saves.Count >= 1);
+    }
+
+    [Fact]
+    public async Task RunAsync_CriticalError_WithoutFailureHandler_InterruptsNormally()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _llmService.ExceptionToThrow = new IOException("Disk full");
+        // No failure handler — falls through to normal interruption
+        var sut = CreateOrchestrator();
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+        // Without a failure handler the critical classification does not run,
+        // but the step still fails and interrupts
+        Assert.Contains("Critical system error", result.InterruptionReason!);
+    }
+
+    [Fact]
+    public async Task RunAsync_NonCriticalException_SelfCorrectsNormally()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.FailUntilInvokeCount = 1;
+        // Default InvalidOperationException — not critical
+        var failureHandler = new StubFailureHandler();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        // Non-critical exceptions still self-correct
+        Assert.True(result.IsComplete);
+        Assert.False(result.IsCriticalError);
+        Assert.True(failureHandler.RecordedFailures.Count > 0);
+    }
+
+    [Fact]
+    public async Task RunAsync_SecurityException_BlocksExecution()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _llmService.ExceptionToThrow = new System.Security.SecurityException("Access denied");
+        var failureHandler = new StubFailureHandler();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsCriticalError);
+        Assert.Contains("Access denied", result.InterruptionReason);
+    }
+
+    [Fact]
+    public async Task RunAsync_OutOfMemoryException_BlocksExecution()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _llmService.ThrowOnInvoke = true;
+        _llmService.ExceptionToThrow = new OutOfMemoryException("Insufficient memory");
+        var failureHandler = new StubFailureHandler();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsCriticalError);
+        Assert.Contains("Insufficient memory", result.InterruptionReason);
+    }
+
+    [Fact]
+    public void StepResult_CriticalFailure_SetsIsCriticalError()
+    {
+        var result = StepResult.CriticalFailure("Critical error occurred");
+
+        Assert.False(result.Success);
+        Assert.True(result.IsCriticalError);
+        Assert.Equal("Critical error occurred", result.Summary);
+    }
+
+    [Fact]
+    public void OrchestrationResult_CriticalError_SetsProperties()
+    {
+        var result = OrchestrationResult.CriticalError(5, WorkflowStep.DetermineDependencies, "Disk full");
+
+        Assert.False(result.IsComplete);
+        Assert.True(result.WasInterrupted);
+        Assert.True(result.IsCriticalError);
+        Assert.Equal("Disk full", result.InterruptionReason);
+        Assert.Contains("CRITICAL ERROR", result.Summary);
+    }
+
     private sealed class StubWorkflowEngine : IWorkflowEngine
     {
         public WorkflowStep CurrentStep { get; set; } = WorkflowStep.DraftSpecification;
@@ -1234,6 +1459,7 @@ public class WorkflowOrchestratorTests
         public bool ThrowOnInvoke { get; set; }
         public int FailUntilInvokeCount { get; set; }
         public LlmInvocationResult? Result { get; set; }
+        public Exception? ExceptionToThrow { get; set; }
 
         public Task<LlmInvocationResult> InvokeAsync(
             string systemPrompt, string model, IReadOnlyList<LopenToolDefinition> tools,
@@ -1241,7 +1467,7 @@ public class WorkflowOrchestratorTests
         {
             InvokeCount++;
             if (ThrowOnInvoke || (FailUntilInvokeCount > 0 && InvokeCount <= FailUntilInvokeCount))
-                throw new InvalidOperationException("LLM error");
+                throw ExceptionToThrow ?? new InvalidOperationException("LLM error");
 
             return Task.FromResult(Result ??
                 new LlmInvocationResult(
