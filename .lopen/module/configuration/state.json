@@ -1,40 +1,61 @@
 {
-    "module": "configuration",
-    "description": "Configuration management with layered resolution and validation",
-    "status": "complete",
-    "components": {
-        "options": {
-            "status": "complete",
-            "implementation": "LopenOptions + OracleOptions + ToolDisciplineOptions + ModelAssignments + BudgetOptions",
-            "tests": "LopenOptionsTests, LopenOptionsValidatorTests",
-            "jobs": ["JOB-020", "JOB-021", "JOB-023"]
-        },
-        "layered_resolution": {
-            "status": "complete",
-            "implementation": "LayeredConfigurationBuilder",
-            "tests": "LayeredConfigurationTests",
-            "jobs": ["JOB-022"]
-        },
-        "budget_enforcer": {
-            "status": "complete",
-            "implementation": "BudgetEnforcer",
-            "tests": "BudgetEnforcerTests (24 tests)",
-            "jobs": ["JOB-028"]
-        },
-        "config_passthrough": {
-            "status": "complete",
-            "implementation": "OracleOptions → OracleVerifier, ToolDisciplineOptions → ToolDisciplineGuardrail",
-            "tests": "ToolDisciplineGuardrailTests (21 tests), OracleVerifierTests (30 tests)",
-            "jobs": ["JOB-029"],
-            "notes": "Oracle model passthrough via DI singleton. Tool discipline passthrough via ToolDisciplineGuardrail constructor from options."
-        },
-        "config_diagnostics": {
-            "status": "complete",
-            "implementation": "ConfigurationDiagnostics + IConfigurationRoot registered in DI",
-            "tests": "ConfigCommandTests (4 tests)",
-            "jobs": ["JOB-081"],
-            "notes": "IConfigurationRoot now registered in AddLopenConfiguration for use by lopen config show."
-        }
+  "module": "configuration",
+  "description": "Configuration management with layered resolution and validation",
+  "status": "complete",
+  "components": {
+    "options": {
+      "status": "complete",
+      "implementation": "LopenOptions + OracleOptions + ToolDisciplineOptions + ModelAssignments + BudgetOptions",
+      "tests": "LopenOptionsTests, LopenOptionsValidatorTests",
+      "jobs": [
+        "JOB-020",
+        "JOB-021",
+        "JOB-023"
+      ]
     },
-    "last_updated": "2026-02-16T05:00:00Z"
+    "layered_resolution": {
+      "status": "complete",
+      "implementation": "LayeredConfigurationBuilder",
+      "tests": "LayeredConfigurationTests",
+      "jobs": [
+        "JOB-022"
+      ]
+    },
+    "budget_enforcer": {
+      "status": "complete",
+      "implementation": "BudgetEnforcer",
+      "tests": "BudgetEnforcerTests (24 tests)",
+      "jobs": [
+        "JOB-028"
+      ]
+    },
+    "config_passthrough": {
+      "status": "complete",
+      "implementation": "OracleOptions \u2192 OracleVerifier, ToolDisciplineOptions \u2192 ToolDisciplineGuardrail",
+      "tests": "ToolDisciplineGuardrailTests (21 tests), OracleVerifierTests (30 tests)",
+      "jobs": [
+        "JOB-029"
+      ],
+      "notes": "Oracle model passthrough via DI singleton. Tool discipline passthrough via ToolDisciplineGuardrail constructor from options."
+    },
+    "config_diagnostics": {
+      "status": "complete",
+      "implementation": "ConfigurationDiagnostics + IConfigurationRoot registered in DI",
+      "tests": "ConfigCommandTests (4 tests)",
+      "jobs": [
+        "JOB-081"
+      ],
+      "notes": "IConfigurationRoot now registered in AddLopenConfiguration for use by lopen config show."
+    },
+    "budget_enforcer_wiring": {
+      "status": "complete",
+      "implementation": "IBudgetEnforcer wired into WorkflowOrchestrator.CheckBudgetAsync() via DI",
+      "tests": "WorkflowOrchestratorTests (10 budget tests) + ServiceCollectionExtensionsTests (1 DI test)",
+      "jobs": [
+        "JOB-084"
+      ],
+      "notes": "Pre-invocation budget check: Ok\u2192proceed, Warning\u2192log+continue, ConfirmationRequired\u2192prompt/halt, Exceeded\u2192auto-save+halt"
+    }
+  },
+  "last_updated": "2026-02-16T19:55:00Z"
 }
