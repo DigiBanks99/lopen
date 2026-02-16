@@ -192,4 +192,27 @@ public class KeyboardHandlerTests
         // Ctrl+C takes priority check won't match Tab due to HasCtrl, let's see
         Assert.Equal(KeyAction.None, _handler.Handle(input, FocusPanel.Prompt));
     }
+
+    // ==================== Backspace ====================
+
+    [Fact]
+    public void Backspace_WhenPromptFocused_ReturnsBackspace()
+    {
+        var input = new KeyInput { Key = ConsoleKey.Backspace };
+        Assert.Equal(KeyAction.Backspace, _handler.Handle(input, FocusPanel.Prompt));
+    }
+
+    [Fact]
+    public void Backspace_WhenActivityFocused_ReturnsNone()
+    {
+        var input = new KeyInput { Key = ConsoleKey.Backspace };
+        Assert.Equal(KeyAction.None, _handler.Handle(input, FocusPanel.Activity));
+    }
+
+    [Fact]
+    public void Backspace_WhenContextFocused_ReturnsNone()
+    {
+        var input = new KeyInput { Key = ConsoleKey.Backspace };
+        Assert.Equal(KeyAction.None, _handler.Handle(input, FocusPanel.Context));
+    }
 }

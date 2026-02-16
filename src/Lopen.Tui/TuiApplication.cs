@@ -20,6 +20,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly IActivityPanelDataProvider? _activityPanelDataProvider;
     private readonly ISlashCommandExecutor? _slashCommandExecutor;
     private readonly IPauseController? _pauseController;
+    private readonly IUserPromptQueue? _userPromptQueue;
     private readonly ILogger<TuiApplication> _logger;
 
     private volatile bool _running;
@@ -57,7 +58,8 @@ internal sealed class TuiApplication : ITuiApplication
         IContextPanelDataProvider? contextPanelDataProvider = null,
         IActivityPanelDataProvider? activityPanelDataProvider = null,
         ISlashCommandExecutor? slashCommandExecutor = null,
-        IPauseController? pauseController = null)
+        IPauseController? pauseController = null,
+        IUserPromptQueue? userPromptQueue = null)
     {
         _topPanel = topPanel ?? throw new ArgumentNullException(nameof(topPanel));
         _activityPanel = activityPanel ?? throw new ArgumentNullException(nameof(activityPanel));
@@ -70,6 +72,7 @@ internal sealed class TuiApplication : ITuiApplication
         _activityPanelDataProvider = activityPanelDataProvider;
         _slashCommandExecutor = slashCommandExecutor;
         _pauseController = pauseController;
+        _userPromptQueue = userPromptQueue;
     }
 
     public async Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
@@ -107,6 +110,12 @@ internal sealed class TuiApplication : ITuiApplication
 
                 // 2c. Refresh activity panel data from provider
                 RefreshActivityPanelData();
+
+                // 2d. Refresh context-aware keyboard hints
+                _promptData = _promptData with
+                {
+                    CustomHints = KeyboardHandler.GetHints(_focus, _isPaused)
+                };
 
                 // 3. Render frame
                 renderer.Draw((ctx, _) => RenderFrame(ctx));
@@ -253,12 +262,24 @@ internal sealed class TuiApplication : ITuiApplication
                 };
                 break;
 
+            case KeyAction.Backspace:
+                if (_promptData.Text.Length > 0)
+                {
+                    _promptData = _promptData with
+                    {
+                        Text = _promptData.Text[..^1],
+                        CursorPosition = Math.Max(0, _promptData.CursorPosition - 1)
+                    };
+                }
+                break;
+
             case KeyAction.SubmitPrompt:
                 var submittedText = _promptData.Text;
                 _promptData = _promptData with { Text = string.Empty, CursorPosition = 0 };
                 if (submittedText.StartsWith('/'))
                     _ = ProcessSlashCommandAsync(submittedText);
-                // TODO: Wire non-slash input to orchestrator input queue
+                else if (!string.IsNullOrWhiteSpace(submittedText))
+                    _userPromptQueue?.Enqueue(submittedText);
                 break;
 
             case KeyAction.None when !char.IsControl(keyInfo.KeyChar) && keyInfo.KeyChar != '\0':

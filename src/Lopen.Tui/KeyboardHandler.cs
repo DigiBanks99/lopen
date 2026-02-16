@@ -49,7 +49,8 @@ public enum KeyAction
     ViewResource7,
     ViewResource8,
     ViewResource9,
-    ToggleExpand
+    ToggleExpand,
+    Backspace
 }
 
 /// <summary>
@@ -87,6 +88,10 @@ public sealed class KeyboardHandler
         // Alt+Enter: insert newline (only when prompt focused)
         if (input.Key == ConsoleKey.Enter && input.HasAlt && currentFocus == FocusPanel.Prompt)
             return KeyAction.InsertNewline;
+
+        // Backspace: delete character before cursor (only when prompt focused)
+        if (input.Key == ConsoleKey.Backspace && currentFocus == FocusPanel.Prompt)
+            return KeyAction.Backspace;
 
         // Number keys 1-9: view resource (only when prompt is NOT focused)
         if (currentFocus != FocusPanel.Prompt && !input.HasCtrl && !input.HasAlt)

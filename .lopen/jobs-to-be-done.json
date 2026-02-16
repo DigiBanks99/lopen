@@ -364,9 +364,9 @@
     "requirement_code": "TUI-05",
     "requirement_module": "tui",
     "description": "Wire PromptAreaComponent to accept multi-line input in TUI",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "PromptAreaComponent exists with keyboard hints. Must be connected to terminal input in the TUI app shell."
+    "notes": "Added Backspace key handling, context-aware hints wiring, IUserPromptQueue for orchestrator integration. 17 new tests."
   },
   {
     "id": "JOB-042",

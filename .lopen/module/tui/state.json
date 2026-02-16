@@ -39,11 +39,13 @@
     },
     "prompt_area": {
       "status": "complete",
-      "implementation": "PromptAreaComponent + PromptAreaData",
-      "tests": "PromptAreaComponentTests (16)",
+      "implementation": "PromptAreaComponent + PromptAreaData + IUserPromptQueue + UserPromptQueue",
+      "tests": "PromptAreaComponentTests (16) + UserPromptQueueTests (12)",
       "jobs": [
-        "JOB-088"
-      ]
+        "JOB-088",
+        "JOB-041"
+      ],
+      "notes": "Multi-line input with Enter/Alt+Enter/Backspace. Context-aware hints wired from KeyboardHandler.GetHints(). Non-slash prompts enqueued to IUserPromptQueue. Thread-safe ConcurrentQueue + SemaphoreSlim. DI via AddUserPromptQueue()."
     },
     "modals": {
       "status": "complete",
@@ -99,10 +101,11 @@
     },
     "keyboard_handler": {
       "status": "complete",
-      "implementation": "KeyboardHandler + KeyInput + FocusPanel + KeyAction",
-      "tests": "KeyboardHandlerTests (33)",
+      "implementation": "KeyboardHandler + KeyInput + FocusPanel + KeyAction (includes Backspace)",
+      "tests": "KeyboardHandlerTests (36)",
       "jobs": [
-        "JOB-092"
+        "JOB-092",
+        "JOB-041"
       ]
     },
     "gallery_registration": {
@@ -129,9 +132,10 @@
       "tests": "TuiApplicationTests (12 tests) covering DI, lifecycle, state updates, constructor validation",
       "jobs": [
         "JOB-008",
-        "JOB-037"
+        "JOB-037",
+        "JOB-041"
       ],
-      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI. Ctrl+P toggles IPauseController. Slash commands wired via ISlashCommandExecutor."
+      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI. Ctrl+P toggles IPauseController. Slash commands wired via ISlashCommandExecutor. Context-aware hints wired each frame. Non-slash prompts flow to IUserPromptQueue."
     },
     "component_gallery_command": {
       "status": "complete",
@@ -161,5 +165,5 @@
       "notes": "Level 0=components, Level 1=tasks, Level 2+=subtasks. First incomplete item at each level marked InProgress. Resources placeholder (empty list) until IDocumentManager is implemented."
     }
   },
-  "last_updated": "2026-02-16T22:15:00Z"
+  "last_updated": "2026-02-17T01:00:00Z"
 }

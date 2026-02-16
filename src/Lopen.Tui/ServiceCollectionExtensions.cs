@@ -90,4 +90,14 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IActivityPanelDataProvider, ActivityPanelDataProvider>();
         return services;
     }
+
+    /// <summary>
+    /// Registers <see cref="UserPromptQueue"/> as a singleton for passing user prompts
+    /// from the TUI to the orchestrator or command handler.
+    /// </summary>
+    public static IServiceCollection AddUserPromptQueue(this IServiceCollection services)
+    {
+        services.AddSingleton<IUserPromptQueue, UserPromptQueue>();
+        return services;
+    }
 }

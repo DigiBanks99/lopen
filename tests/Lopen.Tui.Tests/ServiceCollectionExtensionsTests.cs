@@ -95,4 +95,30 @@ public class ServiceCollectionExtensionsTests
 
         Assert.Same(gallery1, gallery2);
     }
+
+    [Fact]
+    public void AddUserPromptQueue_RegistersQueue()
+    {
+        var services = new ServiceCollection();
+        services.AddUserPromptQueue();
+
+        using var provider = services.BuildServiceProvider();
+        var queue = provider.GetService<IUserPromptQueue>();
+
+        Assert.NotNull(queue);
+        Assert.IsType<UserPromptQueue>(queue);
+    }
+
+    [Fact]
+    public void AddUserPromptQueue_IsSingleton()
+    {
+        var services = new ServiceCollection();
+        services.AddUserPromptQueue();
+
+        using var provider = services.BuildServiceProvider();
+        var queue1 = provider.GetRequiredService<IUserPromptQueue>();
+        var queue2 = provider.GetRequiredService<IUserPromptQueue>();
+
+        Assert.Same(queue1, queue2);
+    }
 }

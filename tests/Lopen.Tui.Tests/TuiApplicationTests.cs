@@ -180,6 +180,18 @@ public class TuiApplicationTests
     }
 
     [Fact]
+    public void Constructor_AcceptsUserPromptQueue()
+    {
+        var queue = new UserPromptQueue();
+        var app = new TuiApplication(
+            new TopPanelComponent(), new ActivityPanelComponent(),
+            new ContextPanelComponent(), new PromptAreaComponent(),
+            new KeyboardHandler(), NullLogger<TuiApplication>.Instance,
+            userPromptQueue: queue);
+        Assert.False(app.IsRunning);
+    }
+
+    [Fact]
     public void AddTopPanelDataProvider_RegistersProvider()
     {
         var services = new ServiceCollection();
