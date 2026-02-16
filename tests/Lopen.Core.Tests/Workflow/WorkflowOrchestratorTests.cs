@@ -1394,6 +1394,138 @@ public class WorkflowOrchestratorTests
         Assert.Contains("CRITICAL ERROR", result.Summary);
     }
 
+    // --- Plan Manager wiring tests (STOR-09) ---
+
+    [Fact]
+    public async Task RunStepAsync_BreakIntoTasks_WritesPlanWhenPlanManagerProvided()
+    {
+        _engine.CurrentStep = WorkflowStep.BreakIntoTasks;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.Result = new LlmInvocationResult(
+            "- [ ] Task 1\n- [ ] Task 2", new TokenUsage(10, 10, 20, 8000, false), 0, true);
+        var planManager = new StubPlanManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            planManager: planManager);
+
+        var result = await sut.RunStepAsync("test-module");
+
+        Assert.True(result.Success);
+        Assert.Single(planManager.WrittenPlans);
+        Assert.Equal("test-module", planManager.WrittenPlans[0].Module);
+        Assert.Contains("Task 1", planManager.WrittenPlans[0].Content);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_BreakIntoTasks_AppendsToPlanWhenExistingContentExists()
+    {
+        _engine.CurrentStep = WorkflowStep.BreakIntoTasks;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.Result = new LlmInvocationResult(
+            "- [ ] Task B", new TokenUsage(10, 10, 20, 8000, false), 0, true);
+        var planManager = new StubPlanManager { ExistingContent = "- [x] Task A" };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            planManager: planManager);
+
+        await sut.RunStepAsync("test-module");
+
+        Assert.Single(planManager.WrittenPlans);
+        var content = planManager.WrittenPlans[0].Content;
+        Assert.Contains("Task A", content);
+        Assert.Contains("Task B", content);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_BreakIntoTasks_NoPlanManagerDoesNotThrow()
+    {
+        _engine.CurrentStep = WorkflowStep.BreakIntoTasks;
+        _engine.StepsBeforeComplete = 1;
+        var sut = CreateOrchestrator(); // No plan manager
+
+        var result = await sut.RunStepAsync("test-module");
+
+        Assert.True(result.Success); // No exception, gracefully skipped
+    }
+
+    [Fact]
+    public async Task RunStepAsync_BreakIntoTasks_PlanWriteFailureDoesNotBlockWorkflow()
+    {
+        _engine.CurrentStep = WorkflowStep.BreakIntoTasks;
+        _engine.StepsBeforeComplete = 1;
+        var planManager = new StubPlanManager { ThrowOnWrite = true };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            planManager: planManager);
+
+        var result = await sut.RunStepAsync("test-module");
+
+        Assert.True(result.Success); // Workflow continues despite plan write failure
+    }
+
+    [Fact]
+    public async Task RunStepAsync_NonBreakIntoTasks_DoesNotWritePlan()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var planManager = new StubPlanManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            planManager: planManager);
+
+        await sut.RunStepAsync("test-module");
+
+        Assert.Empty(planManager.WrittenPlans);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_BreakIntoTasks_EmptySummarySkipsPlanWrite()
+    {
+        _engine.CurrentStep = WorkflowStep.BreakIntoTasks;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.Result = new LlmInvocationResult(
+            "", new TokenUsage(10, 10, 20, 8000, false), 0, true);
+        var planManager = new StubPlanManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            planManager: planManager);
+
+        await sut.RunStepAsync("test-module");
+
+        Assert.Empty(planManager.WrittenPlans);
+    }
+
+    [Fact]
+    public async Task RunAsync_BreakIntoTasks_PersistsPlanDuringFullLoop()
+    {
+        _engine.CurrentStep = WorkflowStep.BreakIntoTasks;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.Result = new LlmInvocationResult(
+            "- [ ] Implement feature X", new TokenUsage(10, 10, 20, 8000, false), 0, true);
+        var planManager = new StubPlanManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            planManager: planManager);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete);
+        Assert.Single(planManager.WrittenPlans);
+        Assert.Equal("test-module", planManager.WrittenPlans[0].Module);
+    }
+
     private sealed class StubWorkflowEngine : IWorkflowEngine
     {
         public WorkflowStep CurrentStep { get; set; } = WorkflowStep.DraftSpecification;
@@ -1740,5 +1872,33 @@ public class WorkflowOrchestratorTests
                 Message = message,
             };
         }
+    }
+
+    private sealed class StubPlanManager : Lopen.Storage.IPlanManager
+    {
+        public List<(string Module, string Content)> WrittenPlans { get; } = [];
+        public string? ExistingContent { get; set; }
+        public bool ThrowOnWrite { get; set; }
+
+        public Task WritePlanAsync(string module, string content, CancellationToken cancellationToken = default)
+        {
+            if (ThrowOnWrite)
+                throw new IOException("Disk full");
+            WrittenPlans.Add((module, content));
+            ExistingContent = content;
+            return Task.CompletedTask;
+        }
+
+        public Task<string?> ReadPlanAsync(string module, CancellationToken cancellationToken = default) =>
+            Task.FromResult(ExistingContent);
+
+        public Task<bool> PlanExistsAsync(string module, CancellationToken cancellationToken = default) =>
+            Task.FromResult(ExistingContent is not null);
+
+        public Task<bool> UpdateCheckboxAsync(string module, string taskText, bool completed, CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
+
+        public Task<IReadOnlyList<Lopen.Storage.PlanTask>> ReadTasksAsync(string module, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Lopen.Storage.PlanTask>>([]);
     }
 }

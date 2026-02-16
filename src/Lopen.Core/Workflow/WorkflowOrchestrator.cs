@@ -32,6 +32,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly ITokenTracker? _tokenTracker;
     private readonly IFailureHandler? _failureHandler;
     private readonly IBudgetEnforcer? _budgetEnforcer;
+    private readonly IPlanManager? _planManager;
     private readonly WorkflowOptions? _workflowOptions;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
@@ -57,6 +58,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         ITokenTracker? tokenTracker = null,
         IFailureHandler? failureHandler = null,
         IBudgetEnforcer? budgetEnforcer = null,
+        IPlanManager? planManager = null,
         WorkflowOptions? workflowOptions = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
@@ -76,6 +78,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _tokenTracker = tokenTracker;
         _failureHandler = failureHandler;
         _budgetEnforcer = budgetEnforcer;
+        _planManager = planManager;
         _workflowOptions = workflowOptions;
     }
 
@@ -364,6 +367,9 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         // 5. Check auto-transition conditions
         if (currentStep == WorkflowStep.BreakIntoTasks)
         {
+            // STOR-09: Persist plan content after task breakdown
+            await PersistPlanAsync(moduleName, llmResult.Summary, cancellationToken);
+
             // Check if planning is structurally complete for auto-transition to building
             var hasComponents = await _assessor.HasMoreComponentsAsync(moduleName, cancellationToken);
             if (_phaseController.CanAutoTransitionToBuilding(true, true))
@@ -594,6 +600,33 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         {
             // Auto-save failures must not crash the workflow (STOR-06)
             _logger.LogWarning(ex, "Auto-save failed for trigger {Trigger}", trigger);
+        }
+    }
+
+    /// <summary>
+    /// Persists plan content after BreakIntoTasks succeeds (STOR-09).
+    /// Appends new component tasks to any existing plan content.
+    /// Failures are logged but do not block the workflow.
+    /// </summary>
+    private async Task PersistPlanAsync(string moduleName, string? planContent, CancellationToken cancellationToken)
+    {
+        if (_planManager is null || string.IsNullOrWhiteSpace(planContent))
+            return;
+
+        try
+        {
+            var existingContent = await _planManager.ReadPlanAsync(moduleName, cancellationToken);
+            var finalContent = string.IsNullOrWhiteSpace(existingContent)
+                ? planContent
+                : existingContent + "\n\n" + planContent;
+
+            await _planManager.WritePlanAsync(moduleName, finalContent, cancellationToken);
+            _logger.LogInformation("Plan persisted for module {Module}", moduleName);
+        }
+        catch (Exception ex)
+        {
+            // Plan persistence failures must not crash the workflow
+            _logger.LogWarning(ex, "Failed to persist plan for module {Module}", moduleName);
         }
     }
 

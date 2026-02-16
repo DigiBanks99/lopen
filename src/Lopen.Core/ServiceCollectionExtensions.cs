@@ -72,6 +72,10 @@ public static class ServiceCollectionExtensions
                 try { budgetEnforcer = sp.GetService<Lopen.Configuration.IBudgetEnforcer>(); }
                 catch { /* Budget enforcer optional */ }
 
+                Lopen.Storage.IPlanManager? planMgr = null;
+                try { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
+                catch { /* Plan manager optional */ }
+
                 return new WorkflowOrchestrator(
                     sp.GetRequiredService<IWorkflowEngine>(),
                     sp.GetRequiredService<IStateAssessor>(),
@@ -90,6 +94,7 @@ public static class ServiceCollectionExtensions
                     tokenTracker,
                     failureHandler,
                     budgetEnforcer,
+                    planMgr,
                     sp.GetService<WorkflowOptions>());
             });
             services.AddSingleton<ISpecificationDriftService, SpecificationDriftService>();
