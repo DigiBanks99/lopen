@@ -686,9 +686,9 @@
     "id": "JOB-086",
     "requirement_module": "tui",
     "description": "Implement context panel showing current task, task tree with completion states (checkmark/arrow/circle), active resources",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: Context panel with hierarchical task tree and numbered resource access"
+    "notes": "ContextPanelComponent renders task tree (\u2713/\u25b6/\u25cb/\u2717), component/module hierarchy, numbered resources. 21 tests."
   },
   {
     "id": "JOB-087",

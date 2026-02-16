@@ -1,28 +1,27 @@
 # Implementation Plan
 
-## Current Job: JOB-085 — Top Panel
+## Current Job: JOB-086 — Context Panel
 
 **Module**: tui  
 **Priority**: P4  
 **Status**: ✅ Complete  
-**Description**: Top panel with logo, version, model, context usage, premium requests, git branch, auth status, phase/step.
+**Description**: Context panel with task tree, completion states (✓/▶/○/✗), active resources.
 
 ### Tasks
 
-- [x] **1. Create TopPanelData** — Record with all 10+ fields from spec
-- [x] **2. Create TopPanelComponent** — Pure render: data + ScreenRect → string[]
-- [x] **3. Token humanization** — FormatTokens (2400 → "2.4K")
-- [x] **4. Step indicator** — ●/○ progress visualization
-- [x] **5. --no-logo support** — ShowLogo=false omits ASCII art
-- [x] **6. Write tests** — 34 TopPanelComponentTests
-- [x] **7. Validate** — 1232 tests pass
+- [x] **1. Create data models** — ContextPanelData, TaskSectionData, ComponentSectionData, ModuleSectionData, ResourceItem, TaskState enum
+- [x] **2. Create ContextPanelComponent** — Pure render: data + ScreenRect → string[]
+- [x] **3. Tree rendering** — ├─/└─ connectors, state icons
+- [x] **4. Resource numbering** — [1]-[9] with footer hint
+- [x] **5. Write tests** — 21 ContextPanelComponentTests
+- [x] **6. Validate** — 1253 tests pass
 
 ### Recently Completed Jobs
 
 | Job | Module | Description |
 |-----|--------|-------------|
+| JOB-086 | tui | Context panel with task tree |
 | JOB-085 | tui | Top panel component |
 | JOB-076 | cli/tui | Root command launches TUI |
 | JOB-084 | tui | Split-screen layout calculator |
 | JOB-077 | core/cli | --headless mode with IOutputRenderer |
-| JOB-037 | storage/cli | Session resume (--resume/--no-resume) |
