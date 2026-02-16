@@ -670,9 +670,9 @@
     "id": "JOB-084",
     "requirement_module": "tui",
     "description": "Implement split-screen layout with activity (left) and context (right) panes, adjustable 50/50 to 80/20 ratio",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: Split-screen layout with adjustable ratio"
+    "notes": "LayoutCalculator splits screen into header/activity/context/prompt regions. Activity 50-80% clamped. ScreenRect value type. 16 tests (12 layout + 4 rect)."
   },
   {
     "id": "JOB-085",

@@ -1,0 +1,27 @@
+{
+  "module": "tui",
+  "description": "Terminal User Interface (Spectre.Tui)",
+  "status": "in_progress",
+  "components": {
+    "layout_calculator": {
+      "status": "complete",
+      "implementation": "LayoutCalculator + ScreenRect + LayoutRegions",
+      "tests": "LayoutCalculatorTests (12 tests) + ScreenRectTests (4 tests)",
+      "jobs": ["JOB-084"],
+      "notes": "Pure calculation logic. Activity 50-80% clamped. Header/prompt fixed heights. Body height clamped to 0 minimum."
+    },
+    "component_gallery": {
+      "status": "complete",
+      "implementation": "ComponentGallery (in-memory registry) + ITuiComponent interface",
+      "tests": "ComponentGalleryTests (existing)",
+      "notes": "Self-registration pattern for component preview."
+    },
+    "stub_application": {
+      "status": "complete",
+      "implementation": "StubTuiApplication (no-op for headless mode)",
+      "tests": "StubTuiApplicationTests (existing)",
+      "notes": "Implements ITuiApplication lifecycle interface."
+    }
+  },
+  "last_updated": "2026-02-16T11:00:00Z"
+}
