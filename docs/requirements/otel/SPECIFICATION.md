@@ -298,23 +298,23 @@ Standard OTEL environment variables (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVIC
 
 ## Acceptance Criteria
 
-- [ ] `lopen.command` root span is created for every CLI invocation with correct `command.name`, `headless`, and `exit_code` attributes
-- [ ] `lopen.workflow.phase` spans are created for each phase with correct `phase.name` and `module` attributes
-- [ ] `lopen.sdk.invocation` spans are created for each Copilot SDK call with `model`, `tokens.input`, `tokens.output`, and `is_premium` attributes
-- [ ] `lopen.tool.<tool_name>` spans are created for every Lopen-managed tool call with `tool.name` and `success` attributes
-- [ ] `lopen.oracle.verification` spans are created for every oracle dispatch with `scope`, `verdict`, and `attempt` attributes
-- [ ] `lopen.task.execution` spans are created for each task with `outcome` and `iterations` attributes
-- [ ] `lopen.backpressure.event` spans are created when any back-pressure guardrail fires
-- [ ] All counter metrics increment correctly: `commands.count`, `tools.count`, `sdk.invocations.count`, `sdk.tokens.consumed`, `premium_requests.count`, `oracle.verdicts.count`, `tasks.completed.count`, `tasks.failed.count`, `backpressure.events.count`, `git.commits.count`
-- [ ] All histogram metrics record correct durations: `sdk.invocation.duration`, `tool.duration`, `task.duration`, `command.duration`, `oracle.duration`
-- [ ] Structured logs emitted via `ILogger` carry `TraceId` and `SpanId` for correlation with active spans
-- [ ] When `OTEL_EXPORTER_OTLP_ENDPOINT` is set, all three signals (traces, metrics, logs) are exported via OTLP
-- [ ] When `OTEL_EXPORTER_OTLP_ENDPOINT` is not set, no telemetry leaves the process and no export errors occur
-- [ ] `aspire run` starts the Aspire Dashboard and Lopen with OTEL telemetry pre-configured and visible in the Dashboard
-- [ ] Setting `otel.enabled` to `false` disables all instrumentation with no measurable performance overhead
-- [ ] Individual signal toggles (`otel.traces.enabled`, `otel.metrics.enabled`, `otel.logs.enabled`) independently control their respective exports
-- [ ] OTEL environment variables (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_PROTOCOL`) take precedence over Lopen config settings
-- [ ] CLI command execution time is not measurably degraded by OTEL instrumentation (< 5ms overhead on command startup)
+- [ ] [OTEL-01] `lopen.command` root span is created for every CLI invocation with correct `command.name`, `headless`, and `exit_code` attributes
+- [ ] [OTEL-02] `lopen.workflow.phase` spans are created for each phase with correct `phase.name` and `module` attributes
+- [ ] [OTEL-03] `lopen.sdk.invocation` spans are created for each Copilot SDK call with `model`, `tokens.input`, `tokens.output`, and `is_premium` attributes
+- [ ] [OTEL-04] `lopen.tool.<tool_name>` spans are created for every Lopen-managed tool call with `tool.name` and `success` attributes
+- [ ] [OTEL-05] `lopen.oracle.verification` spans are created for every oracle dispatch with `scope`, `verdict`, and `attempt` attributes
+- [ ] [OTEL-06] `lopen.task.execution` spans are created for each task with `outcome` and `iterations` attributes
+- [ ] [OTEL-07] `lopen.backpressure.event` spans are created when any back-pressure guardrail fires
+- [ ] [OTEL-08] All counter metrics increment correctly: `commands.count`, `tools.count`, `sdk.invocations.count`, `sdk.tokens.consumed`, `premium_requests.count`, `oracle.verdicts.count`, `tasks.completed.count`, `tasks.failed.count`, `backpressure.events.count`, `git.commits.count`
+- [ ] [OTEL-09] All histogram metrics record correct durations: `sdk.invocation.duration`, `tool.duration`, `task.duration`, `command.duration`, `oracle.duration`
+- [ ] [OTEL-10] Structured logs emitted via `ILogger` carry `TraceId` and `SpanId` for correlation with active spans
+- [ ] [OTEL-11] When `OTEL_EXPORTER_OTLP_ENDPOINT` is set, all three signals (traces, metrics, logs) are exported via OTLP
+- [ ] [OTEL-12] When `OTEL_EXPORTER_OTLP_ENDPOINT` is not set, no telemetry leaves the process and no export errors occur
+- [ ] [OTEL-13] `aspire run` starts the Aspire Dashboard and Lopen with OTEL telemetry pre-configured and visible in the Dashboard
+- [ ] [OTEL-14] Setting `otel.enabled` to `false` disables all instrumentation with no measurable performance overhead
+- [ ] [OTEL-15] Individual signal toggles (`otel.traces.enabled`, `otel.metrics.enabled`, `otel.logs.enabled`) independently control their respective exports
+- [ ] [OTEL-16] OTEL environment variables (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_PROTOCOL`) take precedence over Lopen config settings
+- [ ] [OTEL-17] CLI command execution time is not measurably degraded by OTEL instrumentation (< 5ms overhead on command startup)
 
 ---
 

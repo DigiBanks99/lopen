@@ -193,27 +193,27 @@ This specification defines **where and how Lopen stores its state**. It does not
 
 ## Acceptance Criteria
 
-- [ ] `.lopen/` directory is created in project root on first workflow run
-- [ ] Session state (`state.json`) persists workflow phase, step, module, component, and task hierarchy
-- [ ] Session metrics (`metrics.json`) persists per-iteration and cumulative token counts and premium request counts
-- [ ] Session IDs follow the `{module}-YYYYMMDD-{counter}` format with no collisions
-- [ ] `latest` symlink points to the most recent session directory
-- [ ] State is auto-saved after: step completion, task completion/failure, phase transition, component completion, user pause/switch
-- [ ] Session resume loads state from `.lopen/sessions/latest` and offers resume or start fresh
-- [ ] `--resume {id}` resumes a specific session; `--no-resume` starts fresh
-- [ ] Plans are stored at `.lopen/modules/{module}/plan.md` with checkbox task hierarchy
-- [ ] Plan checkboxes are updated programmatically by Lopen, not by the LLM
-- [ ] Section cache (`.lopen/cache/sections/`) is keyed by file path + section header + modification timestamp
-- [ ] Section cache is invalidated when the source file changes
-- [ ] Assessment cache is short-lived and invalidated on any file change in the assessed scope
-- [ ] Corrupted session state is detected, warned, and the session is excluded from resume options
-- [ ] Corrupted files are moved to `.lopen/corrupted/` for manual inspection
-- [ ] Disk full / write failure is treated as a critical system error and pauses the workflow
-- [ ] Corrupted cache entries are silently invalidated and regenerated
-- [ ] Completed sessions are retained up to the configured `session_retention` limit, then pruned
-- [ ] Individual sessions can be deleted via `DeleteSessionAsync`, removing the session directory and all files
-- [ ] Research documents are stored at `docs/requirements/{module}/RESEARCH-{topic}.md` (in source, not `.lopen/`)
-- [ ] Storage format is compact JSON by default, with on-demand prettification via `lopen session show --format`
+- [ ] [STOR-01] `.lopen/` directory is created in project root on first workflow run
+- [ ] [STOR-02] Session state (`state.json`) persists workflow phase, step, module, component, and task hierarchy
+- [ ] [STOR-03] Session metrics (`metrics.json`) persists per-iteration and cumulative token counts and premium request counts
+- [ ] [STOR-04] Session IDs follow the `{module}-YYYYMMDD-{counter}` format with no collisions
+- [ ] [STOR-05] `latest` symlink points to the most recent session directory
+- [ ] [STOR-06] State is auto-saved after: step completion, task completion/failure, phase transition, component completion, user pause/switch
+- [ ] [STOR-07] Session resume loads state from `.lopen/sessions/latest` and offers resume or start fresh
+- [ ] [STOR-08] `--resume {id}` resumes a specific session; `--no-resume` starts fresh
+- [ ] [STOR-09] Plans are stored at `.lopen/modules/{module}/plan.md` with checkbox task hierarchy
+- [ ] [STOR-10] Plan checkboxes are updated programmatically by Lopen, not by the LLM
+- [ ] [STOR-11] Section cache (`.lopen/cache/sections/`) is keyed by file path + section header + modification timestamp
+- [ ] [STOR-12] Section cache is invalidated when the source file changes
+- [ ] [STOR-13] Assessment cache is short-lived and invalidated on any file change in the assessed scope
+- [ ] [STOR-14] Corrupted session state is detected, warned, and the session is excluded from resume options
+- [ ] [STOR-15] Corrupted files are moved to `.lopen/corrupted/` for manual inspection
+- [ ] [STOR-16] Disk full / write failure is treated as a critical system error and pauses the workflow
+- [ ] [STOR-17] Corrupted cache entries are silently invalidated and regenerated
+- [ ] [STOR-18] Completed sessions are retained up to the configured `session_retention` limit, then pruned
+- [ ] [STOR-19] Individual sessions can be deleted via `DeleteSessionAsync`, removing the session directory and all files
+- [ ] [STOR-20] Research documents are stored at `docs/requirements/{module}/RESEARCH-{topic}.md` (in source, not `.lopen/`)
+- [ ] [STOR-21] Storage format is compact JSON by default, with on-demand prettification via `lopen session show --format`
 
 ---
 

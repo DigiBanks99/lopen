@@ -680,72 +680,72 @@ Every TUI component must be designed so that it can be rendered with injected st
 
 ### Layout & Structure
 
-- [ ] Split-screen layout with activity (left) and context (right) panes, ratio adjustable from 50/50 to 80/20
-- [ ] Top panel displays logo, version, model, context usage, premium requests, git branch, auth status, phase, and step
-- [ ] Context panel shows current task, task tree with completion states, and active resources
-- [ ] Main activity area supports scrolling with progressive disclosure
-- [ ] Multi-line prompt area with keyboard hints at bottom
-- [ ] Landing page modal with quick commands on first startup (skippable with `--no-welcome`)
-- [ ] Session resume modal displayed when previous active session detected
+- [ ] [TUI-01] Split-screen layout with activity (left) and context (right) panes, ratio adjustable from 50/50 to 80/20
+- [ ] [TUI-02] Top panel displays logo, version, model, context usage, premium requests, git branch, auth status, phase, and step
+- [ ] [TUI-03] Context panel shows current task, task tree with completion states, and active resources
+- [ ] [TUI-04] Main activity area supports scrolling with progressive disclosure
+- [ ] [TUI-05] Multi-line prompt area with keyboard hints at bottom
+- [ ] [TUI-06] Landing page modal with quick commands on first startup (skippable with `--no-welcome`)
+- [ ] [TUI-07] Session resume modal displayed when previous active session detected
 
 ### Display & Interaction
 
-- [ ] Current action expanded, previous actions collapsed to summaries
-- [ ] Tool call outputs expandable via click or keyboard shortcut
-- [ ] Real-time task progress updates in context panel
-- [ ] Hierarchical task tree with status indicators (✓/▶/○)
-- [ ] Numbered resource access (press 1-9 to view active resources)
-- [ ] Inline research display with ability to drill into full document
-- [ ] Phase transition summaries shown in activity area
-- [ ] Diff viewer with syntax highlighting and line numbers
-- [ ] File picker with tree view navigation
-- [ ] Phase/step visualization (●/○ progress indicator) in top panel
-- [ ] Module selection modal with arrow key navigation
-- [ ] Component selection UI with tree view
+- [ ] [TUI-08] Current action expanded, previous actions collapsed to summaries
+- [ ] [TUI-09] Tool call outputs expandable via click or keyboard shortcut
+- [ ] [TUI-10] Real-time task progress updates in context panel
+- [ ] [TUI-11] Hierarchical task tree with status indicators (✓/▶/○)
+- [ ] [TUI-12] Numbered resource access (press 1-9 to view active resources)
+- [ ] [TUI-13] Inline research display with ability to drill into full document
+- [ ] [TUI-14] Phase transition summaries shown in activity area
+- [ ] [TUI-15] Diff viewer with syntax highlighting and line numbers
+- [ ] [TUI-16] File picker with tree view navigation
+- [ ] [TUI-17] Phase/step visualization (●/○ progress indicator) in top panel
+- [ ] [TUI-18] Module selection modal with arrow key navigation
+- [ ] [TUI-19] Component selection UI with tree view
 
 ### User Interaction Patterns
 
-- [ ] Multi-line prompt input with Alt+Enter for newlines
-- [ ] Keyboard shortcuts functional: Tab (focus panel), Ctrl+P (pause), number keys (resources)
-- [ ] Guided conversation UI for requirement gathering (step 1)
-- [ ] Confirmation modals with Yes/No/Always/Other options
-- [ ] Expandable sections via click or keyboard shortcut
+- [ ] [TUI-20] Multi-line prompt input with Alt+Enter for newlines
+- [ ] [TUI-21] Keyboard shortcuts functional: Tab (focus panel), Ctrl+P (pause), number keys (resources)
+- [ ] [TUI-22] Guided conversation UI for requirement gathering (step 1)
+- [ ] [TUI-23] Confirmation modals with Yes/No/Always/Other options
+- [ ] [TUI-24] Expandable sections via click or keyboard shortcut
 
 ### Feedback & Status
 
-- [ ] Task failures displayed inline and auto-expanded
-- [ ] Repeated failure confirmation modal shown at configured threshold
-- [ ] Critical error modal with details and recovery options
-- [ ] Spinner-based async feedback for long-running operations
-- [ ] Context window usage displayed in top panel
-- [ ] Premium request counter displayed in top panel (🔥 indicator)
-- [ ] Real-time progress percentages in context panel
+- [ ] [TUI-25] Task failures displayed inline and auto-expanded
+- [ ] [TUI-26] Repeated failure confirmation modal shown at configured threshold
+- [ ] [TUI-27] Critical error modal with details and recovery options
+- [ ] [TUI-28] Spinner-based async feedback for long-running operations
+- [ ] [TUI-29] Context window usage displayed in top panel
+- [ ] [TUI-30] Premium request counter displayed in top panel (🔥 indicator)
+- [ ] [TUI-31] Real-time progress percentages in context panel
 
 ### Visual Design
 
-- [ ] Semantic color palette (green/red/yellow/blue/gray/cyan) using terminal theme colors
-- [ ] Unicode symbols with ASCII fallbacks for all indicators
-- [ ] Box-drawing characters used for borders and panels
-- [ ] Syntax highlighting in code blocks
-- [ ] Consistent panel styling throughout the application
-- [ ] `NO_COLOR` environment variable respected
+- [ ] [TUI-32] Semantic color palette (green/red/yellow/blue/gray/cyan) using terminal theme colors
+- [ ] [TUI-33] Unicode symbols with ASCII fallbacks for all indicators
+- [ ] [TUI-34] Box-drawing characters used for borders and panels
+- [ ] [TUI-35] Syntax highlighting in code blocks
+- [ ] [TUI-36] Consistent panel styling throughout the application
+- [ ] [TUI-37] `NO_COLOR` environment variable respected
 
 ### Slash Commands & Input
 
-- [ ] Slash commands (`/help`, `/spec`, `/plan`, `/build`, `/session`, `/config`, `/revert`, `/auth`) invoke corresponding CLI commands
-- [ ] Unknown slash commands display error with valid command list
-- [ ] Queued user messages delivered as context in the next SDK invocation
-- [ ] `Ctrl+P` pauses agent execution
+- [ ] [TUI-38] Slash commands (`/help`, `/spec`, `/plan`, `/build`, `/session`, `/config`, `/revert`, `/auth`) invoke corresponding CLI commands
+- [ ] [TUI-39] Unknown slash commands display error with valid command list
+- [ ] [TUI-40] Queued user messages delivered as context in the next SDK invocation
+- [ ] [TUI-41] `Ctrl+P` pauses agent execution
 
 ### Component Gallery
 
-- [ ] `lopen test tui` launches interactive component gallery
-- [ ] Gallery lists all TUI components with selection navigation
-- [ ] Each component renders with realistic mock/stub data
-- [ ] Components are fully interactive in preview (shortcuts, scroll, expand/collapse)
-- [ ] Components accept injected data with no live dependencies in preview
-- [ ] Components self-register with gallery for automatic listing
-- [ ] Stub data exercises multiple visual states (empty, populated, error, loading)
+- [ ] [TUI-42] `lopen test tui` launches interactive component gallery
+- [ ] [TUI-43] Gallery lists all TUI components with selection navigation
+- [ ] [TUI-44] Each component renders with realistic mock/stub data
+- [ ] [TUI-45] Components are fully interactive in preview (shortcuts, scroll, expand/collapse)
+- [ ] [TUI-46] Components accept injected data with no live dependencies in preview
+- [ ] [TUI-47] Components self-register with gallery for automatic listing
+- [ ] [TUI-48] Stub data exercises multiple visual states (empty, populated, error, loading)
 
 ---
 

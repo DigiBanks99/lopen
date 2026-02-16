@@ -147,21 +147,21 @@ This specification defines **what can be configured and how settings are resolve
 
 ## Acceptance Criteria
 
-- [ ] Configuration hierarchy resolves in order: CLI flags → project config → global config → built-in defaults
-- [ ] Higher-priority source wins when a setting is defined at multiple levels
-- [ ] Project configuration is discovered at `.lopen/config.json` in the current working directory or nearest parent with `.lopen/`
-- [ ] Global configuration is discovered at `~/.config/lopen/config.json`
-- [ ] `lopen config show` displays the resolved configuration with sources indicated for each setting
-- [ ] `lopen config show --json` outputs machine-readable JSON
-- [ ] All settings have sensible built-in defaults — Lopen works without any configuration files
-- [ ] `--model <name>` CLI flag overrides all model phase assignments for the invocation
-- [ ] `--unattended` CLI flag overrides the `unattended` setting
-- [ ] `--resume <id>` and `--no-resume` CLI flags override `auto_resume` behavior
-- [ ] `--max-iterations <n>` CLI flag overrides `max_iterations`
-- [ ] Budget settings (`token_budget_per_module`, `premium_request_budget`) are respected when non-zero
-- [ ] Oracle model setting is passed to the LLM module for verification sub-agent dispatch
-- [ ] Tool discipline settings control corrective injection thresholds
-- [ ] Invalid configuration values produce clear error messages with guidance
+- [ ] [CFG-01] Configuration hierarchy resolves in order: CLI flags → project config → global config → built-in defaults
+- [ ] [CFG-02] Higher-priority source wins when a setting is defined at multiple levels
+- [ ] [CFG-03] Project configuration is discovered at `.lopen/config.json` in the current working directory or nearest parent with `.lopen/`
+- [ ] [CFG-04] Global configuration is discovered at `~/.config/lopen/config.json`
+- [ ] [CFG-05] `lopen config show` displays the resolved configuration with sources indicated for each setting
+- [ ] [CFG-06] `lopen config show --json` outputs machine-readable JSON
+- [ ] [CFG-07] All settings have sensible built-in defaults — Lopen works without any configuration files
+- [ ] [CFG-08] `--model <name>` CLI flag overrides all model phase assignments for the invocation
+- [ ] [CFG-09] `--unattended` CLI flag overrides the `unattended` setting
+- [ ] [CFG-10] `--resume <id>` and `--no-resume` CLI flags override `auto_resume` behavior
+- [ ] [CFG-11] `--max-iterations <n>` CLI flag overrides `max_iterations`
+- [ ] [CFG-12] Budget settings (`token_budget_per_module`, `premium_request_budget`) are respected when non-zero
+- [ ] [CFG-13] Oracle model setting is passed to the LLM module for verification sub-agent dispatch
+- [ ] [CFG-14] Tool discipline settings control corrective injection thresholds
+- [ ] [CFG-15] Invalid configuration values produce clear error messages with guidance
 
 ---
 

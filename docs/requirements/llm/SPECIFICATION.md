@@ -218,20 +218,20 @@ This specification defines **how Lopen integrates with the LLM backend**. It doe
 
 ## Acceptance Criteria
 
-- [ ] Lopen authenticates with the Copilot SDK using credentials from the [Auth module](../auth/SPECIFICATION.md)
-- [ ] Each workflow phase invokes the SDK with a fresh context window (no conversation history carried forward)
-- [ ] System prompt includes: role/identity, workflow state, step instructions, relevant context, available tools, constraints
-- [ ] Context window contains only section-level document extractions, not full documents
-- [ ] Lopen-managed tools (`read_spec`, `read_research`, `read_plan`, `update_task_status`, `get_current_context`, `log_research`, `report_progress`) are registered and functional
-- [ ] Oracle verification tools (`verify_task_completion`, `verify_component_completion`, `verify_module_completion`) dispatch a sub-agent and return pass/fail verdicts
-- [ ] Oracle verification runs within the same SDK invocation (no additional premium request consumed)
-- [ ] `update_task_status(complete)` is rejected unless preceded by a passing `verify_*_completion` call in the same invocation
-- [ ] Tool registration varies by workflow step (e.g., `log_research` only available during research phases)
-- [ ] Per-phase model selection works — each phase can use a different configured model
-- [ ] Model fallback activates when a configured model is unavailable (logs warning, falls back to next available)
-- [ ] Token usage metrics (context window usage, premium request count, session totals) are read from SDK response metadata and recorded
-- [ ] Token metrics are surfaced to the TUI and persisted in session state
-- [ ] Context window budget is respected — lower-priority sections truncated or summarized when context would exceed budget
+- [ ] [LLM-01] Lopen authenticates with the Copilot SDK using credentials from the [Auth module](../auth/SPECIFICATION.md)
+- [ ] [LLM-02] Each workflow phase invokes the SDK with a fresh context window (no conversation history carried forward)
+- [ ] [LLM-03] System prompt includes: role/identity, workflow state, step instructions, relevant context, available tools, constraints
+- [ ] [LLM-04] Context window contains only section-level document extractions, not full documents
+- [ ] [LLM-05] Lopen-managed tools (`read_spec`, `read_research`, `read_plan`, `update_task_status`, `get_current_context`, `log_research`, `report_progress`) are registered and functional
+- [ ] [LLM-06] Oracle verification tools (`verify_task_completion`, `verify_component_completion`, `verify_module_completion`) dispatch a sub-agent and return pass/fail verdicts
+- [ ] [LLM-07] Oracle verification runs within the same SDK invocation (no additional premium request consumed)
+- [ ] [LLM-08] `update_task_status(complete)` is rejected unless preceded by a passing `verify_*_completion` call in the same invocation
+- [ ] [LLM-09] Tool registration varies by workflow step (e.g., `log_research` only available during research phases)
+- [ ] [LLM-10] Per-phase model selection works — each phase can use a different configured model
+- [ ] [LLM-11] Model fallback activates when a configured model is unavailable (logs warning, falls back to next available)
+- [ ] [LLM-12] Token usage metrics (context window usage, premium request count, session totals) are read from SDK response metadata and recorded
+- [ ] [LLM-13] Token metrics are surfaced to the TUI and persisted in session state
+- [ ] [LLM-14] Context window budget is respected — lower-priority sections truncated or summarized when context would exceed budget
 
 ---
 
