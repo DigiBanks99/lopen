@@ -1,3 +1,4 @@
+using Lopen.Core.Workflow;
 using Microsoft.Extensions.Logging;
 using Spectre.Tui;
 
@@ -17,6 +18,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly ITopPanelDataProvider? _topPanelDataProvider;
     private readonly IContextPanelDataProvider? _contextPanelDataProvider;
     private readonly ISlashCommandExecutor? _slashCommandExecutor;
+    private readonly IPauseController? _pauseController;
     private readonly ILogger<TuiApplication> _logger;
 
     private volatile bool _running;
@@ -52,7 +54,8 @@ internal sealed class TuiApplication : ITuiApplication
         ILogger<TuiApplication> logger,
         ITopPanelDataProvider? topPanelDataProvider = null,
         IContextPanelDataProvider? contextPanelDataProvider = null,
-        ISlashCommandExecutor? slashCommandExecutor = null)
+        ISlashCommandExecutor? slashCommandExecutor = null,
+        IPauseController? pauseController = null)
     {
         _topPanel = topPanel ?? throw new ArgumentNullException(nameof(topPanel));
         _activityPanel = activityPanel ?? throw new ArgumentNullException(nameof(activityPanel));
@@ -63,6 +66,7 @@ internal sealed class TuiApplication : ITuiApplication
         _topPanelDataProvider = topPanelDataProvider;
         _contextPanelDataProvider = contextPanelDataProvider;
         _slashCommandExecutor = slashCommandExecutor;
+        _pauseController = pauseController;
     }
 
     public async Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
@@ -221,6 +225,7 @@ internal sealed class TuiApplication : ITuiApplication
 
             case KeyAction.TogglePause:
                 _isPaused = !_isPaused;
+                _pauseController?.Toggle();
                 _promptData = _promptData with { IsPaused = _isPaused };
                 break;
 

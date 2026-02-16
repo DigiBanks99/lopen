@@ -219,7 +219,16 @@
         "JOB-073"
       ],
       "notes": "Critical exceptions (IOException, UnauthorizedAccessException, OutOfMemoryException, SecurityException) bypass self-correction and block immediately via RecordCriticalError."
+    },
+    "pause_controller": {
+      "status": "complete",
+      "implementation": "IPauseController + PauseController (thread-safe SemaphoreSlim + lock). Wired into WorkflowOrchestrator pause gate and TuiApplication.TogglePause.",
+      "tests": "PauseControllerTests (14 tests) + WorkflowOrchestratorTests (5 pause integration tests)",
+      "jobs": [
+        "JOB-037"
+      ],
+      "notes": "Pause gate in orchestrator's main loop: checks IsPaused, auto-saves with UserPause, renders Paused/Resumed messages, blocks via WaitIfPausedAsync. DI registered as singleton."
     }
   },
-  "last_updated": "2026-02-16T20:50:00Z"
+  "last_updated": "2026-02-16T21:45:00Z"
 }

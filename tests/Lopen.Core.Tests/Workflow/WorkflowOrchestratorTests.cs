@@ -1901,4 +1901,116 @@ public class WorkflowOrchestratorTests
         public Task<IReadOnlyList<Lopen.Storage.PlanTask>> ReadTasksAsync(string module, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<Lopen.Storage.PlanTask>>([]);
     }
+
+    // --- TUI-41: Pause Controller Tests ---
+
+    [Fact]
+    public async Task RunAsync_WithPauseController_WaitsWhenPaused()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var pauseController = new PauseController();
+        pauseController.Pause();
+
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            pauseController: pauseController);
+
+        var runTask = sut.RunAsync("test-module");
+
+        // Should not complete while paused
+        await Task.Delay(100);
+        Assert.False(runTask.IsCompleted);
+
+        // Resume should allow completion
+        pauseController.Resume();
+        var result = await runTask.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(result.IsComplete);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithPauseController_AutoSavesOnPause()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var pauseController = new PauseController();
+        pauseController.Pause();
+        var autoSave = new StubAutoSaveService();
+        var sessionMgr = new StubSessionManager();
+
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            autoSaveService: autoSave,
+            sessionManager: sessionMgr,
+            pauseController: pauseController);
+
+        var runTask = sut.RunAsync("test-module");
+        await Task.Delay(200);
+
+        // Should have auto-saved with UserPause trigger
+        Assert.Contains(autoSave.Saves, s => s.Trigger == Lopen.Storage.AutoSaveTrigger.UserPause);
+
+        // Resume to complete
+        pauseController.Resume();
+        await runTask.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task RunAsync_WithPauseController_NotPaused_RunsNormally()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var pauseController = new PauseController();
+
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            pauseController: pauseController);
+
+        var result = await sut.RunAsync("test-module");
+        Assert.True(result.IsComplete);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithoutPauseController_RunsNormally()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var sut = CreateOrchestrator();
+
+        var result = await sut.RunAsync("test-module");
+        Assert.True(result.IsComplete);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithPauseController_RendersStatusMessages()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var pauseController = new PauseController();
+        pauseController.Pause();
+
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            pauseController: pauseController);
+
+        var runTask = sut.RunAsync("test-module");
+        await Task.Delay(200);
+
+        // Should have rendered pause message
+        Assert.Contains(_renderer.ResultMessages, m => m.Contains("Paused"));
+
+        pauseController.Resume();
+        await runTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Should have rendered resume message
+        Assert.Contains(_renderer.ResultMessages, m => m.Contains("Resumed"));
+    }
 }

@@ -126,9 +126,10 @@
       "implementation": "TuiApplication in Lopen.Tui with Spectre.Tui fullscreen render loop",
       "tests": "TuiApplicationTests (12 tests) covering DI, lifecycle, state updates, constructor validation",
       "jobs": [
-        "JOB-008"
+        "JOB-008",
+        "JOB-037"
       ],
-      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI."
+      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI. Ctrl+P toggles IPauseController. Slash commands wired via ISlashCommandExecutor."
     },
     "component_gallery_command": {
       "status": "complete",

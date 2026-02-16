@@ -76,6 +76,10 @@ public static class ServiceCollectionExtensions
                 try { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
                 catch { /* Plan manager optional */ }
 
+                IPauseController? pauseCtrl = null;
+                try { pauseCtrl = sp.GetService<IPauseController>(); }
+                catch { /* Pause controller optional */ }
+
                 return new WorkflowOrchestrator(
                     sp.GetRequiredService<IWorkflowEngine>(),
                     sp.GetRequiredService<IStateAssessor>(),
@@ -95,8 +99,10 @@ public static class ServiceCollectionExtensions
                     failureHandler,
                     budgetEnforcer,
                     planMgr,
+                    pauseCtrl,
                     sp.GetService<WorkflowOptions>());
             });
+            services.AddSingleton<IPauseController, PauseController>();
             services.AddSingleton<ISpecificationDriftService, SpecificationDriftService>();
             services.AddSingleton<IToolHandlerBinder>(sp =>
             {

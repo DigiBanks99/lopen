@@ -328,9 +328,9 @@
     "requirement_code": "TUI-41",
     "requirement_module": "tui",
     "description": "Implement Ctrl+P pause agent execution in TUI",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "KeyboardHandler maps Ctrl+P to pause action but the pause mechanism is not implemented in the (non-existent) TUI app shell."
+    "notes": "IPauseController + PauseController (thread-safe with SemaphoreSlim + lock). Wired into WorkflowOrchestrator pause gate (WaitIfPausedAsync before each step). TuiApplication.TogglePause calls _pauseController.Toggle(). IPauseController registered in DI. Auto-saves on pause. 14 PauseController tests + 5 orchestrator pause tests. All 1748 tests pass."
   },
   {
     "id": "JOB-038",

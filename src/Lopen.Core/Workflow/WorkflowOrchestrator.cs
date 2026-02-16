@@ -33,6 +33,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IFailureHandler? _failureHandler;
     private readonly IBudgetEnforcer? _budgetEnforcer;
     private readonly IPlanManager? _planManager;
+    private readonly IPauseController? _pauseController;
     private readonly WorkflowOptions? _workflowOptions;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
@@ -59,6 +60,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IFailureHandler? failureHandler = null,
         IBudgetEnforcer? budgetEnforcer = null,
         IPlanManager? planManager = null,
+        IPauseController? pauseController = null,
         WorkflowOptions? workflowOptions = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
@@ -79,6 +81,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _failureHandler = failureHandler;
         _budgetEnforcer = budgetEnforcer;
         _planManager = planManager;
+        _pauseController = pauseController;
         _workflowOptions = workflowOptions;
     }
 
@@ -127,6 +130,17 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         while (!_engine.IsComplete && !cancellationToken.IsCancellationRequested)
         {
+            // Wait if paused by user (TUI-41: Ctrl+P pause gate)
+            if (_pauseController is not null && _pauseController.IsPaused)
+            {
+                _logger.LogInformation("Execution paused — waiting for resume");
+                await _renderer.RenderResultAsync("Paused — press Ctrl+P to resume");
+                await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
+                await _pauseController.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation("Execution resumed");
+                await _renderer.RenderResultAsync("Resumed");
+            }
+
             var stepResult = await RunStepAsync(moduleName, cancellationToken: cancellationToken);
 
             if (!stepResult.Success)
