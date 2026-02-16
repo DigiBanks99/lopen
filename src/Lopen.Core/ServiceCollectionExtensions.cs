@@ -34,8 +34,11 @@ public static class ServiceCollectionExtensions
                     sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ModuleScanner>>(),
                     projectRoot));
             services.AddSingleton<IModuleLister, ModuleLister>();
+            services.AddSingleton<IStateAssessor, CodebaseStateAssessor>();
+            services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
         }
 
+        services.AddSingleton<IPhaseTransitionController, PhaseTransitionController>();
         services.AddSingleton<ISpecificationParser, MarkdigSpecificationParser>();
         services.AddSingleton<IContentHasher, XxHashContentHasher>();
         services.AddSingleton<IDriftDetector, DriftDetector>();

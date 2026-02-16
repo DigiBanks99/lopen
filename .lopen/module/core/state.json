@@ -70,7 +70,16 @@
         "JOB-077"
       ],
       "notes": "HeadlessRenderer writes to stdout/stderr. PromptAsync returns null (non-interactive). Registered as default in DI via TryAddSingleton."
+    },
+    "di_registration": {
+      "status": "complete",
+      "implementation": "AddLopenCore() registers IWorkflowEngine, IStateAssessor, IPhaseTransitionController",
+      "tests": "ServiceCollectionExtensionsTests (14 tests)",
+      "jobs": [
+        "JOB-001"
+      ],
+      "notes": "IStateAssessor and IWorkflowEngine conditional on projectRoot (depend on IFileSystem, IModuleScanner). IPhaseTransitionController registered unconditionally."
     }
   },
-  "last_updated": "2026-02-16T10:00:00Z"
+  "last_updated": "2026-02-16T16:30:00Z"
 }

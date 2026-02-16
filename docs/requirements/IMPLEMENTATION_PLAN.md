@@ -1,26 +1,42 @@
 # Implementation Plan
 
-## Current Status: All Jobs Complete
+## Current Job: JOB-001 — Register Core Workflow Services in DI
 
-**Status**: ✅ All 100 jobs completed  
+**Module**: core · **Requirement**: CORE-02
 
-### Recently Completed Jobs
+### Goal
 
-| Job | Module | Description |
-|-----|--------|-------------|
-| JOB-100 | otel | OTLP export, Aspire Dashboard AppHost |
-| JOB-099 | otel | OTEL span hierarchy (9 span types) |
-| JOB-098 | tui | Comprehensive TUI unit tests (256 tests) |
-| JOB-097 | tui | Component gallery with self-registration |
-| JOB-092 | tui | Keyboard shortcuts (Tab, Ctrl+P, 1-9, expand) |
-| JOB-096 | tui | Slash command registry (8 default commands) |
-| JOB-095 | tui | Color palette, Unicode/ASCII fallbacks, NO_COLOR |
-| JOB-094 | tui | Spinner async feedback with progress |
-| JOB-093 | tui | Confirmation + error modals |
-| JOB-091 | tui | File picker, module selection modal |
-| JOB-090 | tui | Tool output: diff viewer, phase transition, research |
-| JOB-089 | tui | Landing page + session resume modals |
+Register `IWorkflowEngine`, `IStateAssessor`, and `IPhaseTransitionController` in the DI container via `AddLopenCore()`.
 
-### No Remaining Jobs
+### DI Registrations
 
-All jobs from jobs-to-be-done.json are complete.
+**File**: `src/Lopen.Core/ServiceCollectionExtensions.cs`
+
+| Interface | Implementation | Lifetime | Conditional |
+|-----------|---------------|----------|-------------|
+| `IPhaseTransitionController` | `PhaseTransitionController` | Singleton | No — only needs `ILogger` |
+| `IStateAssessor` | `CodebaseStateAssessor` | Singleton | Yes — needs `IFileSystem` + `IModuleScanner` |
+| `IWorkflowEngine` | `WorkflowEngine` | Singleton | Yes — needs `IStateAssessor` |
+
+- `IPhaseTransitionController` goes in the **unconditional** (always) block.
+- `IStateAssessor` and `IWorkflowEngine` go inside the **`projectRoot` guard** block, since `CodebaseStateAssessor` depends on `IFileSystem` and `IModuleScanner` which are only registered when `projectRoot` is provided.
+
+### Tests
+
+**File**: `tests/Lopen.Core.Tests/ServiceCollectionExtensionsTests.cs`
+
+| Test | Validates |
+|------|-----------|
+| `AddLopenCore_WithProjectRoot_RegistersWorkflowEngine` | `IWorkflowEngine` resolves when projectRoot given |
+| `AddLopenCore_WithProjectRoot_RegistersStateAssessor` | `IStateAssessor` resolves when projectRoot given |
+| `AddLopenCore_RegistersPhaseTransitionController` | `IPhaseTransitionController` resolves unconditionally |
+| `AddLopenCore_WorkflowEngine_IsSingleton` | Same instance returned on repeated resolve |
+| `AddLopenCore_WithoutProjectRoot_DoesNotRegisterWorkflowEngine` | `IWorkflowEngine` is not registered without projectRoot |
+
+### Upcoming Priority Jobs
+
+| Job | Description |
+|-----|-------------|
+| JOB-002 | Implement main orchestration loop |
+| JOB-003 | Implement tool handlers for LLM tools |
+| JOB-004–007 | Wire CLI commands to workflow engine |

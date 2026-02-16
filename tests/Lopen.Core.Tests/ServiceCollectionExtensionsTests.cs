@@ -114,6 +114,88 @@ public class ServiceCollectionExtensionsTests
         Assert.IsType<HeadlessRenderer>(service);
     }
 
+    [Fact]
+    public void AddLopenCore_RegistersPhaseTransitionController()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddLopenCore();
+
+        var provider = services.BuildServiceProvider();
+        var service = provider.GetService<IPhaseTransitionController>();
+
+        Assert.NotNull(service);
+    }
+
+    [Fact]
+    public void AddLopenCore_WithProjectRoot_RegistersWorkflowEngine()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddLopenCore(projectRoot: "/tmp");
+
+        var provider = services.BuildServiceProvider();
+        var service = provider.GetService<IWorkflowEngine>();
+
+        Assert.NotNull(service);
+    }
+
+    [Fact]
+    public void AddLopenCore_WithProjectRoot_RegistersStateAssessor()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddLopenCore(projectRoot: "/tmp");
+
+        var provider = services.BuildServiceProvider();
+        var service = provider.GetService<IStateAssessor>();
+
+        Assert.NotNull(service);
+    }
+
+    [Fact]
+    public void AddLopenCore_WorkflowEngine_IsSingleton()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddLopenCore(projectRoot: "/tmp");
+
+        var provider = services.BuildServiceProvider();
+        var engine1 = provider.GetService<IWorkflowEngine>();
+        var engine2 = provider.GetService<IWorkflowEngine>();
+
+        Assert.Same(engine1, engine2);
+    }
+
+    [Fact]
+    public void AddLopenCore_WithoutProjectRoot_DoesNotRegisterWorkflowEngine()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddLopenCore();
+
+        var provider = services.BuildServiceProvider();
+        var service = provider.GetService<IWorkflowEngine>();
+
+        Assert.Null(service);
+    }
+
+    [Fact]
+    public void AddLopenCore_WithoutProjectRoot_DoesNotRegisterStateAssessor()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddLopenCore();
+
+        var provider = services.BuildServiceProvider();
+        var service = provider.GetService<IStateAssessor>();
+
+        Assert.Null(service);
+    }
+
     private sealed class StubFileSystem : Lopen.Storage.IFileSystem
     {
         public void CreateDirectory(string path) { }
