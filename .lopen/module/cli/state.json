@@ -1,0 +1,15 @@
+{
+  "module": "cli",
+  "description": "CLI command interface and entry point",
+  "status": "in_progress",
+  "components": {
+    "auth_commands": {
+      "status": "complete",
+      "implementation": "AuthCommand (login/status/logout subcommands)",
+      "tests": "AuthCommandTests (8 tests)",
+      "jobs": ["JOB-079"],
+      "notes": "Closure-captured IServiceProvider pattern. TextWriter injection for testability. Wired in Program.cs."
+    }
+  },
+  "last_updated": "2026-02-16T04:15:00Z"
+}

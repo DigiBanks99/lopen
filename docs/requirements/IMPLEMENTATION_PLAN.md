@@ -1,68 +1,93 @@
 # Implementation Plan
 
-## Current Job: JOB-018 — Automatic Token Renewal and Failed Renewal Handling
+## Current Job: JOB-079 — Implement `lopen auth` CLI Subcommands
 
-**Module**: llm (with touches to core/storage interfaces)  
-**Priority**: P1  
-**Description**: Implement automatic token renewal via SDK's `OnErrorOccurred` hook. Transparently retry on 401/403 when recoverable; trigger critical error, save session state, and inform user when renewal fails.
+**Module**: cli  
+**Priority**: P4  
+**Description**: Implement `lopen auth login`, `lopen auth status`, and `lopen auth logout` subcommands wired to the Auth module's `IAuthService`. This is the first CLI command implementation and establishes the command pattern for all future commands.
 
 ### Acceptance Criteria
 
-- AC1: Automatic token renewal transparently refreshes expired credentials during active sessions
-- AC2: Failed automatic renewal (revoked token) triggers a critical error, saves session state, and informs the user
+- AC1: `lopen auth login` initiates the Copilot SDK device flow via `IAuthService.LoginAsync`
+- AC2: `lopen auth status` reports current authentication state via `IAuthService.GetStatusAsync`
+- AC3: `lopen auth logout` clears SDK-managed credentials via `IAuthService.LogoutAsync`
+- AC4: Exit code 0 on success, 1 on failure for all auth subcommands
+- AC5: The CLI command pattern (closure-captured `IServiceProvider`, thin handlers) is established and reusable
 
 ### Tasks
 
-- [ ] **1. Define `ISessionStateSaver`** in `Lopen.Llm` — single-method callback interface (`SaveAsync(CancellationToken)`) to decouple from `Lopen.Storage`. This avoids a circular dependency; the host wires the real `ISessionManager.SaveSessionStateAsync` call at composition root.
-- [ ] **2. Define `IAuthErrorHandler`** in `Lopen.Llm` — interface with `Task<ErrorOccurredHookOutput> HandleAuthErrorAsync(ErrorOccurredHookInput input)`.
-- [ ] **3. Implement `AuthErrorHandler`** in `Lopen.Llm`:
-  - Inject `IFailureHandler`, `ISessionStateSaver`, `ILogger<AuthErrorHandler>`.
-  - **Detect auth errors**: status 401/403 in `input.Error` text (SDK serialises status into the error string) or keywords like `"unauthorized"`, `"forbidden"`, `"auth"`.
-  - **Recoverable path** (AC1): Return `ErrorHandling = "retry"` with a max retry count of 1 (SDK handles the actual token refresh on retry).
-  - **Non-recoverable path** (AC2): Call `IFailureHandler.RecordCriticalError()`, call `ISessionStateSaver.SaveAsync()`, return `ErrorHandling = "abort"` with `UserNotification` message explaining the auth failure.
-  - **Non-auth errors**: Return `ErrorHandling = "skip"` to let existing error handling in `CopilotLlmService` deal with them.
-  - Track retry attempts per session to prevent infinite retry loops (simple counter reset per `HandleAuthErrorAsync` sequence).
-- [ ] **4. Wire `OnErrorOccurred` hook in `CopilotLlmService.cs`** — set `config.Hooks` when constructing `SessionConfig` (~line 60). Delegate to injected `IAuthErrorHandler`. Add `IAuthErrorHandler` as a constructor dependency.
-- [ ] **5. Register in DI** (`Lopen.Llm/ServiceCollectionExtensions.cs`):
-  - `TryAddSingleton<ISessionStateSaver, NullSessionStateSaver>` (no-op default; host overrides).
-  - `AddSingleton<IAuthErrorHandler, AuthErrorHandler>`.
-- [ ] **6. Wire `ISessionStateSaver` at composition root** — in the CLI host's DI setup, register a real implementation that delegates to `ISessionManager.SaveSessionStateAsync` with the active session ID.
-- [ ] **7. Write unit tests** (`Lopen.Llm.Tests`):
-  - `AuthErrorHandlerTests.cs`: auth error detected → retry (AC1), non-recoverable → critical error + save + abort (AC2), non-auth error → skip, retry count capped at 1.
-  - `CopilotLlmServiceTests.cs`: verify `OnErrorOccurred` hook is set on `SessionConfig`.
-  - AC-mapped tests in `LlmAcceptanceCriteriaTests.cs` if pattern is followed.
-- [ ] **8. Validate** — `dotnet build` and `dotnet test` pass.
+- [x] **1. Create `AuthCommand.cs`** in `src/Lopen/Commands/` — static factory method that builds the `auth` parent `Command` with three subcommands (`login`, `status`, `logout`). Each subcommand's `SetAction` resolves `IAuthService` from the closure-captured `IServiceProvider` and delegates to the corresponding method. Returns exit code 0 on success, 1 on exception.
+- [x] **2. Update `Program.cs`** — add `auth` command to `rootCommand` via `rootCommand.Add(AuthCommand.Create(host.Services))`. Import `Lopen.Commands` namespace.
+- [x] **3. Format status output** — `lopen auth status` writes State, Source, User (if present), Error (if present) to stdout.
+- [x] **4. Write unit tests** in `tests/Lopen.Cli.Tests/Commands/AuthCommandTests.cs` — 8 tests covering login/status/logout success and failure paths with FakeAuthService.
+- [x] **5. Validate** — `dotnet build` and `dotnet test` pass (391 tests total).
 
 ### Design Decisions
 
 | Decision | Rationale |
 |----------|-----------|
-| `ISessionStateSaver` callback in Llm module | Avoids Llm→Storage dependency; composition root wires the real impl |
-| Max 1 retry for auth errors | SDK refreshes the token on retry; more than 1 retry means the token is truly revoked |
-| String-match on error text for 401/403 | SDK exposes errors as strings in `ErrorOccurredHookInput.Error`; no typed status code available |
-| `TryAddSingleton` for `ISessionStateSaver` | Allows host to override the no-op default; matches existing DI pattern for `IGitHubTokenProvider` |
-| Non-auth errors return "skip" | Preserves existing catch-and-wrap-to-`LlmException` behavior in `CopilotLlmService` |
+| Closure-captured `IServiceProvider` | `System.CommandLine.Hosting` integration is deprecated in 2.0.0-beta5; passing the provider via closure is the simplest pattern that works with `SetAction` |
+| Static factory `AuthCommand.Create(IServiceProvider)` | Keeps command construction testable and separate from `Program.cs`; returns a fully-configured `Command` |
+| `src/Lopen/Commands/` directory | Groups CLI command definitions; mirrors the convention of one file per command group |
+| Thin handlers, all logic in `IAuthService` | CLI layer is a pass-through; no business logic in command handlers. Matches the spec's "thin CLI commands" principle |
+| `Console.Out` for status output (no `IConsole`) | Auth commands don't need TUI; simple console writes are sufficient and avoid unnecessary abstraction at this stage |
+| Hand-rolled `FakeAuthService` | Matches existing test patterns (no mocking library); fake can record calls and return canned results |
+| Test via `CommandLineConfiguration.InvokeAsync` | Tests the full command parsing + dispatch pipeline, not just handler methods |
 
 ### Files to Create/Modify
 
 | File | Action |
 |------|--------|
-| `src/Lopen.Llm/ISessionStateSaver.cs` | Create interface |
-| `src/Lopen.Llm/NullSessionStateSaver.cs` | Create no-op default |
-| `src/Lopen.Llm/IAuthErrorHandler.cs` | Create interface |
-| `src/Lopen.Llm/AuthErrorHandler.cs` | Create implementation |
-| `src/Lopen.Llm/CopilotLlmService.cs` | Add `IAuthErrorHandler` dep, wire `Hooks.OnErrorOccurred` |
-| `src/Lopen.Llm/ServiceCollectionExtensions.cs` | Register new services |
-| `tests/Lopen.Llm.Tests/AuthErrorHandlerTests.cs` | Create tests |
-| `tests/Lopen.Llm.Tests/CopilotLlmServiceTests.cs` | Add hook-wiring test |
+| `src/Lopen/Commands/AuthCommand.cs` | **Create** — `auth` parent command with `login`, `status`, `logout` subcommands |
+| `src/Lopen/Program.cs` | **Modify** — wire `AuthCommand.Create(host.Services)` into `rootCommand` |
+| `tests/Lopen.Cli.Tests/Commands/AuthCommandTests.cs` | **Create** — unit/integration tests for all three subcommands |
+| `tests/Lopen.Cli.Tests/Fakes/FakeAuthService.cs` | **Create** — hand-rolled test double for `IAuthService` |
+
+### Command Pattern Reference
+
+This is the pattern all future CLI commands should follow:
+
+```csharp
+// src/Lopen/Commands/AuthCommand.cs
+public static class AuthCommand
+{
+    public static Command Create(IServiceProvider services)
+    {
+        var auth = new Command("auth", "Manage authentication");
+
+        var login = new Command("login", "Authenticate via Copilot SDK device flow");
+        login.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var authService = services.GetRequiredService<IAuthService>();
+            try
+            {
+                await authService.LoginAsync(cancellationToken);
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex.Message);
+                return 1;
+            }
+        });
+
+        auth.AddCommand(login);
+        // ... status, logout follow same pattern
+        return auth;
+    }
+}
+```
+
+```csharp
+// Program.cs addition
+rootCommand.AddCommand(AuthCommand.Create(host.Services));
+```
 
 ### Recently Completed Jobs
 
-| Job | Module | Description | Tests |
-|-----|--------|-------------|-------|
-| JOB-057 | llm | LLM AC tests (all 14 ACs) | 22 tests |
-| JOB-101 | llm | Fix IsPremiumModel for -mini variants | bugfix |
-| JOB-052 | llm | Task status rejection gate | 14 tests |
-| JOB-029 | configuration | Config passthrough | 12 tests |
-| JOB-047 | llm | Fresh context window | 2 tests |
-| JOB-046 | llm | Copilot SDK auth | 30 tests |
+| Job | Module | Description |
+|-----|--------|-------------|
+| JOB-079 | cli | Auth CLI subcommands (login/status/logout) |
+| JOB-075 | core | Core AC tests (all 24 ACs) |
+| JOB-018 | llm | Automatic token renewal and failed renewal handling |
+| JOB-057 | llm | LLM AC tests (all 14 ACs) |

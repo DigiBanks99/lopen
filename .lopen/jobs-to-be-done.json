@@ -629,9 +629,10 @@
     "id": "JOB-079",
     "requirement_module": "cli",
     "description": "Implement lopen auth login/status/logout subcommands wired to Auth module",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: Auth subcommands invoke auth module correctly"
+    "notes": "Auth subcommands (login/status/logout) implemented with closure-captured IServiceProvider pattern. 8 tests covering all ACs.",
+    "completed_date": "2026-02-16T04:15:00Z"
   },
   {
     "id": "JOB-080",
