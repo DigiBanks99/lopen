@@ -678,9 +678,9 @@
     "id": "JOB-085",
     "requirement_module": "tui",
     "description": "Implement top panel with logo, version, model, context usage, premium requests, git branch, auth status, phase, step",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: Top panel displays all required status information including phase/step visualization"
+    "notes": "TopPanelComponent renders logo, version, model, context (humanized), premium, git branch, auth, phase/step indicator. 34 tests."
   },
   {
     "id": "JOB-086",

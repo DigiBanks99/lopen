@@ -10,6 +10,13 @@
       "jobs": ["JOB-084"],
       "notes": "Pure calculation logic. Activity 50-80% clamped. Header/prompt fixed heights. Body height clamped to 0 minimum."
     },
+    "top_panel": {
+      "status": "complete",
+      "implementation": "TopPanelComponent + TopPanelData",
+      "tests": "TopPanelComponentTests (34 tests)",
+      "jobs": ["JOB-085"],
+      "notes": "Renders logo, version, model, context usage (humanized), premium requests, git branch, auth status, phase/step indicator. Supports --no-logo."
+    },
     "component_gallery": {
       "status": "complete",
       "implementation": "ComponentGallery (in-memory registry) + ITuiComponent interface",
@@ -23,5 +30,5 @@
       "notes": "Implements ITuiApplication lifecycle interface."
     }
   },
-  "last_updated": "2026-02-16T11:00:00Z"
+  "last_updated": "2026-02-16T13:00:00Z"
 }
