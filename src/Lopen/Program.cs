@@ -18,6 +18,7 @@ builder.Services.AddLopenStorage();
 builder.Services.AddLopenLlm();
 builder.Services.AddLopenTui();
 builder.Services.UseRealTui();
+builder.Services.AddTopPanelDataProvider();
 
 using var host = builder.Build();
 

@@ -56,4 +56,15 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITuiApplication>(sp => sp.GetRequiredService<TuiApplication>());
         return services;
     }
+
+    /// <summary>
+    /// Registers <see cref="TopPanelDataProvider"/> to supply live data to the top panel.
+    /// Requires ITokenTracker, IGitService, IAuthService, IWorkflowEngine, and IModelSelector
+    /// to be registered. Call after all module registrations.
+    /// </summary>
+    public static IServiceCollection AddTopPanelDataProvider(this IServiceCollection services)
+    {
+        services.AddSingleton<ITopPanelDataProvider, TopPanelDataProvider>();
+        return services;
+    }
 }

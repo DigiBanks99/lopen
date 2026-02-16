@@ -14,6 +14,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly ContextPanelComponent _contextPanel;
     private readonly PromptAreaComponent _promptArea;
     private readonly KeyboardHandler _keyboardHandler;
+    private readonly ITopPanelDataProvider? _topPanelDataProvider;
     private readonly ILogger<TuiApplication> _logger;
 
     private volatile bool _running;
@@ -30,6 +31,10 @@ internal sealed class TuiApplication : ITuiApplication
     private ContextPanelData _contextData = new();
     private PromptAreaData _promptData = new();
 
+    // Throttle for data provider refresh (avoid calling async services every frame)
+    private DateTime _lastProviderRefresh = DateTime.MinValue;
+    internal static readonly TimeSpan ProviderRefreshInterval = TimeSpan.FromSeconds(1);
+
     public bool IsRunning => _running;
 
     // Allow test injection of the terminal factory
@@ -41,7 +46,8 @@ internal sealed class TuiApplication : ITuiApplication
         ContextPanelComponent contextPanel,
         PromptAreaComponent promptArea,
         KeyboardHandler keyboardHandler,
-        ILogger<TuiApplication> logger)
+        ILogger<TuiApplication> logger,
+        ITopPanelDataProvider? topPanelDataProvider = null)
     {
         _topPanel = topPanel ?? throw new ArgumentNullException(nameof(topPanel));
         _activityPanel = activityPanel ?? throw new ArgumentNullException(nameof(activityPanel));
@@ -49,6 +55,7 @@ internal sealed class TuiApplication : ITuiApplication
         _promptArea = promptArea ?? throw new ArgumentNullException(nameof(promptArea));
         _keyboardHandler = keyboardHandler ?? throw new ArgumentNullException(nameof(keyboardHandler));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _topPanelDataProvider = topPanelDataProvider;
     }
 
     public async Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
@@ -78,10 +85,13 @@ internal sealed class TuiApplication : ITuiApplication
                 // 1. Poll keyboard input
                 DrainKeyboardInput();
 
-                // 2. Render frame
+                // 2. Refresh top panel data from provider (throttled)
+                await RefreshTopPanelDataAsync(ct).ConfigureAwait(false);
+
+                // 3. Render frame
                 renderer.Draw((ctx, _) => RenderFrame(ctx));
 
-                // 3. Yield to avoid busy-wait
+                // 4. Yield to avoid busy-wait
                 await Task.Delay(1, ct).ConfigureAwait(false);
             }
         }
@@ -114,6 +124,29 @@ internal sealed class TuiApplication : ITuiApplication
     /// Updates the top panel data for the next render frame.
     /// </summary>
     public void UpdateTopPanel(TopPanelData data) => _topData = data;
+
+    private async Task RefreshTopPanelDataAsync(CancellationToken cancellationToken)
+    {
+        if (_topPanelDataProvider is null)
+            return;
+
+        var now = DateTime.UtcNow;
+        if (now - _lastProviderRefresh >= ProviderRefreshInterval)
+        {
+            _lastProviderRefresh = now;
+            try
+            {
+                await _topPanelDataProvider.RefreshAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogDebug(ex, "Failed to refresh top panel async data");
+            }
+        }
+
+        // Always read synchronous data (tokens, workflow) fresh each frame
+        _topData = _topPanelDataProvider.GetCurrentData();
+    }
 
     /// <summary>
     /// Updates the activity panel data for the next render frame.

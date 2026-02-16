@@ -155,4 +155,121 @@ public class TuiApplicationTests
             new ContextPanelComponent(), new PromptAreaComponent(),
             null!, NullLogger<TuiApplication>.Instance));
     }
+
+    [Fact]
+    public void Constructor_AcceptsNullDataProvider()
+    {
+        var app = new TuiApplication(
+            new TopPanelComponent(), new ActivityPanelComponent(),
+            new ContextPanelComponent(), new PromptAreaComponent(),
+            new KeyboardHandler(), NullLogger<TuiApplication>.Instance,
+            topPanelDataProvider: null);
+        Assert.False(app.IsRunning);
+    }
+
+    [Fact]
+    public void Constructor_AcceptsDataProvider()
+    {
+        var provider = new StubTopPanelDataProvider();
+        var app = new TuiApplication(
+            new TopPanelComponent(), new ActivityPanelComponent(),
+            new ContextPanelComponent(), new PromptAreaComponent(),
+            new KeyboardHandler(), NullLogger<TuiApplication>.Instance,
+            topPanelDataProvider: provider);
+        Assert.False(app.IsRunning);
+    }
+
+    [Fact]
+    public void AddTopPanelDataProvider_RegistersProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Lopen.Llm.ITokenTracker, StubTokenTracker>();
+        services.AddSingleton<Lopen.Core.Git.IGitService, StubGitService>();
+        services.AddSingleton<Lopen.Auth.IAuthService, StubAuthService>();
+        services.AddSingleton<Lopen.Core.Workflow.IWorkflowEngine, StubWorkflowEngine>();
+        services.AddSingleton<Lopen.Llm.IModelSelector, StubModelSelector>();
+        services.AddTopPanelDataProvider();
+
+        using var provider = services.BuildServiceProvider();
+        var dataProvider = provider.GetService<ITopPanelDataProvider>();
+
+        Assert.NotNull(dataProvider);
+        Assert.IsType<TopPanelDataProvider>(dataProvider);
+    }
+
+    [Fact]
+    public void ProviderRefreshInterval_IsOneSecond()
+    {
+        Assert.Equal(TimeSpan.FromSeconds(1), TuiApplication.ProviderRefreshInterval);
+    }
+
+    // --- Test stubs ---
+
+    private sealed class StubTopPanelDataProvider : ITopPanelDataProvider
+    {
+        public int GetCurrentDataCallCount { get; private set; }
+        public int RefreshCallCount { get; private set; }
+
+        public TopPanelData GetCurrentData()
+        {
+            GetCurrentDataCallCount++;
+            return new TopPanelData { Version = "1.0.0", ModelName = "stub-model" };
+        }
+
+        public Task RefreshAsync(CancellationToken cancellationToken = default)
+        {
+            RefreshCallCount++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class StubTokenTracker : Lopen.Llm.ITokenTracker
+    {
+        public void RecordUsage(Lopen.Llm.TokenUsage usage) { }
+        public Lopen.Llm.SessionTokenMetrics GetSessionMetrics() => new();
+        public void ResetSession() { }
+    }
+
+    private sealed class StubGitService : Lopen.Core.Git.IGitService
+    {
+        public Task<Lopen.Core.Git.GitResult> CommitAllAsync(string m, CancellationToken ct = default) =>
+            Task.FromResult(new Lopen.Core.Git.GitResult(0, "", ""));
+        public Task<Lopen.Core.Git.GitResult> CreateBranchAsync(string b, CancellationToken ct = default) =>
+            Task.FromResult(new Lopen.Core.Git.GitResult(0, "", ""));
+        public Task<Lopen.Core.Git.GitResult> ResetToCommitAsync(string s, CancellationToken ct = default) =>
+            Task.FromResult(new Lopen.Core.Git.GitResult(0, "", ""));
+        public Task<DateTimeOffset?> GetLastCommitDateAsync(CancellationToken ct = default) =>
+            Task.FromResult<DateTimeOffset?>(null);
+        public Task<string> GetDiffAsync(CancellationToken ct = default) => Task.FromResult("");
+        public Task<string?> GetCurrentCommitShaAsync(CancellationToken ct = default) =>
+            Task.FromResult<string?>(null);
+        public Task<string?> GetCurrentBranchAsync(CancellationToken ct = default) =>
+            Task.FromResult<string?>("main");
+    }
+
+    private sealed class StubAuthService : Lopen.Auth.IAuthService
+    {
+        public Task LoginAsync(CancellationToken ct = default) => Task.CompletedTask;
+        public Task LogoutAsync(CancellationToken ct = default) => Task.CompletedTask;
+        public Task<Lopen.Auth.AuthStatusResult> GetStatusAsync(CancellationToken ct = default) =>
+            Task.FromResult(new Lopen.Auth.AuthStatusResult(Lopen.Auth.AuthState.Authenticated, Lopen.Auth.AuthCredentialSource.SdkCredentials));
+        public Task ValidateAsync(CancellationToken ct = default) => Task.CompletedTask;
+    }
+
+    private sealed class StubWorkflowEngine : Lopen.Core.Workflow.IWorkflowEngine
+    {
+        public Lopen.Core.Workflow.WorkflowStep CurrentStep => Lopen.Core.Workflow.WorkflowStep.DraftSpecification;
+        public Lopen.Llm.WorkflowPhase CurrentPhase => Lopen.Llm.WorkflowPhase.RequirementGathering;
+        public bool IsComplete => false;
+        public Task InitializeAsync(string m, CancellationToken ct = default) => Task.CompletedTask;
+        public bool Fire(Lopen.Core.Workflow.WorkflowTrigger t) => true;
+        public IReadOnlyList<Lopen.Core.Workflow.WorkflowTrigger> GetPermittedTriggers() => [];
+    }
+
+    private sealed class StubModelSelector : Lopen.Llm.IModelSelector
+    {
+        public Lopen.Llm.ModelFallbackResult SelectModel(Lopen.Llm.WorkflowPhase phase) =>
+            new("stub-model", false);
+    }
 }

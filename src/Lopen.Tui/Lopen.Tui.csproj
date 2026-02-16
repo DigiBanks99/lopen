@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Lopen.Auth\Lopen.Auth.csproj" />
     <ProjectReference Include="..\Lopen.Configuration\Lopen.Configuration.csproj" />
     <ProjectReference Include="..\Lopen.Core\Lopen.Core.csproj" />
     <ProjectReference Include="..\Lopen.Llm\Lopen.Llm.csproj" />
