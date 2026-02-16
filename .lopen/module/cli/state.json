@@ -35,17 +35,24 @@
     },
     "global_options": {
       "status": "complete",
-      "implementation": "GlobalOptions (--headless/--quiet/-q, --prompt/-p) + ExitCodes (0/1/2)",
+      "implementation": "GlobalOptions (--headless/--quiet/-q, --prompt/-p, --resume, --no-resume) + ExitCodes (0/1/2)",
       "tests": "GlobalOptionsTests (6 tests)",
       "jobs": ["JOB-082"]
+    },
+    "root_command": {
+      "status": "complete",
+      "implementation": "RootCommandHandler (launches TUI, headless validation, session resume)",
+      "tests": "RootCommandTests (10 tests)",
+      "jobs": ["JOB-076"],
+      "notes": "Root command launches ITuiApplication.RunAsync(). AddLopenTui() wired in Program.cs DI."
     },
     "integration_tests": {
       "status": "complete",
       "implementation": "CliIntegrationTests covering DI wiring, command registration, global flags",
       "tests": "CliIntegrationTests (12 tests)",
       "jobs": ["JOB-083"],
-      "notes": "20/25 ACs covered. TUI, CI-level, and full E2E workflow ACs deferred."
+      "notes": "Updated to include AddLopenTui() and RootCommandHandler. 21/25 ACs covered."
     }
   },
-  "last_updated": "2026-02-16T08:00:00Z"
+  "last_updated": "2026-02-16T12:00:00Z"
 }

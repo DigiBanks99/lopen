@@ -15,6 +15,7 @@
     <ProjectReference Include="..\Lopen.Core\Lopen.Core.csproj" />
     <ProjectReference Include="..\Lopen.Llm\Lopen.Llm.csproj" />
     <ProjectReference Include="..\Lopen.Storage\Lopen.Storage.csproj" />
+    <ProjectReference Include="..\Lopen.Tui\Lopen.Tui.csproj" />
   </ItemGroup>
 
 </Project>

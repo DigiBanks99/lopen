@@ -165,7 +165,12 @@ public static class PhaseCommands
         if (!headless || !string.IsNullOrWhiteSpace(prompt))
             return null;
 
-        var sessionManager = services.GetRequiredService<ISessionManager>();
+        var sessionManager = services.GetService<ISessionManager>();
+        if (sessionManager is null)
+        {
+            await stderr.WriteLineAsync("Headless mode requires --prompt or an active session. Run with --prompt <text> or start a session first.");
+            return ExitCodes.Failure;
+        }
         var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
         if (latestId is null)
         {

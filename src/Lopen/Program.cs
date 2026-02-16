@@ -5,6 +5,7 @@ using Lopen.Configuration;
 using Lopen.Core;
 using Lopen.Llm;
 using Lopen.Storage;
+using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -15,16 +16,14 @@ builder.Services.AddLopenAuth();
 builder.Services.AddLopenCore();
 builder.Services.AddLopenStorage();
 builder.Services.AddLopenLlm();
+builder.Services.AddLopenTui();
 
 using var host = builder.Build();
 
 var rootCommand = new RootCommand("Lopen — AI-powered software engineering workflow");
 GlobalOptions.AddTo(rootCommand);
 
-rootCommand.SetAction((_) =>
-{
-    Console.WriteLine("Lopen CLI is ready.");
-});
+RootCommandHandler.Configure(host.Services)(rootCommand);
 
 rootCommand.Add(AuthCommand.Create(host.Services));
 rootCommand.Add(SessionCommand.Create(host.Services));

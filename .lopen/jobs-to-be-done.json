@@ -605,9 +605,9 @@
     "id": "JOB-076",
     "requirement_module": "cli",
     "description": "Implement root command (lopen) starting TUI with full workflow and session resume offer",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: lopen starts TUI with full workflow; offers session resume if active session exists"
+    "notes": "Root command launches ITuiApplication.RunAsync(). Headless validation, session resume, --no-resume all wired. 10 tests."
   },
   {
     "id": "JOB-077",

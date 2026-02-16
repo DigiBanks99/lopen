@@ -5,6 +5,7 @@ using Lopen.Configuration;
 using Lopen.Core;
 using Lopen.Llm;
 using Lopen.Storage;
+using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -24,15 +25,13 @@ public class CliIntegrationTests
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
+        builder.Services.AddLopenTui();
         var host = builder.Build();
 
         var output = new StringWriter();
         var rootCommand = new RootCommand("Lopen — AI-powered software engineering workflow");
         GlobalOptions.AddTo(rootCommand);
-        rootCommand.SetAction((_) =>
-        {
-            output.WriteLine("Lopen CLI is ready.");
-        });
+        RootCommandHandler.Configure(host.Services, output)(rootCommand);
 
         rootCommand.Add(AuthCommand.Create(host.Services, output));
         rootCommand.Add(SessionCommand.Create(host.Services, output));
@@ -56,6 +55,7 @@ public class CliIntegrationTests
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
+        builder.Services.AddLopenTui();
 
         using var host = builder.Build();
 
@@ -73,7 +73,6 @@ public class CliIntegrationTests
         var exitCode = await config.InvokeAsync([]);
 
         Assert.Equal(0, exitCode);
-        Assert.Contains("Lopen CLI is ready", output.ToString());
     }
 
     // ==================== Command Registration ====================

@@ -1,0 +1,266 @@
+using System.CommandLine;
+using Lopen.Auth;
+using Lopen.Commands;
+using Lopen.Configuration;
+using Lopen.Core;
+using Lopen.Llm;
+using Lopen.Storage;
+using Lopen.Tui;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+namespace Lopen.Cli.Tests.Commands;
+
+/// <summary>
+/// Tests for the root command handler (lopen with no subcommand).
+/// Covers AC-1: root command starts TUI with full workflow and session resume offer.
+/// </summary>
+public class RootCommandTests
+{
+    private static (CommandLineConfiguration config, StringWriter output, StringWriter error, FakeTuiApplication tui) CreateConfig(
+        ISessionManager? sessionManager = null)
+    {
+        var builder = Host.CreateApplicationBuilder([]);
+        builder.Services.AddLopenConfiguration();
+        builder.Services.AddLopenAuth();
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage();
+        builder.Services.AddLopenLlm();
+
+        var fakeTui = new FakeTuiApplication();
+        builder.Services.AddSingleton<ITuiApplication>(fakeTui);
+
+        if (sessionManager is not null)
+            builder.Services.AddSingleton(sessionManager);
+
+        var host = builder.Build();
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+
+        var rootCommand = new RootCommand("Lopen — test");
+        GlobalOptions.AddTo(rootCommand);
+        RootCommandHandler.Configure(host.Services, output, error)(rootCommand);
+
+        return (new CommandLineConfiguration(rootCommand), output, error, fakeTui);
+    }
+
+    // ==================== AC-1: Root command launches TUI ====================
+
+    [Fact]
+    public async Task RootCommand_NoArgs_LaunchesTui()
+    {
+        var (config, output, _, tui) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync([]);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(tui.RunWasCalled, "ITuiApplication.RunAsync should be called");
+    }
+
+    [Fact]
+    public async Task RootCommand_NoArgs_ReturnsSuccess()
+    {
+        var (config, _, _, _) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync([]);
+
+        Assert.Equal(0, exitCode);
+    }
+
+    // ==================== AC-2: Headless mode ====================
+
+    [Fact]
+    public async Task RootCommand_Headless_WithPrompt_LaunchesTui()
+    {
+        var (config, _, _, tui) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build auth"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(tui.RunWasCalled);
+    }
+
+    [Fact]
+    public async Task RootCommand_Headless_NoPrompt_NoSession_ReturnsFailure()
+    {
+        var (config, _, error, tui) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["--headless"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("--prompt", error.ToString());
+        Assert.False(tui.RunWasCalled, "TUI should not launch when headless validation fails");
+    }
+
+    // ==================== Session resume ====================
+
+    [Fact]
+    public async Task RootCommand_Resume_InvalidId_WithSessionManager_ReturnsFailure()
+    {
+        var sessionManager = new FakeSessionManager();
+        var (config, _, error, tui) = CreateConfig(sessionManager);
+
+        var exitCode = await config.InvokeAsync(["--resume", "bad-id"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Invalid session ID", error.ToString());
+        Assert.False(tui.RunWasCalled);
+    }
+
+    [Fact]
+    public async Task RootCommand_Resume_NoSessionManager_StartsFresh()
+    {
+        var (config, output, _, tui) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["--resume", "bad-id"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(tui.RunWasCalled);
+        Assert.DoesNotContain("Resuming session", output.ToString());
+    }
+
+    [Fact]
+    public async Task RootCommand_NoResume_LaunchesTui_WithoutSession()
+    {
+        var (config, output, _, tui) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["--no-resume"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(tui.RunWasCalled);
+        Assert.DoesNotContain("Resuming session", output.ToString());
+    }
+
+    [Fact]
+    public async Task RootCommand_Resume_WithActiveSession_PrintsResumingMessage()
+    {
+        var sessionManager = new FakeSessionManager();
+        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
+        {
+            SessionId = "testmod-20260101-001",
+            Module = "testmod",
+            Phase = "spec",
+            Step = "1",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await sessionManager.SetLatestAsync(sessionId);
+
+        var (config, output, _, tui) = CreateConfig(sessionManager);
+
+        var exitCode = await config.InvokeAsync(["--resume", "testmod-20260101-001"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("Resuming session", output.ToString());
+        Assert.True(tui.RunWasCalled);
+    }
+
+    // ==================== Error handling ====================
+
+    [Fact]
+    public async Task RootCommand_TuiThrows_ReturnsFailure()
+    {
+        var builder = Host.CreateApplicationBuilder([]);
+        builder.Services.AddLopenConfiguration();
+        builder.Services.AddLopenAuth();
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage();
+        builder.Services.AddLopenLlm();
+
+        var failTui = new ThrowingTuiApplication();
+        builder.Services.AddSingleton<ITuiApplication>(failTui);
+        var host = builder.Build();
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var rootCommand = new RootCommand("Lopen — test");
+        GlobalOptions.AddTo(rootCommand);
+        RootCommandHandler.Configure(host.Services, output, error)(rootCommand);
+
+        var exitCode = await new CommandLineConfiguration(rootCommand).InvokeAsync([]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("TUI startup failed", error.ToString());
+    }
+
+    // ==================== Test Fakes ====================
+
+    private sealed class FakeTuiApplication : ITuiApplication
+    {
+        public bool RunWasCalled { get; private set; }
+        public bool IsRunning { get; private set; }
+
+        public Task RunAsync(CancellationToken cancellationToken = default)
+        {
+            RunWasCalled = true;
+            IsRunning = true;
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync()
+        {
+            IsRunning = false;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ThrowingTuiApplication : ITuiApplication
+    {
+        public bool IsRunning => false;
+
+        public Task RunAsync(CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("TUI startup failed");
+
+        public Task StopAsync() => Task.CompletedTask;
+    }
+
+    private sealed class FakeSessionManager : ISessionManager
+    {
+        private readonly Dictionary<SessionId, SessionState> _sessions = new();
+        private SessionId? _latest;
+
+        public Task<SessionId> CreateSessionAsync(string module, CancellationToken ct = default)
+            => Task.FromResult(SessionId.TryParse($"{module}-20260101-001")!);
+
+        public Task<SessionId?> GetLatestSessionIdAsync(CancellationToken ct = default)
+            => Task.FromResult(_latest);
+
+        public Task SetLatestAsync(SessionId id, CancellationToken ct = default)
+        {
+            _latest = id;
+            return Task.CompletedTask;
+        }
+
+        public Task SaveSessionStateAsync(SessionId id, SessionState state, CancellationToken ct = default)
+        {
+            _sessions[id] = state;
+            return Task.CompletedTask;
+        }
+
+        public Task<SessionState?> LoadSessionStateAsync(SessionId id, CancellationToken ct = default)
+            => Task.FromResult(_sessions.TryGetValue(id, out var s) ? s : null);
+
+        public Task<SessionMetrics?> LoadSessionMetricsAsync(SessionId id, CancellationToken ct = default)
+            => Task.FromResult<SessionMetrics?>(null);
+
+        public Task SaveSessionMetricsAsync(SessionId id, SessionMetrics metrics, CancellationToken ct = default)
+            => Task.CompletedTask;
+
+        public Task<IReadOnlyList<SessionId>> ListSessionsAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<SessionId>>([]);
+
+        public Task DeleteSessionAsync(SessionId id, CancellationToken ct = default)
+        {
+            _sessions.Remove(id);
+            return Task.CompletedTask;
+        }
+
+        public Task QuarantineCorruptedSessionAsync(SessionId id, CancellationToken ct = default)
+            => Task.CompletedTask;
+
+        public Task<int> PruneSessionsAsync(int retentionCount, CancellationToken ct = default)
+            => Task.FromResult(0);
+    }
+}
