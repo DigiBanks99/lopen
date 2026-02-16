@@ -19,6 +19,7 @@ builder.Services.AddLopenLlm();
 using var host = builder.Build();
 
 var rootCommand = new RootCommand("Lopen — AI-powered software engineering workflow");
+GlobalOptions.AddTo(rootCommand);
 
 rootCommand.SetAction((_) =>
 {

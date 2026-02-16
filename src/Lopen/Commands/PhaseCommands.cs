@@ -17,18 +17,22 @@ public static class PhaseCommands
         var stderr = error ?? Console.Error;
 
         var spec = new Command("spec", "Run the Requirement Gathering phase (step 1)");
-        spec.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
+        spec.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
             try
             {
+                var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
+                if (headlessError is not null)
+                    return headlessError.Value;
+
                 await stdout.WriteLineAsync("Starting requirement gathering phase...");
                 await stdout.WriteLineAsync("Workflow engine not yet wired to CLI. Use the TUI for interactive spec gathering.");
-                return 0;
+                return ExitCodes.Success;
             }
             catch (Exception ex)
             {
                 await stderr.WriteLineAsync(ex.Message);
-                return 1;
+                return ExitCodes.Failure;
             }
         });
 
@@ -41,25 +45,29 @@ public static class PhaseCommands
         var stderr = error ?? Console.Error;
 
         var plan = new Command("plan", "Run the Planning phase (steps 2–5)");
-        plan.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
+        plan.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
             try
             {
+                var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
+                if (headlessError is not null)
+                    return headlessError.Value;
+
                 var validationResult = await ValidateSpecExistsAsync(services, cancellationToken);
                 if (validationResult is not null)
                 {
                     await stderr.WriteLineAsync(validationResult);
-                    return 1;
+                    return ExitCodes.Failure;
                 }
 
                 await stdout.WriteLineAsync("Starting planning phase...");
                 await stdout.WriteLineAsync("Workflow engine not yet wired to CLI. Use the TUI for interactive planning.");
-                return 0;
+                return ExitCodes.Success;
             }
             catch (Exception ex)
             {
                 await stderr.WriteLineAsync(ex.Message);
-                return 1;
+                return ExitCodes.Failure;
             }
         });
 
@@ -72,36 +80,64 @@ public static class PhaseCommands
         var stderr = error ?? Console.Error;
 
         var build = new Command("build", "Run the Building phase (steps 6–7)");
-        build.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
+        build.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
             try
             {
+                var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
+                if (headlessError is not null)
+                    return headlessError.Value;
+
                 var specResult = await ValidateSpecExistsAsync(services, cancellationToken);
                 if (specResult is not null)
                 {
                     await stderr.WriteLineAsync(specResult);
-                    return 1;
+                    return ExitCodes.Failure;
                 }
 
                 var planResult = await ValidatePlanExistsAsync(services, cancellationToken);
                 if (planResult is not null)
                 {
                     await stderr.WriteLineAsync(planResult);
-                    return 1;
+                    return ExitCodes.Failure;
                 }
 
                 await stdout.WriteLineAsync("Starting building phase...");
                 await stdout.WriteLineAsync("Workflow engine not yet wired to CLI. Use the TUI for interactive building.");
-                return 0;
+                return ExitCodes.Success;
             }
             catch (Exception ex)
             {
                 await stderr.WriteLineAsync(ex.Message);
-                return 1;
+                return ExitCodes.Failure;
             }
         });
 
         return build;
+    }
+
+    /// <summary>
+    /// In headless mode, validates that either --prompt is provided or an active session exists.
+    /// Returns an exit code if validation fails, null if valid.
+    /// </summary>
+    internal static async Task<int?> ValidateHeadlessPromptAsync(
+        IServiceProvider services, ParseResult parseResult, TextWriter stderr, CancellationToken cancellationToken)
+    {
+        var headless = parseResult.GetValue(GlobalOptions.Headless);
+        var prompt = parseResult.GetValue(GlobalOptions.Prompt);
+
+        if (!headless || !string.IsNullOrWhiteSpace(prompt))
+            return null;
+
+        var sessionManager = services.GetRequiredService<ISessionManager>();
+        var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
+        if (latestId is null)
+        {
+            await stderr.WriteLineAsync("Headless mode requires --prompt or an active session. Run with --prompt <text> or start a session first.");
+            return ExitCodes.Failure;
+        }
+
+        return null;
     }
 
     /// <summary>

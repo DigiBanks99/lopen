@@ -37,6 +37,7 @@ public class PhaseCommandTests
         var error = new StringWriter();
 
         var root = new RootCommand("test");
+        GlobalOptions.AddTo(root);
         root.Add(PhaseCommands.CreateSpec(provider, output, error));
         root.Add(PhaseCommands.CreatePlan(provider, output, error));
         root.Add(PhaseCommands.CreateBuild(provider, output, error));
@@ -169,5 +170,66 @@ public class PhaseCommandTests
 
         Assert.Equal(0, exitCode);
         Assert.Contains("building phase", output.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ==================== HEADLESS + PROMPT TESTS (AC-19) ====================
+
+    [Theory]
+    [InlineData("spec")]
+    [InlineData("plan")]
+    [InlineData("build")]
+    public async Task Headless_NoPrompt_NoSession_ReturnsExitCode1(string command)
+    {
+        var (config, _, error) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync([command, "--headless"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Headless mode requires --prompt", error.ToString());
+    }
+
+    [Fact]
+    public async Task Spec_Headless_WithPrompt_Succeeds()
+    {
+        var (config, output, _) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", "Build an auth module"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("requirement gathering", output.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Spec_Headless_WithActiveSession_Succeeds()
+    {
+        _fakeSessionManager.AddSession(Session1, ActiveState);
+        _fakeSessionManager.SetLatestSessionId(Session1);
+        var (config, output, _) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["spec", "--headless"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("requirement gathering", output.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Spec_Quiet_Alias_Works()
+    {
+        var (config, _, error) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["spec", "-q"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Headless mode requires --prompt", error.ToString());
+    }
+
+    // ==================== EXIT CODE CONSTANTS ====================
+
+    [Fact]
+    public void ExitCodes_AreCorrect()
+    {
+        Assert.Equal(0, ExitCodes.Success);
+        Assert.Equal(1, ExitCodes.Failure);
+        Assert.Equal(2, ExitCodes.UserInterventionRequired);
     }
 }

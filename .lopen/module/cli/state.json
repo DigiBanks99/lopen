@@ -34,10 +34,17 @@
     "phase_commands": {
       "status": "complete",
       "implementation": "PhaseCommands (spec/plan/build subcommands with prerequisite validation)",
-      "tests": "PhaseCommandTests (9 tests)",
+      "tests": "PhaseCommandTests (15 tests)",
       "jobs": ["JOB-078"],
-      "notes": "spec starts requirement gathering. plan validates spec exists via IModuleScanner. build validates spec + plan via IModuleScanner and IPlanManager. Workflow engine wiring deferred to TUI/headless jobs."
+      "notes": "spec starts requirement gathering. plan validates spec exists via IModuleScanner. build validates spec + plan via IModuleScanner and IPlanManager. Headless mode validates --prompt or active session (AC-19)."
+    },
+    "global_options": {
+      "status": "complete",
+      "implementation": "GlobalOptions (--headless/--quiet/-q, --prompt/-p) + ExitCodes (0/1/2)",
+      "tests": "GlobalOptionsTests (6 tests) + PhaseCommandTests headless/prompt tests",
+      "jobs": ["JOB-082"],
+      "notes": "Recursive options available on all commands. --help/--version provided by System.CommandLine. Exit code 2 defined but behavioral use deferred to --unattended mode."
     }
   },
-  "last_updated": "2026-02-16T06:00:00Z"
+  "last_updated": "2026-02-16T07:00:00Z"
 }

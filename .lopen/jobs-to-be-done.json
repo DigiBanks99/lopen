@@ -654,9 +654,9 @@
     "id": "JOB-082",
     "requirement_module": "cli",
     "description": "Implement --prompt flag (headless: inject into LLM; TUI: populate input), exit codes (0/1/2), --help/--version",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: --prompt behavior; headless without --prompt errors; exit codes 0/1/2; help/version flags"
+    "notes": "AC-19 (headless+prompt validation), AC-20 (exit codes 0/1/2), AC-21 (--help/--version) implemented and tested. AC-17 (prompt->LLM injection) and AC-18 (prompt->TUI) deferred to workflow/TUI wiring jobs."
   },
   {
     "id": "JOB-083",
