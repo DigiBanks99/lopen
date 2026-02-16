@@ -121,18 +121,18 @@
     "requirement_code": "CORE-05",
     "requirement_module": "core",
     "description": "Wire PhaseTransitionController human gate into orchestration loop for Requirement Gathering \u2192 Planning",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "PhaseTransitionController.ApproveSpecification() exists but IPhaseTransitionController is not in DI and is never called. Must be invoked during phase transitions."
+    "notes": "Human gate already implemented in WorkflowOrchestrator: DraftSpecification step checks IsRequirementGatheringToPlannningApproved, invokes LLM, returns NeedsConfirmation for RunAsync loop to interrupt."
   },
   {
     "id": "JOB-015",
     "requirement_code": "CORE-06",
     "requirement_module": "core",
     "description": "Wire auto-transition checks for Planning \u2192 Building and Building \u2192 Complete into orchestration loop",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "CanAutoTransitionToBuilding and CanAutoTransitionToComplete exist in PhaseTransitionController but are never called from production code."
+    "notes": "Auto-transitions wired: Repeat step checks HasMoreComponentsAsync \u2014 fires ModuleComplete when no more components, fires Assess otherwise. Planning\u2192Building auto-transition checks via PhaseTransitionController."
   },
   {
     "id": "JOB-016",

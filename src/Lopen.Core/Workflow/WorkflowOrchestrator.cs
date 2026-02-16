@@ -148,7 +148,29 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         var llmResult = await InvokeLlmForStepAsync(moduleName, currentStep, currentPhase, cancellationToken);
         if (!llmResult.Success) return llmResult;
 
-        // 4. Determine next trigger based on current step
+        // 4. Check auto-transition conditions
+        if (currentStep == WorkflowStep.BreakIntoTasks)
+        {
+            // Check if planning is structurally complete for auto-transition to building
+            var hasComponents = await _assessor.HasMoreComponentsAsync(moduleName, cancellationToken);
+            if (_phaseController.CanAutoTransitionToBuilding(true, true))
+            {
+                _logger.LogInformation("Auto-transition: Planning structurally complete");
+            }
+        }
+
+        if (currentStep == WorkflowStep.Repeat)
+        {
+            // Check if all components are built for auto-transition to complete
+            var hasMore = await _assessor.HasMoreComponentsAsync(moduleName, cancellationToken);
+            if (!hasMore)
+            {
+                _logger.LogInformation("No more components — checking module completion");
+                return StepResult.Succeeded(WorkflowTrigger.ModuleComplete, "All components complete");
+            }
+        }
+
+        // 5. Determine next trigger based on current step
         var nextTrigger = DetermineNextTrigger(currentStep);
         if (nextTrigger.HasValue)
         {

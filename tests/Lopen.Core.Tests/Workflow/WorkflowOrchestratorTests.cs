@@ -263,6 +263,32 @@ public class WorkflowOrchestratorTests
             NullLogger<WorkflowOrchestrator>.Instance));
     }
 
+    [Fact]
+    public async Task RunAsync_RepeatStep_FiresModuleComplete_WhenNoMoreComponents()
+    {
+        _engine.CurrentStep = WorkflowStep.Repeat;
+        _engine.StepsBeforeComplete = 1;
+        _assessor.HasMoreComponents = false;
+        var sut = CreateOrchestrator();
+
+        await sut.RunAsync("test-module");
+
+        Assert.Contains(WorkflowTrigger.ModuleComplete, _engine.FiredTriggers);
+    }
+
+    [Fact]
+    public async Task RunAsync_RepeatStep_FiresAssess_WhenMoreComponents()
+    {
+        _engine.CurrentStep = WorkflowStep.Repeat;
+        _engine.StepsBeforeComplete = 1;
+        _assessor.HasMoreComponents = true;
+        var sut = CreateOrchestrator();
+
+        await sut.RunAsync("test-module");
+
+        Assert.Contains(WorkflowTrigger.Assess, _engine.FiredTriggers);
+    }
+
     // --- Stubs ---
 
     private sealed class StubWorkflowEngine : IWorkflowEngine
@@ -309,6 +335,8 @@ public class WorkflowOrchestratorTests
 
     private sealed class StubStateAssessor : IStateAssessor
     {
+        public bool HasMoreComponents { get; set; } = true;
+
         public Task<WorkflowStep> GetCurrentStepAsync(string moduleName, CancellationToken ct = default) =>
             Task.FromResult(WorkflowStep.DraftSpecification);
 
@@ -319,7 +347,7 @@ public class WorkflowOrchestratorTests
             Task.FromResult(false);
 
         public Task<bool> HasMoreComponentsAsync(string moduleName, CancellationToken ct = default) =>
-            Task.FromResult(true);
+            Task.FromResult(HasMoreComponents);
     }
 
     private sealed class StubLlmService : ILlmService
