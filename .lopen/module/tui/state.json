@@ -87,11 +87,13 @@
     },
     "slash_commands": {
       "status": "complete",
-      "implementation": "SlashCommandRegistry + SlashCommandDefinition",
-      "tests": "VisualAndCommandTests (8 command tests)",
+      "implementation": "SlashCommandRegistry + SlashCommandDefinition + ISlashCommandExecutor + SlashCommandExecutor + SlashCommandResult",
+      "tests": "VisualAndCommandTests (8 command tests) + SlashCommandExecutorTests (37 tests)",
       "jobs": [
-        "JOB-096"
-      ]
+        "JOB-096",
+        "JOB-036"
+      ],
+      "notes": "SlashCommandExecutor parses via SlashCommandRegistry, dispatches to registered handlers. /help built-in. Unknown commands return error with valid list. Wired into TuiApplication.SubmitPrompt. DI registered in AddLopenTui()."
     },
     "keyboard_handler": {
       "status": "complete",
@@ -156,5 +158,5 @@
       "notes": "Level 0=components, Level 1=tasks, Level 2+=subtasks. First incomplete item at each level marked InProgress. Resources placeholder (empty list) until IDocumentManager is implemented."
     }
   },
-  "last_updated": "2026-02-16T21:20:00Z"
+  "last_updated": "2026-02-16T21:30:00Z"
 }

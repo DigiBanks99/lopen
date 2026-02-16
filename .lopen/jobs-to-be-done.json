@@ -319,9 +319,9 @@
     "requirement_code": "TUI-38",
     "requirement_module": "tui",
     "description": "Wire SlashCommandRegistry to invoke corresponding CLI commands from within TUI",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "SlashCommandRegistry exists but is not connected to the TUI application or tested. Commands like /help, /spec, /plan should invoke CLI handlers."
+    "notes": "SlashCommandExecutor + ISlashCommandExecutor created. Wired into TuiApplication.ApplyAction (SubmitPrompt case). SlashCommandRegistry and ISlashCommandExecutor registered in DI. Unknown commands show error with valid list. 37 new tests. All 1729 tests pass."
   },
   {
     "id": "JOB-037",

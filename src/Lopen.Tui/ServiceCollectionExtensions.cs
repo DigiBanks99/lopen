@@ -15,6 +15,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ContextPanelComponent>();
         services.AddSingleton<PromptAreaComponent>();
         services.AddSingleton<KeyboardHandler>();
+        services.AddSingleton(_ => SlashCommandRegistry.CreateDefault());
+        services.AddSingleton<ISlashCommandExecutor, SlashCommandExecutor>();
         services.AddSingleton<ITuiApplication, StubTuiApplication>();
         services.AddSingleton<IComponentGallery>(sp =>
         {

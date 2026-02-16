@@ -1,20 +1,20 @@
-# Implementation Plan — JOB-012 (TUI-03): Wire ContextPanelComponent to Live Data Sources
+# Implementation Plan — JOB-036 (TUI-38/TUI-39): Wire SlashCommandRegistry
 
-**Goal:** Connect the ContextPanelComponent to live task tree data from IPlanManager and IWorkflowEngine so the context panel displays real-time task hierarchy, component progress, and active resources.
+**Goal:** Connect the existing SlashCommandRegistry to TuiApplication so slash commands typed in the prompt area invoke corresponding CLI logic, and unknown commands display an error with valid command list.
 
 ## Acceptance Criteria
-- [TUI-03] Context panel shows current task, task tree with completion states, and active resources
-- [TUI-10] Real-time task progress updates in context panel (subset)
-- [TUI-31] Real-time progress percentages in context panel (subset)
+- [TUI-38] Slash commands (`/help`, `/spec`, `/plan`, `/build`, `/session`, `/config`, `/revert`, `/auth`) invoke corresponding CLI commands
+- [TUI-39] Unknown slash commands display error with valid command list
 
 ## Tasks
 
-- [x] 1. Add `Lopen.Storage` project reference to `Lopen.Tui.csproj`
-- [x] 2. Create `IContextPanelDataProvider` interface with `GetCurrentData()`, `RefreshAsync()`, and `SetActiveModule()`
-- [x] 3. Create `ContextPanelDataProvider` implementation mapping `IPlanManager` tasks to `ContextPanelData` hierarchy
-- [x] 4. Wire `IContextPanelDataProvider` into `TuiApplication` with throttled refresh (same pattern as top panel)
-- [x] 5. Register `ContextPanelDataProvider` in DI (`ServiceCollectionExtensions`)
-- [x] 6. Write unit tests for `ContextPanelDataProvider` — 30 tests
-- [x] 7. Write integration tests for `TuiApplication` context panel data wiring — 2 tests
-- [x] 8. Run full test suite — 1,692 tests pass, 0 failures
-- [x] 9. Update module state and commit
+- [x] 1. Create `ISlashCommandExecutor` interface with `ExecuteAsync(string input, CancellationToken)` returning `SlashCommandResult`
+- [x] 2. Create `SlashCommandResult` record with `IsSuccess`, `OutputMessage`, and `ErrorMessage` properties
+- [x] 3. Create `SlashCommandExecutor` implementation that parses input via `SlashCommandRegistry.TryParse()`, delegates to appropriate handlers for known commands, and returns error for unknown slash commands with valid command list
+- [x] 4. Wire `SlashCommandRegistry` (as singleton via `CreateDefault()`) and `ISlashCommandExecutor` into DI in `AddLopenTui()`
+- [x] 5. Add `ISlashCommandExecutor` dependency to `TuiApplication` constructor (optional parameter)
+- [x] 6. Update `TuiApplication.ApplyAction` `SubmitPrompt` case: if text starts with `/`, delegate to `ISlashCommandExecutor`; add result to activity panel entries
+- [x] 7. Write unit tests for `SlashCommandExecutor` — 37 tests covering parsing, known commands, unknown commands, error display, DI, TUI integration
+- [x] 8. Run full test suite — 1,729 tests pass, 0 failures
+- [x] 9. Verify acceptance criteria with sub-agent
+- [x] 10. Update module state and jobs-to-be-done, commit

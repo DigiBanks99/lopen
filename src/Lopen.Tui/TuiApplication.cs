@@ -16,6 +16,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly KeyboardHandler _keyboardHandler;
     private readonly ITopPanelDataProvider? _topPanelDataProvider;
     private readonly IContextPanelDataProvider? _contextPanelDataProvider;
+    private readonly ISlashCommandExecutor? _slashCommandExecutor;
     private readonly ILogger<TuiApplication> _logger;
 
     private volatile bool _running;
@@ -50,7 +51,8 @@ internal sealed class TuiApplication : ITuiApplication
         KeyboardHandler keyboardHandler,
         ILogger<TuiApplication> logger,
         ITopPanelDataProvider? topPanelDataProvider = null,
-        IContextPanelDataProvider? contextPanelDataProvider = null)
+        IContextPanelDataProvider? contextPanelDataProvider = null,
+        ISlashCommandExecutor? slashCommandExecutor = null)
     {
         _topPanel = topPanel ?? throw new ArgumentNullException(nameof(topPanel));
         _activityPanel = activityPanel ?? throw new ArgumentNullException(nameof(activityPanel));
@@ -60,6 +62,7 @@ internal sealed class TuiApplication : ITuiApplication
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _topPanelDataProvider = topPanelDataProvider;
         _contextPanelDataProvider = contextPanelDataProvider;
+        _slashCommandExecutor = slashCommandExecutor;
     }
 
     public async Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
@@ -234,8 +237,11 @@ internal sealed class TuiApplication : ITuiApplication
                 break;
 
             case KeyAction.SubmitPrompt:
-                // TODO: Wire to orchestrator input queue
+                var submittedText = _promptData.Text;
                 _promptData = _promptData with { Text = string.Empty, CursorPosition = 0 };
+                if (submittedText.StartsWith('/'))
+                    _ = ProcessSlashCommandAsync(submittedText);
+                // TODO: Wire non-slash input to orchestrator input queue
                 break;
 
             case KeyAction.None when !char.IsControl(keyInfo.KeyChar) && keyInfo.KeyChar != '\0':
@@ -262,6 +268,39 @@ internal sealed class TuiApplication : ITuiApplication
             _contextPanel.Render(_contextData, regions.Context));
         RenderRegion(ctx, regions.Prompt,
             _promptArea.Render(_promptData, regions.Prompt));
+    }
+
+    private async Task ProcessSlashCommandAsync(string input)
+    {
+        if (_slashCommandExecutor is null)
+        {
+            _logger.LogDebug("No slash command executor available");
+            return;
+        }
+
+        try
+        {
+            var result = await _slashCommandExecutor.ExecuteAsync(input, _stopCts?.Token ?? CancellationToken.None)
+                .ConfigureAwait(false);
+
+            var kind = result.IsSuccess ? ActivityEntryKind.Command : ActivityEntryKind.Error;
+            var summary = result.IsSuccess
+                ? result.OutputMessage ?? $"Executed {result.Command}"
+                : result.ErrorMessage ?? $"Failed: {result.Command}";
+
+            var entry = new ActivityEntry
+            {
+                Summary = summary,
+                Kind = kind
+            };
+
+            var entries = _activityData.Entries.Append(entry).ToList();
+            _activityData = new ActivityPanelData { Entries = entries, ScrollOffset = _activityData.ScrollOffset };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Error processing slash command: {Input}", input);
+        }
     }
 
     private static void RenderRegion(RenderContext ctx, ScreenRect region, string[] lines)
