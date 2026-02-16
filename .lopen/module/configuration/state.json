@@ -27,7 +27,14 @@
             "tests": "ToolDisciplineGuardrailTests (21 tests), OracleVerifierTests (30 tests)",
             "jobs": ["JOB-029"],
             "notes": "Oracle model passthrough via DI singleton. Tool discipline passthrough via ToolDisciplineGuardrail constructor from options."
+        },
+        "config_diagnostics": {
+            "status": "complete",
+            "implementation": "ConfigurationDiagnostics + IConfigurationRoot registered in DI",
+            "tests": "ConfigCommandTests (4 tests)",
+            "jobs": ["JOB-081"],
+            "notes": "IConfigurationRoot now registered in AddLopenConfiguration for use by lopen config show."
         }
     },
-    "last_updated": "2026-02-15T18:30:00Z"
+    "last_updated": "2026-02-16T05:00:00Z"
 }

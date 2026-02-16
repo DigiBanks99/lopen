@@ -59,17 +59,17 @@ public sealed class BudgetEnforcer : IBudgetEnforcer
         BudgetStatus requestStatus,
         double tokenFraction,
         double requestFraction) => overall switch
-    {
-        BudgetStatus.Ok => "Budget usage is within limits.",
-        BudgetStatus.Exceeded => tokenStatus == BudgetStatus.Exceeded
-            ? $"Token budget exceeded ({tokenFraction:P0} used)."
-            : $"Premium request budget exceeded ({requestFraction:P0} used).",
-        BudgetStatus.ConfirmationRequired => tokenStatus == BudgetStatus.ConfirmationRequired
-            ? $"Token usage at {tokenFraction:P0} — confirmation required to continue."
-            : $"Premium request usage at {requestFraction:P0} — confirmation required to continue.",
-        BudgetStatus.Warning => tokenStatus == BudgetStatus.Warning
-            ? $"Token usage at {tokenFraction:P0} — approaching budget limit."
-            : $"Premium request usage at {requestFraction:P0} — approaching budget limit.",
-        _ => "Budget status unknown.",
-    };
+        {
+            BudgetStatus.Ok => "Budget usage is within limits.",
+            BudgetStatus.Exceeded => tokenStatus == BudgetStatus.Exceeded
+                ? $"Token budget exceeded ({tokenFraction:P0} used)."
+                : $"Premium request budget exceeded ({requestFraction:P0} used).",
+            BudgetStatus.ConfirmationRequired => tokenStatus == BudgetStatus.ConfirmationRequired
+                ? $"Token usage at {tokenFraction:P0} — confirmation required to continue."
+                : $"Premium request usage at {requestFraction:P0} — confirmation required to continue.",
+            BudgetStatus.Warning => tokenStatus == BudgetStatus.Warning
+                ? $"Token usage at {tokenFraction:P0} — approaching budget limit."
+                : $"Premium request usage at {requestFraction:P0} — approaching budget limit.",
+            _ => "Budget status unknown.",
+        };
 }

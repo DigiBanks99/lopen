@@ -646,9 +646,9 @@
     "id": "JOB-081",
     "requirement_module": "cli",
     "description": "Implement lopen config show and lopen revert subcommands wired to Configuration and Core modules",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: config show displays resolved config; revert rolls back"
+    "notes": "Implemented ConfigCommand (show with --json) and RevertCommand. IConfigurationRoot registered in DI. Revert updates session state. 11 tests."
   },
   {
     "id": "JOB-082",
