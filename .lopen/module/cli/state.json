@@ -13,7 +13,16 @@
         "JOB-006"
       ],
       "notes": "spec/plan/build commands invoke WorkflowOrchestrator.RunAsync when session and module are available."
+    },
+    "root_tui_wiring": {
+      "status": "complete",
+      "implementation": "Program.cs calls UseRealTui(). RootCommandHandler resolves ITuiApplication.",
+      "tests": "RootCommandTests (existing tests), TuiApplicationTests (UseRealTui DI tests)",
+      "jobs": [
+        "JOB-077"
+      ],
+      "notes": "UseRealTui replaces stub with TuiApplication for real CLI. Tests/headless use stub."
     }
   },
-  "last_updated": "2026-02-16T17:00:00Z"
+  "last_updated": "2026-02-16T18:00:00Z"
 }

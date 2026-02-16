@@ -127,6 +127,15 @@
         "JOB-008"
       ],
       "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI."
+    },
+    "component_gallery_command": {
+      "status": "complete",
+      "implementation": "TestCommand in Lopen/Commands with test tui subcommand",
+      "tests": "TestCommandTests (4 tests) - help, list mode, no gallery, gallery listing",
+      "jobs": [
+        "JOB-035"
+      ],
+      "notes": "Interactive arrow key navigation + Enter preview. --list for CI/text mode."
     }
   },
   "last_updated": "2026-02-16T17:50:00Z"

@@ -310,9 +310,9 @@
     "requirement_code": "TUI-42",
     "requirement_module": "tui",
     "description": "Create 'lopen test tui' CLI command that launches the interactive component gallery",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "ComponentGallery registry exists with self-registered components, but no CLI command exposes it. TUI-42 requires 'lopen test tui' to launch an interactive gallery."
+    "notes": "TestCommand with test tui subcommand. Interactive gallery with \u2191\u2193 navigation and Enter preview. --list flag for text mode. 4 CLI tests."
   },
   {
     "id": "JOB-036",
@@ -688,9 +688,9 @@
     "requirement_code": "CLI-01",
     "requirement_module": "cli",
     "description": "Wire root 'lopen' command to launch real TUI application instead of StubTuiApplication",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "RootCommandHandler resolves ITuiApplication from DI and calls RunAsync(). Currently gets StubTuiApplication. Must use real TUI when available."
+    "notes": "Program.cs calls UseRealTui() after AddLopenTui(). RootCommandHandler already resolves ITuiApplication from DI and calls RunAsync(). Now gets TuiApplication."
   },
   {
     "id": "JOB-078",

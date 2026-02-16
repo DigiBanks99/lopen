@@ -40,6 +40,7 @@ public class CliIntegrationTests
         rootCommand.Add(PhaseCommands.CreateSpec(host.Services, output));
         rootCommand.Add(PhaseCommands.CreatePlan(host.Services, output));
         rootCommand.Add(PhaseCommands.CreateBuild(host.Services, output));
+        rootCommand.Add(TestCommand.Create(host.Services, output));
 
         return (new CommandLineConfiguration(rootCommand), output);
     }

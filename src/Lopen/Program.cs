@@ -33,6 +33,7 @@ rootCommand.Add(RevertCommand.Create(host.Services));
 rootCommand.Add(PhaseCommands.CreateSpec(host.Services));
 rootCommand.Add(PhaseCommands.CreatePlan(host.Services));
 rootCommand.Add(PhaseCommands.CreateBuild(host.Services));
+rootCommand.Add(TestCommand.Create(host.Services));
 
 var config = new CommandLineConfiguration(rootCommand);
 
