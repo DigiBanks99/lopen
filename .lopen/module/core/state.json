@@ -107,7 +107,35 @@
         "JOB-013"
       ],
       "notes": "Bridges IDriftDetector with in-memory section hash cache. Renders drift warnings to user via IOutputRenderer."
+    },
+    "git_workflow_wiring": {
+      "status": "complete",
+      "implementation": "IGitWorkflowService wired into ToolHandlerBinder (CommitTaskCompletion) and WorkflowOrchestrator (EnsureModuleBranch)",
+      "tests": "ToolHandlerBinderTests (4 new git tests) + WorkflowOrchestratorTests (2 branch tests)",
+      "jobs": [
+        "JOB-016",
+        "JOB-017"
+      ],
+      "notes": "CommitTaskCompletionAsync called after verified task completion with module/component params. EnsureModuleBranchAsync called before engine init in RunAsync."
+    },
+    "autosave_wiring": {
+      "status": "complete",
+      "implementation": "IAutoSaveService wired into WorkflowOrchestrator RunAsync loop",
+      "tests": "WorkflowOrchestratorTests (3 new autosave tests)",
+      "jobs": [
+        "JOB-019"
+      ],
+      "notes": "Auto-saves on step completion, task failure, user pause, phase transition, cancellation. Exception-safe."
+    },
+    "session_resume_wiring": {
+      "status": "complete",
+      "implementation": "ISessionManager wired into WorkflowOrchestrator.RunAsync for session resume/create",
+      "tests": "WorkflowOrchestratorTests (2 new session tests)",
+      "jobs": [
+        "JOB-020"
+      ],
+      "notes": "Checks for latest session by module. Resumes if incomplete. Creates new session otherwise."
     }
   },
-  "last_updated": "2026-02-16T17:30:00Z"
+  "last_updated": "2026-02-16T18:30:00Z"
 }

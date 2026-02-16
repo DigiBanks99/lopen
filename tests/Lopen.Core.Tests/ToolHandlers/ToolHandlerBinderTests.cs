@@ -157,6 +157,69 @@ public class ToolHandlerBinderTests
     }
 
     [Fact]
+    public async Task HandleUpdateTaskStatus_CommitsOnCompletionWhenGitServiceProvided()
+    {
+        _verificationTracker.VerifiedItems.Add(("Task", "task-1"));
+        var gitService = new StubGitWorkflowService();
+        var binder = new ToolHandlerBinder(
+            _fileSystem, _sectionExtractor, _engine, _verificationTracker,
+            NullLogger<ToolHandlerBinder>.Instance, ProjectRoot, gitService);
+
+        var result = await binder.HandleUpdateTaskStatus(
+            """{"task_id":"task-1","status":"complete","module":"core","component":"workflow"}""",
+            CancellationToken.None);
+
+        Assert.Contains("success", result);
+        Assert.Single(gitService.Commits);
+        Assert.Equal("core", gitService.Commits[0].Module);
+        Assert.Equal("workflow", gitService.Commits[0].Component);
+        Assert.Equal("task-1", gitService.Commits[0].Task);
+    }
+
+    [Fact]
+    public async Task HandleUpdateTaskStatus_SkipsCommitWhenModuleNotProvided()
+    {
+        _verificationTracker.VerifiedItems.Add(("Task", "task-2"));
+        var gitService = new StubGitWorkflowService();
+        var binder = new ToolHandlerBinder(
+            _fileSystem, _sectionExtractor, _engine, _verificationTracker,
+            NullLogger<ToolHandlerBinder>.Instance, ProjectRoot, gitService);
+
+        var result = await binder.HandleUpdateTaskStatus(
+            """{"task_id":"task-2","status":"complete"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+        Assert.Empty(gitService.Commits);
+    }
+
+    [Fact]
+    public async Task HandleUpdateTaskStatus_SkipsCommitWhenGitServiceNotProvided()
+    {
+        _verificationTracker.VerifiedItems.Add(("Task", "task-3"));
+        var binder = CreateBinder(); // No git service
+
+        var result = await binder.HandleUpdateTaskStatus(
+            """{"task_id":"task-3","status":"complete","module":"core"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+    }
+
+    [Fact]
+    public async Task HandleUpdateTaskStatus_DoesNotCommitForNonCompleteStatus()
+    {
+        var gitService = new StubGitWorkflowService();
+        var binder = new ToolHandlerBinder(
+            _fileSystem, _sectionExtractor, _engine, _verificationTracker,
+            NullLogger<ToolHandlerBinder>.Instance, ProjectRoot, gitService);
+
+        var result = await binder.HandleUpdateTaskStatus(
+            """{"task_id":"task-1","status":"in-progress","module":"core"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+        Assert.Empty(gitService.Commits);
+    }
+
+    [Fact]
     public async Task HandleGetCurrentContext_ReturnsWorkflowState()
     {
         _engine.CurrentStep = WorkflowStep.IdentifyComponents;
@@ -239,6 +302,24 @@ public class ToolHandlerBinderTests
     }
 
     // --- Stubs ---
+
+    private sealed class StubGitWorkflowService : Lopen.Core.Git.IGitWorkflowService
+    {
+        public List<(string Module, string Component, string Task)> Commits { get; } = [];
+        public Lopen.Core.Git.GitResult? CommitResult { get; set; } = new(0, "committed", "");
+
+        public Task<Lopen.Core.Git.GitResult?> EnsureModuleBranchAsync(string moduleName, CancellationToken ct = default) =>
+            Task.FromResult<Lopen.Core.Git.GitResult?>(new(0, "branch created", ""));
+
+        public Task<Lopen.Core.Git.GitResult?> CommitTaskCompletionAsync(string moduleName, string componentName, string taskName, CancellationToken ct = default)
+        {
+            Commits.Add((moduleName, componentName, taskName));
+            return Task.FromResult(CommitResult);
+        }
+
+        public string FormatCommitMessage(string moduleName, string componentName, string taskName) =>
+            $"feat({moduleName}): complete {taskName}";
+    }
 
     private sealed class StubFileSystem : Lopen.Storage.IFileSystem
     {

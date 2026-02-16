@@ -37,16 +37,52 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IModuleLister, ModuleLister>();
             services.AddSingleton<IStateAssessor, CodebaseStateAssessor>();
             services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
-            services.AddSingleton<IWorkflowOrchestrator, WorkflowOrchestrator>();
+            services.AddSingleton<IWorkflowOrchestrator>(sp =>
+            {
+                Git.IGitWorkflowService? gitService = null;
+                try { gitService = sp.GetService<Git.IGitWorkflowService>(); }
+                catch { /* Git service optional — dependencies may not be registered */ }
+
+                Lopen.Storage.IAutoSaveService? autoSave = null;
+                try { autoSave = sp.GetService<Lopen.Storage.IAutoSaveService>(); }
+                catch { /* Auto-save optional */ }
+
+                Lopen.Storage.ISessionManager? sessionMgr = null;
+                try { sessionMgr = sp.GetService<Lopen.Storage.ISessionManager>(); }
+                catch { /* Session manager optional */ }
+
+                return new WorkflowOrchestrator(
+                    sp.GetRequiredService<IWorkflowEngine>(),
+                    sp.GetRequiredService<IStateAssessor>(),
+                    sp.GetRequiredService<Lopen.Llm.ILlmService>(),
+                    sp.GetRequiredService<Lopen.Llm.IPromptBuilder>(),
+                    sp.GetRequiredService<Lopen.Llm.IToolRegistry>(),
+                    sp.GetRequiredService<Lopen.Llm.IModelSelector>(),
+                    sp.GetRequiredService<BackPressure.IGuardrailPipeline>(),
+                    sp.GetRequiredService<IOutputRenderer>(),
+                    sp.GetRequiredService<IPhaseTransitionController>(),
+                    sp.GetRequiredService<ISpecificationDriftService>(),
+                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<WorkflowOrchestrator>>(),
+                    gitService,
+                    autoSave,
+                    sessionMgr);
+            });
             services.AddSingleton<ISpecificationDriftService, SpecificationDriftService>();
             services.AddSingleton<IToolHandlerBinder>(sp =>
-                new ToolHandlerBinder(
+            {
+                Git.IGitWorkflowService? gitSvc = null;
+                try { gitSvc = sp.GetService<Git.IGitWorkflowService>(); }
+                catch { /* Git service optional */ }
+
+                return new ToolHandlerBinder(
                     sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
                     sp.GetRequiredService<ISectionExtractor>(),
                     sp.GetRequiredService<IWorkflowEngine>(),
                     sp.GetRequiredService<Lopen.Llm.IVerificationTracker>(),
                     sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ToolHandlerBinder>>(),
-                    projectRoot));
+                    projectRoot,
+                    gitSvc);
+            });
         }
 
         services.AddSingleton<IPhaseTransitionController, PhaseTransitionController>();

@@ -1,42 +1,39 @@
 # Implementation Plan
 
-## Current Job: JOB-001 — Register Core Workflow Services in DI
+## Status: P2 Jobs In Progress
 
-**Module**: core · **Requirement**: CORE-02
+All P1 jobs are complete. Currently working through P2 wiring jobs.
 
-### Goal
+### Completed Jobs (P1 + P2)
 
-Register `IWorkflowEngine`, `IStateAssessor`, and `IPhaseTransitionController` in the DI container via `AddLopenCore()`.
+| Job | Description | Status |
+|-----|-------------|--------|
+| JOB-001 | Register DI services | ✅ Done |
+| JOB-002 | Orchestration loop | ✅ Done |
+| JOB-003 | Tool handlers | ✅ Done |
+| JOB-004–006 | Wire CLI commands | ✅ Done |
+| JOB-007 | Headless runner | ✅ Done |
+| JOB-008 | TUI application shell | ✅ Done |
+| JOB-009 | Wire LayoutCalculator | ✅ Done |
+| JOB-010 | Wire KeyboardHandler | ✅ Done |
+| JOB-013 | Wire DriftDetector | ✅ Done |
+| JOB-014/015 | Auto-transitions + human gate | ✅ Done |
+| JOB-016 | Wire GitWorkflowService.CommitTaskCompletion | ✅ Done |
+| JOB-017 | Wire GitWorkflowService.EnsureModuleBranch | ✅ Done |
+| JOB-018 | Guardrails already wired | ✅ Done |
+| JOB-019 | Wire AutoSaveService | ✅ Done |
+| JOB-020 | Wire session resume | ✅ Done |
+| JOB-035 | Test TUI command | ✅ Done |
+| JOB-077 | Wire root to real TUI | ✅ Done |
 
-### DI Registrations
+### Next P2 Jobs
 
-**File**: `src/Lopen.Core/ServiceCollectionExtensions.cs`
-
-| Interface | Implementation | Lifetime | Conditional |
-|-----------|---------------|----------|-------------|
-| `IPhaseTransitionController` | `PhaseTransitionController` | Singleton | No — only needs `ILogger` |
-| `IStateAssessor` | `CodebaseStateAssessor` | Singleton | Yes — needs `IFileSystem` + `IModuleScanner` |
-| `IWorkflowEngine` | `WorkflowEngine` | Singleton | Yes — needs `IStateAssessor` |
-
-- `IPhaseTransitionController` goes in the **unconditional** (always) block.
-- `IStateAssessor` and `IWorkflowEngine` go inside the **`projectRoot` guard** block, since `CodebaseStateAssessor` depends on `IFileSystem` and `IModuleScanner` which are only registered when `projectRoot` is provided.
-
-### Tests
-
-**File**: `tests/Lopen.Core.Tests/ServiceCollectionExtensionsTests.cs`
-
-| Test | Validates |
-|------|-----------|
-| `AddLopenCore_WithProjectRoot_RegistersWorkflowEngine` | `IWorkflowEngine` resolves when projectRoot given |
-| `AddLopenCore_WithProjectRoot_RegistersStateAssessor` | `IStateAssessor` resolves when projectRoot given |
-| `AddLopenCore_RegistersPhaseTransitionController` | `IPhaseTransitionController` resolves unconditionally |
-| `AddLopenCore_WorkflowEngine_IsSingleton` | Same instance returned on repeated resolve |
-| `AddLopenCore_WithoutProjectRoot_DoesNotRegisterWorkflowEngine` | `IWorkflowEngine` is not registered without projectRoot |
-
-### Upcoming Priority Jobs
-
-| Job | Description |
-|-----|-------------|
-| JOB-002 | Implement main orchestration loop |
-| JOB-003 | Implement tool handlers for LLM tools |
-| JOB-004–007 | Wire CLI commands to workflow engine |
+| Job | Description | Module |
+|-----|-------------|--------|
+| JOB-021 | Wire token metrics from CopilotLlmService to TUI/session stats | core/llm |
+| JOB-022 | Instrument WorkflowOrchestrator with OTel spans | otel |
+| JOB-023 | Instrument CopilotLlmService with OTel spans | otel |
+| JOB-024 | Instrument GitWorkflowService with OTel spans | otel |
+| JOB-025 | Instrument SessionManager with OTel spans | otel |
+| JOB-026 | Instrument GuardrailPipeline with OTel spans | otel |
+| JOB-027 | Instrument DriftDetector with OTel spans | otel |

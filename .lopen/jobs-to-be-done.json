@@ -76,18 +76,18 @@
     "requirement_code": "TUI-01",
     "requirement_module": "tui",
     "description": "Wire TUI application to use LayoutCalculator for split-screen rendering (activity left, context right)",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "LayoutCalculator computes 4-region layout (Header, Activity, Context, Prompt) with adjustable split ratios. Need to connect it to the TUI app's render loop to position component output on screen."
+    "notes": "Already implemented in TuiApplication.RenderFrame - calls LayoutCalculator.Calculate() to compute regions for all panels."
   },
   {
     "id": "JOB-010",
     "requirement_code": "TUI-21",
     "requirement_module": "tui",
     "description": "Wire TUI application to use KeyboardHandler for real terminal input handling",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "KeyboardHandler maps KeyInput \u2192 KeyAction with focus-aware routing. Need to read Console.ReadKey() and feed events through KeyboardHandler in the TUI app's input loop."
+    "notes": "Already implemented in TuiApplication.DrainKeyboardInput - uses KeyboardHandler.Handle() and ApplyAction() for all key bindings."
   },
   {
     "id": "JOB-011",
@@ -139,18 +139,18 @@
     "requirement_code": "CORE-16",
     "requirement_module": "core",
     "description": "Wire GitWorkflowService.CommitTaskCompletion into task completion flow in orchestration loop",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "GitWorkflowService is registered in DI but CommitTaskCompletionAsync is never invoked. Must be called when a task completes and git.auto_commit is enabled."
+    "notes": "Wired IGitWorkflowService into ToolHandlerBinder. CommitTaskCompletionAsync called on task completion with module/component params. 4 new tests."
   },
   {
     "id": "JOB-017",
     "requirement_code": "CORE-17",
     "requirement_module": "core",
     "description": "Wire GitWorkflowService.EnsureModuleBranch into workflow start for branch-per-module",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "EnsureModuleBranchAsync is implemented but never called. Must be invoked when a module's workflow starts."
+    "notes": "Wired IGitWorkflowService into WorkflowOrchestrator.RunAsync. EnsureModuleBranchAsync called before engine initialization. 2 new tests."
   },
   {
     "id": "JOB-018",
@@ -166,18 +166,18 @@
     "requirement_code": "STOR-06",
     "requirement_module": "storage",
     "description": "Wire AutoSaveService into orchestration loop for state persistence after workflow events",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "AutoSaveService exists and is registered but not wired to workflow events (step completion, task completion, phase transition, user pause). Must be invoked at each save point."
+    "notes": "Wired IAutoSaveService into WorkflowOrchestrator. Auto-saves on step completion, task failure, user pause, phase transition, cancellation. 3 new tests."
   },
   {
     "id": "JOB-020",
     "requirement_code": "STOR-07",
     "requirement_module": "storage",
     "description": "Wire session resume flow into workflow start - offer resume or start fresh",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "SessionManager supports load/resume. CLI session resume command works. But the automatic resume prompt at workflow start (load from .lopen/sessions/latest) is not wired in the orchestration loop."
+    "notes": "Wired ISessionManager into WorkflowOrchestrator.RunAsync. Checks for resumable session, renders resume message, creates new session if none. 2 new tests."
   },
   {
     "id": "JOB-021",

@@ -326,6 +326,135 @@ public class WorkflowOrchestratorTests
             m => m.Contains("drift", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task RunAsync_EnsuresModuleBranchWhenGitServiceProvided()
+    {
+        _engine.IsComplete = true;
+        var gitService = new StubGitWorkflowService();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance, gitService);
+
+        await sut.RunAsync("my-module");
+
+        Assert.Single(gitService.BranchesCreated);
+        Assert.Equal("my-module", gitService.BranchesCreated[0]);
+    }
+
+    [Fact]
+    public async Task RunAsync_SkipsBranchCreationWhenNoGitService()
+    {
+        _engine.IsComplete = true;
+        var sut = CreateOrchestrator(); // No git service
+
+        var result = await sut.RunAsync("my-module");
+
+        Assert.True(result.IsComplete); // No exception
+    }
+
+    [Fact]
+    public async Task RunAsync_AutoSavesAfterEachStep()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var autoSave = new StubAutoSaveService();
+        var sessionMgr = new StubSessionManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            autoSaveService: autoSave, sessionManager: sessionMgr);
+
+        await sut.RunAsync("test-module");
+
+        Assert.True(autoSave.Saves.Count > 0);
+        Assert.Contains(autoSave.Saves,
+            s => s.Trigger == Lopen.Storage.AutoSaveTrigger.StepCompletion);
+    }
+
+    [Fact]
+    public async Task RunAsync_AutoSavesOnFailure()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _guardrailPipeline.Results = [new GuardrailResult.Block("blocked")];
+        var autoSave = new StubAutoSaveService();
+        var sessionMgr = new StubSessionManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            autoSaveService: autoSave, sessionManager: sessionMgr);
+
+        await sut.RunAsync("test-module");
+
+        Assert.Contains(autoSave.Saves,
+            s => s.Trigger == Lopen.Storage.AutoSaveTrigger.TaskFailure);
+    }
+
+    [Fact]
+    public async Task RunAsync_ResumesExistingSession()
+    {
+        _engine.IsComplete = true;
+        var sessionMgr = new StubSessionManager
+        {
+            LatestSessionId = Lopen.Storage.SessionId.Generate("test-module", DateOnly.FromDateTime(DateTime.Today), 1),
+            SavedState = new Lopen.Storage.SessionState
+            {
+                SessionId = "test-module-20250101-1",
+                Module = "test-module",
+                Phase = "Planning",
+                Step = "DetermineDependencies",
+                IsComplete = false,
+                CreatedAt = DateTimeOffset.UtcNow.AddHours(-1),
+                UpdatedAt = DateTimeOffset.UtcNow.AddHours(-1),
+            }
+        };
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            sessionManager: sessionMgr);
+
+        await sut.RunAsync("test-module");
+
+        Assert.Contains(_renderer.ResultMessages, m => m.Contains("Resuming session"));
+    }
+
+    [Fact]
+    public async Task RunAsync_CreatesNewSessionWhenNoResumable()
+    {
+        _engine.IsComplete = true;
+        var sessionMgr = new StubSessionManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            sessionManager: sessionMgr);
+
+        await sut.RunAsync("test-module");
+
+        Assert.True(sessionMgr.SessionCreated);
+    }
+
+    [Fact]
+    public async Task RunAsync_AutoSaveSwallowsExceptions()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var autoSave = new StubAutoSaveService { ThrowOnSave = true };
+        var sessionMgr = new StubSessionManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            autoSaveService: autoSave, sessionManager: sessionMgr);
+
+        // Should not throw even though auto-save fails
+        var result = await sut.RunAsync("test-module");
+        Assert.True(result.IsComplete);
+    }
+
     // --- Stubs ---
 
     private sealed class StubWorkflowEngine : IWorkflowEngine
@@ -498,5 +627,85 @@ public class WorkflowOrchestratorTests
         public Task<IReadOnlyList<DriftResult>> CheckDriftAsync(
             string moduleName, CancellationToken cancellationToken = default) =>
             Task.FromResult(DriftResults);
+    }
+
+    private sealed class StubGitWorkflowService : Lopen.Core.Git.IGitWorkflowService
+    {
+        public List<string> BranchesCreated { get; } = [];
+        public List<(string Module, string Component, string Task)> Commits { get; } = [];
+
+        public Task<Lopen.Core.Git.GitResult?> EnsureModuleBranchAsync(string moduleName, CancellationToken ct = default)
+        {
+            BranchesCreated.Add(moduleName);
+            return Task.FromResult<Lopen.Core.Git.GitResult?>(new(0, "branch created", ""));
+        }
+
+        public Task<Lopen.Core.Git.GitResult?> CommitTaskCompletionAsync(string moduleName, string componentName, string taskName, CancellationToken ct = default)
+        {
+            Commits.Add((moduleName, componentName, taskName));
+            return Task.FromResult<Lopen.Core.Git.GitResult?>(new(0, "committed", ""));
+        }
+
+        public string FormatCommitMessage(string moduleName, string componentName, string taskName) =>
+            $"feat({moduleName}): complete {taskName}";
+    }
+
+    private sealed class StubAutoSaveService : Lopen.Storage.IAutoSaveService
+    {
+        public List<(Lopen.Storage.AutoSaveTrigger Trigger, string SessionId)> Saves { get; } = [];
+        public bool ThrowOnSave { get; set; }
+
+        public Task SaveAsync(Lopen.Storage.AutoSaveTrigger trigger, Lopen.Storage.SessionId sessionId,
+            Lopen.Storage.SessionState state, Lopen.Storage.SessionMetrics? metrics = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (ThrowOnSave) throw new InvalidOperationException("Auto-save forced failure");
+            Saves.Add((trigger, sessionId.ToString()));
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class StubSessionManager : Lopen.Storage.ISessionManager
+    {
+        public Lopen.Storage.SessionId? LatestSessionId { get; set; }
+        public Lopen.Storage.SessionState? SavedState { get; set; }
+        public bool SessionCreated { get; private set; }
+
+        public Task<Lopen.Storage.SessionId> CreateSessionAsync(string module, CancellationToken ct = default)
+        {
+            SessionCreated = true;
+            var id = Lopen.Storage.SessionId.Generate(module, DateOnly.FromDateTime(DateTime.Today), 1);
+            return Task.FromResult(id);
+        }
+
+        public Task<Lopen.Storage.SessionId?> GetLatestSessionIdAsync(CancellationToken ct = default) =>
+            Task.FromResult(LatestSessionId);
+
+        public Task<Lopen.Storage.SessionState?> LoadSessionStateAsync(Lopen.Storage.SessionId sessionId, CancellationToken ct = default) =>
+            Task.FromResult(SavedState);
+
+        public Task SaveSessionStateAsync(Lopen.Storage.SessionId sessionId, Lopen.Storage.SessionState state, CancellationToken ct = default) =>
+            Task.CompletedTask;
+
+        public Task<Lopen.Storage.SessionMetrics?> LoadSessionMetricsAsync(Lopen.Storage.SessionId sessionId, CancellationToken ct = default) =>
+            Task.FromResult<Lopen.Storage.SessionMetrics?>(null);
+
+        public Task SaveSessionMetricsAsync(Lopen.Storage.SessionId sessionId, Lopen.Storage.SessionMetrics metrics, CancellationToken ct = default) =>
+            Task.CompletedTask;
+
+        public Task<IReadOnlyList<Lopen.Storage.SessionId>> ListSessionsAsync(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Lopen.Storage.SessionId>>([]);
+
+        public Task SetLatestAsync(Lopen.Storage.SessionId sessionId, CancellationToken ct = default) =>
+            Task.CompletedTask;
+
+        public Task QuarantineCorruptedSessionAsync(Lopen.Storage.SessionId sessionId, CancellationToken ct = default) =>
+            Task.CompletedTask;
+
+        public Task<int> PruneSessionsAsync(int keepCount = 5, CancellationToken ct = default) =>
+            Task.FromResult(0);
+
+        public Task DeleteSessionAsync(Lopen.Storage.SessionId sessionId, CancellationToken ct = default) =>
+            Task.CompletedTask;
     }
 }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Lopen.Core.Documents;
+using Lopen.Core.Git;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Storage;
@@ -16,6 +17,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
     private readonly ISectionExtractor _sectionExtractor;
     private readonly IWorkflowEngine _engine;
     private readonly IVerificationTracker _verificationTracker;
+    private readonly IGitWorkflowService? _gitWorkflowService;
     private readonly ILogger<ToolHandlerBinder> _logger;
     private readonly string _projectRoot;
 
@@ -25,7 +27,8 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         IWorkflowEngine engine,
         IVerificationTracker verificationTracker,
         ILogger<ToolHandlerBinder> logger,
-        string projectRoot)
+        string projectRoot,
+        IGitWorkflowService? gitWorkflowService = null)
     {
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         _sectionExtractor = sectionExtractor ?? throw new ArgumentNullException(nameof(sectionExtractor));
@@ -33,6 +36,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         _verificationTracker = verificationTracker ?? throw new ArgumentNullException(nameof(verificationTracker));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _projectRoot = projectRoot ?? throw new ArgumentNullException(nameof(projectRoot));
+        _gitWorkflowService = gitWorkflowService;
     }
 
     public void BindAll(IToolRegistry registry)
@@ -112,14 +116,16 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         return await _fileSystem.ReadAllTextAsync(planPath, ct);
     }
 
-    internal Task<string> HandleUpdateTaskStatus(string parameters, CancellationToken ct)
+    internal async Task<string> HandleUpdateTaskStatus(string parameters, CancellationToken ct)
     {
         var args = ParseArgs(parameters);
         var taskId = args.GetValueOrDefault("task_id") ?? "";
         var status = args.GetValueOrDefault("status") ?? "";
+        var module = args.GetValueOrDefault("module") ?? "";
+        var component = args.GetValueOrDefault("component") ?? "";
 
         if (string.IsNullOrWhiteSpace(taskId) || string.IsNullOrWhiteSpace(status))
-            return Task.FromResult(JsonResult("error", "task_id and status are required"));
+            return JsonResult("error", "task_id and status are required");
 
         // Enforce oracle verification before marking complete (CORE-10, LLM-08)
         if (status.Equals("complete", StringComparison.OrdinalIgnoreCase))
@@ -127,13 +133,25 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
             if (!_verificationTracker.IsVerified(VerificationScope.Task, taskId))
             {
                 _logger.LogWarning("Task completion rejected: {TaskId} has not passed verification", taskId);
-                return Task.FromResult(JsonResult("error",
-                    $"Cannot mark task '{taskId}' as complete — verify_task_completion must pass first"));
+                return JsonResult("error",
+                    $"Cannot mark task '{taskId}' as complete — verify_task_completion must pass first");
+            }
+
+            // Auto-commit on task completion if git is enabled
+            if (_gitWorkflowService is not null && !string.IsNullOrWhiteSpace(module))
+            {
+                var commitResult = await _gitWorkflowService.CommitTaskCompletionAsync(
+                    module, component, taskId, ct);
+                if (commitResult is not null)
+                {
+                    _logger.LogInformation("Git commit for task {TaskId}: {Success}",
+                        taskId, commitResult.Success);
+                }
             }
         }
 
         _logger.LogInformation("Task {TaskId} status updated to {Status}", taskId, status);
-        return Task.FromResult(JsonResult("success", $"Task '{taskId}' status updated to '{status}'"));
+        return JsonResult("success", $"Task '{taskId}' status updated to '{status}'");
     }
 
     internal Task<string> HandleGetCurrentContext(string parameters, CancellationToken ct)

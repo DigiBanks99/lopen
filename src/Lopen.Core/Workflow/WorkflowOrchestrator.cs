@@ -1,6 +1,8 @@
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
+using Lopen.Core.Git;
 using Lopen.Llm;
+using Lopen.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace Lopen.Core.Workflow;
@@ -21,9 +23,13 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IOutputRenderer _renderer;
     private readonly IPhaseTransitionController _phaseController;
     private readonly ISpecificationDriftService _driftService;
+    private readonly IGitWorkflowService? _gitWorkflowService;
+    private readonly IAutoSaveService? _autoSaveService;
+    private readonly ISessionManager? _sessionManager;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
     private int _iterationCount;
+    private SessionId? _sessionId;
 
     public WorkflowOrchestrator(
         IWorkflowEngine engine,
@@ -36,7 +42,10 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IOutputRenderer renderer,
         IPhaseTransitionController phaseController,
         ISpecificationDriftService driftService,
-        ILogger<WorkflowOrchestrator> logger)
+        ILogger<WorkflowOrchestrator> logger,
+        IGitWorkflowService? gitWorkflowService = null,
+        IAutoSaveService? autoSaveService = null,
+        ISessionManager? sessionManager = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _assessor = assessor ?? throw new ArgumentNullException(nameof(assessor));
@@ -49,6 +58,9 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _phaseController = phaseController ?? throw new ArgumentNullException(nameof(phaseController));
         _driftService = driftService ?? throw new ArgumentNullException(nameof(driftService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _gitWorkflowService = gitWorkflowService;
+        _autoSaveService = autoSaveService;
+        _sessionManager = sessionManager;
     }
 
     public async Task<OrchestrationResult> RunAsync(string moduleName, CancellationToken cancellationToken = default)
@@ -56,6 +68,39 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
 
         _iterationCount = 0;
+
+        // Ensure module-specific git branch before starting
+        if (_gitWorkflowService is not null)
+        {
+            var branchResult = await _gitWorkflowService.EnsureModuleBranchAsync(moduleName, cancellationToken);
+            if (branchResult is not null)
+            {
+                _logger.LogInformation("Git branch for module {Module}: {Success}",
+                    moduleName, branchResult.Success);
+            }
+        }
+
+        // Check for resumable session (STOR-07)
+        if (_sessionManager is not null)
+        {
+            var latestId = await _sessionManager.GetLatestSessionIdAsync(cancellationToken);
+            if (latestId is not null && latestId.Module.Equals(moduleName, StringComparison.OrdinalIgnoreCase))
+            {
+                var savedState = await _sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
+                if (savedState is not null && !savedState.IsComplete)
+                {
+                    _logger.LogInformation("Resuming session {SessionId} for module {Module}",
+                        latestId, moduleName);
+                    _sessionId = latestId;
+                    await _renderer.RenderResultAsync(
+                        $"Resuming session {latestId} at step {savedState.Step}");
+                }
+            }
+
+            // Create new session if not resuming
+            _sessionId ??= await _sessionManager.CreateSessionAsync(moduleName, cancellationToken);
+        }
+
         await _engine.InitializeAsync(moduleName, cancellationToken);
         _logger.LogInformation("Starting orchestration for module {Module} at step {Step}",
             moduleName, _engine.CurrentStep);
@@ -68,31 +113,43 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             {
                 _logger.LogWarning("Step {Step} failed: {Summary}", _engine.CurrentStep, stepResult.Summary);
                 await _renderer.RenderErrorAsync(stepResult.Summary ?? "Step failed");
+                await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
                 return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
                     stepResult.Summary ?? "Step failed");
             }
+
+            // Auto-save after each successful step (STOR-06)
+            await AutoSaveAsync(AutoSaveTrigger.StepCompletion, moduleName, cancellationToken);
 
             if (stepResult.RequiresUserConfirmation)
             {
                 _logger.LogInformation("User confirmation required at step {Step}", _engine.CurrentStep);
                 await _renderer.RenderResultAsync(stepResult.Summary ?? "Awaiting user confirmation");
+                await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
                 return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
                     "User confirmation required");
             }
 
             if (stepResult.NextTrigger.HasValue)
             {
+                var previousPhase = _engine.CurrentPhase;
                 var fired = _engine.Fire(stepResult.NextTrigger.Value);
                 if (!fired)
                 {
                     _logger.LogWarning("Cannot fire trigger {Trigger} from step {Step}",
                         stepResult.NextTrigger.Value, _engine.CurrentStep);
                 }
+                else if (_engine.CurrentPhase != previousPhase)
+                {
+                    // Phase transition occurred — save state
+                    await AutoSaveAsync(AutoSaveTrigger.PhaseTransition, moduleName, cancellationToken);
+                }
             }
         }
 
         if (cancellationToken.IsCancellationRequested)
         {
+            await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
             return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep, "Cancelled");
         }
 
@@ -255,4 +312,31 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         WorkflowStep.Repeat => 0.90,
         _ => 0.0
     };
+
+    private async Task AutoSaveAsync(AutoSaveTrigger trigger, string moduleName, CancellationToken cancellationToken)
+    {
+        if (_autoSaveService is null || _sessionId is null) return;
+
+        var state = new SessionState
+        {
+            SessionId = _sessionId.ToString(),
+            Module = moduleName,
+            Phase = _engine.CurrentPhase.ToString(),
+            Step = _engine.CurrentStep.ToString(),
+            IsComplete = _engine.IsComplete,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        try
+        {
+            await _autoSaveService.SaveAsync(trigger, _sessionId, state, null, cancellationToken);
+            _logger.LogDebug("Auto-saved state: trigger={Trigger}, step={Step}", trigger, _engine.CurrentStep);
+        }
+        catch (Exception ex)
+        {
+            // Auto-save failures must not crash the workflow (STOR-06)
+            _logger.LogWarning(ex, "Auto-save failed for trigger {Trigger}", trigger);
+        }
+    }
 }
