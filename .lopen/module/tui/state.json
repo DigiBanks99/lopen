@@ -40,6 +40,36 @@
       "jobs": ["JOB-089"],
       "notes": "Landing page with quick commands, auth status. Resume modal with session details, option selection."
     },
+    "tool_outputs": {
+      "status": "complete",
+      "implementation": "DiffViewerComponent + PhaseTransitionComponent + ResearchDisplayComponent + ToolOutputData",
+      "tests": "ToolOutputComponentTests (16)",
+      "jobs": ["JOB-090"]
+    },
+    "selection_components": {
+      "status": "complete",
+      "implementation": "FilePickerComponent + SelectionModalComponent + ConfirmationModalComponent + ErrorModalComponent + SelectionData",
+      "tests": "SelectionComponentTests (19)",
+      "jobs": ["JOB-091", "JOB-093"]
+    },
+    "spinner": {
+      "status": "complete",
+      "implementation": "SpinnerComponent + SpinnerData",
+      "tests": "VisualAndCommandTests (8 spinner tests)",
+      "jobs": ["JOB-094"]
+    },
+    "visual_design": {
+      "status": "complete",
+      "implementation": "ColorPalette + UnicodeSupport",
+      "tests": "VisualAndCommandTests (5 visual tests)",
+      "jobs": ["JOB-095"]
+    },
+    "slash_commands": {
+      "status": "complete",
+      "implementation": "SlashCommandRegistry + SlashCommandDefinition",
+      "tests": "VisualAndCommandTests (8 command tests)",
+      "jobs": ["JOB-096"]
+    },
     "component_gallery": {
       "status": "complete",
       "implementation": "ComponentGallery (in-memory registry) + ITuiComponent interface",
@@ -51,5 +81,5 @@
       "tests": "StubTuiApplicationTests (existing)"
     }
   },
-  "last_updated": "2026-02-16T14:00:00Z"
+  "last_updated": "2026-02-16T18:00:00Z"
 }

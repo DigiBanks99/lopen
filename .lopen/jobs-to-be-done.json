@@ -718,7 +718,7 @@
     "id": "JOB-090",
     "requirement_module": "tui",
     "description": "Implement tool call output expansion, inline research display, phase transition summaries, diff viewer with syntax highlighting",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
     "notes": "AC: Expandable tool outputs; research drill-in; phase summaries; diff viewer with line numbers"
   },
@@ -726,7 +726,7 @@
     "id": "JOB-091",
     "requirement_module": "tui",
     "description": "Implement file picker with tree view, module selection modal with arrow keys, component selection UI",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
     "notes": "AC: File picker, module selection modal, component selection tree view"
   },
@@ -742,7 +742,7 @@
     "id": "JOB-093",
     "requirement_module": "tui",
     "description": "Implement confirmation modals (Yes/No/Always/Other), expandable sections, failure/error modals with recovery options",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
     "notes": "AC: Confirmation modals; failure inline auto-expanded; repeated failure modal; critical error modal"
   },
@@ -750,7 +750,7 @@
     "id": "JOB-094",
     "requirement_module": "tui",
     "description": "Implement spinner async feedback, real-time progress percentages, context/premium counters in top panel",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
     "notes": "AC: Spinner for long ops; real-time progress; context window usage; premium request counter with fire indicator"
   },
@@ -758,7 +758,7 @@
     "id": "JOB-095",
     "requirement_module": "tui",
     "description": "Implement semantic color palette, Unicode/ASCII fallbacks, box-drawing borders, syntax highlighting, NO_COLOR support",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
     "notes": "AC: Visual design with semantic colors, Unicode fallbacks, box chars, NO_COLOR respected"
   },
@@ -766,7 +766,7 @@
     "id": "JOB-096",
     "requirement_module": "tui",
     "description": "Implement slash commands (/help /spec /plan /build /session /config /revert /auth), queued messages, Ctrl+P pause",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
     "notes": "AC: Slash commands invoke CLI; unknown commands error; queued messages; Ctrl+P pauses"
   },
