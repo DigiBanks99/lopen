@@ -20,6 +20,8 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
     private readonly IWorkflowEngine _engine;
     private readonly IVerificationTracker _verificationTracker;
     private readonly IGitWorkflowService? _gitWorkflowService;
+    private readonly ITaskStatusGate? _taskStatusGate;
+    private readonly IPlanManager? _planManager;
     private readonly ILogger<ToolHandlerBinder> _logger;
     private readonly string _projectRoot;
 
@@ -30,7 +32,9 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         IVerificationTracker verificationTracker,
         ILogger<ToolHandlerBinder> logger,
         string projectRoot,
-        IGitWorkflowService? gitWorkflowService = null)
+        IGitWorkflowService? gitWorkflowService = null,
+        ITaskStatusGate? taskStatusGate = null,
+        IPlanManager? planManager = null)
     {
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         _sectionExtractor = sectionExtractor ?? throw new ArgumentNullException(nameof(sectionExtractor));
@@ -39,6 +43,8 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _projectRoot = projectRoot ?? throw new ArgumentNullException(nameof(projectRoot));
         _gitWorkflowService = gitWorkflowService;
+        _taskStatusGate = taskStatusGate;
+        _planManager = planManager;
     }
 
     public void BindAll(IToolRegistry registry)
@@ -196,11 +202,28 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         // Enforce oracle verification before marking complete (CORE-10, LLM-08)
         if (status.Equals("complete", StringComparison.OrdinalIgnoreCase))
         {
-            if (!_verificationTracker.IsVerified(VerificationScope.Task, taskId))
+            // Use ITaskStatusGate if available, otherwise fall back to direct tracker check
+            if (_taskStatusGate is not null)
+            {
+                var gateResult = _taskStatusGate.ValidateCompletion(VerificationScope.Task, taskId);
+                if (!gateResult.IsAllowed)
+                {
+                    _logger.LogWarning("Task completion rejected by gate: {TaskId} — {Reason}", taskId, gateResult.RejectionReason);
+                    return JsonResult("error", gateResult.RejectionReason ?? $"Cannot mark task '{taskId}' as complete");
+                }
+            }
+            else if (!_verificationTracker.IsVerified(VerificationScope.Task, taskId))
             {
                 _logger.LogWarning("Task completion rejected: {TaskId} has not passed verification", taskId);
                 return JsonResult("error",
                     $"Cannot mark task '{taskId}' as complete — verify_task_completion must pass first");
+            }
+
+            // Update plan checkbox (CORE-20)
+            if (_planManager is not null && !string.IsNullOrWhiteSpace(module))
+            {
+                await _planManager.UpdateCheckboxAsync(module, taskId, true, ct);
+                _logger.LogInformation("Plan checkbox updated for task {TaskId}", taskId);
             }
 
             // Auto-commit on task completion if git is enabled

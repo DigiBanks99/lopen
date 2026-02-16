@@ -17,9 +17,13 @@ public class ToolHandlerBinderTests
     private readonly StubVerificationTracker _verificationTracker = new();
     private const string ProjectRoot = "/test/project";
 
-    private ToolHandlerBinder CreateBinder() => new(
+    private ToolHandlerBinder CreateBinder(
+        StubGitWorkflowService? git = null,
+        StubTaskStatusGate? gate = null,
+        StubPlanManager? planManager = null) => new(
         _fileSystem, _sectionExtractor, _engine, _verificationTracker,
-        NullLogger<ToolHandlerBinder>.Instance, ProjectRoot);
+        NullLogger<ToolHandlerBinder>.Instance, ProjectRoot,
+        git, gate, planManager);
 
     [Fact]
     public void BindAll_BindsAllTenTools()
@@ -163,9 +167,7 @@ public class ToolHandlerBinderTests
     {
         _verificationTracker.VerifiedItems.Add(("Task", "task-1"));
         var gitService = new StubGitWorkflowService();
-        var binder = new ToolHandlerBinder(
-            _fileSystem, _sectionExtractor, _engine, _verificationTracker,
-            NullLogger<ToolHandlerBinder>.Instance, ProjectRoot, gitService);
+        var binder = CreateBinder(git: gitService);
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-1","status":"complete","module":"core","component":"workflow"}""",
@@ -183,9 +185,7 @@ public class ToolHandlerBinderTests
     {
         _verificationTracker.VerifiedItems.Add(("Task", "task-2"));
         var gitService = new StubGitWorkflowService();
-        var binder = new ToolHandlerBinder(
-            _fileSystem, _sectionExtractor, _engine, _verificationTracker,
-            NullLogger<ToolHandlerBinder>.Instance, ProjectRoot, gitService);
+        var binder = CreateBinder(git: gitService);
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-2","status":"complete"}""", CancellationToken.None);
@@ -210,9 +210,7 @@ public class ToolHandlerBinderTests
     public async Task HandleUpdateTaskStatus_DoesNotCommitForNonCompleteStatus()
     {
         var gitService = new StubGitWorkflowService();
-        var binder = new ToolHandlerBinder(
-            _fileSystem, _sectionExtractor, _engine, _verificationTracker,
-            NullLogger<ToolHandlerBinder>.Instance, ProjectRoot, gitService);
+        var binder = CreateBinder(git: gitService);
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-1","status":"in-progress","module":"core"}""", CancellationToken.None);
@@ -422,6 +420,59 @@ public class ToolHandlerBinderTests
         Assert.True(count >= 1, "Oracle verdict counter should be incremented");
     }
 
+    [Fact]
+    public async Task HandleUpdateTaskStatus_UsesTaskStatusGateWhenProvided()
+    {
+        var gate = new StubTaskStatusGate { Result = TaskStatusGateResult.Rejected("Gate says no") };
+        var binder = CreateBinder(gate: gate);
+
+        var result = await binder.HandleUpdateTaskStatus(
+            """{"task_id":"task-gate","status":"complete"}""", CancellationToken.None);
+
+        Assert.Contains("Gate says no", result);
+    }
+
+    [Fact]
+    public async Task HandleUpdateTaskStatus_TaskStatusGateAllowed_Succeeds()
+    {
+        var gate = new StubTaskStatusGate { Result = TaskStatusGateResult.Allowed() };
+        var binder = CreateBinder(gate: gate);
+
+        var result = await binder.HandleUpdateTaskStatus(
+            """{"task_id":"task-gate","status":"complete"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+    }
+
+    [Fact]
+    public async Task HandleUpdateTaskStatus_CallsPlanManagerOnCompletion()
+    {
+        _verificationTracker.VerifiedItems.Add(("Task", "task-plan"));
+        var planManager = new StubPlanManager();
+        var binder = CreateBinder(planManager: planManager);
+
+        var result = await binder.HandleUpdateTaskStatus(
+            """{"task_id":"task-plan","status":"complete","module":"core"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+        Assert.Single(planManager.Updates);
+        Assert.Equal("core", planManager.Updates[0].Module);
+        Assert.Equal("task-plan", planManager.Updates[0].TaskText);
+        Assert.True(planManager.Updates[0].Completed);
+    }
+
+    [Fact]
+    public async Task HandleUpdateTaskStatus_SkipsPlanManagerWhenNotProvided()
+    {
+        _verificationTracker.VerifiedItems.Add(("Task", "task-no-plan"));
+        var binder = CreateBinder();
+
+        var result = await binder.HandleUpdateTaskStatus(
+            """{"task_id":"task-no-plan","status":"complete","module":"core"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+    }
+
     // --- Stubs ---
 
     private sealed class StubGitWorkflowService : Lopen.Core.Git.IGitWorkflowService
@@ -525,5 +576,35 @@ public class ToolHandlerBinderTests
             BoundHandlers[toolName] = handler;
             return true;
         }
+    }
+
+    private sealed class StubTaskStatusGate : Lopen.Llm.ITaskStatusGate
+    {
+        public TaskStatusGateResult Result { get; set; } = TaskStatusGateResult.Allowed();
+
+        public TaskStatusGateResult ValidateCompletion(VerificationScope scope, string identifier) => Result;
+    }
+
+    private sealed class StubPlanManager : Lopen.Storage.IPlanManager
+    {
+        public List<(string Module, string TaskText, bool Completed)> Updates { get; } = [];
+
+        public Task<bool> UpdateCheckboxAsync(string module, string taskText, bool completed, CancellationToken cancellationToken = default)
+        {
+            Updates.Add((module, taskText, completed));
+            return Task.FromResult(true);
+        }
+
+        public Task<string?> ReadPlanAsync(string module, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task WritePlanAsync(string module, string content, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<bool> PlanExistsAsync(string module, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+
+        public Task<IReadOnlyList<Lopen.Storage.PlanTask>> ReadTasksAsync(string module, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Lopen.Storage.PlanTask>>([]);
     }
 }

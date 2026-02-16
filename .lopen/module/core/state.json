@@ -153,7 +153,43 @@
         "JOB-031"
       ],
       "notes": "userPrompt stored as _userPrompt field, passed as contextSections[user_prompt] to BuildSystemPrompt"
+    },
+    "module_scanner_wiring": {
+      "status": "complete",
+      "implementation": "IModuleScanner used in ModuleLister, CodebaseStateAssessor, SpecificationDriftService, PhaseCommands",
+      "tests": "Existing ModuleScannerTests + integration through other tests",
+      "jobs": [
+        "JOB-067"
+      ],
+      "notes": "Already wired upstream - orchestrator receives moduleName as parameter"
+    },
+    "state_assessor_wiring": {
+      "status": "complete",
+      "implementation": "IStateAssessor wired into WorkflowEngine.InitializeAsync and WorkflowOrchestrator for HasMoreComponentsAsync",
+      "tests": "WorkflowEngineTests + WorkflowOrchestratorTests",
+      "jobs": [
+        "JOB-068"
+      ],
+      "notes": "GetCurrentStepAsync called on engine init, HasMoreComponentsAsync in orchestrator transitions"
+    },
+    "task_status_gate_wiring": {
+      "status": "complete",
+      "implementation": "ITaskStatusGate wired into ToolHandlerBinder. ValidateCompletion called before allowing task completion, falls back to direct tracker check.",
+      "tests": "HandleUpdateTaskStatus_UsesTaskStatusGateWhenProvided, HandleUpdateTaskStatus_TaskStatusGateAllowed_Succeeds",
+      "jobs": [
+        "JOB-069"
+      ],
+      "notes": "Optional dependency - when present, replaces inline verification tracker check"
+    },
+    "plan_manager_wiring": {
+      "status": "complete",
+      "implementation": "IPlanManager wired into ToolHandlerBinder. UpdateCheckboxAsync called after task completion.",
+      "tests": "HandleUpdateTaskStatus_CallsPlanManagerOnCompletion, HandleUpdateTaskStatus_SkipsPlanManagerWhenNotProvided",
+      "jobs": [
+        "JOB-070"
+      ],
+      "notes": "Optional dependency - updates plan.md checkbox when task marked complete"
     }
   },
-  "last_updated": "2026-02-16T21:00:00Z"
+  "last_updated": "2026-02-16T22:00:00Z"
 }

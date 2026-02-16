@@ -79,6 +79,14 @@ public static class ServiceCollectionExtensions
                 try { gitSvc = sp.GetService<Git.IGitWorkflowService>(); }
                 catch { /* Git service optional */ }
 
+                Lopen.Llm.ITaskStatusGate? taskGate = null;
+                try { taskGate = sp.GetService<Lopen.Llm.ITaskStatusGate>(); }
+                catch { /* Task status gate optional */ }
+
+                Lopen.Storage.IPlanManager? planMgr = null;
+                try { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
+                catch { /* Plan manager optional */ }
+
                 return new ToolHandlerBinder(
                     sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
                     sp.GetRequiredService<ISectionExtractor>(),
@@ -86,7 +94,9 @@ public static class ServiceCollectionExtensions
                     sp.GetRequiredService<Lopen.Llm.IVerificationTracker>(),
                     sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ToolHandlerBinder>>(),
                     projectRoot,
-                    gitSvc);
+                    gitSvc,
+                    taskGate,
+                    planMgr);
             });
         }
 

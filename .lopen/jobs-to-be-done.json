@@ -598,7 +598,7 @@
     "requirement_code": "CORE-01",
     "requirement_module": "core",
     "description": "Wire ModuleScanner into orchestration loop to scan docs/requirements/ at workflow start",
-    "status": "open",
+    "status": "done",
     "priority": 2,
     "notes": "ModuleScanner exists and is tested. Must be invoked at workflow start to identify all module specifications."
   },
@@ -607,7 +607,7 @@
     "requirement_code": "CORE-03",
     "requirement_module": "core",
     "description": "Wire IStateAssessor into orchestration loop for re-entrant step determination from codebase state",
-    "status": "open",
+    "status": "done",
     "priority": 2,
     "notes": "IStateAssessor exists but is not registered in DI. Must be called on workflow resume to determine current step."
   },
@@ -616,7 +616,7 @@
     "requirement_code": "CORE-10",
     "requirement_module": "core",
     "description": "Wire TaskStatusGate into orchestration loop to enforce oracle verification before task completion",
-    "status": "open",
+    "status": "done",
     "priority": 2,
     "notes": "TaskStatusGate exists in LLM module. Must be invoked when update_task_status(complete) is called to ensure verification passed."
   },
@@ -625,7 +625,7 @@
     "requirement_code": "CORE-20",
     "requirement_module": "core",
     "description": "Wire PlanManager for programmatic plan checkbox updates without LLM invocation",
-    "status": "open",
+    "status": "done",
     "priority": 2,
     "notes": "PlanManager exists in Storage. Must be invoked by orchestration loop to update plan.md checkboxes when tasks complete."
   },
