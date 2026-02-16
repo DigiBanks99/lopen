@@ -87,17 +87,17 @@
       "jobs": [
         "JOB-002"
       ],
-      "notes": "Drives assess \u2192 guardrails \u2192 LLM invoke \u2192 transition loop. Human gate for spec step. Registered in DI via AddLopenCore()."
+      "notes": "Drives assess → guardrails → LLM invoke → transition loop. Human gate for spec step. Registered in DI via AddLopenCore()."
     },
     "auto_transitions": {
       "status": "complete",
       "implementation": "WorkflowOrchestrator auto-transition checks in RunStepAsync",
-      "tests": "WorkflowOrchestratorTests (2 new tests for Repeat\u2192ModuleComplete and Repeat\u2192Assess)",
+      "tests": "WorkflowOrchestratorTests (2 new tests for Repeat→ModuleComplete and Repeat→Assess)",
       "jobs": [
         "JOB-014",
         "JOB-015"
       ],
-      "notes": "Human gate for spec approval. Auto-transition from Repeat\u2192Complete when no more components. Planning\u2192Building via PhaseTransitionController."
+      "notes": "Human gate for spec approval. Auto-transition from Repeat→Complete when no more components. Planning→Building via PhaseTransitionController."
     },
     "drift_detection_wiring": {
       "status": "complete",
@@ -192,13 +192,14 @@
     },
     "failure_handler_wiring": {
       "status": "complete",
-      "implementation": "IFailureHandler wired into WorkflowOrchestrator. On step failure: RecordFailure() \u2192 SelfCorrect continues loop, PromptUser/Block interrupts. ResetFailureCount on success.",
-      "tests": "WorkflowOrchestratorTests (5 new failure handler tests) + ServiceCollectionExtensionsTests (2 new DI tests)",
+      "implementation": "IFailureHandler wired into WorkflowOrchestrator. On step failure: RecordFailure() → SelfCorrect continues loop, PromptUser prompts user or auto-continues in unattended mode, Block interrupts. ResetFailureCount on success.",
+      "tests": "WorkflowOrchestratorTests (12 failure handler tests) + ServiceCollectionExtensionsTests (2 DI tests)",
       "jobs": [
-        "JOB-071"
+        "JOB-071",
+        "JOB-072"
       ],
-      "notes": "IFailureHandler registered in DI via AddLopenCore(). Uses WorkflowOptions.FailureThreshold. Backward compatible: without handler, behavior unchanged."
+      "notes": "CORE-21: SelfCorrect on single failure. CORE-22: PromptUser at threshold prompts via IOutputRenderer.PromptAsync — user confirms y/yes to continue (resets count), declines/null to interrupt. Unattended mode suppresses prompt and continues. WorkflowOptions passed to orchestrator via DI."
     }
   },
-  "last_updated": "2026-02-16T19:30:00Z"
+  "last_updated": "2026-02-16T19:35:00Z"
 }

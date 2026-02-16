@@ -486,7 +486,7 @@ This specification defines the **core workflow and orchestration behavior** of L
 - [ ] [CORE-19] Document management extracts relevant sections (not full documents) for LLM context
 - [ ] [CORE-20] Programmatic updates (task checkboxes, status tracking) happen without LLM invocation
 - [ ] [CORE-21] Single task failures display inline and the LLM self-corrects
-- [ ] [CORE-22] Repeated task failures (at threshold) prompt user intervention
+- [x] [CORE-22] Repeated task failures (at threshold) prompt user intervention
 - [ ] [CORE-23] Critical system errors block execution and require user action
 - [ ] [CORE-24] Module selection lists modules with current state and allows user to choose
 

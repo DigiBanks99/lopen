@@ -15,7 +15,7 @@
     "description": "Implement the main orchestration loop that drives workflow steps from start to completion",
     "status": "done",
     "priority": 1,
-    "notes": "Implemented WorkflowOrchestrator with IWorkflowOrchestrator interface. Loop: assess \u2192 guardrails \u2192 LLM invoke \u2192 transition \u2192 render. 21 tests. Registered in DI."
+    "notes": "Implemented WorkflowOrchestrator with IWorkflowOrchestrator interface. Loop: assess → guardrails → LLM invoke → transition → render. 21 tests. Registered in DI."
   },
   {
     "id": "JOB-003",
@@ -120,7 +120,7 @@
     "id": "JOB-014",
     "requirement_code": "CORE-05",
     "requirement_module": "core",
-    "description": "Wire PhaseTransitionController human gate into orchestration loop for Requirement Gathering \u2192 Planning",
+    "description": "Wire PhaseTransitionController human gate into orchestration loop for Requirement Gathering → Planning",
     "status": "done",
     "priority": 2,
     "notes": "Human gate already implemented in WorkflowOrchestrator: DraftSpecification step checks IsRequirementGatheringToPlannningApproved, invokes LLM, returns NeedsConfirmation for RunAsync loop to interrupt."
@@ -129,10 +129,10 @@
     "id": "JOB-015",
     "requirement_code": "CORE-06",
     "requirement_module": "core",
-    "description": "Wire auto-transition checks for Planning \u2192 Building and Building \u2192 Complete into orchestration loop",
+    "description": "Wire auto-transition checks for Planning → Building and Building → Complete into orchestration loop",
     "status": "done",
     "priority": 2,
-    "notes": "Auto-transitions wired: Repeat step checks HasMoreComponentsAsync \u2014 fires ModuleComplete when no more components, fires Assess otherwise. Planning\u2192Building auto-transition checks via PhaseTransitionController."
+    "notes": "Auto-transitions wired: Repeat step checks HasMoreComponentsAsync — fires ModuleComplete when no more components, fires Assess otherwise. Planning→Building auto-transition checks via PhaseTransitionController."
   },
   {
     "id": "JOB-016",
@@ -312,7 +312,7 @@
     "description": "Create 'lopen test tui' CLI command that launches the interactive component gallery",
     "status": "done",
     "priority": 1,
-    "notes": "TestCommand with test tui subcommand. Interactive gallery with \u2191\u2193 navigation and Enter preview. --list flag for text mode. 4 CLI tests."
+    "notes": "TestCommand with test tui subcommand. Interactive gallery with ↑↓ navigation and Enter preview. --list flag for text mode. 4 CLI tests."
   },
   {
     "id": "JOB-036",
@@ -444,7 +444,7 @@
     "id": "JOB-050",
     "requirement_code": "TUI-17",
     "requirement_module": "tui",
-    "description": "Wire phase/step visualization (\u25cf/\u25cb) in top panel from live workflow state",
+    "description": "Wire phase/step visualization (●/○) in top panel from live workflow state",
     "status": "open",
     "priority": 3,
     "notes": "TopPanelComponent renders step indicators. Must receive live WorkflowEngine state updates."
@@ -525,7 +525,7 @@
     "id": "JOB-059",
     "requirement_code": "TUI-30",
     "requirement_module": "tui",
-    "description": "Wire premium request counter (\ud83d\udd25) display in top panel from token tracker",
+    "description": "Wire premium request counter (🔥) display in top panel from token tracker",
     "status": "open",
     "priority": 3,
     "notes": "TopPanelComponent renders premium counter. Must receive live data from ITokenTracker."
@@ -643,9 +643,9 @@
     "requirement_code": "CORE-22",
     "requirement_module": "core",
     "description": "Implement repeated failure escalation - prompt user intervention at configured threshold",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "When task failure count reaches threshold (from ToolDiscipline config), should pause and prompt user. ChurnDetectionGuardrail exists for this."
+    "notes": "WorkflowOrchestrator prompts user via IOutputRenderer.PromptAsync when FailureAction.PromptUser returned. User confirms y/yes to retry (failure count reset), declines/null to interrupt. Unattended mode auto-continues. 7 new tests added."
   },
   {
     "id": "JOB-073",
@@ -831,7 +831,7 @@
     "id": "JOB-093",
     "requirement_code": "CORE-02",
     "requirement_module": "core",
-    "description": "Write integration test for end-to-end workflow execution (spec \u2192 plan \u2192 build pipeline)",
+    "description": "Write integration test for end-to-end workflow execution (spec → plan → build pipeline)",
     "status": "open",
     "priority": 3,
     "notes": "No cross-module integration tests exist for the full workflow pipeline. Critical for proving the system works end-to-end."
