@@ -32,6 +32,9 @@ public sealed record ActivityEntry
     /// <summary>Entry type for visual styling.</summary>
     public ActivityEntryKind Kind { get; init; } = ActivityEntryKind.Action;
 
+    /// <summary>Optional full document content for drill-into (e.g., research documents).</summary>
+    public string? FullDocumentContent { get; init; }
+
     /// <summary>Whether this entry has expandable details.</summary>
     public bool HasDetails => Details.Count > 0;
 }
@@ -55,4 +58,6 @@ public enum ActivityEntryKind
     Error,
     /// <summary>Tool call (e.g., code editing, file operations).</summary>
     ToolCall,
+    /// <summary>Research finding with optional drill-into document.</summary>
+    Research,
 }

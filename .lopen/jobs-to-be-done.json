@@ -409,9 +409,9 @@
     "requirement_code": "TUI-13",
     "requirement_module": "tui",
     "description": "Implement inline research display with drill-into-document capability",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ResearchDisplayComponent exists. Must be wired to display research docs inline with ability to navigate to full document."
+    "notes": "Added Research ActivityEntryKind with 📖 prefix. FullDocumentContent on ActivityEntry for drill-into. Expanded entries with full doc show '[Press Enter to view full document]' hint. ToggleExpand on expanded+full doc opens ResourceViewerModal. 7 new tests. All 1891 tests pass."
   },
   {
     "id": "JOB-047",

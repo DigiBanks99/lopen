@@ -353,4 +353,99 @@ public class ActivityPanelComponentTests
         var entry = new ActivityEntry { Summary = "Test" };
         Assert.False(entry.HasDetails);
     }
+
+    // ==================== Research entries (JOB-046 / TUI-13) ====================
+
+    [Fact]
+    public void KindPrefix_Research_ReturnsBookIcon()
+    {
+        Assert.Equal("📖", ActivityPanelComponent.KindPrefix(ActivityEntryKind.Research));
+    }
+
+    [Fact]
+    public void Render_ResearchEntry_ShowsBookPrefix()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries = [new ActivityEntry { Summary = "API patterns", Kind = ActivityEntryKind.Research }]
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 5));
+        Assert.Contains(lines, l => l.Contains("📖 API patterns"));
+    }
+
+    [Fact]
+    public void Render_ResearchEntry_Expanded_ShowsFindings()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries = [new ActivityEntry
+            {
+                Summary = "Auth research",
+                Kind = ActivityEntryKind.Research,
+                Details = ["JWT is stateless", "OAuth2 uses refresh tokens"],
+                IsExpanded = true
+            }]
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 10));
+        Assert.Contains(lines, l => l.Contains("JWT is stateless"));
+        Assert.Contains(lines, l => l.Contains("OAuth2 uses refresh tokens"));
+    }
+
+    [Fact]
+    public void Render_ResearchEntry_WithFullDocument_ShowsDrillHint()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries = [new ActivityEntry
+            {
+                Summary = "Research: auth patterns",
+                Kind = ActivityEntryKind.Research,
+                Details = ["Finding 1"],
+                IsExpanded = true,
+                FullDocumentContent = "Full document text here"
+            }]
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 10));
+        Assert.Contains(lines, l => l.Contains("[Press Enter to view full document]"));
+    }
+
+    [Fact]
+    public void Render_ResearchEntry_NoFullDocument_NoDrillHint()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries = [new ActivityEntry
+            {
+                Summary = "Research: brief",
+                Kind = ActivityEntryKind.Research,
+                Details = ["Finding 1"],
+                IsExpanded = true
+            }]
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 10));
+        Assert.DoesNotContain(lines, l => l.Contains("[Press Enter to view full document]"));
+    }
+
+    [Fact]
+    public void Render_NonResearchEntry_WithFullDocument_ShowsDrillHint()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries = [new ActivityEntry
+            {
+                Summary = "Tool output",
+                Kind = ActivityEntryKind.ToolCall,
+                Details = ["Detail line"],
+                IsExpanded = true,
+                FullDocumentContent = "Full output"
+            }]
+        };
+
+        var lines = _component.Render(data, new ScreenRect(0, 0, 60, 10));
+        Assert.Contains(lines, l => l.Contains("[Press Enter to view full document]"));
+    }
 }

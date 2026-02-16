@@ -35,6 +35,9 @@ public sealed class ActivityPanelComponent : ITuiComponent
             {
                 foreach (var detail in entry.Details)
                     allLines.Add($"  {detail}");
+
+                if (entry.FullDocumentContent is not null)
+                    allLines.Add("  [Press Enter to view full document]");
             }
         }
 
@@ -95,6 +98,7 @@ public sealed class ActivityPanelComponent : ITuiComponent
         ActivityEntryKind.PhaseTransition => "◆",
         ActivityEntryKind.Error => "⚠",
         ActivityEntryKind.ToolCall => "⚙",
+        ActivityEntryKind.Research => "📖",
         _ => "●",
     };
 

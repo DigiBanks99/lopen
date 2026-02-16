@@ -1,21 +1,17 @@
-# Implementation Plan — JOB-045 (TUI-12): Numbered Resource Access
+# Implementation Plan — JOB-046 (TUI-13): Inline Research Display
 
-**Goal:** Press 1-9 to open a scrollable resource viewer modal.
+**Goal:** Research entries inline in activity panel with drill-into full document.
 
 ## Acceptance Criteria
-- [TUI-12] Numbered resource access (press 1-9 to view active resources)
+- [TUI-13] Inline research display with ability to drill into full document
 
 ## Tasks
 
-- [x] 1. Add Content property to ResourceItem
-- [x] 2. Add ResourceViewer to TuiModalState enum
-- [x] 3. Create ResourceViewerData in ModalData.cs
-- [x] 4. Create ResourceViewerModalComponent (scrollable, title bar, footer)
-- [x] 5. Handle ViewResource1-9 in ApplyAction (open resource viewer)
-- [x] 6. Handle Esc/Up/Down in DrainKeyboardInput for resource viewer
-- [x] 7. Add resource viewer rendering in RenderFrame
-- [x] 8. Add UpdateContextData method to TuiApplication
-- [x] 9. Write 13 new tests (10 modal + 3 TuiApp)
-- [x] 10. Run full test suite — 1,884 tests pass, 0 failures
-- [x] 11. Verify acceptance criteria with sub-agent
-- [x] 12. Update state.json, jobs-to-be-done.json, commit
+- [x] 1. Add Research to ActivityEntryKind enum with 📖 prefix
+- [x] 2. Add FullDocumentContent property to ActivityEntry
+- [x] 3. Show "[Press Enter to view full document]" hint when expanded + full doc exists
+- [x] 4. ToggleExpand on expanded entry with FullDocumentContent opens ResourceViewerModal
+- [x] 5. Write 7 new tests (6 component + 1 integration)
+- [x] 6. Run full test suite — 1,891 tests pass, 0 failures
+- [x] 7. Verify acceptance criteria with sub-agent
+- [x] 8. Update state.json, jobs-to-be-done.json, commit

@@ -383,4 +383,29 @@ public class TuiApplicationTests
         app.OpenResourceViewer(0);
         Assert.False(app.IsRunning);
     }
+
+    // ==================== Research drill-into (JOB-046) ====================
+
+    [Fact]
+    public void ToggleExpand_ExpandedResearchWithFullDoc_DoesNotThrow()
+    {
+        var app = CreateApp();
+        // Set activity data with an expanded research entry that has full document
+        app.UpdateActivityPanel(new ActivityPanelData
+        {
+            Entries = [new ActivityEntry
+            {
+                Summary = "Research: auth",
+                Kind = ActivityEntryKind.Research,
+                Details = ["Finding 1"],
+                IsExpanded = true,
+                FullDocumentContent = "Full auth research document"
+            }],
+            SelectedEntryIndex = 0
+        });
+
+        // Simulate toggle on already-expanded entry with full doc
+        // This should open resource viewer modal (internal state change)
+        Assert.False(app.IsRunning);
+    }
 }

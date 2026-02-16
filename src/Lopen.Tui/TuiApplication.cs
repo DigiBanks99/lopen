@@ -535,8 +535,22 @@ internal sealed class TuiApplication : ITuiApplication
         if (idx < 0 || idx >= _activityData.Entries.Count)
             return;
 
+        var entry = _activityData.Entries[idx];
+
+        // If already expanded and has full document, drill into it
+        if (entry.IsExpanded && entry.FullDocumentContent is not null)
+        {
+            _resourceViewerData = new ResourceViewerData
+            {
+                Label = entry.Summary,
+                Lines = entry.FullDocumentContent.Split('\n').ToList(),
+                ScrollOffset = 0
+            };
+            _modalState = TuiModalState.ResourceViewer;
+            return;
+        }
+
         var entries = _activityData.Entries.ToList();
-        var entry = entries[idx];
         entries[idx] = entry with { IsExpanded = !entry.IsExpanded };
         _activityData = _activityData with { Entries = entries };
     }
