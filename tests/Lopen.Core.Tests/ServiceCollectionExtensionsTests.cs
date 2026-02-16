@@ -100,6 +100,20 @@ public class ServiceCollectionExtensionsTests
         Assert.NotNull(service);
     }
 
+    [Fact]
+    public void AddLopenCore_RegistersOutputRenderer()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddLopenCore();
+
+        var provider = services.BuildServiceProvider();
+        var service = provider.GetService<IOutputRenderer>();
+
+        Assert.NotNull(service);
+        Assert.IsType<HeadlessRenderer>(service);
+    }
+
     private sealed class StubFileSystem : Lopen.Storage.IFileSystem
     {
         public void CreateDirectory(string path) { }

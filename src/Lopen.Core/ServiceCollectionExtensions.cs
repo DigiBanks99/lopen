@@ -4,6 +4,7 @@ using Lopen.Core.Documents;
 using Lopen.Core.Git;
 using Lopen.Core.Workflow;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Lopen.Core;
 
@@ -65,6 +66,9 @@ public static class ServiceCollectionExtensions
                     tracker.IsVerified(Lopen.Llm.VerificationScope.Task, ctx.TaskName));
         });
         services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
+
+        // Default to headless renderer; CLI overrides with TUI renderer when appropriate
+        services.TryAddSingleton<IOutputRenderer>(new HeadlessRenderer());
 
         return services;
     }

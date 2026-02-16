@@ -613,9 +613,9 @@
     "id": "JOB-077",
     "requirement_module": "cli",
     "description": "Implement --headless mode with plain text output and --quiet/-q flag disabling TUI",
-    "status": "not_started",
+    "status": "complete",
     "priority": 4,
-    "notes": "AC: --headless runs autonomously; --quiet/-q disables TUI entirely"
+    "notes": "IOutputRenderer abstraction with HeadlessRenderer (plain text to stdout/stderr). --headless/--quiet/-q flags implemented and recursive. HeadlessRenderer.PromptAsync returns null (non-interactive). 8 tests."
   },
   {
     "id": "JOB-078",
