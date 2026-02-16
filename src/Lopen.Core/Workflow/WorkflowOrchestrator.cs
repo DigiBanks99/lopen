@@ -26,6 +26,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IGitWorkflowService? _gitWorkflowService;
     private readonly IAutoSaveService? _autoSaveService;
     private readonly ISessionManager? _sessionManager;
+    private readonly ITokenTracker? _tokenTracker;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
     private int _iterationCount;
@@ -45,7 +46,8 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         ILogger<WorkflowOrchestrator> logger,
         IGitWorkflowService? gitWorkflowService = null,
         IAutoSaveService? autoSaveService = null,
-        ISessionManager? sessionManager = null)
+        ISessionManager? sessionManager = null,
+        ITokenTracker? tokenTracker = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _assessor = assessor ?? throw new ArgumentNullException(nameof(assessor));
@@ -61,6 +63,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _gitWorkflowService = gitWorkflowService;
         _autoSaveService = autoSaveService;
         _sessionManager = sessionManager;
+        _tokenTracker = tokenTracker;
     }
 
     public async Task<OrchestrationResult> RunAsync(string moduleName, CancellationToken cancellationToken = default)
@@ -273,6 +276,9 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 "LLM invocation complete: {Tokens} tokens, {ToolCalls} tool calls",
                 result.TokenUsage.TotalTokens, result.ToolCallsMade);
 
+            // Record token usage for session metrics (LLM-13)
+            _tokenTracker?.RecordUsage(result.TokenUsage);
+
             return StepResult.Succeeded(
                 DetermineNextTrigger(step) ?? WorkflowTrigger.Assess,
                 result.Output);
@@ -328,9 +334,25 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             UpdatedAt = DateTimeOffset.UtcNow,
         };
 
+        // Build session metrics from token tracker if available
+        SessionMetrics? metrics = null;
+        if (_tokenTracker is not null)
+        {
+            var tokenMetrics = _tokenTracker.GetSessionMetrics();
+            metrics = new SessionMetrics
+            {
+                SessionId = _sessionId.ToString(),
+                CumulativeInputTokens = tokenMetrics.CumulativeInputTokens,
+                CumulativeOutputTokens = tokenMetrics.CumulativeOutputTokens,
+                PremiumRequestCount = tokenMetrics.PremiumRequestCount,
+                IterationCount = _iterationCount,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            };
+        }
+
         try
         {
-            await _autoSaveService.SaveAsync(trigger, _sessionId, state, null, cancellationToken);
+            await _autoSaveService.SaveAsync(trigger, _sessionId, state, metrics, cancellationToken);
             _logger.LogDebug("Auto-saved state: trigger={Trigger}, step={Step}", trigger, _engine.CurrentStep);
         }
         catch (Exception ex)

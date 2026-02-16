@@ -455,6 +455,47 @@ public class WorkflowOrchestratorTests
         Assert.True(result.IsComplete);
     }
 
+    [Fact]
+    public async Task RunAsync_RecordsTokenUsageAfterLlmInvocation()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        _llmService.Result = new LlmInvocationResult(
+            "output", new TokenUsage(100, 50, 150, 8000, false), 2, true);
+        var tokenTracker = new StubTokenTracker();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            tokenTracker: tokenTracker);
+
+        await sut.RunAsync("test-module");
+
+        Assert.Single(tokenTracker.RecordedUsages);
+        Assert.Equal(100, tokenTracker.RecordedUsages[0].InputTokens);
+        Assert.Equal(50, tokenTracker.RecordedUsages[0].OutputTokens);
+    }
+
+    [Fact]
+    public async Task RunAsync_AutoSaveIncludesTokenMetrics()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        var tokenTracker = new StubTokenTracker();
+        var autoSave = new StubAutoSaveService();
+        var sessionMgr = new StubSessionManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            autoSaveService: autoSave, sessionManager: sessionMgr,
+            tokenTracker: tokenTracker);
+
+        await sut.RunAsync("test-module");
+
+        Assert.True(autoSave.MetricsIncluded);
+    }
+
     // --- Stubs ---
 
     private sealed class StubWorkflowEngine : IWorkflowEngine
@@ -520,6 +561,7 @@ public class WorkflowOrchestratorTests
     {
         public int InvokeCount { get; private set; }
         public bool ThrowOnInvoke { get; set; }
+        public LlmInvocationResult? Result { get; set; }
 
         public Task<LlmInvocationResult> InvokeAsync(
             string systemPrompt, string model, IReadOnlyList<LopenToolDefinition> tools,
@@ -529,8 +571,9 @@ public class WorkflowOrchestratorTests
             if (ThrowOnInvoke)
                 throw new InvalidOperationException("LLM error");
 
-            return Task.FromResult(new LlmInvocationResult(
-                "Test output", new TokenUsage(100, 50, 150, 8000, false), 1, true));
+            return Task.FromResult(Result ??
+                new LlmInvocationResult(
+                    "Test output", new TokenUsage(100, 50, 150, 8000, false), 1, true));
         }
     }
 
@@ -654,6 +697,7 @@ public class WorkflowOrchestratorTests
     {
         public List<(Lopen.Storage.AutoSaveTrigger Trigger, string SessionId)> Saves { get; } = [];
         public bool ThrowOnSave { get; set; }
+        public bool MetricsIncluded { get; private set; }
 
         public Task SaveAsync(Lopen.Storage.AutoSaveTrigger trigger, Lopen.Storage.SessionId sessionId,
             Lopen.Storage.SessionState state, Lopen.Storage.SessionMetrics? metrics = null,
@@ -661,6 +705,7 @@ public class WorkflowOrchestratorTests
         {
             if (ThrowOnSave) throw new InvalidOperationException("Auto-save forced failure");
             Saves.Add((trigger, sessionId.ToString()));
+            if (metrics is not null) MetricsIncluded = true;
             return Task.CompletedTask;
         }
     }
@@ -707,5 +752,22 @@ public class WorkflowOrchestratorTests
 
         public Task DeleteSessionAsync(Lopen.Storage.SessionId sessionId, CancellationToken ct = default) =>
             Task.CompletedTask;
+    }
+
+    private sealed class StubTokenTracker : ITokenTracker
+    {
+        public List<TokenUsage> RecordedUsages { get; } = [];
+
+        public void RecordUsage(TokenUsage usage) => RecordedUsages.Add(usage);
+
+        public SessionTokenMetrics GetSessionMetrics() => new()
+        {
+            CumulativeInputTokens = RecordedUsages.Sum(u => u.InputTokens),
+            CumulativeOutputTokens = RecordedUsages.Sum(u => u.OutputTokens),
+            PremiumRequestCount = RecordedUsages.Count(u => u.IsPremiumRequest),
+            PerIterationTokens = RecordedUsages,
+        };
+
+        public void ResetSession() => RecordedUsages.Clear();
     }
 }

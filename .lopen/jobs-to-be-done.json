@@ -184,9 +184,9 @@
     "requirement_code": "LLM-13",
     "requirement_module": "llm",
     "description": "Wire token metrics from CopilotLlmService through to TUI display and session state persistence",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "CopilotLlmService tracks tokens via InMemoryTokenTracker. TUI TopPanelComponent can display token usage. But the data flow from LLM \u2192 TUI and LLM \u2192 session metrics.json is not connected."
+    "notes": "Wired ITokenTracker into WorkflowOrchestrator. RecordUsage called after each LLM invocation. SessionMetrics built from token tracker and passed to AutoSaveService. 2 new tests."
   },
   {
     "id": "JOB-022",

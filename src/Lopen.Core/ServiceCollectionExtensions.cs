@@ -51,6 +51,10 @@ public static class ServiceCollectionExtensions
                 try { sessionMgr = sp.GetService<Lopen.Storage.ISessionManager>(); }
                 catch { /* Session manager optional */ }
 
+                Lopen.Llm.ITokenTracker? tokenTracker = null;
+                try { tokenTracker = sp.GetService<Lopen.Llm.ITokenTracker>(); }
+                catch { /* Token tracker optional */ }
+
                 return new WorkflowOrchestrator(
                     sp.GetRequiredService<IWorkflowEngine>(),
                     sp.GetRequiredService<IStateAssessor>(),
@@ -65,7 +69,8 @@ public static class ServiceCollectionExtensions
                     sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<WorkflowOrchestrator>>(),
                     gitService,
                     autoSave,
-                    sessionMgr);
+                    sessionMgr,
+                    tokenTracker);
             });
             services.AddSingleton<ISpecificationDriftService, SpecificationDriftService>();
             services.AddSingleton<IToolHandlerBinder>(sp =>

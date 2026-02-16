@@ -135,7 +135,16 @@
         "JOB-020"
       ],
       "notes": "Checks for latest session by module. Resumes if incomplete. Creates new session otherwise."
+    },
+    "token_metrics_wiring": {
+      "status": "complete",
+      "implementation": "ITokenTracker wired into WorkflowOrchestrator for token recording + SessionMetrics persistence via AutoSaveService",
+      "tests": "WorkflowOrchestratorTests (2 new token tests)",
+      "jobs": [
+        "JOB-021"
+      ],
+      "notes": "RecordUsage called after LLM invocation. GetSessionMetrics mapped to SessionMetrics for auto-save. TUI pipeline: TopPanelData already has fields, data flows via orchestrator."
     }
   },
-  "last_updated": "2026-02-16T18:30:00Z"
+  "last_updated": "2026-02-16T19:00:00Z"
 }
