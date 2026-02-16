@@ -31,27 +31,27 @@
     "requirement_code": "CLI-03",
     "requirement_module": "cli",
     "description": "Wire 'lopen spec' command to invoke WorkflowEngine for Requirement Gathering phase",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "PhaseCommands.cs spec handler currently prints 'Workflow engine not yet wired to CLI'. Need to resolve WorkflowEngine from DI and invoke it for step 1."
+    "notes": "Wired to IWorkflowOrchestrator.RunAsync(). Orchestrator invoked when session+module available. Graceful fallback when not. 3 new tests."
   },
   {
     "id": "JOB-005",
     "requirement_code": "CLI-04",
     "requirement_module": "cli",
     "description": "Wire 'lopen plan' command to invoke WorkflowEngine for Planning phase (steps 2-5)",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "PhaseCommands.cs plan handler prints 'Workflow engine not yet wired'. Need to resolve WorkflowEngine and invoke steps 2-5 with spec existence precondition."
+    "notes": "Wired to IWorkflowOrchestrator.RunAsync(). Orchestrator invoked when session+module available. Graceful fallback when not. 3 new tests."
   },
   {
     "id": "JOB-006",
     "requirement_code": "CLI-05",
     "requirement_module": "cli",
     "description": "Wire 'lopen build' command to invoke WorkflowEngine for Building phase (steps 6-7)",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "PhaseCommands.cs build handler prints 'Workflow engine not yet wired'. Need to resolve WorkflowEngine and invoke steps 6-7 with spec+plan existence precondition."
+    "notes": "Wired to IWorkflowOrchestrator.RunAsync(). Orchestrator invoked when session+module available. Graceful fallback when not. 3 new tests."
   },
   {
     "id": "JOB-007",

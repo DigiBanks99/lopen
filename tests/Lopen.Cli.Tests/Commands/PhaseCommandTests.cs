@@ -12,6 +12,7 @@ public class PhaseCommandTests
     private readonly FakeSessionManager _fakeSessionManager = new();
     private readonly FakeModuleScanner _fakeModuleScanner = new();
     private readonly FakePlanManager _fakePlanManager = new();
+    private readonly FakeWorkflowOrchestrator _fakeOrchestrator = new();
 
     private static readonly SessionId Session1 = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
 
@@ -31,6 +32,7 @@ public class PhaseCommandTests
         services.AddSingleton<ISessionManager>(_fakeSessionManager);
         services.AddSingleton<IModuleScanner>(_fakeModuleScanner);
         services.AddSingleton<IPlanManager>(_fakePlanManager);
+        services.AddSingleton<IWorkflowOrchestrator>(_fakeOrchestrator);
         var provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
@@ -170,6 +172,47 @@ public class PhaseCommandTests
 
         Assert.Equal(0, exitCode);
         Assert.Contains("building phase", output.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ==================== ORCHESTRATOR WIRING TESTS ====================
+
+    [Fact]
+    public async Task Spec_WithSession_InvokesOrchestrator()
+    {
+        _fakeSessionManager.AddSession(Session1, ActiveState);
+        _fakeSessionManager.SetLatestSessionId(Session1);
+        var (config, _, _) = CreateConfig();
+
+        await config.InvokeAsync(["spec"]);
+
+        Assert.Equal("auth", _fakeOrchestrator.LastModule);
+    }
+
+    [Fact]
+    public async Task Plan_WithSession_InvokesOrchestrator()
+    {
+        _fakeSessionManager.AddSession(Session1, ActiveState);
+        _fakeSessionManager.SetLatestSessionId(Session1);
+        _fakeModuleScanner.AddModule("auth", hasSpec: true);
+        var (config, _, _) = CreateConfig();
+
+        await config.InvokeAsync(["plan"]);
+
+        Assert.Equal("auth", _fakeOrchestrator.LastModule);
+    }
+
+    [Fact]
+    public async Task Build_WithSession_InvokesOrchestrator()
+    {
+        _fakeSessionManager.AddSession(Session1, ActiveState);
+        _fakeSessionManager.SetLatestSessionId(Session1);
+        _fakeModuleScanner.AddModule("auth", hasSpec: true);
+        _fakePlanManager.AddPlan("auth", "# Plan");
+        var (config, _, _) = CreateConfig();
+
+        await config.InvokeAsync(["build"]);
+
+        Assert.Equal("auth", _fakeOrchestrator.LastModule);
     }
 
     // ==================== HEADLESS + PROMPT TESTS (AC-19) ====================

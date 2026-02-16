@@ -38,7 +38,19 @@ public static class PhaseCommands
                 }
 
                 await stdout.WriteLineAsync("Starting requirement gathering phase...");
-                await stdout.WriteLineAsync("Workflow engine not yet wired to CLI. Use the TUI for interactive spec gathering.");
+
+                var orchestrator = services.GetService<IWorkflowOrchestrator>();
+                var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
+
+                if (orchestrator is not null && module is not null)
+                {
+                    var result = await orchestrator.RunAsync(module, cancellationToken);
+                    if (!result.IsComplete && result.WasInterrupted)
+                    {
+                        await stdout.WriteLineAsync(result.Summary ?? "Requirement gathering paused.");
+                    }
+                }
+
                 return ExitCodes.Success;
             }
             catch (Exception ex)
@@ -85,7 +97,19 @@ public static class PhaseCommands
                 }
 
                 await stdout.WriteLineAsync("Starting planning phase...");
-                await stdout.WriteLineAsync("Workflow engine not yet wired to CLI. Use the TUI for interactive planning.");
+
+                var orchestrator = services.GetService<IWorkflowOrchestrator>();
+                var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
+
+                if (orchestrator is not null && module is not null)
+                {
+                    var result = await orchestrator.RunAsync(module, cancellationToken);
+                    if (!result.IsComplete && result.WasInterrupted)
+                    {
+                        await stdout.WriteLineAsync(result.Summary ?? "Planning paused.");
+                    }
+                }
+
                 return ExitCodes.Success;
             }
             catch (Exception ex)
@@ -139,7 +163,19 @@ public static class PhaseCommands
                 }
 
                 await stdout.WriteLineAsync("Starting building phase...");
-                await stdout.WriteLineAsync("Workflow engine not yet wired to CLI. Use the TUI for interactive building.");
+
+                var orchestrator = services.GetService<IWorkflowOrchestrator>();
+                var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
+
+                if (orchestrator is not null && module is not null)
+                {
+                    var result = await orchestrator.RunAsync(module, cancellationToken);
+                    if (!result.IsComplete && result.WasInterrupted)
+                    {
+                        await stdout.WriteLineAsync(result.Summary ?? "Building paused.");
+                    }
+                }
+
                 return ExitCodes.Success;
             }
             catch (Exception ex)
@@ -302,5 +338,22 @@ public static class PhaseCommands
         }
 
         return (null, null);
+    }
+
+    /// <summary>
+    /// Resolves the module name from the session state.
+    /// </summary>
+    internal static async Task<string?> ResolveModuleNameAsync(
+        IServiceProvider services, SessionId? sessionId, CancellationToken cancellationToken)
+    {
+        if (sessionId is null)
+            return null;
+
+        var sessionManager = services.GetService<ISessionManager>();
+        if (sessionManager is null)
+            return null;
+
+        var state = await sessionManager.LoadSessionStateAsync(sessionId, cancellationToken);
+        return state?.Module;
     }
 }

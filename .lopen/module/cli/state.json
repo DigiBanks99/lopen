@@ -1,58 +1,19 @@
 {
   "module": "cli",
-  "description": "CLI command interface and entry point",
+  "description": "CLI commands and argument parsing",
   "status": "in_progress",
   "components": {
-    "auth_commands": {
+    "phase_commands_wiring": {
       "status": "complete",
-      "implementation": "AuthCommand (login/status/logout subcommands)",
-      "tests": "AuthCommandTests (8 tests)",
-      "jobs": ["JOB-079"]
-    },
-    "session_commands": {
-      "status": "complete",
-      "implementation": "SessionCommand (list/show/resume/delete/prune subcommands)",
-      "tests": "SessionCommandTests (28 tests)",
-      "jobs": ["JOB-080"]
-    },
-    "config_commands": {
-      "status": "complete",
-      "implementation": "ConfigCommand (show with --json flag)",
-      "tests": "ConfigCommandTests (4 tests)",
-      "jobs": ["JOB-081"]
-    },
-    "revert_command": {
-      "status": "complete",
-      "implementation": "RevertCommand (revert to last task-completion commit)",
-      "tests": "RevertCommandTests (7 tests)",
-      "jobs": ["JOB-081"]
-    },
-    "phase_commands": {
-      "status": "complete",
-      "implementation": "PhaseCommands (spec/plan/build with prerequisite + headless validation)",
-      "tests": "PhaseCommandTests (15 tests)",
-      "jobs": ["JOB-078"]
-    },
-    "global_options": {
-      "status": "complete",
-      "implementation": "GlobalOptions (--headless/--quiet/-q, --prompt/-p, --resume, --no-resume) + ExitCodes (0/1/2)",
-      "tests": "GlobalOptionsTests (6 tests)",
-      "jobs": ["JOB-082"]
-    },
-    "root_command": {
-      "status": "complete",
-      "implementation": "RootCommandHandler (launches TUI, headless validation, session resume)",
-      "tests": "RootCommandTests (10 tests)",
-      "jobs": ["JOB-076"],
-      "notes": "Root command launches ITuiApplication.RunAsync(). AddLopenTui() wired in Program.cs DI."
-    },
-    "integration_tests": {
-      "status": "complete",
-      "implementation": "CliIntegrationTests covering DI wiring, command registration, global flags",
-      "tests": "CliIntegrationTests (12 tests)",
-      "jobs": ["JOB-083"],
-      "notes": "Updated to include AddLopenTui() and RootCommandHandler. 21/25 ACs covered."
+      "implementation": "PhaseCommands.cs wired to IWorkflowOrchestrator",
+      "tests": "PhaseCommandTests (99 tests including 3 orchestrator wiring tests)",
+      "jobs": [
+        "JOB-004",
+        "JOB-005",
+        "JOB-006"
+      ],
+      "notes": "spec/plan/build commands invoke WorkflowOrchestrator.RunAsync when session and module are available."
     }
   },
-  "last_updated": "2026-02-16T12:00:00Z"
+  "last_updated": "2026-02-16T17:00:00Z"
 }
