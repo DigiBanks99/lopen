@@ -453,4 +453,73 @@ public class ActivityPanelDataProviderTests
         Assert.False(data.Entries[0].IsExpanded);
         Assert.True(data.Entries[1].IsExpanded);
     }
+
+    // ==================== File Edit / Diff (JOB-048 / TUI-15) ====================
+
+    [Fact]
+    public void AddFileEdit_CreatesEntryWithFileEditKind()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddFileEdit("src/auth.ts", 10, 3);
+        var data = provider.GetCurrentData();
+
+        Assert.Single(data.Entries);
+        Assert.Equal(ActivityEntryKind.FileEdit, data.Entries[0].Kind);
+    }
+
+    [Fact]
+    public void AddFileEdit_SummaryContainsFilePathAndStats()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddFileEdit("src/auth.ts", 10, 3);
+        var data = provider.GetCurrentData();
+
+        Assert.Contains("src/auth.ts", data.Entries[0].Summary);
+        Assert.Contains("+10", data.Entries[0].Summary);
+        Assert.Contains("-3", data.Entries[0].Summary);
+    }
+
+    [Fact]
+    public void AddFileEdit_WithDiffLines_IncludesFormattedDetails()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddFileEdit("file.cs", 2, 1,
+            ["+added line", "-removed line", " context line"]);
+        var data = provider.GetCurrentData();
+
+        Assert.Equal(3, data.Entries[0].Details.Count);
+        Assert.Contains(data.Entries[0].Details, d => d.StartsWith("+ "));
+        Assert.Contains(data.Entries[0].Details, d => d.StartsWith("- "));
+    }
+
+    [Fact]
+    public void AddFileEdit_WithDiffLines_SetsFullDocumentContent()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddFileEdit("file.cs", 1, 1, ["+new", "-old"]);
+        var data = provider.GetCurrentData();
+
+        Assert.NotNull(data.Entries[0].FullDocumentContent);
+        Assert.Contains("+new", data.Entries[0].FullDocumentContent!);
+    }
+
+    [Fact]
+    public void AddFileEdit_WithoutDiffLines_NoFullDocument()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddFileEdit("file.cs", 5, 2);
+        var data = provider.GetCurrentData();
+
+        Assert.Null(data.Entries[0].FullDocumentContent);
+    }
+
+    [Fact]
+    public void AddFileEdit_WithDiffLines_AutoExpands()
+    {
+        var provider = new ActivityPanelDataProvider();
+        provider.AddFileEdit("file.cs", 1, 0, ["+added"]);
+        var data = provider.GetCurrentData();
+
+        Assert.True(data.Entries[0].IsExpanded);
+    }
 }

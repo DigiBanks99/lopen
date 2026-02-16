@@ -25,4 +25,9 @@ public interface IActivityPanelDataProvider
     /// Adds a phase transition entry with summary and section details.
     /// </summary>
     void AddPhaseTransition(string fromPhase, string toPhase, IReadOnlyList<string>? sections = null);
+
+    /// <summary>
+    /// Adds a file edit entry with diff details for display in the activity panel.
+    /// </summary>
+    void AddFileEdit(string filePath, int linesAdded, int linesRemoved, IReadOnlyList<string>? diffLines = null);
 }

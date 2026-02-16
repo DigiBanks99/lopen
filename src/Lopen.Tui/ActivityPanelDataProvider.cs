@@ -74,4 +74,31 @@ internal sealed class ActivityPanelDataProvider : IActivityPanelDataProvider
             Details = details
         });
     }
+
+    public void AddFileEdit(string filePath, int linesAdded, int linesRemoved, IReadOnlyList<string>? diffLines = null)
+    {
+        var details = new List<string>();
+        if (diffLines is { Count: > 0 })
+        {
+            foreach (var line in diffLines)
+            {
+                var marker = line.Length > 0 ? line[0] : ' ';
+                var prefix = marker switch
+                {
+                    '+' => "+",
+                    '-' => "-",
+                    _ => " "
+                };
+                details.Add($"{prefix} {line}");
+            }
+        }
+
+        AddEntry(new ActivityEntry
+        {
+            Summary = $"Edit {filePath} (+{linesAdded} -{linesRemoved})",
+            Kind = ActivityEntryKind.FileEdit,
+            Details = details,
+            FullDocumentContent = diffLines is { Count: > 0 } ? string.Join("\n", diffLines) : null
+        });
+    }
 }

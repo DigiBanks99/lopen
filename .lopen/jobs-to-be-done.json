@@ -427,9 +427,9 @@
     "requirement_code": "TUI-15",
     "requirement_module": "tui",
     "description": "Wire DiffViewerComponent to display code diffs with syntax highlighting",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "DiffViewerComponent exists with syntax highlighting and line numbers. Must be displayed when workflow generates code changes."
+    "notes": "Added AddFileEdit to IActivityPanelDataProvider. Creates entries with Kind=FileEdit, summary 'Edit path (+N -M)', formatted +/- diff details, FullDocumentContent for drill-into. DiffViewerComponent already had line numbers. 6 new tests. All 1903 tests pass."
   },
   {
     "id": "JOB-049",
