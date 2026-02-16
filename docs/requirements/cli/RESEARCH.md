@@ -630,3 +630,450 @@ public class LopenRootCommand : RootCommand
 ### Relevance to Lopen
 
 Start with the CLI skeleton and Core library. The CLI module is the entry point but should be implemented early because it defines the DI container and command structure that all other modules plug into. Each module registers its services via `IServiceCollection` extensions, keeping the CLI project thin.
+
+---
+
+## 9. Headless Workflow Runner (`--headless`)
+
+### Problem
+
+`lopen --headless` must run the full 7-step workflow autonomously, writing plain text to stdout/stderr with no TUI. The current `RootCommandHandler` resolves `ITuiApplication` and calls `RunAsync()` for all cases. Headless mode needs to bypass the TUI and drive the workflow directly.
+
+### Existing Infrastructure
+
+The codebase already provides the pieces needed:
+
+| Component | Location | Purpose |
+| --- | --- | --- |
+| `IWorkflowEngine` | `Lopen.Core.Workflow` | Stateless-based 7-step state machine with `InitializeAsync`, `Fire`, `GetPermittedTriggers`, `IsComplete` |
+| `IStateAssessor` | `Lopen.Core.Workflow` | Determines current step from codebase state |
+| `IPhaseTransitionController` | `Lopen.Core.Workflow` | Human-gated (spec→planning) and auto transitions |
+| `IFailureHandler` | `Lopen.Core.Workflow` | Failure classification with threshold-based escalation |
+| `IOutputRenderer` | `Lopen.Core` | Abstracts headless vs TUI output (`RenderProgressAsync`, `RenderErrorAsync`, `RenderResultAsync`, `PromptAsync`) |
+| `HeadlessRenderer` | `Lopen.Core` | Plain text implementation — writes `[phase] step (pct%)` to stdout, errors to stderr |
+| `ISessionManager` | `Lopen.Storage` | Session creation, resume, state persistence |
+| `ILlmService` | `Lopen.Llm` | LLM invocation per phase |
+| `ExitCodes` | `Lopen.Commands` | `Success=0`, `Failure=1`, `UserInterventionRequired=2` |
+
+### Wiring the WorkflowEngine from the CLI
+
+The `IWorkflowEngine` is registered via `AddLopenCore()` but is currently `internal`. The headless runner resolves it from DI and drives the loop:
+
+```csharp
+// In RootCommandHandler — headless branch
+if (headless)
+{
+    var engine = services.GetRequiredService<IWorkflowEngine>();
+    var renderer = services.GetRequiredService<IOutputRenderer>();
+    var failureHandler = services.GetRequiredService<IFailureHandler>();
+    var prompt = parseResult.GetValue(GlobalOptions.Prompt);
+
+    // Initialize from codebase state assessment
+    var moduleName = await ResolveModuleNameAsync(services, cancellationToken);
+    await engine.InitializeAsync(moduleName, cancellationToken);
+
+    // Main workflow loop
+    while (!engine.IsComplete && !cancellationToken.IsCancellationRequested)
+    {
+        await renderer.RenderProgressAsync(
+            engine.CurrentPhase.ToString(),
+            engine.CurrentStep.ToString(),
+            -1, // indeterminate
+            cancellationToken);
+
+        var result = await ExecuteStepAsync(engine, services, prompt, cancellationToken);
+
+        if (!result.Success)
+        {
+            var classification = failureHandler.RecordFailure(result.TaskId, result.ErrorMessage);
+            if (classification.Action == FailureAction.PromptUser)
+            {
+                // In headless+unattended, exit with code 2
+                if (parseResult.GetValue(GlobalOptions.Unattended))
+                {
+                    await renderer.RenderErrorAsync(classification.Message, cancellationToken: cancellationToken);
+                    return ExitCodes.UserInterventionRequired;
+                }
+                // In headless (not unattended), prompt still returns null
+                // so we also exit with code 2
+                return ExitCodes.UserInterventionRequired;
+            }
+            // Self-correct: continue loop
+            continue;
+        }
+
+        // Fire the appropriate trigger to advance the state machine
+        var triggers = engine.GetPermittedTriggers();
+        if (triggers.Count > 0)
+            engine.Fire(triggers[0]);
+    }
+
+    return ExitCodes.Success;
+}
+```
+
+### Output to stdout/stderr
+
+The `HeadlessRenderer` is already registered as the default `IOutputRenderer` via `TryAddSingleton` in `AddLopenCore()`. When TUI is not active, it remains the active renderer. Its output format:
+
+```
+[RequirementGathering] DraftSpecification
+[Planning] DetermineDependencies (25%)
+[Planning] IdentifyComponents (50%)
+[Building] IterateThroughTasks (75%)
+Error: Build failed for component AuthService
+  InvalidOperationException: Missing dependency
+```
+
+Errors go to stderr. Progress and results go to stdout. This enables `lopen --headless 2>/dev/null` to get clean output and `lopen --headless 1>/dev/null` to see only errors.
+
+### Prompt Injection in Headless Mode
+
+When `--prompt` is provided, the text is injected into the LLM context for the current phase. The flow:
+
+1. CLI parses `--prompt` via `GlobalOptions.Prompt`
+2. The headless runner passes the prompt string to `ILlmService` as additional user context
+3. For `lopen spec --headless --prompt "Build JWT auth"` — the prompt seeds the requirement-gathering conversation
+4. For `lopen build --headless --resume <id> --prompt "Focus on session management"` — the prompt provides guidance for the build phase
+
+If `--headless` is specified without `--prompt` and no active session exists, the existing `ValidateHeadlessPromptAsync` already validates and returns an error message with exit code 1.
+
+### Exit Code Handling
+
+```
+┌──────────────────────────────────┐
+│ Headless Workflow Exit Codes     │
+├──────┬───────────────────────────┤
+│  0   │ Workflow completed        │
+│  1   │ Unrecoverable error       │
+│  2   │ Intervention needed       │
+│      │ (failure threshold hit    │
+│      │  in headless mode)        │
+│ 130  │ SIGINT (Ctrl+C)           │
+└──────┴───────────────────────────┘
+```
+
+Exit code `2` is only returned when the `IFailureHandler` classifies a failure as `PromptUser` (consecutive failures ≥ threshold). In headless mode, since `PromptAsync` returns `null`, the runner cannot get user guidance and must exit. The existing `ExitCodes.UserInterventionRequired` constant maps to this case. Exception-to-exit-code mapping in the handler's try/catch:
+
+```csharp
+catch (OperationCanceledException)
+{
+    return 130; // SIGINT
+}
+catch (Exception ex)
+{
+    await renderer.RenderErrorAsync(ex.Message, ex, cancellationToken);
+    return ExitCodes.Failure;
+}
+```
+
+### Relevance to Lopen
+
+The headless runner is the minimal orchestration loop that connects `IWorkflowEngine.Fire()` to `ILlmService` invocations, using `IOutputRenderer` for all output. It does not need a separate orchestrator class — the `RootCommandHandler` (or a small `HeadlessWorkflowRunner` helper) can host the loop directly, keeping the CLI thin. The `IPhaseTransitionController` handles the spec→planning human gate; in headless mode, the spec phase auto-approves when the LLM signals completion.
+
+---
+
+## 10. Phase Command Wiring
+
+### Problem
+
+The `spec`, `plan`, and `build` commands in `PhaseCommands.cs` currently print "Workflow engine not yet wired to CLI." They need to resolve the workflow engine from DI and invoke specific phases rather than the full workflow.
+
+### Resolving Services from DI
+
+The `IServiceProvider` is already passed to each `Create*` method via closure from `Program.cs`:
+
+```csharp
+// Current: services is available in the closure
+rootCommand.Add(PhaseCommands.CreateSpec(host.Services));
+```
+
+Services are resolved with standard DI patterns:
+
+```csharp
+var engine = services.GetRequiredService<IWorkflowEngine>();
+var renderer = services.GetRequiredService<IOutputRenderer>();
+var sessionManager = services.GetRequiredService<ISessionManager>();
+var transitionController = services.GetRequiredService<IPhaseTransitionController>();
+```
+
+The `IWorkflowEngine` is currently registered as `internal` in `AddLopenCore()`. To resolve it from the CLI, either:
+1. **Make registration public** — change `WorkflowEngine` to `public` or register the interface explicitly
+2. **Add a factory method** — `AddLopenCore()` already adds `IWorkflowEngine` to DI; ensure the interface is resolvable
+
+Option 1 is preferred since `IWorkflowEngine` is already a public interface.
+
+### Invoking Specific Phases
+
+Each phase command initializes the engine and runs only the steps belonging to that phase. The `WorkflowPhase` enum and `WorkflowEngine.MapStepToPhase()` provide the mapping:
+
+| Command | Phase | Steps | Triggers to Fire |
+| --- | --- | --- | --- |
+| `spec` | `RequirementGathering` | `DraftSpecification` | `SpecApproved` |
+| `plan` | `Planning` | `DetermineDependencies` → `IdentifyComponents` → `SelectNextComponent` → `BreakIntoTasks` | `DependenciesDetermined`, `ComponentsIdentified`, `ComponentSelected`, `TasksBrokenDown` |
+| `build` | `Building` | `IterateThroughTasks` → `Repeat` (loop) | `TaskIterationComplete`, `ComponentComplete`, `ModuleComplete` |
+
+Implementation pattern for each phase command:
+
+```csharp
+// spec command — replace the stub
+spec.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
+{
+    // ... existing validation (headless prompt, session resolution) ...
+
+    var engine = services.GetRequiredService<IWorkflowEngine>();
+    var renderer = services.GetRequiredService<IOutputRenderer>();
+    var moduleName = await ResolveModuleNameAsync(services, cancellationToken);
+
+    await engine.InitializeAsync(moduleName, cancellationToken);
+
+    // Run only the RequirementGathering phase
+    while (engine.CurrentPhase == WorkflowPhase.RequirementGathering
+           && !cancellationToken.IsCancellationRequested)
+    {
+        await renderer.RenderProgressAsync("Spec", engine.CurrentStep.ToString(), -1, cancellationToken);
+
+        var stepResult = await ExecuteCurrentStepAsync(engine, services, parseResult, cancellationToken);
+        if (!stepResult.Success)
+        {
+            await renderer.RenderErrorAsync(stepResult.ErrorMessage, cancellationToken: cancellationToken);
+            return ExitCodes.Failure;
+        }
+
+        // Fire the trigger to advance
+        var triggers = engine.GetPermittedTriggers();
+        if (triggers.Count > 0)
+            engine.Fire(triggers[0]);
+    }
+
+    await renderer.RenderResultAsync("Specification phase complete.", cancellationToken);
+    return ExitCodes.Success;
+});
+```
+
+For `plan` and `build`, the same pattern applies but the `while` loop condition checks `engine.CurrentPhase == WorkflowPhase.Planning` or `WorkflowPhase.Building` respectively.
+
+### Precondition Checking
+
+The existing validation helpers in `PhaseCommands` already handle preconditions:
+
+| Command | Precondition | Validator | Error Message |
+| --- | --- | --- | --- |
+| `spec` | None (creates spec) | — | — |
+| `plan` | Specification must exist | `ValidateSpecExistsAsync` | "No specification found for module '{module}'. Run 'lopen spec' first." |
+| `build` | Spec + Plan must exist | `ValidateSpecExistsAsync` + `ValidatePlanExistsAsync` | "No plan found for module '{module}'. Run 'lopen plan' first." |
+
+These validators are already called in the correct order in the existing stubs:
+- `CreatePlan` calls `ValidateSpecExistsAsync` before proceeding
+- `CreateBuild` calls both `ValidateSpecExistsAsync` and `ValidatePlanExistsAsync`
+
+The validators resolve `ISessionManager` and `IModuleScanner` from DI to check for spec/plan artifacts on disk. They return `null` on success or an error string on failure, which the handler writes to stderr and returns `ExitCodes.Failure`.
+
+### Phase Transition Controller Integration
+
+The `IPhaseTransitionController` manages transitions between phases:
+
+```csharp
+// spec → plan transition (human-gated)
+var controller = services.GetRequiredService<IPhaseTransitionController>();
+
+// In headless mode, auto-approve when LLM signals spec is complete
+controller.ApproveSpecification();
+
+// plan → build transition (automatic)
+if (controller.CanAutoTransitionToBuilding(hasComponents, hasTasks))
+{
+    // Proceed to building
+}
+
+// build → complete transition (automatic)
+if (controller.CanAutoTransitionToComplete(allBuilt, allACsPassed))
+{
+    // Mark module complete
+}
+```
+
+### TUI vs Headless Branching
+
+When a phase command runs without `--headless`, it should launch the TUI scoped to that phase. The branching follows the same pattern as `RootCommandHandler`:
+
+```csharp
+var headless = parseResult.GetValue(GlobalOptions.Headless);
+if (headless)
+{
+    // Drive workflow engine directly with IOutputRenderer
+    // ... (headless loop as shown above)
+}
+else
+{
+    // Launch TUI with phase scope
+    var app = services.GetRequiredService<ITuiApplication>();
+    await app.RunAsync(cancellationToken);
+}
+```
+
+### Relevance to Lopen
+
+The phase commands are thin wrappers that: (1) validate preconditions using the existing helpers, (2) resolve `IWorkflowEngine` from DI, (3) run a `while` loop bounded by `engine.CurrentPhase`, and (4) delegate output to `IOutputRenderer`. No new abstractions are needed — the existing `IWorkflowEngine`, `IPhaseTransitionController`, and `IOutputRenderer` interfaces provide everything required.
+
+---
+
+## 11. `lopen test tui` Command (TUI-42)
+
+### Problem
+
+The TUI specification requires a `lopen test tui` command that launches an interactive component gallery for browsing and previewing all registered TUI components with mock data. This is a development/testing command not listed in the CLI spec's command structure — it is owned by the TUI module but wired through the CLI.
+
+### Existing Infrastructure
+
+The gallery infrastructure is already built:
+
+| Component | Location | Status |
+| --- | --- | --- |
+| `IComponentGallery` | `Lopen.Tui` | ✅ Interface with `Register()`, `GetAll()`, `GetByName()` |
+| `ComponentGallery` | `Lopen.Tui` | ✅ In-memory registry implementation |
+| `GalleryListComponent` | `Lopen.Tui` | ✅ Renders selectable list with `▶` marker; `FromGallery()` factory |
+| `IPreviewableComponent` | `Lopen.Tui` | ✅ Optional interface with `RenderPreview(width, height) → string[]` |
+| `ITuiComponent` | `Lopen.Tui` | ✅ All 14 components have `Name` and `Description` |
+| `AddLopenTui()` | `Lopen.Tui` | ✅ Registers all 14 components in the gallery singleton |
+
+### Command Structure
+
+The command is nested under a `test` parent command: `lopen test tui`. This follows the convention of grouping development/debugging commands under `test`:
+
+```csharp
+// In Program.cs — add after existing command registrations
+var testCommand = new Command("test", "Development and testing commands");
+testCommand.Add(TestTuiCommand.Create(host.Services));
+rootCommand.Add(testCommand);
+```
+
+### Command Implementation
+
+```csharp
+// src/Lopen/Commands/TestTuiCommand.cs
+using System.CommandLine;
+using Lopen.Tui;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Lopen.Commands;
+
+public static class TestTuiCommand
+{
+    public static Command Create(IServiceProvider services, TextWriter? output = null, TextWriter? error = null)
+    {
+        var stdout = output ?? Console.Out;
+        var stderr = error ?? Console.Error;
+
+        var command = new Command("tui", "Launch the TUI component gallery");
+
+        var componentArg = new Argument<string?>("component")
+        {
+            Description = "Component name to preview directly (skips gallery list)",
+            Arity = ArgumentArity.ZeroOrOne
+        };
+        command.Arguments.Add(componentArg);
+
+        command.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var gallery = services.GetRequiredService<IComponentGallery>();
+                var components = gallery.GetAll();
+
+                if (components.Count == 0)
+                {
+                    await stderr.WriteLineAsync("No components registered in gallery.");
+                    return ExitCodes.Failure;
+                }
+
+                var targetName = parseResult.GetValue(componentArg);
+                if (!string.IsNullOrWhiteSpace(targetName))
+                {
+                    var component = gallery.GetByName(targetName);
+                    if (component is null)
+                    {
+                        await stderr.WriteLineAsync(
+                            $"Component '{targetName}' not found. Available: {string.Join(", ", components.Select(c => c.Name))}");
+                        return ExitCodes.Failure;
+                    }
+                }
+
+                // Launch the gallery app (fullscreen TUI)
+                var galleryApp = new ComponentGalleryApp(gallery);
+                await galleryApp.RunAsync(cancellationToken);
+
+                return ExitCodes.Success;
+            }
+            catch (Exception ex)
+            {
+                await stderr.WriteLineAsync(ex.Message);
+                return ExitCodes.Failure;
+            }
+        });
+
+        return command;
+    }
+}
+```
+
+### ComponentGalleryApp
+
+The gallery app is a self-contained fullscreen TUI (separate from the main workflow TUI) that uses the same rendering infrastructure. The TUI RESEARCH.md (section 14) provides the reference implementation using `Terminal.Create(new FullscreenMode())` and a render loop with:
+
+- **Left pane** (1/3 width): `GalleryListComponent` showing all registered components with selection
+- **Right pane** (2/3 width): Preview of the selected component via `IPreviewableComponent.RenderPreview()`
+- **Navigation**: ↑↓ to select, Q/Esc to quit
+- **Divider**: Vertical `│` between panes
+- **Footer**: Keyboard hint bar
+
+Components that don't implement `IPreviewableComponent` show name + description + "(No preview available)".
+
+### Where ComponentGalleryApp Lives
+
+Since the gallery app is a TUI concern, `ComponentGalleryApp` should live in `Lopen.Tui`:
+
+```
+src/Lopen.Tui/
+├── ComponentGallery.cs          # Registry (exists)
+├── ComponentGalleryApp.cs       # Gallery launcher (new)
+├── GalleryListComponent.cs      # List renderer (exists)
+└── IComponentGallery.cs         # Interface (exists)
+```
+
+The CLI command (`TestTuiCommand`) stays in `Lopen/Commands/` and resolves `IComponentGallery` from DI to construct the app.
+
+### Incremental Gallery Features
+
+Per the TUI research, the gallery evolves through versions:
+
+1. **v1**: List + preview pane with `IPreviewableComponent`. Arrow key navigation, Q to quit.
+2. **v2**: Multiple stub scenarios per component (empty, in progress, error, loading).
+3. **v3**: Live resize testing — gallery re-renders as terminal is resized.
+4. **v4**: Side-by-side comparison — show two components simultaneously.
+
+v1 is the minimum viable implementation for TUI-42.
+
+### Registration in Program.cs
+
+```csharp
+// Program.cs — after existing commands
+var testCommand = new Command("test", "Development and testing commands");
+testCommand.Add(TestTuiCommand.Create(host.Services));
+rootCommand.Add(testCommand);
+```
+
+This adds the command tree:
+```
+lopen
+├── test
+│   └── tui [component]    # Launch component gallery
+├── spec
+├── plan
+├── build
+└── ...
+```
+
+### Relevance to Lopen
+
+The `lopen test tui` command is a thin CLI wrapper around the existing `IComponentGallery` infrastructure. All gallery logic lives in `Lopen.Tui`; the CLI only provides the command entry point and DI resolution. The command follows the established pattern of `PhaseCommands.Create*` — a static factory method that captures `IServiceProvider` via closure. The optional `component` argument enables direct preview of a specific component for quick iteration during development.

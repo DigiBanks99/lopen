@@ -929,6 +929,738 @@ Building on Spectre.Tui provides a clean, single-library architecture with the c
 
 ---
 
+## 13. TUI Application Shell Architecture
+
+### Current State
+
+The TUI module has a complete set of building blocks but no running application:
+
+- **`StubTuiApplication`** implements `ITuiApplication` as a no-op. `RunAsync` sets `IsRunning = true` and returns immediately. Registered via DI in `ServiceCollectionExtensions.AddLopenTui()`.
+- **15 real components** exist (`TopPanelComponent`, `ActivityPanelComponent`, `ContextPanelComponent`, `PromptAreaComponent`, `GalleryListComponent`, `LandingPageComponent`, `SessionResumeModalComponent`, `DiffViewerComponent`, `PhaseTransitionComponent`, `ResearchDisplayComponent`, `FilePickerComponent`, `SelectionModalComponent`, `ConfirmationModalComponent`, `ErrorModalComponent`, `SpinnerComponent`). All render to `string[]` — pure functions of `(Data, ScreenRect) → string[]`.
+- **`LayoutCalculator`** computes `LayoutRegions` (Header, Activity, Context, Prompt) from screen dimensions and split percentage. Fully implemented, returns `ScreenRect` records.
+- **`KeyboardHandler`** maps `KeyInput` → `KeyAction` with focus-aware routing. Supports Tab cycling, Ctrl+P pause, Ctrl+C cancel, Enter submit, Alt+Enter newline, 1-9 resource view, Space/Enter expand. Fully implemented.
+- **`Spectre.Tui` 0.0.0-preview.0.46** is referenced in the csproj but never used — no `Terminal.Create()`, no `Renderer`, no `IWidget` implementations.
+
+### The Gap
+
+A real `ITuiApplication` implementation must:
+
+1. Create a `Terminal` + `Renderer` (Spectre.Tui)
+2. Run a render loop that reads state, calls components, and writes output to cells
+3. Poll `Console.ReadKey` and feed through `KeyboardHandler`
+4. Bridge the `string[]` component output → Spectre.Tui's `RenderContext` cell buffer
+5. Handle terminal resize, alt-screen, and graceful shutdown
+
+### Application Shell Design
+
+```csharp
+internal sealed class TuiApplication : ITuiApplication
+{
+    private readonly IComponentGallery _gallery;
+    private readonly KeyboardHandler _keyboard;
+    private readonly ILogger<TuiApplication> _logger;
+    private volatile bool _running;
+
+    public bool IsRunning => _running;
+
+    public async Task RunAsync(CancellationToken cancellationToken = default)
+    {
+        _running = true;
+
+        using var terminal = Terminal.Create(new FullscreenMode());
+        var renderer = new Renderer(terminal);
+        renderer.SetTargetFps(30);
+
+        var state = new TuiState();
+
+        while (!cancellationToken.IsCancellationRequested && _running)
+        {
+            // 1. Drain input
+            while (Console.KeyAvailable)
+            {
+                var keyInfo = Console.ReadKey(intercept: true);
+                var input = MapToKeyInput(keyInfo);
+                var action = _keyboard.Handle(input, state.CurrentFocus);
+                ApplyAction(action, state, keyInfo);
+            }
+
+            // 2. Render frame
+            renderer.Draw((ctx, elapsed) =>
+            {
+                var regions = LayoutCalculator.Calculate(
+                    ctx.Viewport.Width, ctx.Viewport.Height,
+                    state.SplitPercent);
+
+                RenderRegion(ctx, regions.Header, _topPanel.Render(state.TopData, ToScreenRect(regions.Header)));
+                RenderRegion(ctx, regions.Activity, _activityPanel.Render(state.ActivityData, ToScreenRect(regions.Activity)));
+                RenderRegion(ctx, regions.Context, _contextPanel.Render(state.ContextData, ToScreenRect(regions.Context)));
+                RenderRegion(ctx, regions.Prompt, _promptArea.Render(state.PromptData, ToScreenRect(regions.Prompt)));
+
+                if (state.ActiveModal is not null)
+                    RenderModal(ctx, state);
+            });
+
+            // 3. Yield to avoid busy-waiting (Renderer.Draw handles FPS throttling internally)
+            await Task.Delay(1, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    public Task StopAsync()
+    {
+        _running = false;
+        return Task.CompletedTask;
+    }
+}
+```
+
+### Bridging `string[]` Components → Spectre.Tui Cells
+
+The existing components produce `string[]`. Each line maps to a row of cells in the Spectre.Tui buffer:
+
+```csharp
+private static void RenderRegion(RenderContext ctx, LayoutRegions.ScreenRect region, string[] lines)
+{
+    for (int row = 0; row < lines.Length && row < region.Height; row++)
+    {
+        ctx.SetString(region.X, region.Y + row, lines[row], Style.Plain, region.Width);
+    }
+}
+```
+
+This is the **minimal bridge** — plain text, no styling. To add color, components would need to evolve to produce `TextLine[]` (Spectre.Tui's styled span model) instead of `string[]`. This can be done incrementally:
+
+1. **Phase 1**: `string[]` → `SetString` with `Style.Plain`. Validates layout and composition.
+2. **Phase 2**: Introduce `IStyledTuiComponent<TData>` returning `TextLine[]`. Components opt in one at a time.
+3. **Phase 3**: Components use `ColorPalette` to produce `TextSpan`s with semantic styles (success=green, error=red, muted=grey).
+
+### ScreenRect → Rectangle Mapping
+
+The existing `ScreenRect` record is decoupled from Spectre.Tui by design. The bridge is trivial:
+
+```csharp
+private static Rectangle ToRectangle(ScreenRect rect) =>
+    new(rect.X, rect.Y, rect.Width, rect.Height);
+```
+
+Alternatively, `RenderRegion` can use `ctx.SetString(x, y, ...)` directly with `ScreenRect` coordinates, avoiding Spectre.Tui `Rectangle` entirely in the component layer. This keeps components framework-agnostic.
+
+### Main Render Loop Pattern
+
+The loop follows the standard game-loop pattern that Spectre.Tui is designed for:
+
+```
+┌─────────────────────────────────┐
+│ 1. Poll Input (non-blocking)    │
+│    └─ Console.ReadKey if avail  │
+│    └─ Map to KeyInput           │
+│    └─ KeyboardHandler.Handle()  │
+│    └─ Apply KeyAction to state  │
+│                                 │
+│ 2. Update State                 │
+│    └─ Drain workflow events     │
+│    └─ Advance spinner frame     │
+│    └─ Process pending prompts   │
+│                                 │
+│ 3. Render Frame                 │
+│    └─ LayoutCalculator regions  │
+│    └─ Component.Render(data)    │
+│    └─ Bridge string[] → cells   │
+│    └─ Modal overlay if active   │
+│    └─ Renderer diffs + flushes  │
+│                                 │
+│ 4. Throttle (FPS target)        │
+│    └─ Renderer.Draw handles it  │
+└────────────── loop ─────────────┘
+```
+
+### Terminal I/O Considerations
+
+**Spectre.Tui `FullscreenMode`** switches to the alternate screen buffer and hides the cursor. This is the correct mode for Lopen's full-screen layout. On exit (dispose), it restores the original screen.
+
+**Input polling**: `Console.ReadKey(intercept: true)` is used inside the loop. Spectre.Tui does not provide an input abstraction — this is by design (rendering-only framework). The existing `KeyboardHandler` already expects `KeyInput` records built from `ConsoleKeyInfo`, so the mapping is:
+
+```csharp
+private static KeyInput MapToKeyInput(ConsoleKeyInfo info) => new()
+{
+    Key = info.Key,
+    Modifiers = info.Modifiers,
+    KeyChar = info.KeyChar
+};
+```
+
+**Resize handling**: Spectre.Tui's `Renderer` detects terminal size changes between frames. The `RenderContext.Viewport` reflects the current terminal size each frame, so `LayoutCalculator.Calculate` is called with fresh dimensions every frame — no explicit resize handler needed.
+
+**Cursor for prompt**: The prompt area needs a visible cursor at the text insertion point. After rendering the prompt region, position the terminal cursor:
+
+```csharp
+// After rendering, position cursor at end of prompt text
+var promptRect = regions.Prompt;
+int cursorX = promptRect.X + 2 + state.PromptCursorOffset; // ">" prefix + text offset
+int cursorY = promptRect.Y;
+ctx.SetStyle(cursorX, cursorY, new Style(decoration: Decoration.Underline));
+```
+
+### TuiState: Central State Object
+
+```csharp
+internal sealed class TuiState
+{
+    // Focus
+    public FocusPanel CurrentFocus { get; set; } = FocusPanel.Prompt;
+
+    // Layout
+    public int SplitPercent { get; set; } = 60;
+
+    // Component data (updated by workflow thread, read by render loop)
+    public TopPanelData TopData { get; set; } = TopPanelData.Default;
+    public ActivityPanelData ActivityData { get; set; } = ActivityPanelData.Empty;
+    public ContextPanelData ContextData { get; set; } = ContextPanelData.Empty;
+    public PromptAreaData PromptData { get; set; } = PromptAreaData.Default;
+
+    // Modal
+    public ModalState? ActiveModal { get; set; }
+
+    // Prompt input buffer
+    public StringBuilder InputBuffer { get; } = new();
+    public int PromptCursorOffset => InputBuffer.Length;
+
+    // Spinner frame (incremented each render)
+    public int SpinnerFrame { get; set; }
+}
+```
+
+Data objects are replaced atomically (reference assignment is atomic in .NET). The workflow thread creates a new `TopPanelData` / `ActivityPanelData` and assigns it; the render loop reads the latest reference each frame.
+
+### DI Registration
+
+```csharp
+public static IServiceCollection AddLopenTui(this IServiceCollection services)
+{
+    // Replace stub with real implementation
+    services.AddSingleton<ITuiApplication, TuiApplication>();
+
+    // Existing registrations unchanged
+    services.AddSingleton<IComponentGallery>(sp => { /* ... */ });
+    return services;
+}
+```
+
+The `--headless` flag continues to use `StubTuiApplication` via a conditional registration or named resolution.
+
+---
+
+## 14. Component Gallery Launcher (`lopen test tui`)
+
+### Purpose
+
+An interactive gallery that lets developers browse and preview all registered TUI components with mock data. This validates component rendering without running the full workflow.
+
+### Existing Infrastructure
+
+- **`IComponentGallery`** / **`ComponentGallery`**: Registry with `Register()`, `GetAll()`, `GetByName()`. All 14 built-in components are registered in `AddLopenTui()`.
+- **`GalleryListComponent`**: Renders a selectable list of components with `▶` selection marker. `FromGallery()` creates `GalleryListData` from the registry.
+- **`IPreviewableComponent`**: Optional interface with `RenderPreview(width, height) → string[]`. Components that implement this can show preview output in the gallery.
+- **`ITuiComponent`**: All components have `Name` and `Description` properties for gallery listing.
+
+### Implementation Design
+
+The gallery launcher is a self-contained TUI application (separate from the main workflow TUI) that uses the same Spectre.Tui renderer:
+
+```csharp
+internal sealed class ComponentGalleryApp
+{
+    private readonly IComponentGallery _gallery;
+
+    public async Task RunAsync(CancellationToken ct)
+    {
+        using var terminal = Terminal.Create(new FullscreenMode());
+        var renderer = new Renderer(terminal);
+        renderer.SetTargetFps(30);
+
+        var components = _gallery.GetAll();
+        int selectedIndex = 0;
+        ITuiComponent? previewComponent = null;
+
+        while (!ct.IsCancellationRequested)
+        {
+            renderer.Draw((ctx, elapsed) =>
+            {
+                var screen = ctx.Viewport;
+
+                // Left half: component list
+                int listWidth = screen.Width / 3;
+                var listRegion = new ScreenRect(0, 0, listWidth, screen.Height);
+                var listData = new GalleryListData
+                {
+                    Items = components.Select(c => new GalleryItem(c.Name, c.Description)).ToList(),
+                    SelectedIndex = selectedIndex
+                };
+                var listLines = new GalleryListComponent().Render(listData, listRegion);
+                RenderLines(ctx, listRegion, listLines);
+
+                // Right two-thirds: preview
+                int previewX = listWidth + 1;
+                int previewWidth = screen.Width - previewX;
+                var previewRegion = new ScreenRect(previewX, 0, previewWidth, screen.Height);
+
+                if (components[selectedIndex] is IPreviewableComponent previewable)
+                {
+                    var previewLines = previewable.RenderPreview(previewWidth, screen.Height);
+                    RenderLines(ctx, previewRegion, previewLines);
+                }
+                else
+                {
+                    ctx.SetString(previewX, 1, $"  {components[selectedIndex].Name}", Style.Plain, previewWidth);
+                    ctx.SetString(previewX, 2, $"  {components[selectedIndex].Description}", Style.Plain, previewWidth);
+                    ctx.SetString(previewX, 4, "  (No preview available — implement IPreviewableComponent)", Style.Plain, previewWidth);
+                }
+
+                // Divider line
+                for (int y = 0; y < screen.Height; y++)
+                    ctx.SetString(listWidth, y, "│", Style.Plain, 1);
+
+                // Footer
+                ctx.SetString(0, screen.Height - 1, " ↑↓: Navigate  Enter: Select  Q: Quit", Style.Plain, screen.Width);
+            });
+
+            // Input
+            while (Console.KeyAvailable)
+            {
+                var key = Console.ReadKey(intercept: true);
+                switch (key.Key)
+                {
+                    case ConsoleKey.UpArrow:
+                        selectedIndex = Math.Max(0, selectedIndex - 1);
+                        break;
+                    case ConsoleKey.DownArrow:
+                        selectedIndex = Math.Min(components.Count - 1, selectedIndex + 1);
+                        break;
+                    case ConsoleKey.Q:
+                    case ConsoleKey.Escape:
+                        return;
+                }
+            }
+
+            await Task.Delay(1, ct).ConfigureAwait(false);
+        }
+    }
+}
+```
+
+### Making Components Previewable
+
+Components that want gallery previews implement `IPreviewableComponent`:
+
+```csharp
+public sealed class TopPanelComponent : ITuiComponent, IPreviewableComponent
+{
+    // ... existing Render method ...
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var stubData = new TopPanelData
+        {
+            Version = "v0.1.0",
+            ModelName = "Claude Sonnet 4",
+            ContextUsedTokens = 24_000,
+            ContextMaxTokens = 128_000,
+            GitBranch = "feature/tui",
+            IsAuthenticated = true,
+            PhaseName = "Building",
+            CurrentStep = 3,
+            TotalSteps = 7,
+            StepLabel = "Iterate through tasks",
+            ShowLogo = true,
+        };
+        return Render(stubData, new ScreenRect(0, 0, width, height));
+    }
+}
+```
+
+### CLI Integration
+
+The gallery is launched via a CLI subcommand:
+
+```csharp
+// In command registration:
+var testTuiCommand = new Command("tui", "Launch TUI component gallery");
+testCommand.AddCommand(testTuiCommand);
+
+testTuiCommand.SetAction(async (ParseResult _, CancellationToken ct) =>
+{
+    var gallery = services.GetRequiredService<IComponentGallery>();
+    var app = new ComponentGalleryApp(gallery);
+    await app.RunAsync(ct);
+    return ExitCodes.Success;
+});
+```
+
+### Gallery Features (Incremental)
+
+1. **v1**: List + preview pane with `IPreviewableComponent`. Arrow key navigation, Q to quit.
+2. **v2**: Multiple stub scenarios per component (e.g., "empty state", "in progress", "error state"). Use a scenarios list below the preview.
+3. **v3**: Live resize testing — gallery re-renders as terminal is resized, validating responsive layout.
+4. **v4**: Side-by-side comparison — show two components simultaneously to verify visual consistency.
+
+---
+
+## 15. Workflow Integration
+
+### Architecture Overview
+
+The TUI runs on the main thread (render loop). The workflow engine runs on a background thread. Communication is via shared state with atomic reference updates.
+
+```
+┌──────────────────────┐       ┌──────────────────────┐
+│   TUI Thread (main)  │       │  Workflow Thread      │
+│                      │       │                       │
+│  Render loop:        │       │  WorkflowEngine:      │
+│  ┌─ poll input       │       │  ┌─ InitializeAsync   │
+│  ├─ read TuiState    │◄──────┤  ├─ Fire(trigger)     │
+│  ├─ render frame     │       │  ├─ Execute step      │
+│  └─ throttle         │       │  └─ Update TuiState   │
+│                      │       │                       │
+│  User actions:       │───────►  Commands:            │
+│  ├─ SubmitPrompt     │       │  ├─ process prompt    │
+│  ├─ TogglePause      │       │  ├─ pause/resume      │
+│  └─ Cancel           │       │  └─ cancel            │
+└──────────────────────┘       └──────────────────────┘
+```
+
+### Event-Driven Updates (Workflow → TUI)
+
+The workflow thread produces events that the TUI consumes. Rather than a complex event bus, use a `ConcurrentQueue` of typed events:
+
+```csharp
+/// <summary>
+/// Events produced by the workflow engine for TUI consumption.
+/// </summary>
+public abstract record TuiEvent;
+
+public sealed record ActivityEntryEvent(ActivityEntry Entry) : TuiEvent;
+public sealed record PhaseChangedEvent(string PhaseName, int CurrentStep, int TotalSteps) : TuiEvent;
+public sealed record TaskProgressEvent(string TaskName, TaskState State) : TuiEvent;
+public sealed record ContextUpdatedEvent(ContextPanelData NewContext) : TuiEvent;
+public sealed record TokenUsageEvent(long UsedTokens, long MaxTokens) : TuiEvent;
+public sealed record ModalRequestEvent(ModalState Modal) : TuiEvent;
+public sealed record SpinnerEvent(string Message, int ProgressPercent) : TuiEvent;
+
+internal sealed class TuiEventBus
+{
+    private readonly ConcurrentQueue<TuiEvent> _events = new();
+
+    /// <summary>Called by workflow thread to post events.</summary>
+    public void Post(TuiEvent evt) => _events.Enqueue(evt);
+
+    /// <summary>Called by TUI thread each frame to drain events.</summary>
+    public void DrainInto(TuiState state)
+    {
+        while (_events.TryDequeue(out var evt))
+        {
+            switch (evt)
+            {
+                case ActivityEntryEvent e:
+                    state.ActivityData = state.ActivityData.WithEntry(e.Entry);
+                    break;
+                case PhaseChangedEvent e:
+                    state.TopData = state.TopData with
+                    {
+                        PhaseName = e.PhaseName,
+                        CurrentStep = e.CurrentStep,
+                        TotalSteps = e.TotalSteps
+                    };
+                    break;
+                case ContextUpdatedEvent e:
+                    state.ContextData = e.NewContext;
+                    break;
+                case TokenUsageEvent e:
+                    state.TopData = state.TopData with
+                    {
+                        ContextUsedTokens = e.UsedTokens,
+                        ContextMaxTokens = e.MaxTokens
+                    };
+                    break;
+                case ModalRequestEvent e:
+                    state.ActiveModal = e.Modal;
+                    break;
+                // ... other events
+            }
+        }
+    }
+}
+```
+
+### User Input → Orchestration Commands (TUI → Workflow)
+
+When the user submits a prompt or triggers an action, the TUI posts a command to the workflow thread:
+
+```csharp
+/// <summary>
+/// Commands from TUI to workflow engine.
+/// </summary>
+public abstract record TuiCommand;
+
+public sealed record SubmitPromptCommand(string Text) : TuiCommand;
+public sealed record TogglePauseCommand : TuiCommand;
+public sealed record CancelCommand : TuiCommand;
+public sealed record SlashCommand(string Command, string? Arguments) : TuiCommand;
+
+internal sealed class TuiCommandBus
+{
+    private readonly ConcurrentQueue<TuiCommand> _commands = new();
+
+    /// <summary>Called by TUI thread when user acts.</summary>
+    public void Post(TuiCommand cmd) => _commands.Enqueue(cmd);
+
+    /// <summary>Called by workflow thread to drain commands.</summary>
+    public bool TryDequeue(out TuiCommand? command) => _commands.TryDequeue(out command);
+}
+```
+
+### Applying KeyActions in the Render Loop
+
+```csharp
+private void ApplyAction(KeyAction action, TuiState state, ConsoleKeyInfo keyInfo)
+{
+    switch (action)
+    {
+        case KeyAction.SubmitPrompt:
+            var text = state.InputBuffer.ToString().Trim();
+            if (!string.IsNullOrEmpty(text))
+            {
+                var slashCmd = _slashRegistry.TryParse(text);
+                if (slashCmd is not null)
+                    _commandBus.Post(new SlashCommand(slashCmd.Command, text));
+                else
+                    _commandBus.Post(new SubmitPromptCommand(text));
+                state.InputBuffer.Clear();
+            }
+            break;
+
+        case KeyAction.InsertNewline:
+            state.InputBuffer.AppendLine();
+            break;
+
+        case KeyAction.TogglePause:
+            _commandBus.Post(new TogglePauseCommand());
+            state.PromptData = state.PromptData with { IsPaused = !state.PromptData.IsPaused };
+            break;
+
+        case KeyAction.Cancel:
+            _commandBus.Post(new CancelCommand());
+            break;
+
+        case KeyAction.CycleFocusForward:
+            state.CurrentFocus = KeyboardHandler.CycleFocus(state.CurrentFocus);
+            state.PromptData = state.PromptData with
+            {
+                CustomHints = KeyboardHandler.GetHints(state.CurrentFocus, state.PromptData.IsPaused)
+                    .ToArray()
+            };
+            break;
+
+        case KeyAction.None:
+            // Character input (only when prompt focused)
+            if (state.CurrentFocus == FocusPanel.Prompt && !char.IsControl(keyInfo.KeyChar))
+            {
+                state.InputBuffer.Append(keyInfo.KeyChar);
+                state.PromptData = state.PromptData with { Text = state.InputBuffer.ToString() };
+            }
+            else if (state.CurrentFocus == FocusPanel.Prompt && keyInfo.Key == ConsoleKey.Backspace
+                     && state.InputBuffer.Length > 0)
+            {
+                state.InputBuffer.Remove(state.InputBuffer.Length - 1, 1);
+                state.PromptData = state.PromptData with { Text = state.InputBuffer.ToString() };
+            }
+            break;
+
+        // ViewResource1-9, ToggleExpand handled similarly
+    }
+}
+```
+
+### Thread Safety Strategy
+
+The design avoids locks by using:
+
+1. **Immutable data records**: `TopPanelData`, `ActivityPanelData`, `ContextPanelData`, `PromptAreaData` are all records. The workflow thread creates a new instance; the render loop reads the latest reference. Reference assignment is atomic in .NET.
+2. **`ConcurrentQueue<T>`** for event/command buses: Lock-free, thread-safe FIFO.
+3. **Single-writer principle**: Each queue has one producer and one consumer. `TuiEventBus` is written by the workflow thread, read by the TUI thread. `TuiCommandBus` is the reverse.
+4. **No shared mutable state**: The `TuiState` object is only mutated by the TUI thread (in `DrainInto` and `ApplyAction`). The workflow thread never reads it directly.
+
+### Workflow Integration in the Render Loop
+
+```csharp
+public async Task RunAsync(CancellationToken ct)
+{
+    // ... terminal/renderer setup ...
+
+    // Start workflow on background thread
+    var workflowTask = Task.Run(() => RunWorkflowAsync(ct), ct);
+
+    while (!ct.IsCancellationRequested && _running)
+    {
+        // 1. Drain workflow events into TUI state
+        _eventBus.DrainInto(state);
+
+        // 2. Advance spinner
+        state.SpinnerFrame++;
+
+        // 3. Poll input
+        while (Console.KeyAvailable)
+        {
+            var keyInfo = Console.ReadKey(intercept: true);
+            var input = MapToKeyInput(keyInfo);
+            var action = _keyboard.Handle(input, state.CurrentFocus);
+            ApplyAction(action, state, keyInfo);
+        }
+
+        // 4. Render
+        renderer.Draw((ctx, elapsed) =>
+        {
+            var regions = LayoutCalculator.Calculate(
+                ctx.Viewport.Width, ctx.Viewport.Height,
+                state.SplitPercent);
+            // ... render components ...
+        });
+
+        await Task.Delay(1, ct).ConfigureAwait(false);
+    }
+
+    await workflowTask.ConfigureAwait(false);
+}
+```
+
+### Modal Interaction Flow
+
+Modals require bidirectional communication. The workflow requests a modal (e.g., confirmation for multi-file edit), and the TUI collects the user's response:
+
+```
+Workflow Thread                    TUI Thread
+     │                                  │
+     ├─ Post(ModalRequestEvent)  ──────►│
+     │                                  ├─ state.ActiveModal = modal
+     │                                  ├─ Render modal overlay
+     │                                  ├─ Route input to modal
+     │                                  ├─ User selects option
+     │◄────── Post(ModalResponseCmd) ───┤
+     ├─ Read response                   ├─ state.ActiveModal = null
+     ├─ Continue workflow               │
+```
+
+For blocking modal responses, use a `TaskCompletionSource<T>`:
+
+```csharp
+public sealed record ModalRequestEvent(ModalState Modal, TaskCompletionSource<string> Response) : TuiEvent;
+
+// Workflow thread:
+var tcs = new TaskCompletionSource<string>();
+_eventBus.Post(new ModalRequestEvent(modal, tcs));
+var userChoice = await tcs.Task; // blocks workflow until user responds
+
+// TUI thread (when user selects an option):
+state.ActiveModal.ResponseTcs.SetResult(selectedOption);
+state.ActiveModal = null;
+```
+
+### Startup Sequence
+
+```
+lopen (root command)
+  │
+  ├─ Parse CLI flags (--headless, --no-welcome, --resume)
+  ├─ Build DI container
+  │    ├─ If headless: register StubTuiApplication
+  │    └─ If interactive: register TuiApplication
+  ├─ Resolve ITuiApplication
+  ├─ app.RunAsync(ct)
+  │    ├─ Create Terminal (FullscreenMode)
+  │    ├─ Create Renderer (30 FPS)
+  │    ├─ Check for existing session
+  │    │    ├─ If found: show SessionResumeModal
+  │    │    └─ If not found && !--no-welcome: show LandingPageComponent
+  │    ├─ Initialize WorkflowEngine on background thread
+  │    └─ Enter main render loop
+  └─ On Ctrl+C: app.StopAsync() → restore terminal
+```
+
+---
+
+## 16. Alternative Rendering Approaches
+
+### Alternative A: Spectre.Console Live (Without Spectre.Tui)
+
+If Spectre.Tui proves too immature, the application shell could be built on Spectre.Console's `Live` display with a custom input thread:
+
+```csharp
+// Dedicated input thread reads keys while Live display runs
+var inputThread = new Thread(() =>
+{
+    while (running)
+    {
+        if (Console.KeyAvailable)
+        {
+            var key = Console.ReadKey(intercept: true);
+            inputQueue.Enqueue(key);
+        }
+        Thread.Sleep(10);
+    }
+});
+inputThread.IsBackground = true;
+inputThread.Start();
+
+await AnsiConsole.Live(layout)
+    .Overflow(VerticalOverflow.Crop)
+    .StartAsync(async ctx =>
+    {
+        while (running)
+        {
+            // Drain input
+            while (inputQueue.TryDequeue(out var key))
+                ProcessKey(key, state);
+
+            // Update layout sections
+            layout["Header"].Update(BuildHeaderPanel(state));
+            layout["Activity"].Update(BuildActivityPanel(state));
+            layout["Context"].Update(BuildContextPanel(state));
+            layout["PromptArea"].Update(BuildPromptPanel(state));
+
+            ctx.Refresh();
+            await Task.Delay(33, ct); // ~30 FPS
+        }
+    });
+```
+
+**Pros**: Mature widget library (Panel, Table, Tree, Layout), rich styling, broad .NET support.
+
+**Cons**: `Live` + input thread is fighting the library's design. `Live` is not thread-safe — all `Refresh()` calls must happen on the same thread. No alt-screen management. Modal overlays require manual composition of `IRenderable` objects over the layout. The `Layout` widget does not support rendering over/on-top-of other sections.
+
+### Alternative B: Direct ANSI with `System.Console`
+
+Skip frameworks entirely and write ANSI escape codes directly:
+
+```csharp
+Console.Write("\x1b[?1049h"); // Alt screen
+Console.Write("\x1b[?25l");   // Hide cursor
+
+// Render loop
+Console.SetCursorPosition(x, y);
+Console.Write("\x1b[32m" + text + "\x1b[0m"); // Green text
+
+Console.Write("\x1b[?25h"); // Show cursor
+Console.Write("\x1b[?1049l"); // Restore screen
+```
+
+**Pros**: Zero dependencies, full control, works everywhere.
+
+**Cons**: Must implement double-buffering, diff, resize detection, Unicode width calculation, color system detection. Essentially rebuilding what Spectre.Tui provides.
+
+### Recommendation
+
+Stick with **Spectre.Tui** as recommended in Section 12. The existing `string[]` component architecture makes the framework choice less critical — if Spectre.Tui breaks or stalls, swapping the renderer (the `RenderRegion` bridge function) is a contained change. The components themselves are framework-agnostic.
+
+---
+
 ## References
 
 - [Spectre.Tui GitHub](https://github.com/spectreconsole/spectre.tui)

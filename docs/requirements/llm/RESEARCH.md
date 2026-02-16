@@ -741,3 +741,481 @@ The GitHub Copilot SDK is **exactly what the LLM specification calls for**. Key 
 2. **Context window size** — How to query the model's context window limit for budget calculations? `ListModelsAsync()` may include this in model capabilities.
 3. **Premium request counting** — The SDK bills each `SendAsync` as one premium request per the FAQ. Oracle sub-agent calls on standard models should not count as premium. Needs verification.
 4. **Error propagation** — When the CLI server crashes, does the SDK auto-restart (per `AutoRestart` option) or surface an error? Default is `AutoRestart = true`.
+
+---
+
+## 10. Tool Handler Implementation
+
+### Current State (Gap Analysis)
+
+The system registers 10 `LopenToolDefinition` records in `DefaultToolRegistry` with **names and descriptions only**. There are no execution handlers — the tools are currently rendered as text bullets in the system prompt by `DefaultPromptBuilder`, relying on the LLM to "call" them textually rather than via proper SDK function-calling.
+
+**Key evidence of the gap in `CopilotLlmService.InvokeAsync`:**
+
+```csharp
+// tools parameter is received but never used in SessionConfig
+public async Task<LlmInvocationResult> InvokeAsync(
+    string systemPrompt,
+    string model,
+    IReadOnlyList<LopenToolDefinition> tools,   // ← accepted
+    CancellationToken cancellationToken = default)
+{
+    // ...
+    var config = new SessionConfig
+    {
+        Model = model,
+        SystemMessage = ...,
+        Streaming = false,
+        Hooks = new SessionHooks { OnErrorOccurred = ... },
+        // ⚠️ No Tools property set — tools are never registered with the SDK
+    };
+}
+```
+
+The `LopenToolDefinition` record is definition-only:
+
+```csharp
+public sealed record LopenToolDefinition(
+    string Name,
+    string Description,
+    string? ParameterSchema = null,
+    IReadOnlyList<WorkflowPhase>? AvailableInPhases = null);
+// ⚠️ No handler callback — no way to execute when the LLM calls the tool
+```
+
+### Architecture: Adding Handler Callbacks
+
+#### Option A: Extend `LopenToolDefinition` with a Handler Delegate (Recommended)
+
+Add a handler callback directly to the tool definition record:
+
+```csharp
+public sealed record LopenToolDefinition(
+    string Name,
+    string Description,
+    string? ParameterSchema = null,
+    IReadOnlyList<WorkflowPhase>? AvailableInPhases = null,
+    Func<string, CancellationToken, Task<string>>? Handler = null);
+```
+
+The handler signature `Func<string, CancellationToken, Task<string>>` takes a JSON arguments string and returns a JSON result string. This keeps the record simple and avoids introducing a separate interface hierarchy for 10 tools.
+
+#### Option B: Separate `IToolHandler` Interface
+
+As proposed in `RESEARCH-backpressure.md`:
+
+```csharp
+public interface IToolHandler
+{
+    string ToolName { get; }
+    Task<ToolResult> ExecuteAsync(
+        ImmutableDictionary<string, string> arguments,
+        CancellationToken ct);
+}
+```
+
+This enables the decorator pattern (`AuditingToolHandler` for timing/logging) but adds complexity. Each tool would need its own class implementing `IToolHandler`, registered in DI, and resolved by name at dispatch time.
+
+#### Recommendation
+
+**Use Option A** (handler delegate on `LopenToolDefinition`) for simplicity. Cross-cutting concerns like auditing and timing can be applied via a wrapper delegate at registration time rather than requiring a full decorator class hierarchy. The `DefaultToolRegistry.RegisterBuiltInTools()` method already centralizes registration — adding handler delegates there keeps the pattern cohesive.
+
+### Converting `LopenToolDefinition` to SDK `AIFunction`
+
+The Copilot SDK expects `AIFunction` instances (from `Microsoft.Extensions.AI.Abstractions`) in `SessionConfig.Tools`. The conversion bridge:
+
+```csharp
+using Microsoft.Extensions.AI;
+
+internal static class ToolConversion
+{
+    /// <summary>
+    /// Converts Lopen tool definitions with handlers into SDK AIFunction instances.
+    /// </summary>
+    public static List<AIFunction> ToAiFunctions(IReadOnlyList<LopenToolDefinition> tools)
+    {
+        return tools
+            .Where(t => t.Handler is not null)
+            .Select(t => AIFunctionFactory.Create(
+                async (string arguments) =>
+                {
+                    return await t.Handler!(arguments, CancellationToken.None);
+                },
+                t.Name,
+                t.Description))
+            .ToList();
+    }
+}
+```
+
+Then in `CopilotLlmService.InvokeAsync`, register with the session:
+
+```csharp
+var config = new SessionConfig
+{
+    Model = model,
+    SystemMessage = ...,
+    Tools = ToolConversion.ToAiFunctions(tools),  // ← new
+    Hooks = ...
+};
+```
+
+### SDK Tool Call Dispatch Flow
+
+When the LLM decides to call a Lopen-managed tool, the SDK handles the round-trip automatically:
+
+```
+1. LLM generates a tool_call in its response
+2. SDK receives the tool_call via JSON-RPC from CLI
+3. SDK invokes the registered AIFunction handler in-process
+4. Handler executes (e.g., reads a spec, dispatches oracle)
+5. Handler returns a result string
+6. SDK sends ToolExecutionCompleteEvent (tracked for metrics)
+7. SDK sends the tool result back to CLI via JSON-RPC
+8. CLI forwards the result to the model
+9. LLM generates its next response (may call more tools or produce final output)
+10. Cycle repeats until LLM produces a final message without tool calls
+11. SessionIdleEvent fires → SendAndWaitAsync resolves
+```
+
+The `ToolExecutionCompleteEvent` already tracked in `CopilotLlmService` (line 96) will automatically count handler invocations once tools are registered.
+
+### Session Hooks for Tool Governance
+
+The SDK's `SessionHooks` support `OnPreToolUse` and `OnPostToolUse` hooks for intercepting tool calls. These are critical for back-pressure enforcement:
+
+```csharp
+Hooks = new SessionHooks
+{
+    OnErrorOccurred = HandleError,
+    OnPreToolUse = async (input, _) =>
+    {
+        // Enforce TaskStatusGate: reject update_task_status(complete)
+        // unless verify_* has passed
+        if (input.ToolName == "update_task_status")
+        {
+            var args = JsonSerializer.Deserialize<Dictionary<string, string>>(input.Arguments);
+            if (args?.GetValueOrDefault("status") == "complete")
+            {
+                var gateResult = _taskStatusGate.ValidateCompletion(
+                    VerificationScope.Task, args["taskId"]);
+                if (!gateResult.IsAllowed)
+                {
+                    return new PreToolUseHookOutput
+                    {
+                        // Reject the tool call with explanation
+                        Decision = "reject",
+                        Message = gateResult.RejectionReason
+                    };
+                }
+            }
+        }
+        return null; // Allow all other tool calls
+    },
+    OnPostToolUse = async (input, _) =>
+    {
+        // Record oracle verdicts for back-pressure tracking
+        if (input.ToolName.StartsWith("verify_") && input.Result is not null)
+        {
+            var verdict = JsonSerializer.Deserialize<OracleVerdict>(input.Result);
+            if (verdict?.Passed == true)
+            {
+                _verificationTracker.RecordVerification(
+                    ParseScope(input.ToolName), input.Arguments);
+            }
+        }
+        return null;
+    }
+}
+```
+
+### Dependency Inversion Constraint
+
+**Critical architectural constraint**: `Lopen.Llm` references only `Lopen.Configuration` — it cannot directly reference `Lopen.Core` (which contains `ISpecificationParser`, `IOutputRenderer`) or `Lopen.Storage` (which contains `IPlanManager`, `IFileSystem`, `ISessionManager`). The dependency graph is:
+
+```
+Lopen.Core ──→ Lopen.Llm ──→ Lopen.Configuration
+Lopen.Storage ──→ Lopen.Configuration
+```
+
+This means tool handlers cannot directly inject `ISpecificationParser`, `IPlanManager`, etc. Two approaches:
+
+**Approach 1: Define handler interfaces in `Lopen.Llm`, implement in `Lopen.Core`** (Recommended)
+
+Define thin abstractions in `Lopen.Llm` that the handlers need:
+
+```csharp
+// In Lopen.Llm — handler-specific abstractions
+public interface ISpecReader
+{
+    Task<string> ReadSectionAsync(string module, string section, CancellationToken ct);
+}
+
+public interface IPlanReader
+{
+    Task<string> ReadPlanAsync(string module, CancellationToken ct);
+}
+
+public interface IResearchStore
+{
+    Task<string> ReadResearchAsync(string module, string topic, CancellationToken ct);
+    Task WriteResearchAsync(string module, string topic, string content, CancellationToken ct);
+}
+
+public interface IContextProvider
+{
+    Task<string> GetCurrentContextAsync(CancellationToken ct);
+}
+
+public interface IProgressSink
+{
+    Task ReportProgressAsync(string phase, string step, string progress, CancellationToken ct);
+}
+```
+
+Implement these in `Lopen.Core` (which already references `Lopen.Llm`) by delegating to the real services:
+
+```csharp
+// In Lopen.Core — bridges Llm abstractions to real services
+internal sealed class SpecReader : ISpecReader
+{
+    private readonly ISpecificationParser _parser;
+    private readonly IFileSystem _fileSystem;
+
+    public async Task<string> ReadSectionAsync(string module, string section, CancellationToken ct)
+    {
+        var path = $"docs/requirements/{module}/SPECIFICATION.md";
+        var content = await _fileSystem.ReadAllTextAsync(path, ct);
+        return _parser.ExtractSection(content, section) ?? $"Section '{section}' not found.";
+    }
+}
+```
+
+**Approach 2: Register handler delegates from the composition root**
+
+Wire handlers at startup in the main `Lopen` project (which references everything):
+
+```csharp
+// In Lopen (app host) — startup composition
+services.AddLopenLlm();
+
+// After all services registered, wire tool handlers
+services.AddSingleton<IToolHandlerWiring>(sp =>
+{
+    var registry = sp.GetRequiredService<IToolRegistry>();
+    var parser = sp.GetRequiredService<ISpecificationParser>();
+    var planManager = sp.GetRequiredService<IPlanManager>();
+    // ... wire each handler with captured dependencies
+});
+```
+
+This avoids new interfaces but scatters handler logic across the composition root.
+
+### Individual Tool Handler Specifications
+
+#### 1. `read_spec` — Read Specification Section
+
+| Property | Value |
+| --- | --- |
+| **Input** | `{ "module": string, "section": string }` |
+| **Output** | Markdown content of the requested section |
+| **Dependencies** | `ISpecReader` (abstracts `ISpecificationParser` + `IFileSystem`) |
+| **Error case** | Section not found → return `"Section '{section}' not found in {module} specification."` |
+| **Phases** | All |
+
+The handler reads `docs/requirements/{module}/SPECIFICATION.md`, extracts the named section using `ISpecificationParser.ExtractSection`, and returns the markdown content. Uses `ISectionCache` for performance on repeated reads within the same invocation.
+
+#### 2. `read_research` — Read Research Document
+
+| Property | Value |
+| --- | --- |
+| **Input** | `{ "module": string, "topic": string }` |
+| **Output** | Full content of the research document |
+| **Dependencies** | `IResearchStore` (abstracts `IFileSystem`) |
+| **Error case** | File not found → return `"No research found for topic '{topic}' in module '{module}'."` |
+| **Phases** | All |
+
+Reads `docs/requirements/{module}/RESEARCH-{topic}.md`. The topic is slugified (lowercase, hyphens) to match the file naming convention. Returns the full markdown content.
+
+#### 3. `read_plan` — Read Plan with Task Statuses
+
+| Property | Value |
+| --- | --- |
+| **Input** | `{ "module": string }` |
+| **Output** | Full plan markdown with checkbox statuses |
+| **Dependencies** | `IPlanReader` (abstracts `IPlanManager`) |
+| **Error case** | Plan not found → return `"No plan exists for module '{module}'."` |
+| **Phases** | Planning, Building |
+
+Reads `.lopen/modules/{module}/plan.md` via `IPlanManager.ReadPlanAsync`. Returns the full markdown plan including `- [x]` / `- [ ]` checkbox syntax reflecting task completion states.
+
+#### 4. `update_task_status` — Update Task Status (Gated)
+
+| Property | Value |
+| --- | --- |
+| **Input** | `{ "module": string, "taskText": string, "completed": bool }` |
+| **Output** | `{ "success": bool, "message": string }` |
+| **Dependencies** | `IPlanReader` (abstracts `IPlanManager`), `ITaskStatusGate`, `IVerificationTracker` |
+| **Error case** | Gate rejection → return `{ "success": false, "message": "..." }` |
+| **Phases** | Building only |
+
+**Back-pressure enforcement**: Before marking a task complete (`completed: true`), the handler calls `ITaskStatusGate.ValidateCompletion`. If no prior `verify_task_completion` has passed for this task, the gate rejects with a message instructing the LLM to call the verification tool first. On success, delegates to `IPlanManager.UpdateCheckboxAsync`.
+
+```
+Flow: LLM calls update_task_status(complete)
+  → Handler checks TaskStatusGate.ValidateCompletion()
+  → If gate rejects: return error message (LLM must call verify_task_completion first)
+  → If gate allows: IPlanManager.UpdateCheckboxAsync() → return success
+```
+
+#### 5. `get_current_context` — Retrieve Workflow Context
+
+| Property | Value |
+| --- | --- |
+| **Input** | `{}` (no arguments) |
+| **Output** | `{ "phase": string, "step": string, "module": string, "component": string? }` |
+| **Dependencies** | `IContextProvider` (abstracts `ISessionManager` / `SessionState`) |
+| **Error case** | No active session → return `{ "phase": "unknown", "step": "unknown" }` |
+| **Phases** | All |
+
+Returns the current workflow state from `SessionState`: phase, step, module name, and optional component name. The LLM uses this to understand where it is in the orchestration flow.
+
+#### 6. `log_research` — Persist Research Findings
+
+| Property | Value |
+| --- | --- |
+| **Input** | `{ "module": string, "topic": string, "content": string }` |
+| **Output** | `{ "success": true, "path": string }` |
+| **Dependencies** | `IResearchStore` (abstracts `IFileSystem`) |
+| **Error case** | Write failure → return `{ "success": false, "error": string }` |
+| **Phases** | Research, RequirementGathering |
+
+Writes content to `docs/requirements/{module}/RESEARCH-{topic}.md`. Creates the directory structure if it doesn't exist. The topic is slugified to produce a filesystem-safe filename. If the file already exists, it is **overwritten** (the LLM is expected to read-then-write if appending).
+
+#### 7. `report_progress` — Report Progress to TUI
+
+| Property | Value |
+| --- | --- |
+| **Input** | `{ "phase": string, "step": string, "progress": string }` |
+| **Output** | `{ "acknowledged": true }` |
+| **Dependencies** | `IProgressSink` (abstracts `IOutputRenderer`) |
+| **Error case** | Rendering failure is non-fatal → log warning, return acknowledged |
+| **Phases** | All |
+
+Delegates to `IOutputRenderer.RenderProgressAsync`. In headless mode (`HeadlessRenderer`), this writes to stdout/logs. In TUI mode, it updates the progress display. The handler always returns `acknowledged: true` — progress reporting is fire-and-forget from the LLM's perspective.
+
+#### 8. `verify_task_completion` — Oracle Verification (Task)
+
+| Property | Value |
+| --- | --- |
+| **Input** | `{ "taskId": string, "evidence": string, "acceptanceCriteria": string }` |
+| **Output** | `{ "pass": bool, "gaps": [string] }` |
+| **Dependencies** | `IOracleVerifier`, `IVerificationTracker` |
+| **Error case** | Oracle failure → return `{ "pass": false, "gaps": ["Verification failed: {error}"] }` |
+| **Phases** | Building only |
+
+Dispatches to `IOracleVerifier.VerifyAsync(VerificationScope.Task, evidence, acceptanceCriteria)`. The oracle creates a **separate SDK session** with a cheap model (`gpt-5-mini` per `OracleOptions.Model`), sends the evidence for review, and parses the JSON verdict. On pass, records the result in `IVerificationTracker` so `ITaskStatusGate` will allow the subsequent `update_task_status(complete)` call.
+
+```
+Flow: LLM calls verify_task_completion
+  → Handler calls IOracleVerifier.VerifyAsync(Task, evidence, criteria)
+    → OracleVerifier calls ILlmService.InvokeAsync(prompt, cheapModel, noTools)
+      → Creates fresh SDK session with cheap model
+      → Oracle LLM responds with {"pass": bool, "gaps": [...]}
+    → OracleVerifier parses verdict
+  → If pass: IVerificationTracker.RecordVerification(Task, taskId)
+  → Return verdict to primary LLM
+```
+
+#### 9. `verify_component_completion` — Oracle Verification (Component)
+
+| Property | Value |
+| --- | --- |
+| **Input** | `{ "componentId": string, "evidence": string, "acceptanceCriteria": string }` |
+| **Output** | `{ "pass": bool, "gaps": [string] }` |
+| **Dependencies** | `IOracleVerifier`, `IVerificationTracker` |
+| **Phases** | Building only |
+
+Same pattern as `verify_task_completion` but with `VerificationScope.Component`. Verifies that all tasks within a component are complete and the component meets its acceptance criteria as a whole.
+
+#### 10. `verify_module_completion` — Oracle Verification (Module)
+
+| Property | Value |
+| --- | --- |
+| **Input** | `{ "moduleId": string, "evidence": string, "acceptanceCriteria": string }` |
+| **Output** | `{ "pass": bool, "gaps": [string] }` |
+| **Dependencies** | `IOracleVerifier`, `IVerificationTracker` |
+| **Phases** | Building only |
+
+Same pattern with `VerificationScope.Module`. Verifies the entire module meets all specification acceptance criteria. This is the final verification gate before the module workflow completes.
+
+### Error Handling for Tool Calls
+
+When a tool handler throws an exception, the SDK must receive an error result rather than crashing the session. Wrap all handlers with error boundaries:
+
+```csharp
+static Func<string, CancellationToken, Task<string>> WithErrorBoundary(
+    string toolName,
+    Func<string, CancellationToken, Task<string>> handler,
+    ILogger logger)
+{
+    return async (args, ct) =>
+    {
+        try
+        {
+            return await handler(args, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            throw; // Let cancellation propagate
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Tool '{ToolName}' failed with args: {Args}", toolName, args);
+            return JsonSerializer.Serialize(new
+            {
+                error = true,
+                message = $"Tool '{toolName}' failed: {ex.Message}"
+            });
+        }
+    };
+}
+```
+
+The LLM receives the error as a tool result and can adapt (retry, use alternative approach, or report the failure). This prevents tool exceptions from terminating the entire SDK session.
+
+### Registration Wiring (End-to-End)
+
+The complete registration flow, showing how handlers are wired from DI through to SDK session:
+
+```
+1. Startup (Lopen host):
+   services.AddLopenLlm()
+     → registers DefaultToolRegistry (10 tool definitions, no handlers)
+     → registers ISpecReader, IPlanReader, IResearchStore, etc.
+
+2. Handler wiring (Lopen host or Lopen.Core):
+   → Resolves DefaultToolRegistry + handler dependencies from DI
+   → Calls RegisterTool() with handler delegates that close over services
+   → Each LopenToolDefinition now has a non-null Handler
+
+3. Orchestration loop calls ILlmService.InvokeAsync(prompt, model, tools):
+   → CopilotLlmService receives LopenToolDefinition[] with handlers
+   → Converts to AIFunction[] via AIFunctionFactory.Create
+   → Sets SessionConfig.Tools = aiFunctions
+   → Creates SDK session with tools registered
+
+4. During session:
+   → LLM generates tool_call → SDK invokes AIFunction → handler executes
+   → Handler returns JSON result → SDK sends back to LLM
+   → ToolExecutionCompleteEvent fires (tracked for metrics)
+   → Cycle repeats until SessionIdleEvent
+```
+
+### Open Questions (Tool Handlers)
+
+1. **Parameter schema validation** — Should `LopenToolDefinition.ParameterSchema` (currently always `null`) be populated with JSON Schema for each tool, or does `AIFunctionFactory` infer schemas from the delegate signature? The SDK's `AIFunctionFactory.Create` can infer from `[Description]` attributes on parameters, but Lopen's `Func<string, CancellationToken, Task<string>>` handler takes raw JSON — schema validation would need to be explicit.
+2. **Concurrency** — Can the LLM issue parallel tool calls? If so, handlers must be thread-safe. The `IVerificationTracker` uses a `Dictionary` (not `ConcurrentDictionary`), which may need updating.
+3. **Handler timeout** — Should individual tool handlers have timeouts? Oracle verification calls `ILlmService.InvokeAsync` which has a 10-minute default timeout — this may be too long for a tool call within a tool call.
+4. **Cancellation propagation** — The `CancellationToken` from the outer `InvokeAsync` should flow through to tool handlers and oracle sub-sessions. Verify the SDK propagates cancellation to `AIFunction` invocations.
+5. **Handler lifecycle** — Tool handlers close over DI services. If any handler dependency is scoped (not singleton), the handler delegate may outlive its scope. All handler dependencies should be singleton or transient.

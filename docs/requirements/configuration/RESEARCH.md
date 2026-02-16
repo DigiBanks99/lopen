@@ -711,3 +711,65 @@ if (jsonOutput)
 | Env var support | Include `LOPEN_*` env vars now or later | Later — spec doesn't require it; easy to add |
 | Config file format | JSON only vs also YAML/TOML | JSON only — spec mandates `config.json` |
 | AOT | Reflection binder vs source generator | Source generator if targeting AOT; reflection otherwise |
+
+---
+
+## 9. Budget Enforcement Wiring
+
+`BudgetEnforcer` and `IBudgetEnforcer` exist in `Lopen.Configuration` and are registered in DI via `ServiceCollectionExtensions.AddLopenConfiguration()`. The LLM module provides `ITokenTracker` / `InMemoryTokenTracker` (in `Lopen.Llm`) which accumulates `TokenUsage` per invocation and exposes `SessionTokenMetrics` with `CumulativeInputTokens + CumulativeOutputTokens` and `PremiumRequestCount`. These two pieces need to be wired together in the orchestration loop.
+
+### Pre-Invocation Budget Check
+
+Before each LLM call, the orchestrator should query `ITokenTracker.GetSessionMetrics()` and pass the cumulative values to `IBudgetEnforcer.Check()`:
+
+```csharp
+var metrics = tokenTracker.GetSessionMetrics();
+long totalTokens = metrics.CumulativeInputTokens + metrics.CumulativeOutputTokens;
+var budgetResult = budgetEnforcer.Check(totalTokens, metrics.PremiumRequestCount);
+
+switch (budgetResult.Status)
+{
+    case BudgetStatus.Exceeded:
+        // Halt the workflow — do not invoke the LLM
+        break;
+    case BudgetStatus.ConfirmationRequired:
+        // In attended mode: prompt user to continue or abort
+        // In unattended mode: halt (cannot prompt)
+        break;
+    case BudgetStatus.Warning:
+        // Log warning, continue execution
+        break;
+    case BudgetStatus.Ok:
+        break;
+}
+```
+
+### Handling Budget Exceeded
+
+When `BudgetStatus.Exceeded` is returned, the orchestration loop must **halt gracefully**:
+
+1. **Do not invoke the LLM** — the budget is spent.
+2. **Persist session state** — save current progress so `--resume` can continue if the user raises the budget.
+3. **Report clearly** — display `budgetResult.Message` (e.g., "Token budget exceeded (105% used).") and exit with a non-zero code.
+
+For `BudgetStatus.ConfirmationRequired`, behavior depends on `WorkflowOptions.Unattended`:
+- **Attended:** prompt the user with the message and a continue/abort choice.
+- **Unattended (`--unattended`):** treat as `Exceeded` — halt, since no user is present to confirm.
+
+### Integration Points
+
+| Component | Role |
+|---|---|
+| `ITokenTracker` (Lopen.Llm) | Accumulates per-invocation `TokenUsage`, exposes `SessionTokenMetrics` |
+| `IBudgetEnforcer` (Lopen.Configuration) | Stateless checker — compares usage against `BudgetOptions` thresholds |
+| Orchestration loop (consumer) | Calls `Check()` before each LLM invocation; acts on `BudgetStatus` |
+
+The `BudgetEnforcer` is intentionally **stateless** — it does not track usage itself. The orchestrator owns the "read metrics → check budget → invoke or halt" flow. This keeps the configuration module decoupled from the LLM module: `IBudgetEnforcer.Check(long, int)` accepts raw numbers and has no dependency on `ITokenTracker` or `TokenUsage`.
+
+### Token Counting
+
+`IBudgetEnforcer.Check()` takes `currentTokens` as a `long` (cumulative input + output tokens) and `currentRequests` as an `int` (premium request count). Both values come from `SessionTokenMetrics`. A budget of `0` means unlimited — `BudgetEnforcer.CheckSingle` returns `BudgetStatus.Ok` when the limit is ≤ 0.
+
+### Key Design Decision
+
+The enforcer lives in `Lopen.Configuration` (not `Lopen.Llm`) because it operates purely on configuration values (`BudgetOptions`). The LLM module tracks usage; the configuration module defines and checks limits. The orchestrator bridges the two. This avoids a circular dependency between modules.
