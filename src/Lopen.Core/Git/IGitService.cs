@@ -49,4 +49,11 @@ public interface IGitService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The commit SHA, or null if no commits exist.</returns>
     Task<string?> GetCurrentCommitShaAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the name of the current Git branch.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The branch name, or null if not in a Git repository or HEAD is detached.</returns>
+    Task<string?> GetCurrentBranchAsync(CancellationToken cancellationToken = default);
 }

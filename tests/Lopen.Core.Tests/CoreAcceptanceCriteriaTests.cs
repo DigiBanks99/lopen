@@ -513,5 +513,8 @@ public class CoreAcceptanceCriteriaTests
 
         public Task<string?> GetCurrentCommitShaAsync(CancellationToken ct = default)
             => Task.FromResult<string?>("abc123");
+
+        public Task<string?> GetCurrentBranchAsync(CancellationToken ct = default)
+            => Task.FromResult<string?>("main");
     }
 }

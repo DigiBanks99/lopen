@@ -68,6 +68,15 @@ internal sealed class GitCliService : IGitService
         return result.Success ? result.StdOut.Trim() : null;
     }
 
+    /// <inheritdoc />
+    public async Task<string?> GetCurrentBranchAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await RunGitAsync("branch --show-current", cancellationToken).ConfigureAwait(false);
+        if (!result.Success || string.IsNullOrWhiteSpace(result.StdOut))
+            return null;
+        return result.StdOut.Trim();
+    }
+
     private async Task<GitResult> RunGitAsync(string arguments, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Running: git {Arguments}", arguments);

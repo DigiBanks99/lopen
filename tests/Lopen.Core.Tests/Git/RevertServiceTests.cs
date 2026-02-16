@@ -144,6 +144,9 @@ public sealed class RevertServiceTests
 
         public Task<string?> GetCurrentCommitShaAsync(CancellationToken cancellationToken = default)
             => Task.FromResult<string?>("abc123");
+
+        public Task<string?> GetCurrentBranchAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<string?>("main");
     }
 
     private sealed class FailingResetGitService : IGitService
@@ -164,6 +167,9 @@ public sealed class RevertServiceTests
             => Task.FromResult("");
 
         public Task<string?> GetCurrentCommitShaAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<string?>(null);
+
+        public Task<string?> GetCurrentBranchAsync(CancellationToken cancellationToken = default)
             => Task.FromResult<string?>(null);
     }
 
@@ -186,5 +192,8 @@ public sealed class RevertServiceTests
 
         public Task<string?> GetCurrentCommitShaAsync(CancellationToken cancellationToken = default)
             => throw new GitException("failed", "git rev-parse", 1, "error");
+
+        public Task<string?> GetCurrentBranchAsync(CancellationToken cancellationToken = default)
+            => throw new GitException("failed", "git branch", 1, "error");
     }
 }

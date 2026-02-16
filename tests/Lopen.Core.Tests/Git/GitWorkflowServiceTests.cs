@@ -240,6 +240,9 @@ public sealed class GitWorkflowServiceTests
 
         public Task<string?> GetCurrentCommitShaAsync(CancellationToken cancellationToken = default)
             => Task.FromResult<string?>("abc123def456");
+
+        public Task<string?> GetCurrentBranchAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<string?>("main");
     }
 
     private sealed class ThrowingGitService : IGitService
@@ -261,5 +264,8 @@ public sealed class GitWorkflowServiceTests
 
         public Task<string?> GetCurrentCommitShaAsync(CancellationToken cancellationToken = default)
             => throw new GitException("rev-parse failed", "git rev-parse", 1, "error");
+
+        public Task<string?> GetCurrentBranchAsync(CancellationToken cancellationToken = default)
+            => throw new GitException("branch failed", "git branch", 1, "error");
     }
 }
