@@ -104,6 +104,84 @@
       "jobs": [
         "JOB-073"
       ]
+    },
+    "acceptance-criteria-tests": {
+      "status": "complete",
+      "description": "OtelAcceptanceCriteriaTests.cs with 23 tests providing explicit requirement code traceability for all 17 OTEL requirements",
+      "tasks": {
+        "otel-01-traceability": {
+          "status": "complete",
+          "description": "OTEL-01 command span test"
+        },
+        "otel-02-traceability": {
+          "status": "complete",
+          "description": "OTEL-02 workflow phase span test"
+        },
+        "otel-03-traceability": {
+          "status": "complete",
+          "description": "OTEL-03 SDK invocation span test"
+        },
+        "otel-04-traceability": {
+          "status": "complete",
+          "description": "OTEL-04 tool span test"
+        },
+        "otel-05-traceability": {
+          "status": "complete",
+          "description": "OTEL-05 oracle verification span test"
+        },
+        "otel-06-traceability": {
+          "status": "complete",
+          "description": "OTEL-06 task execution span test"
+        },
+        "otel-07-traceability": {
+          "status": "complete",
+          "description": "OTEL-07 backpressure span test"
+        },
+        "otel-08-traceability": {
+          "status": "complete",
+          "description": "OTEL-08 counter metrics test"
+        },
+        "otel-09-traceability": {
+          "status": "complete",
+          "description": "OTEL-09 histogram metrics test"
+        },
+        "otel-10-traceability": {
+          "status": "complete",
+          "description": "OTEL-10 log correlation test"
+        },
+        "otel-11-traceability": {
+          "status": "complete",
+          "description": "OTEL-11 OTLP export test"
+        },
+        "otel-12-traceability": {
+          "status": "complete",
+          "description": "OTEL-12 no export without endpoint test"
+        },
+        "otel-13-traceability": {
+          "status": "complete",
+          "description": "OTEL-13 Aspire integration test"
+        },
+        "otel-14-traceability": {
+          "status": "complete",
+          "description": "OTEL-14 master toggle test"
+        },
+        "otel-15-traceability": {
+          "status": "complete",
+          "description": "OTEL-15 signal toggles test"
+        },
+        "otel-16-traceability": {
+          "status": "complete",
+          "description": "OTEL-16 env var precedence test"
+        },
+        "otel-17-traceability": {
+          "status": "complete",
+          "description": "OTEL-17 performance overhead test"
+        }
+      }
+    },
+    "test-isolation": {
+      "status": "complete",
+      "description": "Fixed test isolation issues: ActivityListener Collection attribute on all test classes, fixed fragile null-listener test"
     }
   },
   "last_updated": "2026-02-17T21:30:00Z"

@@ -925,5 +925,23 @@
     "status": "done",
     "priority": 2,
     "notes": "Added 5 tests in LopenConfigurationBuilderTests.cs: env var overrides project config, CLI overrides env var, env var overrides global config, nested key binding, and full 4-layer precedence test. All 81 configuration tests pass."
+  },
+  {
+    "id": "JOB-104",
+    "requirement_code": "OTEL-01 through OTEL-17",
+    "requirement_module": "otel",
+    "description": "Create OtelAcceptanceCriteriaTests.cs with explicit requirement code traceability for all 17 OTEL requirements (OTEL-01 through OTEL-17). Add [Trait(\"Requirement\", \"OTEL-XX\")] annotations to map each test to its specification requirement code, ensuring 100% traceability coverage.",
+    "status": "complete",
+    "priority": 1,
+    "notes": "Created OtelAcceptanceCriteriaTests.cs with 23 tests covering all 17 OTEL requirements (OTEL-01 through OTEL-17). Each test has requirement code comment and ACXX_ prefix."
+  },
+  {
+    "id": "JOB-105",
+    "requirement_code": "OTEL-01",
+    "requirement_module": "otel",
+    "description": "Fix pre-existing test failure in LopenTelemetryDiagnosticsTests.ActivitySource_StartActivity_ReturnsNull_WhenNoListener \u2014 test assumes no ActivityListener is registered but other test classes in the same collection register global listeners that leak across test execution.",
+    "status": "complete",
+    "priority": 1,
+    "notes": "Fixed pre-existing test failure by replacing fragile test that assumed no ActivityListeners with one using an isolated ActivitySource. Also added [Collection(\"ActivityListener\")] to OtlpExportTests and ServiceCollectionExtensionsTests to prevent parallel test interference."
   }
 ]
