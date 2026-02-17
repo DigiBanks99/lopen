@@ -88,7 +88,7 @@
       "jobs": [
         "JOB-002"
       ],
-      "notes": "Drives assess \u2192 guardrails \u2192 LLM invoke \u2192 transition loop. Human gate for spec step. Registered in DI via AddLopenCore()."
+      "notes": "Drives assess \u2192 guardrails \u2192 LLM invoke \u2192 transition loop. Human gate for spec step. Registered in DI via AddLopenCore(). CORE-25: Tools now registered with SDK SessionConfig via ToolConversion bridge."
     },
     "auto_transitions": {
       "status": "complete",
@@ -231,7 +231,7 @@
     },
     "module_selection": {
       "status": "complete",
-      "implementation": "IModuleSelectionService + ModuleSelectionService. Lists modules via IModuleLister with status indicators (○/◐/●) and progress counts. Selection by number or name. Wired into PhaseCommands.ResolveModuleNameAsync as fallback.",
+      "implementation": "IModuleSelectionService + ModuleSelectionService. Lists modules via IModuleLister with status indicators (\u25cb/\u25d0/\u25cf) and progress counts. Selection by number or name. Wired into PhaseCommands.ResolveModuleNameAsync as fallback.",
       "tests": "ModuleSelectionServiceTests (17 tests)",
       "jobs": [
         "JOB-074"
@@ -239,5 +239,5 @@
       "notes": "DI registered in AddLopenCore(). Headless mode gracefully returns null (PromptAsync returns null). Interactive mode prompts user with numbered list."
     }
   },
-  "last_updated": "2026-02-16T22:00:00Z"
+  "last_updated": "2026-02-17T04:00:00Z"
 }

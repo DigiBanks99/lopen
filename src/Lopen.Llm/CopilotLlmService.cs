@@ -60,6 +60,10 @@ internal sealed class CopilotLlmService : ILlmService
                 model);
         }
 
+        var aiFunctions = ToolConversion.ToAiFunctions(tools);
+        _logger.LogDebug("Converted {BoundToolCount}/{TotalToolCount} tools to AIFunction instances",
+            aiFunctions.Count, tools.Count);
+
         var config = new SessionConfig
         {
             Model = model,
@@ -68,6 +72,7 @@ internal sealed class CopilotLlmService : ILlmService
                 Content = systemPrompt,
                 Mode = SystemMessageMode.Replace,
             },
+            Tools = aiFunctions,
             Streaming = false,
             Hooks = new SessionHooks
             {

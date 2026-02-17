@@ -1,26 +1,35 @@
 {
-    "module": "llm",
-    "description": "LLM service, model selection, token tracking, tool registry, prompt building",
-    "status": "in_progress",
-    "components": {
-        "tool_handlers": {
-            "status": "complete",
-            "implementation": "ToolHandlerBinder (10 handlers), Handler delegate on LopenToolDefinition, BindHandler on IToolRegistry",
-            "tests": "ToolHandlerBinderTests (22 tests)",
-            "jobs": [
-                "JOB-003"
-            ],
-            "notes": "Handlers: read_spec, read_research, read_plan, update_task_status, get_current_context, log_research, report_progress, verify_task/component/module_completion. Oracle verification enforced before task completion."
-        },
-        "oracle_verifier_wiring": {
-            "status": "complete",
-            "implementation": "IOracleVerifier wired into ToolHandlerBinder. Verify handlers call VerifyAsync() with evidence/criteria. Auto-pass fallback when oracle unavailable.",
-            "tests": "ToolHandlerBinderTests (12 new: oracle dispatch pass/fail, fallback, end-to-end with update_task_status)",
-            "jobs": [
-                "JOB-082"
-            ],
-            "notes": "LLM-06 met. DI registration updated in ServiceCollectionExtensions.cs."
-        }
+  "module": "llm",
+  "description": "LLM service, model selection, token tracking, tool registry, prompt building",
+  "status": "in_progress",
+  "components": {
+    "tool_handlers": {
+      "status": "complete",
+      "implementation": "ToolHandlerBinder (10 handlers), Handler delegate on LopenToolDefinition, BindHandler on IToolRegistry",
+      "tests": "ToolHandlerBinderTests (22 tests)",
+      "jobs": [
+        "JOB-003"
+      ],
+      "notes": "Handlers: read_spec, read_research, read_plan, update_task_status, get_current_context, log_research, report_progress, verify_task/component/module_completion. Oracle verification enforced before task completion."
     },
-    "last_updated": "2026-02-16T20:20:00Z"
+    "oracle_verifier_wiring": {
+      "status": "complete",
+      "implementation": "IOracleVerifier wired into ToolHandlerBinder. Verify handlers call VerifyAsync() with evidence/criteria. Auto-pass fallback when oracle unavailable.",
+      "tests": "ToolHandlerBinderTests (12 new: oracle dispatch pass/fail, fallback, end-to-end with update_task_status)",
+      "jobs": [
+        "JOB-082"
+      ],
+      "notes": "LLM-06 met. DI registration updated in ServiceCollectionExtensions.cs."
+    },
+    "sdk_tool_registration": {
+      "status": "complete",
+      "implementation": "ToolConversion static class in Lopen.Llm converts LopenToolDefinition \u2192 AIFunction via AIFunctionFactory.Create. CopilotLlmService sets SessionConfig.Tools before session creation.",
+      "tests": "ToolConversionTests (11 tests)",
+      "jobs": [
+        "JOB-002"
+      ],
+      "notes": "CORE-25: Filters null handlers. Maps name/description. Wraps handler delegate for SDK compatibility. Microsoft.Extensions.AI.Abstractions added as explicit dependency."
+    }
+  },
+  "last_updated": "2026-02-17T04:00:00Z"
 }

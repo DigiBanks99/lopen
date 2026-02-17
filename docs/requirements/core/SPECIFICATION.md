@@ -489,7 +489,7 @@ This specification defines the **core workflow and orchestration behavior** of L
 - [x] [CORE-22] Repeated task failures (at threshold) prompt user intervention
 - [x] [CORE-23] Critical system errors block execution and require user action
 - [ ] [CORE-24] Module selection lists modules with current state and allows user to choose
-- [ ] [CORE-25] Lopen-managed tool definitions are registered with the Copilot SDK session so the SDK can invoke tool handlers during `SendAndWaitAsync` — tools with bound `Handler` delegates are converted to SDK-native tool registrations before each invocation
+- [x] [CORE-25] Lopen-managed tool definitions are registered with the Copilot SDK session so the SDK can invoke tool handlers during `SendAndWaitAsync` — tools with bound `Handler` delegates are converted to SDK-native tool registrations before each invocation
 
 ---
 

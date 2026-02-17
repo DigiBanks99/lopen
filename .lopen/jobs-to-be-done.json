@@ -13,9 +13,9 @@
     "requirement_code": "CORE-25",
     "requirement_module": "core",
     "description": "Register Lopen-managed tools with Copilot SDK session \u2014 convert LopenToolDefinition instances (with bound Handler delegates) to SDK-native tool registrations in CopilotLlmService before calling SendAndWaitAsync",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "CRITICAL: CopilotLlmService.InvokeAsync accepts tools parameter but never passes them to the SDK session. Tools are validated and logged but completely ignored. SDK cannot invoke tool handlers."
+    "notes": "Implemented ToolConversion bridge class converting LopenToolDefinition to AIFunction via AIFunctionFactory.Create. Wired into CopilotLlmService SessionConfig.Tools. 11 unit tests in ToolConversionTests. All 2099 tests pass."
   },
   {
     "id": "JOB-003",
