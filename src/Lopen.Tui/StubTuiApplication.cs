@@ -27,4 +27,9 @@ internal sealed class StubTuiApplication(ILogger<StubTuiApplication> logger) : I
         logger.LogDebug("StubTuiApplication stopped");
         return Task.CompletedTask;
     }
+
+    public void SuppressLandingPage()
+    {
+        logger.LogDebug("SuppressLandingPage called (no-op in stub)");
+    }
 }

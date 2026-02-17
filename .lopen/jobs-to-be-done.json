@@ -130,18 +130,18 @@
     "requirement_code": "CLI-27",
     "requirement_module": "cli",
     "description": "Add --no-welcome CLI flag to suppress TUI landing page modal on startup, wire to TuiApplication showLandingPage parameter",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "TuiApplication already has internal showLandingPage support. Just need the CLI flag and wiring."
+    "notes": "--no-welcome option added to GlobalOptions, wired in RootCommandHandler via SuppressLandingPage() on ITuiApplication."
   },
   {
     "id": "JOB-016",
     "requirement_code": "CLI-27",
     "requirement_module": "cli",
     "description": "Add tests for --no-welcome flag \u2014 verify flag is parsed and suppresses landing page",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "Depends on JOB-015."
+    "notes": "3 new tests: NoWelcome_SuppressesLandingPage, WithoutNoWelcome_DoesNotSuppressLandingPage, NoWelcomeWithPrompt_BothApplied."
   },
   {
     "id": "JOB-017",

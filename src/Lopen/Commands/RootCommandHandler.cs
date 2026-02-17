@@ -65,6 +65,8 @@ public static class RootCommandHandler
 
                         var app = services.GetRequiredService<ITuiApplication>();
                         var prompt = parseResult.GetValue(GlobalOptions.Prompt);
+                        if (parseResult.GetValue(GlobalOptions.NoWelcome))
+                            app.SuppressLandingPage();
                         await app.RunAsync(prompt, cancellationToken);
                         exitCode = ExitCodes.Success;
                     }

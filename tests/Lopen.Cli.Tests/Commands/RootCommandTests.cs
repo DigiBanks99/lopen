@@ -234,6 +234,43 @@ public class RootCommandTests
         Assert.Null(tui.InitialPrompt);
     }
 
+    // ==================== CLI-27: --no-welcome flag ====================
+
+    [Fact]
+    public async Task RootCommand_NoWelcome_SuppressesLandingPage()
+    {
+        var (config, _, _, tui) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["--no-welcome"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(tui.LandingPageSuppressed, "SuppressLandingPage should be called when --no-welcome is set");
+        Assert.True(tui.RunWasCalled);
+    }
+
+    [Fact]
+    public async Task RootCommand_WithoutNoWelcome_DoesNotSuppressLandingPage()
+    {
+        var (config, _, _, tui) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync([]);
+
+        Assert.Equal(0, exitCode);
+        Assert.False(tui.LandingPageSuppressed, "SuppressLandingPage should NOT be called without --no-welcome");
+    }
+
+    [Fact]
+    public async Task RootCommand_NoWelcomeWithPrompt_BothApplied()
+    {
+        var (config, _, _, tui) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["--no-welcome", "--prompt", "fix the bug"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(tui.LandingPageSuppressed);
+        Assert.Equal("fix the bug", tui.InitialPrompt);
+    }
+
     // ==================== Test Fakes ====================
 
     private sealed class FakeTuiApplication : ITuiApplication
@@ -241,6 +278,7 @@ public class RootCommandTests
         public bool RunWasCalled { get; private set; }
         public bool IsRunning { get; private set; }
         public string? InitialPrompt { get; private set; }
+        public bool LandingPageSuppressed { get; private set; }
 
         public Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
         {
@@ -255,6 +293,8 @@ public class RootCommandTests
             IsRunning = false;
             return Task.CompletedTask;
         }
+
+        public void SuppressLandingPage() => LandingPageSuppressed = true;
     }
 
     private sealed class ThrowingTuiApplication : ITuiApplication
@@ -265,6 +305,8 @@ public class RootCommandTests
             => throw new InvalidOperationException("TUI startup failed");
 
         public Task StopAsync() => Task.CompletedTask;
+
+        public void SuppressLandingPage() { }
     }
 
     private sealed class FakeSessionManager : ISessionManager

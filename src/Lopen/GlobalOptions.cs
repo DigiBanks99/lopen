@@ -37,6 +37,13 @@ public static class GlobalOptions
         Recursive = true,
     };
 
+    /// <summary>Suppresses the TUI landing page modal on startup (CLI-27).</summary>
+    public static Option<bool> NoWelcome { get; } = new("--no-welcome")
+    {
+        Description = "Suppress the TUI landing page modal on startup",
+        Recursive = true,
+    };
+
     /// <summary>
     /// Registers all global options on the root command.
     /// </summary>
@@ -46,5 +53,6 @@ public static class GlobalOptions
         root.Options.Add(Prompt);
         root.Options.Add(Resume);
         root.Options.Add(NoResume);
+        root.Options.Add(NoWelcome);
     }
 }

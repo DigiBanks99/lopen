@@ -22,4 +22,10 @@ public interface ITuiApplication
     /// Whether the TUI is currently running.
     /// </summary>
     bool IsRunning { get; }
+
+    /// <summary>
+    /// Suppresses the landing page modal on startup (CLI-27: --no-welcome flag).
+    /// Must be called before <see cref="RunAsync"/>.
+    /// </summary>
+    void SuppressLandingPage();
 }

@@ -46,7 +46,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly ConfirmationModalComponent _confirmationModalComponent;
     private readonly ErrorModalComponent _errorModalComponent;
     private readonly ISessionDetector? _sessionDetector;
-    private readonly bool _showLandingPage;
+    private bool _showLandingPage;
     private readonly ILogger<TuiApplication> _logger;
 
     private volatile bool _running;
@@ -390,6 +390,9 @@ internal sealed class TuiApplication : ITuiApplication
     /// Updates the landing page data for the modal overlay.
     /// </summary>
     public void UpdateLandingPage(LandingPageData data) => _landingPageData = data;
+
+    /// <inheritdoc />
+    public void SuppressLandingPage() => _showLandingPage = false;
 
     /// <summary>
     /// Updates the session resume data for the modal overlay.
