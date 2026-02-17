@@ -949,7 +949,7 @@ internal sealed class TuiApplication : ITuiApplication
         _modalState = TuiModalState.ErrorModal;
     }
 
-    private void HandleErrorModalInput(ConsoleKeyInfo keyInfo)
+    internal void HandleErrorModalInput(ConsoleKeyInfo keyInfo)
     {
         switch (keyInfo.Key)
         {

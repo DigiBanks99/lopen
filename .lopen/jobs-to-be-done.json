@@ -22,36 +22,36 @@
     "requirement_code": "CLI-21",
     "requirement_module": "cli",
     "description": "Add --version flag to the root CLI command \u2014 configure System.CommandLine VersionOption with assembly version",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "--help works automatically via System.CommandLine but no VersionOption is configured on the root command. Need to add UseVersionOption() or equivalent."
+    "notes": "--help works automatically via System.CommandLine but no VersionOption is configured on the root command. Need to add UseVersionOption() or equivalent. Already implemented via System.CommandLine built-in VersionOption. Two tests verify it works."
   },
   {
     "id": "JOB-004",
     "requirement_code": "CLI-21",
     "requirement_module": "cli",
     "description": "Add test verifying --version flag outputs version string and exits with code 0",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "No test exists for --version flag behavior."
+    "notes": "No test exists for --version flag behavior. Already implemented via System.CommandLine built-in VersionOption. Two tests verify it works."
   },
   {
     "id": "JOB-006",
     "requirement_code": "TUI-26",
     "requirement_module": "tui",
     "description": "Wire ConsecutiveFailureCount from ActivityPanelDataProvider to trigger a repeated failure confirmation modal in TuiApplication when threshold is reached",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "ConsecutiveFailureCount is tracked in ActivityPanelDataProvider. ErrorModalComponent exists with Retry/Skip/Abort options. But TuiApplication does not check ConsecutiveFailureCount to auto-show the modal. Need to add a threshold check in the render/update loop."
+    "notes": "ConsecutiveFailureCount checked in RefreshActivityPanelData against failureThreshold. Error modal shown once per streak with OnSelected callback that enqueues intervention to IUserPromptQueue."
   },
   {
     "id": "JOB-007",
     "requirement_code": "TUI-26",
     "requirement_module": "tui",
     "description": "Add tests verifying repeated failure confirmation modal is triggered when consecutive failure count exceeds threshold",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "No test exists for the auto-trigger behavior. Need to test that reaching the threshold shows the modal and that user choices (Retry/Skip/Abort) are handled."
+    "notes": "15 tests in FailureModalWiringTests.cs: threshold boundaries, per-streak guard, streak reset, existing modal protection, custom threshold, null safety, callback roundtrip, Enter/Escape key paths, all 3 intervention options."
   },
   {
     "id": "JOB-008",

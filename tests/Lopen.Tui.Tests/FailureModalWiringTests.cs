@@ -236,4 +236,45 @@ public class FailureModalWiringTests
         Assert.Single(queue.EnqueuedPrompts);
         Assert.Equal("[intervention:abort]", queue.EnqueuedPrompts[0]);
     }
+
+    [Fact]
+    public void HandleErrorModalInput_Enter_InvokesOnSelectedCallback()
+    {
+        var provider = new StubActivityPanelDataProvider { ConsecutiveFailureCount = 3 };
+        var queue = new StubUserPromptQueue();
+        var app = CreateApp(activityProvider: provider, userPromptQueue: queue);
+
+        // Trigger modal
+        app.RefreshActivityPanelData();
+        Assert.Equal(TuiModalState.ErrorModal, app.CurrentModalState);
+
+        // Simulate Enter key through HandleErrorModalInput
+        var enterKey = new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false);
+        app.HandleErrorModalInput(enterKey);
+
+        // Modal should be dismissed and callback invoked
+        Assert.Equal(TuiModalState.None, app.CurrentModalState);
+        Assert.Single(queue.EnqueuedPrompts);
+        Assert.Equal("[intervention:retry]", queue.EnqueuedPrompts[0]); // Default selection is 0 (Retry)
+    }
+
+    [Fact]
+    public void HandleErrorModalInput_Escape_DismissesWithoutCallback()
+    {
+        var provider = new StubActivityPanelDataProvider { ConsecutiveFailureCount = 3 };
+        var queue = new StubUserPromptQueue();
+        var app = CreateApp(activityProvider: provider, userPromptQueue: queue);
+
+        // Trigger modal
+        app.RefreshActivityPanelData();
+        Assert.Equal(TuiModalState.ErrorModal, app.CurrentModalState);
+
+        // Simulate Escape key
+        var escKey = new ConsoleKeyInfo('\x1b', ConsoleKey.Escape, false, false, false);
+        app.HandleErrorModalInput(escKey);
+
+        // Modal dismissed, no callback invoked
+        Assert.Equal(TuiModalState.None, app.CurrentModalState);
+        Assert.Empty(queue.EnqueuedPrompts);
+    }
 }

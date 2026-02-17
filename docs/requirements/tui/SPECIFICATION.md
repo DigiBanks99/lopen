@@ -714,7 +714,7 @@ Every TUI component must be designed so that it can be rendered with injected st
 ### Feedback & Status
 
 - [x] [TUI-25] Task failures displayed inline and auto-expanded
-- [ ] [TUI-26] Repeated failure confirmation modal shown at configured threshold
+- [x] [TUI-26] Repeated failure confirmation modal shown at configured threshold
 - [x] [TUI-27] Critical error modal with details and recovery options
 - [x] [TUI-28] Spinner-based async feedback for long-running operations
 - [x] [TUI-29] Context window usage displayed in top panel
