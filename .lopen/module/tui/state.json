@@ -302,7 +302,13 @@
         "JOB-005"
       ],
       "notes": "TUI-51: All 4 required interfaces registered. TuiOutputRenderer replaces HeadlessRenderer in TUI mode."
+    },
+    "data_provider_wiring_tests": {
+      "status": "complete",
+      "spec_ref": "TUI-51",
+      "tests": "ServiceCollectionExtensionsTests (5 new live data provider tests)",
+      "notes": "Tests verify providers produce real data after DI registration."
     }
   },
-  "last_updated": "2026-02-17T04:30:00Z"
+  "last_updated": "2026-02-17T06:15:00Z"
 }

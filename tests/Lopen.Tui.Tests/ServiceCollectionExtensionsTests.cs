@@ -223,4 +223,74 @@ public class ServiceCollectionExtensionsTests
         public Task<int> PruneSessionsAsync(int m = 30, CancellationToken ct = default) => Task.FromResult(0);
         public Task DeleteSessionAsync(Lopen.Storage.SessionId s, CancellationToken ct = default) => Task.CompletedTask;
     }
+
+    // === TUI-51: Live data provider wiring ===
+
+    [Fact]
+    public void ActivityPanelDataProvider_CanAddAndRetrieveEntries()
+    {
+        var services = new ServiceCollection();
+        services.AddActivityPanelDataProvider();
+        using var provider = services.BuildServiceProvider();
+        var activityProvider = provider.GetRequiredService<IActivityPanelDataProvider>();
+
+        activityProvider.AddPhaseTransition("Building", "BreakIntoTasks");
+
+        var data = activityProvider.GetCurrentData();
+        Assert.Single(data.Entries);
+    }
+
+    [Fact]
+    public void UserPromptQueue_CanEnqueueAndDequeue()
+    {
+        var services = new ServiceCollection();
+        services.AddUserPromptQueue();
+        using var provider = services.BuildServiceProvider();
+        var queue = provider.GetRequiredService<IUserPromptQueue>();
+
+        queue.Enqueue("test message");
+        Assert.True(queue.TryDequeue(out var msg));
+        Assert.Equal("test message", msg);
+    }
+
+    [Fact]
+    public async Task SessionDetector_ReturnsNullWhenNoSession()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<Lopen.Storage.ISessionManager, StubSessionManager>();
+        services.AddSessionDetector();
+        using var provider = services.BuildServiceProvider();
+        var detector = provider.GetRequiredService<ISessionDetector>();
+
+        var result = await detector.DetectActiveSessionAsync();
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void ContextPanelDataProvider_IsRegistered()
+    {
+        var services = new ServiceCollection();
+        services.AddContextPanelDataProvider();
+
+        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IContextPanelDataProvider));
+        Assert.NotNull(descriptor);
+    }
+
+    [Fact]
+    public async Task TuiOutputRenderer_RenderProgress_AddsToActivityPanel()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddActivityPanelDataProvider();
+        services.AddUserPromptQueue();
+        services.AddTuiOutputRenderer();
+        using var provider = services.BuildServiceProvider();
+
+        var renderer = provider.GetRequiredService<IOutputRenderer>();
+        await renderer.RenderProgressAsync("Building", "Task 1", 50, default);
+
+        var activity = provider.GetRequiredService<IActivityPanelDataProvider>();
+        var data = activity.GetCurrentData();
+        Assert.NotEmpty(data.Entries);
+    }
 }

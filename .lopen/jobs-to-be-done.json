@@ -220,9 +220,9 @@
     "requirement_code": "TUI-06",
     "requirement_module": "tui",
     "description": "Wire TUI-06 landing page skip to CLI-27 --no-welcome flag end-to-end \u2014 verify the full path from CLI flag \u2192 GlobalOptions \u2192 TuiApplication constructor \u2192 showLandingPage field",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "Depends on JOB-015. TuiApplication has internal support but no CLI flag wires to it."
+    "notes": "Already wired in JOB-015: --no-welcome \u2192 GlobalOptions \u2192 RootCommandHandler \u2192 ITuiApplication.SuppressLandingPage() \u2192 _showLandingPage=false. Tests in RootCommandTests."
   },
   {
     "id": "JOB-026",
@@ -238,9 +238,9 @@
     "requirement_code": "TUI-51",
     "requirement_module": "tui",
     "description": "Add tests for TUI data provider wiring \u2014 verify live data providers return real orchestrator/session data when registered",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Depends on JOB-005."
+    "notes": "5 new tests verifying live data providers: ActivityPanel add/retrieve, UserPromptQueue enqueue/dequeue, SessionDetector null return, ContextPanel registration, TuiOutputRenderer \u2192 ActivityPanel integration."
   },
   {
     "id": "JOB-028",
