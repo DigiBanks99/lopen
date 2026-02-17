@@ -1077,3 +1077,272 @@ lopen
 ### Relevance to Lopen
 
 The `lopen test tui` command is a thin CLI wrapper around the existing `IComponentGallery` infrastructure. All gallery logic lives in `Lopen.Tui`; the CLI only provides the command entry point and DI resolution. The command follows the established pattern of `PhaseCommands.Create*` — a static factory method that captures `IServiceProvider` via closure. The optional `component` argument enables direct preview of a specific component for quick iteration during development.
+
+---
+
+## 10. CLI-26: Project Root Discovery
+
+> **Date:** 2026-07-25
+> **Ticket:** CLI-26
+> **Goal:** Automatically discover the project root at startup so `AddLopenCore(projectRoot)` and `AddLopenStorage(projectRoot)` receive a valid path.
+
+### Current State
+
+Currently, `Program.cs` calls both registration methods with **no arguments**:
+
+```csharp
+builder.Services.AddLopenCore();   // projectRoot defaults to null
+builder.Services.AddLopenStorage(); // projectRoot defaults to null
+```
+
+When `projectRoot` is `null`, critical services are **not registered**: `IGitService`, `IWorkflowOrchestrator`, `IToolHandlerBinder`, `IModuleScanner`, `ISessionManager`, `IAutoSaveService`, `IPlanManager`, `ISectionCache`, and `IAssessmentCache`. This causes runtime failures when any command requires project context (e.g., `"Workflow engine not available. Ensure project root is configured."` in `RootCommandHandler.RunHeadlessAsync`).
+
+The **only** existing upward-walk logic is `LopenConfigurationBuilder.DiscoverProjectConfigPath(string startDirectory)` in `Lopen.Configuration`, which searches for `.lopen/config.json` specifically — not for `.lopen/` or `.git/` as directory markers.
+
+### Algorithm Design
+
+The project root discovery should walk up the directory tree from CWD, checking for marker directories in priority order:
+
+1. **`.lopen/`** — First priority. If present, this directory *is* the project root. This is the strongest signal because the user has explicitly initialized Lopen here.
+2. **`.git/`** — Second priority. Most projects will have a git root but may not yet have `.lopen/`. Using `.git/` as a fallback ensures Lopen works on first run in any git repository.
+
+The walk terminates at the filesystem root. If neither marker is found, `projectRoot` remains `null` and services degrade gracefully (current behavior).
+
+```csharp
+// Proposed: src/Lopen/ProjectRootDiscovery.cs
+namespace Lopen;
+
+/// <summary>
+/// Walks up the directory tree from a starting directory to locate the project root.
+/// Checks for <c>.lopen/</c> first, then <c>.git/</c> as fallback markers.
+/// </summary>
+internal static class ProjectRootDiscovery
+{
+    /// <summary>
+    /// Discovers the project root by walking up from <paramref name="startDirectory"/>.
+    /// Returns <c>null</c> if no marker directory is found.
+    /// </summary>
+    internal static string? FindProjectRoot(string startDirectory)
+    {
+        // First pass: look for .lopen/ (strongest signal)
+        var dir = new DirectoryInfo(startDirectory);
+        while (dir is not null)
+        {
+            if (Directory.Exists(Path.Combine(dir.FullName, ".lopen")))
+                return dir.FullName;
+            dir = dir.Parent;
+        }
+
+        // Second pass: fall back to .git/
+        dir = new DirectoryInfo(startDirectory);
+        while (dir is not null)
+        {
+            if (Directory.Exists(Path.Combine(dir.FullName, ".git")))
+                return dir.FullName;
+            dir = dir.Parent;
+        }
+
+        return null;
+    }
+}
+```
+
+### Integration with Program.cs
+
+The discovery runs **before** DI registration, since `AddLopenCore` and `AddLopenStorage` need the path at registration time:
+
+```csharp
+// Program.cs — updated
+var builder = Host.CreateApplicationBuilder(args);
+
+var projectRoot = ProjectRootDiscovery.FindProjectRoot(Directory.GetCurrentDirectory());
+
+builder.Services.AddLopenConfiguration();
+builder.Services.AddLopenAuth();
+builder.Services.AddLopenCore(projectRoot);
+builder.Services.AddLopenStorage(projectRoot);
+builder.Services.AddLopenLlm();
+builder.Services.AddLopenTui();
+builder.Services.UseRealTui();
+builder.Services.AddTopPanelDataProvider();
+builder.Services.AddLopenOtel(builder.Configuration);
+
+using var host = builder.Build();
+// ... rest unchanged
+```
+
+This is safe because `AddLopenCore` and `AddLopenStorage` already handle `null` gracefully — they simply skip project-aware registrations.
+
+### Edge Cases
+
+| Scenario | Behavior |
+|---|---|
+| **No `.lopen/` or `.git/` found** | `FindProjectRoot` returns `null`. Services register without project context. Commands requiring project context fail with clear error messages (existing behavior). |
+| **Running from home directory** | Walk reaches filesystem root without finding markers. Returns `null`. No change from current behavior. |
+| **Symlinks in path** | `DirectoryInfo` follows symlinks by default on .NET. `dir.FullName` resolves to the physical path. This is correct — the resolved path should be used for consistent storage paths. |
+| **`.lopen/` and `.git/` at different levels** | `.lopen/` wins because it's checked first in a separate pass. If `.lopen/` is in a subdirectory of the `.git/` root, it correctly identifies the Lopen project root as distinct from the git root. |
+| **Nested git repositories (submodules)** | The walk finds the *nearest* `.git/` to CWD, which is the correct behavior for submodules. |
+| **Mounted/network filesystems** | `DirectoryInfo.Parent` handles mount boundaries correctly. Performance is bounded by directory depth (typically < 20 hops). |
+
+### Relationship to DiscoverProjectConfigPath
+
+The existing `LopenConfigurationBuilder.DiscoverProjectConfigPath` searches for `.lopen/config.json` (a *file*), not `.lopen/` (a *directory*). These are complementary:
+
+- `ProjectRootDiscovery.FindProjectRoot` — finds the project root for DI registration. Runs once at startup.
+- `DiscoverProjectConfigPath` — finds a specific config file for the configuration builder. Already called inside `AddLopenConfiguration()`.
+
+The two-pass approach (`.lopen/` first, then `.git/`) avoids combining them into a single walk, keeping the logic simple and the priority order explicit.
+
+### Testing Strategy
+
+- Unit tests with a temporary directory tree containing various marker combinations.
+- Test the `null` case (no markers found).
+- Test nested markers (`.lopen/` in subdirectory of `.git/` root).
+- No integration test needed — the function is pure directory traversal with no side effects.
+
+---
+
+## 11. CLI-27: `--no-welcome` Global Option
+
+> **Date:** 2026-07-25
+> **Ticket:** CLI-27
+> **Goal:** Add a `--no-welcome` global option that suppresses the TUI landing page modal on startup.
+
+### Current State
+
+`TuiApplication` already accepts a `bool showLandingPage = true` constructor parameter (line 99 of `TuiApplication.cs`) and the comment at line 139 explicitly references `--no-welcome`:
+
+```csharp
+// Show landing page on startup (unless disabled via --no-welcome)
+if (_showLandingPage)
+    _modalState = TuiModalState.LandingPage;
+else
+    await CheckForActiveSessionAsync(ct).ConfigureAwait(false);
+```
+
+The wiring is **not yet connected** — there is no CLI option, and `showLandingPage` always defaults to `true` because the DI container uses `ActivatorUtilities` which passes `true` for the optional parameter.
+
+### Implementation Plan
+
+#### Step 1: Add Global Option to `GlobalOptions.cs`
+
+Follow the exact pattern used by `--headless`, `--no-resume`, etc.:
+
+```csharp
+// In GlobalOptions.cs — add after NoResume
+/// <summary>Suppresses the TUI landing page on startup.</summary>
+public static Option<bool> NoWelcome { get; } = new("--no-welcome")
+{
+    Description = "Skip the TUI landing page on startup",
+    Recursive = true,
+};
+```
+
+Register in `AddTo`:
+
+```csharp
+public static void AddTo(RootCommand root)
+{
+    root.Options.Add(Headless);
+    root.Options.Add(Prompt);
+    root.Options.Add(Resume);
+    root.Options.Add(NoResume);
+    root.Options.Add(NoWelcome); // <-- add
+}
+```
+
+#### Step 2: Pass Through DI to TuiApplication
+
+The challenge is that `TuiApplication` is registered as a singleton at DI setup time (in `UseRealTui()`), but the `--no-welcome` flag value is only available at command parse time. Two approaches:
+
+**Option A: Wrapper options class (recommended)**
+
+Create a simple options record that DI can resolve, and populate it from the parse result before resolving `ITuiApplication`:
+
+```csharp
+// In Lopen.Tui or Lopen (CLI module)
+namespace Lopen.Tui;
+
+/// <summary>
+/// Runtime options for TUI behavior, populated from CLI parse results.
+/// </summary>
+public sealed class TuiOptions
+{
+    /// <summary>Whether to show the landing page on startup.</summary>
+    public bool ShowLandingPage { get; set; } = true;
+}
+```
+
+Register in `Program.cs` (or `AddLopenTui`):
+
+```csharp
+builder.Services.AddSingleton<TuiOptions>();
+```
+
+Then update `TuiApplication` to consume it:
+
+```csharp
+public TuiApplication(
+    TopPanelComponent topPanel,
+    ActivityPanelComponent activityPanel,
+    ContextPanelComponent contextPanel,
+    PromptAreaComponent promptArea,
+    KeyboardHandler keyboardHandler,
+    ILogger<TuiApplication> logger,
+    TuiOptions tuiOptions,               // <-- new required param
+    // ... optional params unchanged
+    ISessionDetector? sessionDetector = null)
+{
+    // ...
+    _showLandingPage = tuiOptions.ShowLandingPage;
+}
+```
+
+Set the flag in `RootCommandHandler` before launching TUI:
+
+```csharp
+// In RootCommandHandler.Configure, inside the TUI branch:
+var noWelcome = parseResult.GetValue(GlobalOptions.NoWelcome);
+var tuiOptions = services.GetRequiredService<TuiOptions>();
+tuiOptions.ShowLandingPage = !noWelcome;
+
+var app = services.GetRequiredService<ITuiApplication>();
+var prompt = parseResult.GetValue(GlobalOptions.Prompt);
+await app.RunAsync(prompt, cancellationToken);
+```
+
+**Option B: Direct parameter injection via factory (simpler but less extensible)**
+
+Modify `UseRealTui` to accept the flag as a factory parameter. This is less clean because it couples DI registration to a CLI concern.
+
+**Recommendation:** Option A is preferred because:
+- `TuiOptions` is extensible for future TUI flags.
+- It follows the established pattern of `WorkflowOptions` already used in Lopen.Core.
+- The singleton is mutable only during startup, before `RunAsync` is called.
+- It keeps the `Lopen.Tui` module decoupled from `System.CommandLine`.
+
+#### Step 3: Handle in Subcommands
+
+Any subcommand that launches the TUI (e.g., `spec`, `plan`, `build`) should also respect `--no-welcome`. Since `GlobalOptions` are recursive, the flag is available in all subcommand parse results. Each command handler that calls `app.RunAsync()` should set `TuiOptions.ShowLandingPage` from the parse result.
+
+A helper method can reduce duplication:
+
+```csharp
+// In a shared location (e.g., GlobalOptions or a new CommandHelpers class)
+internal static void ApplyTuiOptions(IServiceProvider services, ParseResult parseResult)
+{
+    var tuiOptions = services.GetRequiredService<TuiOptions>();
+    tuiOptions.ShowLandingPage = !parseResult.GetValue(GlobalOptions.NoWelcome);
+}
+```
+
+### Interaction with `--headless`
+
+When `--headless` is active, the TUI is never launched, so `--no-welcome` is irrelevant. No special handling needed — the flag is simply unused in headless mode.
+
+### Testing Strategy
+
+- **Unit test `GlobalOptions`:** Verify `NoWelcome` is registered and parseable.
+- **Unit test `TuiOptions`:** Verify default is `ShowLandingPage = true`.
+- **Unit test `RootCommandHandler`:** Mock `ITuiApplication`, parse `--no-welcome`, verify `TuiOptions.ShowLandingPage` is `false` before `RunAsync` is called.
+- **Unit test `TuiApplication`:** Verify that when `TuiOptions.ShowLandingPage` is `false`, `_modalState` is not set to `LandingPage` on startup. This is already partially covered by existing tests that construct `TuiApplication` with `showLandingPage: false`.

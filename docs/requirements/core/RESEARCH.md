@@ -22,6 +22,7 @@ Research into implementation patterns and technology choices for the Lopen core 
 9. [Orchestration Loop Pattern](#9-orchestration-loop-pattern)
 10. [DI Registration Gap](#10-di-registration-gap)
 11. [Integration Wiring Patterns](#11-integration-wiring-patterns)
+12. [CORE-25: SDK Tool Registration](#12-core-25-sdk-tool-registration)
 
 ---
 
@@ -1169,6 +1170,200 @@ public static IServiceCollection AddLopenCore(this IServiceCollection services, 
 ### Relevance to Lopen
 
 These wiring patterns complete the gap between implemented subsystems and a functioning orchestrator. The `WorkflowOrchestrator` is the single entry point that the CLI host calls — `orchestrator.RunAsync("auth", ct)`. All subsystem integration happens through DI-injected interfaces, maintaining the testability principle established in the existing architecture. The auto-save and error-handling patterns ensure re-entrant resume works even after crashes, which is a core requirement of the spec.
+
+---
+
+## 12. CORE-25: SDK Tool Registration
+
+**Problem**: `CopilotLlmService.InvokeAsync` accepts `IReadOnlyList<LopenToolDefinition> tools` but never passes them to the Copilot SDK session. Tools are logged and counted, but `SessionConfig` has no `Tools` property set — meaning the LLM cannot invoke Lopen-managed tool handlers during `SendAndWaitAsync`. This is the gap described by [CORE-25] in the specification.
+
+### Current State
+
+```
+CopilotLlmService.InvokeAsync(systemPrompt, model, tools, ct)
+  ├─ tools parameter: validated (line 36), logged (line 38) ← ✅
+  ├─ ToolExecutionCompleteEvent counter: tracked (line 96-97) ← ✅
+  ├─ SessionConfig.Tools: NOT SET                             ← ❌ gap
+  └─ SessionConfig.Hooks: only OnErrorOccurred                ← partial
+```
+
+The 10 built-in tools (registered in `DefaultToolRegistry`, handlers bound by `ToolHandlerBinder`) flow through the system as `LopenToolDefinition` records with `Handler` delegates — but they're never converted to SDK-native tool types for the session.
+
+### SDK Tool API (GitHub.Copilot.SDK 0.1.23)
+
+Analysis of the SDK assembly reveals the tool registration surface:
+
+| SDK Type | Purpose |
+|---|---|
+| `SessionConfig.Tools` | `List<AIFunction>` property — tools available to the LLM during the session |
+| `SessionConfig.AllowedTools` | Controls which native (built-in) tools are available |
+| `SessionConfig.ExcludedTools` | Excludes specific native tools |
+| `SessionConfig.AvailableTools` | Alternative native tool configuration |
+| `SessionHooks.OnPreToolUse` | Pre-invocation hook (`PreToolUseHookInput` → `PreToolUseHookOutput`) |
+| `SessionHooks.OnPostToolUse` | Post-invocation hook (`PostToolUseHookInput` → `PostToolUseHookOutput`) |
+| `ToolExecutionCompleteEvent` | Already subscribed in `CopilotLlmService` for counting |
+
+The SDK uses `Microsoft.Extensions.AI.Abstractions` (transitive dependency, v10.x available in the NuGet cache). Key types:
+
+| M.E.AI Type | Role |
+|---|---|
+| `AIFunction` | Abstract base — invocable tool with name, description, JSON schema |
+| `AIFunctionFactory.Create(Delegate, string, string)` | Creates an `AIFunction` from a delegate with name and description |
+| `AIFunctionFactory.Create(Delegate, AIFunctionFactoryOptions)` | Overload with options for schema, serializer settings |
+| `AIFunctionDeclaration` | Base class of `AIFunction` — metadata only (name, description, schema) |
+| `AIFunctionArguments` | Dictionary passed to `AIFunction.InvokeAsync` — includes `Services` for DI |
+
+### Recommended Implementation: `ToolConversion` Bridge
+
+A static conversion class maps `LopenToolDefinition` → `AIFunction` using `AIFunctionFactory.Create`:
+
+```csharp
+using Microsoft.Extensions.AI;
+
+namespace Lopen.Llm;
+
+/// <summary>
+/// Converts Lopen-managed tool definitions to SDK AIFunction instances
+/// for registration on SessionConfig.Tools.
+/// </summary>
+internal static class ToolConversion
+{
+    public static List<AIFunction> ToAiFunctions(IReadOnlyList<LopenToolDefinition> tools)
+    {
+        return tools
+            .Where(t => t.Handler is not null)
+            .Select(ToAiFunction)
+            .ToList();
+    }
+
+    private static AIFunction ToAiFunction(LopenToolDefinition tool)
+    {
+        // AIFunctionFactory.Create wraps a delegate as an invocable AIFunction.
+        // The SDK will call this delegate when the LLM emits a tool_call
+        // for a tool matching this name.
+        return AIFunctionFactory.Create(
+            async (string arguments, CancellationToken cancellationToken) =>
+            {
+                return await tool.Handler!(arguments, cancellationToken);
+            },
+            tool.Name,
+            tool.Description);
+    }
+}
+```
+
+**Why `AIFunctionFactory.Create`**: The factory handles JSON schema generation from the delegate signature, serialization/deserialization of arguments, and `CancellationToken` propagation. The `(string arguments, CancellationToken)` signature aligns exactly with `LopenToolDefinition.Handler`'s `Func<string, CancellationToken, Task<string>>`.
+
+**Parameter Schema**: `LopenToolDefinition.ParameterSchema` (optional JSON schema string) is not directly consumed by `AIFunctionFactory.Create` when using the delegate overload — the factory infers a schema from the delegate parameters. For richer schemas, the `AIFunctionFactoryOptions` overload or `AIFunctionFactory.CreateDeclaration` could be used, but the simple delegate approach is sufficient for the current tools since all 10 accept a single `string arguments` parameter (raw JSON).
+
+### Integration Point: `CopilotLlmService.InvokeAsync`
+
+The change to wire tools into the session is surgical — add `Tools` to the existing `SessionConfig`:
+
+```csharp
+var config = new SessionConfig
+{
+    Model = model,
+    SystemMessage = new SystemMessageConfig
+    {
+        Content = systemPrompt,
+        Mode = SystemMessageMode.Replace,
+    },
+    Streaming = false,
+    Tools = ToolConversion.ToAiFunctions(tools),  // ← CORE-25: register tools
+    Hooks = new SessionHooks
+    {
+        OnErrorOccurred = async (input, _) =>
+        {
+            var result = await _authErrorHandler.HandleErrorAsync(input, cancellationToken);
+            return result ?? new ErrorOccurredHookOutput();
+        },
+    },
+};
+```
+
+This requires adding `using Microsoft.Extensions.AI;` and a package reference to `Microsoft.Extensions.AI.Abstractions` in `Lopen.Llm.csproj` (the SDK already depends on it transitively, but an explicit reference ensures API availability).
+
+### Tool Call Round-Trip Flow
+
+Once tools are registered on `SessionConfig.Tools`, the SDK handles the tool-calling loop automatically during `SendAndWaitAsync`:
+
+```
+SendAndWaitAsync(prompt)
+  │
+  ├─ LLM generates response with tool_call(s)
+  │    └─ SDK receives tool_call via JSON-RPC from Copilot CLI
+  │
+  ├─ SDK matches tool_call.name → registered AIFunction
+  │    └─ Invokes AIFunction.InvokeAsync(arguments, ct) in-process
+  │         └─ Calls LopenToolDefinition.Handler(argsJson, ct)
+  │              └─ e.g. reads spec, dispatches oracle, updates status
+  │
+  ├─ Handler returns result string
+  │    └─ SDK fires ToolExecutionCompleteEvent (already tracked, line 96)
+  │    └─ SDK sends result back to CLI via JSON-RPC
+  │    └─ CLI forwards result to model
+  │
+  ├─ LLM generates next response (may call more tools)
+  │    └─ Cycle repeats
+  │
+  └─ LLM produces final message (no tool_calls)
+       └─ SendAndWaitAsync resolves with response
+```
+
+The existing `ToolExecutionCompleteEvent` subscription (line 96–97 of `CopilotLlmService`) will automatically count all handler invocations without code changes.
+
+### Hook Integration for Back-Pressure
+
+The `SessionHooks` should be extended with `OnPreToolUse` and `OnPostToolUse` to enforce the verification-before-completion gate. This is a separate concern from CORE-25 registration but can be wired in the same `SessionConfig`:
+
+```csharp
+Hooks = new SessionHooks
+{
+    OnErrorOccurred = ...,
+    OnPreToolUse = async (input, _) =>
+    {
+        // Gate: reject update_task_status(complete) without prior verification
+        if (input.ToolName == "update_task_status")
+        {
+            // Parse arguments, check TaskStatusGate
+            // Return PreToolUseHookOutput { Decision = "reject" } if blocked
+        }
+        return null; // allow
+    },
+    OnPostToolUse = async (input, _) =>
+    {
+        // Track verification results from verify_* tools
+        return null;
+    }
+}
+```
+
+The hook types (`PreToolUseHookInput`, `PreToolUseHookOutput`, `PostToolUseHookInput`, `PostToolUseHookOutput`) are present in the SDK assembly. The `PreToolUseHookInput` exposes `ToolName` and `ToolArgs` properties; `PreToolUseHookOutput` has a `Decision` property.
+
+### Tools Without Handlers
+
+Tools where `Handler` is `null` (definition-only, not yet bound) are filtered out by `ToolConversion.ToAiFunctions()`. This is correct — `DefaultToolRegistry` registers all 10 tools with `null` handlers initially, then `ToolHandlerBinder.BindAll()` sets handlers via `IToolRegistry.BindHandler()`. The conversion must happen _after_ handler binding (at invocation time, not registration time), which is the case since `InvokeAsync` receives the already-bound tool list from the orchestrator.
+
+### Package Dependencies
+
+| Package | Current State | Action Needed |
+|---|---|---|
+| `GitHub.Copilot.SDK` 0.1.23 | Already referenced in `Lopen.Llm.csproj` | None |
+| `Microsoft.Extensions.AI.Abstractions` | Transitive via SDK, cached at v10.1.1 and v10.2.0 | Add explicit `<PackageReference>` to `Lopen.Llm.csproj` |
+
+### Implementation Checklist
+
+1. Add `Microsoft.Extensions.AI.Abstractions` package reference to `Lopen.Llm.csproj`
+2. Create `ToolConversion.cs` in `Lopen.Llm` with `ToAiFunctions()` method
+3. Modify `CopilotLlmService.InvokeAsync` to set `Tools = ToolConversion.ToAiFunctions(tools)` on `SessionConfig`
+4. Add unit tests for `ToolConversion` (null handler filtering, name/description mapping)
+5. Verify existing `ToolExecutionCompleteEvent` tracking still works with real tool calls
+6. (Future) Add `OnPreToolUse`/`OnPostToolUse` hooks for back-pressure enforcement
+
+### Relevance to Lopen
+
+This is the critical bridge between Lopen's tool management system (10 built-in tools with phase-aware filtering, handler binding, telemetry tracing) and the Copilot SDK's function-calling infrastructure. Without it, the LLM can only receive tool descriptions as text in the system prompt and must simulate tool usage in its output — it cannot actually _invoke_ tool handlers. Completing CORE-25 enables the autonomous build loop where the LLM reads specs, dispatches oracle verification, updates task status, and reports progress through real tool calls.
 
 ---
 

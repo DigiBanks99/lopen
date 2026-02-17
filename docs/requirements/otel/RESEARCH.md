@@ -1098,6 +1098,192 @@ The Aspire AppHost is already set up and functional. The auto-wiring of OTEL env
 
 ---
 
+## 15. Aspire Run Support (OTEL-13)
+
+OTEL-13 requires that `aspire run` starts the Aspire Dashboard and Lopen with OTEL telemetry pre-configured and visible in the Dashboard. This section covers what's needed for the AppHost project and manifest.
+
+### Current AppHost State
+
+The AppHost project (`src/Lopen.AppHost/`) is already functional with a minimal `Program.cs`:
+
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+builder.AddProject<Projects.Lopen>("lopen");
+builder.Build().Run();
+```
+
+This uses `Aspire.AppHost.Sdk` version 13.1.1 and `Aspire.Hosting.AppHost` NuGet package. The `<IsAspireHost>true</IsAspireHost>` property in the `.csproj` enables the Aspire tooling integration.
+
+### What Aspire Does Automatically
+
+When `aspire run` executes the AppHost:
+
+1. **Dashboard launch** — Starts the Aspire Dashboard (Blazor app) on ports 18888 (UI), 18889 (OTLP/gRPC), 18890 (OTLP/HTTP)
+2. **Environment injection** — Sets OTEL environment variables on the Lopen process:
+   - `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:18889`
+   - `OTEL_SERVICE_NAME=lopen`
+   - `OTEL_RESOURCE_ATTRIBUTES=service.instance.id=<guid>`
+   - `OTEL_BSP_SCHEDULE_DELAY`, `OTEL_BLRP_SCHEDULE_DELAY`, `OTEL_METRIC_EXPORT_INTERVAL`
+3. **Process management** — Launches Lopen as a managed resource with console log capture
+
+Since `AddLopenOtel()` already checks for `OTEL_EXPORTER_OTLP_ENDPOINT` and conditionally calls `UseOtlpExporter()`, telemetry flows automatically — no code changes needed for the basic flow.
+
+### What's Needed for Full OTEL-13 Compliance
+
+1. **CLI argument passthrough** — The AppHost should forward CLI arguments to Lopen so developers can run specific commands:
+
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+builder.AddProject<Projects.Lopen>("lopen")
+    .WithArgs("build", "--headless", "--prompt", "implement parser");
+builder.Build().Run();
+```
+
+2. **Signal overrides** — Ensure all signals are enabled during Aspire development even if the user's config disables them:
+
+```csharp
+builder.AddProject<Projects.Lopen>("lopen")
+    .WithEnvironment("otel__enabled", "true")
+    .WithEnvironment("otel__traces__enabled", "true")
+    .WithEnvironment("otel__metrics__enabled", "true")
+    .WithEnvironment("otel__logs__enabled", "true");
+```
+
+3. **ForceFlush on exit** — Since Lopen is a CLI tool (short-lived), `IHost.StopAsync()` disposes `TracerProvider` and `MeterProvider`, triggering `ForceFlush()`. No manual flush needed as long as `IHost` is properly disposed via `await host.RunAsync()`.
+
+### Aspire Manifest (Optional)
+
+For `aspire publish` scenarios (deployment manifests), a manifest is auto-generated. For local dev with `aspire run`, no manifest file is needed — the AppHost `Program.cs` is the source of truth.
+
+### Testing OTEL-13
+
+Verification is primarily manual (start `aspire run`, open Dashboard, confirm telemetry appears). Automated verification options:
+
+- **Integration test**: Start the AppHost programmatically, verify the Lopen process receives OTEL environment variables
+- **Smoke test**: Run `aspire run` in CI, curl the Dashboard health endpoint, check that the `lopen` resource appears
+
+### Relevance to Lopen
+
+The AppHost is already functional. OTEL-13 compliance requires verifying the end-to-end flow (`aspire run` → Dashboard shows traces/metrics/logs) and optionally enhancing the AppHost with CLI argument passthrough and signal overrides. The heavy lifting (OTEL SDK wiring, OTLP export) is already in `AddLopenOtel()`.
+
+---
+
+## 16. Performance Benchmark Approach (OTEL-17)
+
+OTEL-17 requires that CLI command execution time is not measurably degraded by OTEL instrumentation (< 5ms overhead on command startup). This section covers how to measure instrumentation overhead accurately.
+
+### What "< 5ms Overhead" Means
+
+The 5ms budget applies to **command startup time** — the time from process entry to the first meaningful work. This includes:
+
+- `IHost` build + DI container construction
+- `TracerProvider` and `MeterProvider` initialization
+- `ActivitySource` and `Meter` registration
+- OTLP exporter channel establishment (lazy — should not block startup)
+
+It does **not** include per-span or per-metric recording overhead (which is sub-microsecond when no listener is attached).
+
+### Measurement Approach: Differential Benchmarking
+
+Compare startup time with and without OTEL instrumentation:
+
+```csharp
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Running;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+[MemoryDiagnoser]
+public class OtelStartupBenchmark
+{
+    [Benchmark(Baseline = true)]
+    public IHost BuildHost_WithoutOtel()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        // Register all Lopen services EXCEPT OTEL
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage("/tmp/bench");
+        return builder.Build();
+    }
+
+    [Benchmark]
+    public IHost BuildHost_WithOtel()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage("/tmp/bench");
+        builder.Services.AddLopenOtel(); // ← the overhead we're measuring
+        return builder.Build();
+    }
+}
+```
+
+Run with: `dotnet run -c Release -- --filter OtelStartupBenchmark`
+
+### Expected Results
+
+Based on OpenTelemetry .NET SDK characteristics:
+
+| Component | Expected Overhead |
+|---|---|
+| `TracerProvider` build | ~0.5–1ms |
+| `MeterProvider` build | ~0.5–1ms |
+| `ILoggerProvider` registration | ~0.1ms |
+| OTLP exporter creation (lazy channel) | ~0.1ms |
+| **Total** | **~1.2–2.3ms** |
+
+When `otel.enabled = false` and instrumentation is skipped entirely, the overhead should be < 0.1ms (just reading the config value).
+
+### Alternative: Stopwatch-Based Measurement
+
+For CI verification without BenchmarkDotNet:
+
+```csharp
+[Fact]
+public void OtelInstrumentation_AddsLessThan5msOverhead()
+{
+    const int iterations = 100;
+
+    // Warm up
+    BuildHostWithOtel();
+    BuildHostWithoutOtel();
+
+    // Measure without OTEL
+    var swWithout = Stopwatch.StartNew();
+    for (int i = 0; i < iterations; i++)
+        BuildHostWithoutOtel().Dispose();
+    swWithout.Stop();
+
+    // Measure with OTEL
+    var swWith = Stopwatch.StartNew();
+    for (int i = 0; i < iterations; i++)
+        BuildHostWithOtel().Dispose();
+    swWith.Stop();
+
+    var overheadMs = (swWith.Elapsed - swWithout.Elapsed).TotalMilliseconds / iterations;
+    Assert.True(overheadMs < 5.0,
+        $"OTEL overhead was {overheadMs:F2}ms, exceeding the 5ms budget");
+}
+```
+
+### Key Considerations
+
+1. **No-listener fast path** — When OTEL is disabled (`otel.enabled = false`), `ActivitySource.StartActivity()` returns `null` with zero allocation. The benchmark should verify this path separately.
+
+2. **OTLP channel is lazy** — The gRPC/HTTP channel to the OTLP endpoint is established on first export, not during `TracerProvider` build. Startup benchmarks should not conflate channel establishment with provider initialization.
+
+3. **AOT impact** — Source-generated JSON serializers and trimming affect startup. Benchmarks should run in both JIT and AOT modes (`dotnet publish -c Release` + run the native binary).
+
+4. **CI stability** — Stopwatch-based tests can be flaky on CI runners with variable load. Use a generous margin (e.g., assert < 5ms even though expected is ~2ms) and run multiple iterations to average out noise.
+
+5. **Memory overhead** — `[MemoryDiagnoser]` in BenchmarkDotNet tracks allocations. OTEL SDK initialization should add < 50KB of allocations to the startup path.
+
+### Relevance to Lopen
+
+The differential benchmarking approach isolates OTEL overhead from the rest of Lopen's startup. The < 5ms budget is generous given the expected ~2ms overhead of the OTEL .NET SDK. A Stopwatch-based test in the CI suite provides continuous regression detection, while BenchmarkDotNet gives detailed profiling for optimization. The key insight is that the .NET `System.Diagnostics` API has zero overhead when no listener is registered — so the disabled path is essentially free.
+
+---
+
 ## References
 
 - [OTEL Specification](./SPECIFICATION.md) — Lopen's OTEL specification (traces, metrics, logs, configuration)
@@ -1106,3 +1292,4 @@ The Aspire AppHost is already set up and functional. The auto-wiring of OTEL env
 - [OTLP Exporter README](https://github.com/open-telemetry/opentelemetry-dotnet/tree/main/src/OpenTelemetry.Exporter.OpenTelemetryProtocol) — Configuration, environment variables, `UseOtlpExporter()`
 - [.NET Distributed Tracing](https://learn.microsoft.com/dotnet/core/diagnostics/distributed-tracing) — `ActivitySource`, `Activity` API reference
 - [.NET Metrics](https://learn.microsoft.com/dotnet/core/diagnostics/metrics) — `Meter`, `Counter`, `Histogram`, `Gauge` API reference
+- [BenchmarkDotNet](https://benchmarkdotnet.org/) — Micro-benchmarking library for .NET performance measurement

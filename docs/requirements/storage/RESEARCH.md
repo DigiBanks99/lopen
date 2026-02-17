@@ -807,3 +807,261 @@ public class SectionCacheService
 ### Relevance to Lopen
 
 This approach satisfies all acceptance criteria in the spec: atomic writes for crash-safety, symlink-based resume detection, dual-layer caching (section + assessment), three-tier error handling, plan checkbox management, session pruning, and minimal dependencies. The implementation is AOT-compatible throughout, keeping the CLI startup fast.
+
+---
+
+## 12. Corruption Detection and Quarantine Testing (STOR-14)
+
+STOR-14 requires that corrupted session state is detected, warned, and excluded from resume. STOR-15 requires corrupted files are moved to `.lopen/corrupted/`. This section covers how to create corrupt JSON for testing and verify the detection/quarantine flow.
+
+### Creating Corrupt JSON for Tests
+
+Tests need multiple corruption categories:
+
+```csharp
+// 1. Truncated JSON (simulates crash mid-write)
+var truncated = """{"session_id":"test-20260215-1","phase":"req""";
+
+// 2. Completely invalid content (binary garbage or empty)
+var garbage = "NOT-JSON-\x00\x01\x02";
+var empty = "";
+
+// 3. Valid JSON but wrong schema (missing required fields)
+var wrongSchema = """{"unexpected_field": true}""";
+
+// 4. Valid JSON but wrong types (e.g., number where string expected)
+var wrongTypes = """{"session_id": 12345, "phase": null}""";
+```
+
+### Testing the Detection Flow with InMemoryFileSystem
+
+The existing `InMemoryFileSystem` supports seeding corrupt content directly:
+
+```csharp
+[Fact]
+public async Task LoadSession_CorruptedJson_ReturnsNullAndQuarantines()
+{
+    var fs = new InMemoryFileSystem();
+    var projectRoot = "/project";
+    var sessionId = SessionId.Parse("test-20260215-1");
+
+    // Seed a corrupt state.json
+    var statePath = StoragePaths.GetSessionStatePath(projectRoot, sessionId);
+    fs.CreateDirectory(Path.GetDirectoryName(statePath)!);
+    await fs.WriteAllTextAsync(statePath, """{"session_id":"test""");
+
+    var mgr = new SessionManager(fs, NullLogger<SessionManager>.Instance, projectRoot);
+
+    // Act: attempt to load
+    var result = await mgr.GetLatestSessionAsync(CancellationToken.None);
+
+    // Assert: returns null (session excluded from resume)
+    Assert.Null(result);
+}
+```
+
+### Verifying the Quarantine Flow
+
+The quarantine path uses `StoragePaths.GetCorruptedDirectory()`, which resolves to `.lopen/corrupted/`. The file is moved with a timestamp suffix to avoid collisions:
+
+```csharp
+// Expected quarantine behavior:
+// 1. JsonException is caught during deserialization
+// 2. Logger.LogWarning is called with the file path and error
+// 3. File is moved: .lopen/sessions/{id}/state.json → .lopen/corrupted/state.json.20260215120000
+// 4. The session is excluded from GetLatestSessionAsync results
+```
+
+### Key IOException vs JsonException Distinction
+
+| Exception Type | Meaning | Action |
+|---|---|---|
+| `JsonException` | Content is corrupt/malformed | Quarantine to `.lopen/corrupted/`, warn, exclude from resume |
+| `FileNotFoundException` | File missing (not corruption) | Return null, no quarantine needed |
+| `IOException` | Disk/permission error | Throw `StorageException`, do not quarantine |
+
+### Relevance to Lopen
+
+The `InMemoryFileSystem` abstraction makes corruption testing straightforward — seed bad content via `WriteAllTextAsync` and verify the detection path. No actual filesystem corruption or temp files needed. Tests should cover all four corruption categories (truncated, garbage, wrong schema, wrong types) to ensure `JsonSerializer.Deserialize` failures are caught and quarantined correctly.
+
+---
+
+## 13. Disk-Full Detection and Testing (STOR-16)
+
+STOR-16 requires that disk full / write failure is treated as a critical system error and pauses the workflow. This section covers how .NET exposes disk-full errors, the specific `IOException` types, and how to test with mock filesystems.
+
+### How .NET Exposes Disk-Full Errors
+
+Disk-full conditions surface as `IOException` with platform-specific `HResult` values:
+
+```csharp
+private static bool IsDiskFull(IOException ex)
+{
+    // Windows: ERROR_DISK_FULL (0x70) and ERROR_HANDLE_DISK_FULL (0x27)
+    const int ERROR_DISK_FULL = unchecked((int)0x80070070);
+    const int ERROR_HANDLE_DISK_FULL = unchecked((int)0x80070027);
+
+    // Linux/macOS: ENOSPC (28) — mapped by .NET as 0x80131620 + native errno
+    // .NET on Linux wraps this as IOException with HResult = 0x80070000 | 28
+    const int LINUX_ENOSPC = unchecked((int)0x8007001C); // 0x1C = 28
+
+    return ex.HResult == ERROR_DISK_FULL
+        || ex.HResult == ERROR_HANDLE_DISK_FULL
+        || ex.HResult == LINUX_ENOSPC;
+}
+```
+
+### IOException Type Hierarchy for Storage Errors
+
+| Error Condition | Exception Type | HResult (Windows) | HResult (Linux) |
+|---|---|---|---|
+| Disk full | `IOException` | `0x80070070` or `0x80070027` | `0x8007001C` |
+| Permission denied | `UnauthorizedAccessException` | `0x80070005` | `0x80131602` |
+| Path not found | `DirectoryNotFoundException` | `0x80070003` | `0x80131523` |
+| File in use | `IOException` | `0x80070020` | N/A (advisory locks) |
+| Read-only filesystem | `IOException` | `0x80070013` | `0x8007001E` |
+
+### Testing with FailingWriteFileSystem
+
+The existing `FailingWriteFileSystem` in `SessionManagerTests.cs` already demonstrates the pattern — it throws `IOException("Disk full")` from `WriteAllTextAsync` and `MoveFile`:
+
+```csharp
+private sealed class FailingWriteFileSystem : IFileSystem
+{
+    public Task WriteAllTextAsync(string path, string content, CancellationToken ct)
+        => throw new IOException("Disk full");
+    public void MoveFile(string src, string dst)
+        => throw new IOException("Disk full");
+    // ... other members return defaults
+}
+```
+
+For more precise testing, the mock can throw with a specific HResult:
+
+```csharp
+private sealed class DiskFullFileSystem : IFileSystem
+{
+    public Task WriteAllTextAsync(string path, string content, CancellationToken ct)
+    {
+        var ex = new IOException("There is not enough space on the disk.");
+        // Set HResult via reflection or use the constructor:
+        // IOException marshals HResult from the OS; for tests, set directly
+        typeof(Exception).GetProperty("HResult")!.SetValue(ex, unchecked((int)0x80070070));
+        throw ex;
+    }
+    // ...
+}
+```
+
+However, since `SessionManager` already wraps all write `IOException`s into `StorageException`, the simpler `FailingWriteFileSystem` approach is sufficient for unit tests — the HResult-based detection is an implementation detail of the production `SafeWriteAsync` helper.
+
+### Recommended Test Cases
+
+```csharp
+[Fact]
+public async Task CreateSession_DiskFull_ThrowsStorageException()
+{
+    var fs = new FailingWriteFileSystem();
+    var mgr = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
+
+    var ex = await Assert.ThrowsAsync<StorageException>(
+        () => mgr.CreateSessionAsync("test"));
+    Assert.Contains("Disk full", ex.InnerException?.Message ?? ex.Message);
+}
+
+[Fact]
+public async Task SaveState_DiskFull_ThrowsStorageException()
+{
+    // Similar pattern — verify StorageException wraps the IOException
+}
+```
+
+### Relevance to Lopen
+
+The `IFileSystem` abstraction makes disk-full testing clean — no need for actual disk exhaustion or OS-level mocking. The `FailingWriteFileSystem` pattern (already in the test suite) proves that `SessionManager` correctly converts `IOException` into `StorageException`. The caller (workflow orchestrator) catches `StorageException` and pauses the workflow, satisfying STOR-16.
+
+---
+
+## 14. Research Document Path Management (STOR-20)
+
+STOR-20 requires that research documents are stored at `docs/requirements/{module}/RESEARCH-{topic}.md` in the source tree (not `.lopen/`). This section covers adding path constants to `StoragePaths` for research document paths.
+
+### Current StoragePaths Structure
+
+`StoragePaths` currently provides paths for `.lopen/` internal storage:
+
+- `GetRoot` → `.lopen/`
+- `GetSessionsDirectory` → `.lopen/sessions/`
+- `GetModulesDirectory` → `.lopen/modules/`
+- `GetCacheDirectory` → `.lopen/cache/`
+- `GetCorruptedDirectory` → `.lopen/corrupted/`
+
+Research documents live outside `.lopen/` — they are source-controlled documentation, not runtime state.
+
+### Proposed Additions to StoragePaths
+
+```csharp
+/// <summary>Name of the requirements documentation directory.</summary>
+public const string RequirementsDirectoryName = "docs/requirements";
+
+/// <summary>Returns the docs/requirements/ directory path.</summary>
+public static string GetRequirementsDirectory(string projectRoot) =>
+    Path.Combine(projectRoot, "docs", "requirements");
+
+/// <summary>Returns the docs/requirements/{module}/ directory path.</summary>
+public static string GetModuleRequirementsDirectory(string projectRoot, string moduleName) =>
+    Path.Combine(GetRequirementsDirectory(projectRoot), moduleName);
+
+/// <summary>Returns the path to RESEARCH.md for a module.</summary>
+public static string GetModuleResearchPath(string projectRoot, string moduleName) =>
+    Path.Combine(GetModuleRequirementsDirectory(projectRoot, moduleName), "RESEARCH.md");
+
+/// <summary>Returns the path to a topic-specific research document.</summary>
+public static string GetModuleTopicResearchPath(string projectRoot, string moduleName, string topic) =>
+    Path.Combine(GetModuleRequirementsDirectory(projectRoot, moduleName), $"RESEARCH-{topic}.md");
+
+/// <summary>Returns the path to SPECIFICATION.md for a module.</summary>
+public static string GetModuleSpecificationPath(string projectRoot, string moduleName) =>
+    Path.Combine(GetModuleRequirementsDirectory(projectRoot, moduleName), "SPECIFICATION.md");
+```
+
+### Path Convention
+
+The naming convention `RESEARCH-{topic}.md` allows multiple research documents per module:
+
+```
+docs/requirements/storage/
+├── RESEARCH.md              ← main research (GetModuleResearchPath)
+├── RESEARCH-caching.md      ← topic-specific (GetModuleTopicResearchPath)
+├── RESEARCH-aspire.md       ← topic-specific (GetModuleTopicResearchPath)
+└── SPECIFICATION.md         ← specification (GetModuleSpecificationPath)
+```
+
+### Why StoragePaths and Not a Separate Class
+
+1. **Single source of truth** — all Lopen path resolution in one place
+2. **Consistency** — same `projectRoot`-relative pattern as `.lopen/` paths
+3. **Discoverability** — developers find all path helpers via `StoragePaths.Get*`
+4. **No breaking changes** — additive methods only, existing API unchanged
+
+### Test Patterns
+
+```csharp
+[Fact]
+public void GetModuleResearchPath_ReturnsExpectedPath()
+{
+    var result = StoragePaths.GetModuleResearchPath("/project", "storage");
+    Assert.Equal(Path.Combine("/project", "docs", "requirements", "storage", "RESEARCH.md"), result);
+}
+
+[Fact]
+public void GetModuleTopicResearchPath_ReturnsExpectedPath()
+{
+    var result = StoragePaths.GetModuleTopicResearchPath("/project", "otel", "aspire");
+    Assert.Equal(Path.Combine("/project", "docs", "requirements", "otel", "RESEARCH-aspire.md"), result);
+}
+```
+
+### Relevance to Lopen
+
+Adding research document paths to `StoragePaths` creates a consistent API for the workflow orchestrator and document management code to resolve spec/research file locations. This is essential for features like specification drift detection (`SpecificationDriftService`), module scanning (`ModuleScanner`), and context extraction — all of which need to locate `docs/requirements/{module}/` files. The paths are project-root-relative, matching the existing convention.

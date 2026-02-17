@@ -1219,3 +1219,326 @@ The complete registration flow, showing how handlers are wired from DI through t
 3. **Handler timeout** — Should individual tool handlers have timeouts? Oracle verification calls `ILlmService.InvokeAsync` which has a 10-minute default timeout — this may be too long for a tool call within a tool call.
 4. **Cancellation propagation** — The `CancellationToken` from the outer `InvokeAsync` should flow through to tool handlers and oracle sub-sessions. Verify the SDK propagates cancellation to `AIFunction` invocations.
 5. **Handler lifecycle** — Tool handlers close over DI services. If any handler dependency is scoped (not singleton), the handler delegate may outlive its scope. All handler dependencies should be singleton or transient.
+
+---
+
+## 11. LLM-07: Oracle Within Same SDK Invocation
+
+> **Requirement**: Oracle verification runs within the same SDK invocation (no additional premium request consumed).
+
+### Current Implementation
+
+`OracleVerifier` (in `Lopen.Llm`) dispatches a **separate** `ILlmService.InvokeAsync` call for each verification. This creates a **new SDK session** inside `CopilotLlmService`, which means:
+
+```
+Primary session (e.g. claude-opus-4.6)
+  → LLM emits tool_call: verify_task_completion
+    → Tool handler calls OracleVerifier.VerifyAsync()
+      → OracleVerifier calls ILlmService.InvokeAsync()
+        → CopilotLlmService creates NEW session (gpt-5-mini)
+          → Oracle session runs, returns verdict
+        → Session disposed
+      → Verdict returned to tool handler
+    → Tool result sent back to primary session
+```
+
+Each `CreateSessionAsync` call in the SDK opens a **new conversation** with the Copilot CLI server via JSON-RPC. The primary session and oracle session are independent.
+
+### SDK Feasibility: Nested Sessions on Same Client
+
+The Copilot SDK **does support** creating multiple concurrent sessions on the same `CopilotClient`. Section 7 of this document already demonstrates the pattern (sub-agent within a tool handler). The key observations:
+
+1. **Same CLI process** — Both sessions share the same underlying Copilot CLI server process. No additional CLI process is spawned.
+2. **Independent request billing** — Each session's `SendAndWaitAsync` call constitutes a separate API request. Whether it counts as a premium request depends on the **model** used, not the session nesting.
+3. **Standard-tier oracle** — Using `gpt-5-mini` (or similar) for the oracle keeps it as a standard (non-premium) request. The requirement "no additional premium request consumed" is satisfied by model choice, not by session sharing.
+
+### Architectural Decision
+
+**The current two-session approach is correct** and aligns with the SDK's design. There is no way to have the oracle "piggyback" on the primary session's request without the LLM itself doing the verification (which would defeat the purpose of an independent oracle).
+
+The requirement "within the same SDK invocation" should be interpreted as "within the same tool call handler execution" — which the current `OracleVerifier` achieves. The oracle session reuses the same `CopilotClient` (same CLI server), so there is no additional process overhead.
+
+### Alternatives Considered
+
+| Approach | Feasibility | Trade-offs |
+| --- | --- | --- |
+| **Current: separate session, cheap model** | ✅ Works today | Two API requests per verification, but oracle uses standard-tier model |
+| **Inline oracle (no sub-session)** | ❌ Not viable | Would require the primary LLM to self-verify, defeating independence |
+| **Batched oracle (post-session)** | ⚠️ Possible | Oracle runs after primary session completes; loses real-time feedback loop within tool calls |
+| **MCP sub-agent tool** | ⚠️ Future | If SDK adds native sub-agent dispatch as a tool type, could be more efficient |
+
+### Recommendation
+
+No changes needed. The implementation satisfies LLM-07 as designed:
+- Oracle runs within the same tool call handler (same SDK invocation lifecycle)
+- Oracle uses a standard-tier model (`gpt-5-mini` via `OracleOptions.Model`), consuming no premium requests
+- Both sessions share the same `CopilotClient` instance
+
+### Open Question
+
+The `OracleVerifier` currently receives `ILlmService` via DI, meaning it gets the **same** `CopilotLlmService` singleton. Each oracle call creates a fresh session. If the primary session's tool handler is synchronous (blocking the primary session until the tool returns), the Copilot CLI server must handle two active sessions concurrently. The SDK documentation confirms this is supported, but it should be validated under load to ensure no deadlocks on the JSON-RPC transport.
+
+---
+
+## 12. LLM-11: Runtime Model Fallback
+
+> **Requirement**: Model fallback activates when a configured model is unavailable (logs warning, falls back to next available).
+
+### Current Implementation
+
+`DefaultModelSelector` provides **config-time** fallback only: if no model is configured for a workflow phase, it falls back to `"claude-sonnet-4"`. There is **no runtime fallback** when a configured model is unavailable at API call time.
+
+`CopilotLlmService.InvokeAsync` catches exceptions and wraps them in `LlmException`, but does not attempt retry with alternative models. The `AuthErrorHandler` handles auth errors (401/403) with a single retry, but model-unavailability is a different failure mode.
+
+### SDK Error Surface
+
+Model unavailability manifests in two ways:
+
+1. **`SessionErrorEvent`** — Emitted during the session event stream. The `Data.ErrorType` and `Data.Message` fields contain error details. Currently only logged as a warning in `CopilotLlmService`.
+
+2. **`OnErrorOccurred` hook** — Receives `ErrorOccurredHookInput` with `ErrorContext` (e.g., `"model_call"`) and `Error` message. Can return `ErrorOccurredHookOutput` with `ErrorHandling` set to `"retry"`, `"skip"`, or `"abort"`.
+
+3. **Exception from `SendAndWaitAsync`** — If the model is completely unavailable (not in the model list, or API returns an error), the SDK may throw. The current catch-all wraps this in `LlmException`.
+
+4. **`ListModelsAsync`** — The SDK provides `client.ListModelsAsync()` to enumerate available models at runtime (see Section 5). This enables pre-flight availability checks.
+
+### Proposed Design
+
+```
+ILlmService.InvokeAsync(prompt, model, tools, ct)
+  │
+  ├─ Try: CopilotLlmService creates session with requested model
+  │    └─ Success → return result
+  │
+  ├─ Catch: model-unavailable error detected
+  │    ├─ Log warning: "Model {model} unavailable, attempting fallback"
+  │    ├─ Query IModelSelector for fallback chain
+  │    └─ Retry with next model in chain
+  │
+  └─ All models exhausted → throw LlmException
+```
+
+#### Option A: Retry Wrapper (Decorator Pattern)
+
+Create a `RetryingLlmService` that decorates `CopilotLlmService`:
+
+```csharp
+internal sealed class RetryingLlmService : ILlmService
+{
+    private readonly CopilotLlmService _inner;
+    private readonly IModelSelector _modelSelector;
+    private readonly ILogger _logger;
+
+    public async Task<LlmInvocationResult> InvokeAsync(
+        string systemPrompt, string model,
+        IReadOnlyList<LopenToolDefinition> tools,
+        CancellationToken ct)
+    {
+        var modelsToTry = GetFallbackChain(model);
+
+        foreach (var candidate in modelsToTry)
+        {
+            try
+            {
+                return await _inner.InvokeAsync(
+                    systemPrompt, candidate, tools, ct);
+            }
+            catch (LlmException ex) when (IsModelUnavailable(ex))
+            {
+                _logger.LogWarning(
+                    "Model {Model} unavailable: {Message}. Trying next fallback.",
+                    candidate, ex.Message);
+            }
+        }
+
+        throw new LlmException(
+            $"All models unavailable. Tried: {string.Join(", ", modelsToTry)}",
+            model);
+    }
+}
+```
+
+#### Option B: Pre-flight Check via `ListModelsAsync`
+
+Before creating a session, query available models:
+
+```csharp
+var available = (await client.ListModelsAsync(ct))
+    .Select(m => m.Name).ToHashSet();
+
+var model = fallbackChain
+    .FirstOrDefault(m => available.Contains(m))
+    ?? throw new LlmException("No models available", preferredModel);
+```
+
+This avoids wasted session creation but adds a round-trip. The `ListModelsAsync` result could be cached with a short TTL (e.g., 60 seconds).
+
+#### Option C: Hook-Based Retry
+
+Use the SDK's `OnErrorOccurred` hook to detect model errors and return `"retry"` after switching the model. However, the hook does **not** expose a way to change the model mid-session — the model is set at session creation time. This makes hook-based model fallback **not feasible**.
+
+### Error Detection Heuristics
+
+Since the SDK doesn't expose typed error codes, model unavailability must be detected by inspecting error messages:
+
+```csharp
+private static bool IsModelUnavailable(LlmException ex)
+{
+    var msg = ex.Message + (ex.InnerException?.Message ?? "");
+    return msg.Contains("model", StringComparison.OrdinalIgnoreCase)
+        && (msg.Contains("unavailable", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("not found", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("not available", StringComparison.OrdinalIgnoreCase)
+            || msg.Contains("does not exist", StringComparison.OrdinalIgnoreCase));
+}
+```
+
+This is fragile. A more robust approach would be to use the `OnErrorOccurred` hook's `ErrorContext == "model_call"` field to tag the exception before it reaches the catch block.
+
+### Recommended Approach
+
+**Option A (Decorator) + Option B (pre-flight) combined:**
+
+1. On first invocation, call `ListModelsAsync` and cache the available model set (60s TTL).
+2. Build fallback chain: `[requested_model, ...configured_fallbacks, "claude-sonnet-4"]`.
+3. Filter chain by availability from cache.
+4. Try each model in order; catch `LlmException` with model-unavailable heuristics.
+5. On cache miss (model was in cache but fails at runtime), invalidate cache and retry once.
+
+### Fallback Chain Configuration
+
+Extend `ModelOptions` to support per-phase fallback chains:
+
+```json
+{
+  "Models": {
+    "Building": "claude-opus-4.6",
+    "BuildingFallbacks": ["claude-sonnet-4", "gpt-5"],
+    "Research": "gpt-5",
+    "ResearchFallbacks": ["gpt-4.1", "gpt-5-mini"]
+  }
+}
+```
+
+### Impact on Existing Code
+
+- `DefaultModelSelector` gains a `GetFallbackChain(WorkflowPhase)` method returning `IReadOnlyList<string>`.
+- `ModelFallbackResult` is extended to track which fallback was used (already has `WasFallback` and `OriginalModel`).
+- `LlmException` could gain an `IsModelUnavailable` property to avoid string matching at call sites.
+- `ICopilotClientProvider` exposes `ListModelsAsync` (or a new `IModelAvailabilityChecker` interface).
+
+---
+
+## 13. LLM-13: Token Metrics Persistence to Session State
+
+> **Requirement**: Token metrics are surfaced to the TUI and persisted in session state.
+
+### Current Implementation: Save Path
+
+The save path works end-to-end:
+
+```
+WorkflowOrchestrator.AutoSaveAsync()
+  → _tokenTracker.GetSessionMetrics()         // InMemoryTokenTracker → SessionTokenMetrics
+  → Map to Storage.SessionMetrics              // CumulativeInputTokens, CumulativeOutputTokens,
+  │                                            // PremiumRequestCount, IterationCount, UpdatedAt
+  → _autoSaveService.SaveAsync(metrics)        // AutoSaveService
+    → _sessionManager.SaveSessionMetricsAsync() // SessionManager → JSON file
+```
+
+`AutoSaveAsync` is triggered at: `StepCompletion`, `PhaseTransition`, `UserPause`, `TaskFailure`. The mapping from `SessionTokenMetrics` to `SessionMetrics` is correct — it copies cumulative counts and adds `IterationCount` from the orchestrator.
+
+### Current Implementation: Load Path — GAP IDENTIFIED
+
+**Metrics are NOT restored into the token tracker on session resume.** The current code:
+
+- `ISessionManager.LoadSessionMetricsAsync(sessionId)` exists and reads from JSON storage.
+- `SessionCommand` calls `LoadSessionMetricsAsync` for the `session show` command (display only).
+- `WorkflowOrchestrator` does **not** call `LoadSessionMetricsAsync` when resuming a session.
+- `InMemoryTokenTracker` has `ResetSession()` but no `RestoreSession(SessionTokenMetrics)` method.
+
+**Result**: After a session resume, `InMemoryTokenTracker` starts from zero. Subsequent `AutoSaveAsync` calls overwrite the persisted metrics with lower values, effectively losing historical token usage data.
+
+### Design: Ensuring Save → Load Round-Trip
+
+#### Step 1: Add `RestoreMetrics` to `ITokenTracker`
+
+```csharp
+public interface ITokenTracker
+{
+    void RecordUsage(TokenUsage usage);
+    SessionTokenMetrics GetSessionMetrics();
+    void ResetSession();
+    void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount);
+}
+```
+
+#### Step 2: Implement in `InMemoryTokenTracker`
+
+```csharp
+public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount)
+{
+    lock (_lock)
+    {
+        _cumulativeInput = cumulativeInput;
+        _cumulativeOutput = cumulativeOutput;
+        _premiumCount = premiumCount;
+        // _iterations list remains empty — we don't restore per-iteration history
+    }
+}
+```
+
+Note: Per-iteration `TokenUsage` records are not persisted in `SessionMetrics` (only cumulative totals are). This is acceptable — the per-iteration breakdown is only needed for the current session's TUI display. After resume, new iterations are appended to the list while cumulative totals include the restored baseline.
+
+#### Step 3: Restore on Session Resume in `WorkflowOrchestrator`
+
+```csharp
+// During session resume, after loading state:
+var savedMetrics = await _sessionManager.LoadSessionMetricsAsync(sessionId, ct);
+if (savedMetrics is not null)
+{
+    _tokenTracker.RestoreMetrics(
+        (int)savedMetrics.CumulativeInputTokens,
+        (int)savedMetrics.CumulativeOutputTokens,
+        savedMetrics.PremiumRequestCount);
+    _iterationCount = savedMetrics.IterationCount;
+}
+```
+
+#### Step 4: Verify TUI Consistency
+
+`TopPanelDataProvider` reads from `ITokenTracker.GetSessionMetrics()`. After restoration, it will show cumulative totals including pre-resume usage. The TUI does not need changes — it already reads from the tracker.
+
+### Data Flow After Fix
+
+```
+Resume Session:
+  SessionManager.LoadSessionMetricsAsync() → SessionMetrics (from JSON)
+    → WorkflowOrchestrator restores into InMemoryTokenTracker
+      → InMemoryTokenTracker._cumulativeInput = saved value
+      → InMemoryTokenTracker._cumulativeOutput = saved value
+
+New Iteration:
+  CopilotLlmService returns TokenUsage
+    → InMemoryTokenTracker.RecordUsage() adds to cumulative
+    → GetSessionMetrics() returns restored + new totals
+
+AutoSave:
+  → GetSessionMetrics() includes restored baseline + new usage
+  → Persisted metrics are monotonically increasing (no data loss)
+```
+
+### Edge Cases
+
+1. **Corrupted metrics file** — `LoadSessionMetricsAsync` throws `StorageException`. The orchestrator should catch this and log a warning, starting fresh (same as a new session). No crash.
+2. **`long` to `int` truncation** — `SessionMetrics` uses `long` for token counts, but `InMemoryTokenTracker` uses `int`. For extremely long sessions this could overflow. Consider using `long` in the tracker, or validating range on restore.
+3. **Concurrent auto-saves** — `AutoSaveAsync` is called from multiple triggers. The `lock` in `InMemoryTokenTracker.GetSessionMetrics()` ensures a consistent snapshot, and `SaveSessionMetricsAsync` writes atomically. No race condition.
+4. **IterationCount drift** — The orchestrator maintains `_iterationCount` separately from the tracker. On resume, both must be restored from `SessionMetrics.IterationCount` to stay in sync.
+
+### Recommendation
+
+This is a straightforward fix requiring:
+1. Add `RestoreMetrics` method to `ITokenTracker` and `InMemoryTokenTracker` (~10 lines)
+2. Add restoration call in `WorkflowOrchestrator`'s resume path (~8 lines)
+3. Add unit tests verifying the save → restore → accumulate → save cycle
+4. Consider upgrading `InMemoryTokenTracker` fields from `int` to `long` to match `SessionMetrics`
