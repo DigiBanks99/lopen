@@ -3,7 +3,7 @@
     "id": "JOB-001",
     "requirement_code": "AUTH-10",
     "requirement_module": "auth",
-    "description": "Wire IAuthService.ValidateAsync into workflow orchestrator pre-flight — call ValidateAsync before starting any workflow phase so missing/invalid credentials block execution",
+    "description": "Wire IAuthService.ValidateAsync into workflow orchestrator pre-flight \u2014 call ValidateAsync before starting any workflow phase so missing/invalid credentials block execution",
     "status": "done",
     "priority": 1,
     "notes": "ValidateAsync exists in CopilotAuthService but grep shows it is not called in WorkflowOrchestrator, RootCommandHandler, or PhaseCommands. The mechanism exists but is not wired into the pre-flight path. [COMPLETED: ValidateAuthAsync wired into PhaseCommands and RootCommandHandler with tests]"
@@ -21,7 +21,7 @@
     "id": "JOB-003",
     "requirement_code": "CLI-21",
     "requirement_module": "cli",
-    "description": "Add --version flag to the root CLI command — configure System.CommandLine VersionOption with assembly version",
+    "description": "Add --version flag to the root CLI command \u2014 configure System.CommandLine VersionOption with assembly version",
     "status": "done",
     "priority": 1,
     "notes": "--help works automatically via System.CommandLine but no VersionOption is configured on the root command. Need to add UseVersionOption() or equivalent. Already implemented via System.CommandLine built-in VersionOption. Two tests verify it works."
@@ -57,7 +57,7 @@
     "id": "JOB-008",
     "requirement_code": "STOR-03",
     "requirement_module": "storage",
-    "description": "Add per-iteration metric breakdowns to SessionMetrics — store an array of per-iteration token/premium counts alongside cumulative totals",
+    "description": "Add per-iteration metric breakdowns to SessionMetrics \u2014 store an array of per-iteration token/premium counts alongside cumulative totals",
     "status": "done",
     "priority": 2,
     "notes": "Added IterationMetric record to Lopen.Storage. Added Iterations property (IReadOnlyList<IterationMetric>) to SessionMetrics with [] default for backward compatibility. Updated AutoSaveAsync to map PerIterationTokens to IterationMetric list. Updated RestoreMetrics to accept optional priorIterations. Updated resume path to pass saved iterations."
@@ -78,13 +78,13 @@
     "description": "Add acceptance criterion-level test verifying ModuleScanner correctly identifies all module specs in docs/requirements/ directory structure",
     "status": "done",
     "priority": 3,
-    "notes": "ModuleScanner is implemented and has basic tests. Need a test that mirrors the CORE-01 acceptance criterion exactly — scanning a realistic docs/requirements/ layout with multiple modules. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "notes": "ModuleScanner is implemented and has basic tests. Need a test that mirrors the CORE-01 acceptance criterion exactly \u2014 scanning a realistic docs/requirements/ layout with multiple modules. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
   },
   {
     "id": "JOB-011",
     "requirement_code": "CORE-03",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test for re-entrant assessment — verify current step is derived from codebase state (checkbox counts, spec existence), not stale session data",
+    "description": "Add acceptance criterion-level test for re-entrant assessment \u2014 verify current step is derived from codebase state (checkbox counts, spec existence), not stale session data",
     "status": "done",
     "priority": 3,
     "notes": "CodebaseStateAssessor has tests but need one that specifically verifies session data is overridden by actual file state. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
@@ -93,25 +93,25 @@
     "id": "JOB-012",
     "requirement_code": "CORE-04",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test for spec drift detection — verify changed sections between iterations are flagged",
+    "description": "Add acceptance criterion-level test for spec drift detection \u2014 verify changed sections between iterations are flagged",
     "status": "done",
     "priority": 3,
-    "notes": "DriftDetector and SpecificationDriftService have tests. Verify a test exists that covers the full flow: hash → change file → re-hash → detect drift. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "notes": "DriftDetector and SpecificationDriftService have tests. Verify a test exists that covers the full flow: hash \u2192 change file \u2192 re-hash \u2192 detect drift. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
   },
   {
     "id": "JOB-013",
     "requirement_code": "CORE-16",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test for git auto-commit — verify a commit is created after task completion when git.auto_commit is enabled",
+    "description": "Add acceptance criterion-level test for git auto-commit \u2014 verify a commit is created after task completion when git.auto_commit is enabled",
     "status": "done",
     "priority": 3,
-    "notes": "GitWorkflowService has tests but verify the full flow: complete task → auto-commit with formatted message. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "notes": "GitWorkflowService has tests but verify the full flow: complete task \u2192 auto-commit with formatted message. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
   },
   {
     "id": "JOB-014",
     "requirement_code": "CORE-17",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test for branch-per-module — verify lopen/<moduleName> branch is created",
+    "description": "Add acceptance criterion-level test for branch-per-module \u2014 verify lopen/<moduleName> branch is created",
     "status": "done",
     "priority": 3,
     "notes": "GitWorkflowService.EnsureModuleBranchAsync has tests. Verify branch naming convention is tested. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
@@ -147,7 +147,7 @@
     "id": "JOB-018",
     "requirement_code": "LLM-09",
     "requirement_module": "llm",
-    "description": "Add acceptance criterion-level test verifying tool registration varies by workflow step — e.g., log_research only in research phases",
+    "description": "Add acceptance criterion-level test verifying tool registration varies by workflow step \u2014 e.g., log_research only in research phases",
     "status": "done",
     "priority": 3,
     "notes": "GetToolsForPhase filters by AvailableInPhases. Need a test that verifies each phase returns the correct subset of tools. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
@@ -282,7 +282,7 @@
     "id": "JOB-033",
     "requirement_code": "TUI-22",
     "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying guided conversation UI cycles through all phases: Ideation → Interview → Drafting → Reviewing → Complete",
+    "description": "Add acceptance criterion-level test verifying guided conversation UI cycles through all phases: Ideation \u2192 Interview \u2192 Drafting \u2192 Reviewing \u2192 Complete",
     "status": "done",
     "priority": 3,
     "notes": "Covered by GuidedConversationComponentTests (30 tests)"
@@ -363,7 +363,7 @@
     "id": "JOB-042",
     "requirement_code": "CFG-01",
     "requirement_module": "configuration",
-    "description": "Add acceptance criterion-level test verifying configuration hierarchy resolves in correct order: CLI → project → global → defaults",
+    "description": "Add acceptance criterion-level test verifying configuration hierarchy resolves in correct order: CLI \u2192 project \u2192 global \u2192 defaults",
     "status": "done",
     "priority": 3,
     "notes": "Covered by LopenConfigurationBuilderTests.Build_LayeredResolution_HighestPriorityWins"
@@ -372,7 +372,7 @@
     "id": "JOB-043",
     "requirement_code": "CFG-07",
     "requirement_module": "configuration",
-    "description": "Add acceptance criterion-level test verifying Lopen works with no config files — all settings have sensible defaults",
+    "description": "Add acceptance criterion-level test verifying Lopen works with no config files \u2014 all settings have sensible defaults",
     "status": "done",
     "priority": 3,
     "notes": "Covered by LopenConfigurationBuilderTests.Build_NoConfigFiles_ReturnsDefaults and LopenOptionsTests"
@@ -426,7 +426,7 @@
     "id": "JOB-049",
     "requirement_code": "CORE-05",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying Requirement Gathering → Planning requires explicit user confirmation (human gate)",
+    "description": "Add acceptance criterion-level test verifying Requirement Gathering \u2192 Planning requires explicit user confirmation (human gate)",
     "status": "done",
     "priority": 3,
     "notes": "PhaseTransitionController requires ApproveSpecification(). Need test verifying transition is blocked until approval. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
@@ -435,7 +435,7 @@
     "id": "JOB-050",
     "requirement_code": "CORE-06",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying Planning → Building auto-proceeds when plan is structurally complete",
+    "description": "Add acceptance criterion-level test verifying Planning \u2192 Building auto-proceeds when plan is structurally complete",
     "status": "done",
     "priority": 3,
     "notes": "CanAutoTransitionToBuilding checks hasComponentsIdentified && hasTasksBreakdown. Need test verifying auto-transition. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
@@ -444,7 +444,7 @@
     "id": "JOB-051",
     "requirement_code": "CORE-07",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying Building → Complete auto-proceeds when all acceptance criteria pass",
+    "description": "Add acceptance criterion-level test verifying Building \u2192 Complete auto-proceeds when all acceptance criteria pass",
     "status": "done",
     "priority": 3,
     "notes": "CanAutoTransitionToComplete checks allComponentsBuilt && allAcceptanceCriteriaPassed. Need test. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
@@ -462,7 +462,7 @@
     "id": "JOB-053",
     "requirement_code": "CORE-11",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test for back-pressure Cat 1 — verify warning at warning threshold and pause at confirmation threshold",
+    "description": "Add acceptance criterion-level test for back-pressure Cat 1 \u2014 verify warning at warning threshold and pause at confirmation threshold",
     "status": "done",
     "priority": 3,
     "notes": "ResourceLimitGuardrail warns at 80%, blocks at 90%. Need test with both thresholds. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
@@ -606,7 +606,7 @@
     "id": "JOB-069",
     "requirement_code": "CFG-12",
     "requirement_module": "configuration",
-    "description": "Add acceptance criterion-level test verifying budget settings are respected when non-zero — BudgetEnforcer enforces limits",
+    "description": "Add acceptance criterion-level test verifying budget settings are respected when non-zero \u2014 BudgetEnforcer enforces limits",
     "status": "done",
     "priority": 3,
     "notes": "Covered by BudgetEnforcerTests (22 tests)"
@@ -669,7 +669,7 @@
     "id": "JOB-076",
     "requirement_code": "TUI-11",
     "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying hierarchical task tree renders with ✓/▶/○ status indicators",
+    "description": "Add acceptance criterion-level test verifying hierarchical task tree renders with \u2713/\u25b6/\u25cb status indicators",
     "status": "done",
     "priority": 3,
     "notes": "Covered by ContextPanelComponentTests.StateIcon_ReturnsCorrectSymbol"
@@ -768,7 +768,7 @@
     "id": "JOB-087",
     "requirement_code": "AUTH-15",
     "requirement_module": "auth",
-    "description": "Add acceptance criterion-level test verifying no credentials are stored by Lopen — all storage delegated to SDK/gh CLI",
+    "description": "Add acceptance criterion-level test verifying no credentials are stored by Lopen \u2014 all storage delegated to SDK/gh CLI",
     "status": "done",
     "priority": 3,
     "notes": "Covered by AuthNoCredentialStorageTests (17 tests): behavioral, reflection, and source-scan tests verifying no credential storage"
@@ -777,7 +777,7 @@
     "id": "JOB-088",
     "requirement_code": "CORE-08",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying full task hierarchy: Module → Component → Task → Subtask with composite pattern",
+    "description": "Add acceptance criterion-level test verifying full task hierarchy: Module \u2192 Component \u2192 Task \u2192 Subtask with composite pattern",
     "status": "done",
     "priority": 3,
     "notes": "WorkNode hierarchy exists. Need test constructing full 4-level hierarchy and verifying traversal. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
@@ -786,7 +786,7 @@
     "id": "JOB-089",
     "requirement_code": "CORE-09",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying task state transitions: Pending → InProgress → Complete/Failed with retry path",
+    "description": "Add acceptance criterion-level test verifying task state transitions: Pending \u2192 InProgress \u2192 Complete/Failed with retry path",
     "status": "done",
     "priority": 3,
     "notes": "WorkNodeState + ValidateTransition exist. Need test verifying all valid transitions and rejection of invalid ones. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
@@ -840,7 +840,7 @@
     "id": "JOB-095",
     "requirement_code": "CORE-24",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying module selection lists modules with ○/◐/● states and allows user choice",
+    "description": "Add acceptance criterion-level test verifying module selection lists modules with \u25cb/\u25d0/\u25cf states and allows user choice",
     "status": "done",
     "priority": 3,
     "notes": "ModuleSelectionService formats list with status symbols. Need test verifying format and selection. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
@@ -852,7 +852,7 @@
     "description": "Use the CLI to build a small fizz-buzz application with tests to verify the workflow works",
     "status": "done",
     "priority": 5,
-    "notes": "Implemented as FizzBuzzWorkflowTests.cs with 10 integration tests covering: spec/plan/build phase invocation with fizz-buzz prompt, prerequisite enforcement (plan needs spec, build needs spec+plan), full sequential workflow (spec→plan→build), headless mode with prompt injection, and prompt passthrough verification."
+    "notes": "Implemented as FizzBuzzWorkflowTests.cs with 10 integration tests covering: spec/plan/build phase invocation with fizz-buzz prompt, prerequisite enforcement (plan needs spec, build needs spec+plan), full sequential workflow (spec\u2192plan\u2192build), headless mode with prompt injection, and prompt passthrough verification."
   },
   {
     "id": "JOB-096",
@@ -880,5 +880,14 @@
     "status": "done",
     "priority": 1,
     "notes": "Added --max-iterations option to GlobalOptions, wired into ApplyConfigOverrides. Sets WorkflowOptions.MaxIterations. Tests: GlobalOptionsTests (parse, recursive), RootCommandTests (override verification, default preservation)."
+  },
+  {
+    "id": "JOB-099",
+    "requirement_code": "AUTH-01..15",
+    "requirement_module": "auth",
+    "description": "Create AuthAcceptanceCriteriaTests.cs with explicit AUTH-XX requirement code traceability for all 15 auth acceptance criteria",
+    "status": "done",
+    "priority": 1,
+    "notes": "Created AuthAcceptanceCriteriaTests.cs with 31 tests covering AUTH-01 through AUTH-15. All tests pass. Cross-module references: AUTH-10 integration in PhaseCommandTests, AUTH-11/12 in AuthErrorHandlerTests."
   }
 ]
