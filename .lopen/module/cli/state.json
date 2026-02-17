@@ -1,7 +1,7 @@
 {
   "module": "cli",
   "description": "CLI commands and argument parsing",
-  "status": "in_progress",
+  "status": "complete",
   "components": {
     "phase_commands_wiring": {
       "status": "complete",
@@ -89,7 +89,29 @@
       ],
       "tests": "RootCommandTests (3 new tests for --no-welcome)",
       "notes": "--no-welcome flag parsed by System.CommandLine, calls SuppressLandingPage() before RunAsync."
+    },
+    "help_version_flags": {
+      "status": "complete",
+      "spec_ref": "CLI-21",
+      "files": [
+        "Directory.Build.props",
+        "CliIntegrationTests.cs"
+      ],
+      "tests": "GlobalOptionsTests (version/help exit codes), CliIntegrationTests (VersionFlag_OnRoot_OutputsVersionString)",
+      "notes": "Version 0.1.0 set in Directory.Build.props. --help and --version handled by System.CommandLine automatically. Test verifies assembly carries semver version attribute."
+    },
+    "fizzbuzz_workflow_tests": {
+      "status": "complete",
+      "spec_ref": "CLI-28",
+      "files": [
+        "FizzBuzzWorkflowTests.cs"
+      ],
+      "tests": "FizzBuzzWorkflowTests (10 tests)",
+      "jobs": [
+        "JOB-096"
+      ],
+      "notes": "E2E integration tests simulating fizz-buzz workflow through spec\u2192plan\u2192build phases. Tests use TrackingOrchestrator fake to verify phase invocation, prerequisite enforcement, prompt passthrough, and headless mode."
     }
   },
-  "last_updated": "2026-02-17T05:45:00Z"
+  "last_updated": "2026-02-17T19:32:00Z"
 }

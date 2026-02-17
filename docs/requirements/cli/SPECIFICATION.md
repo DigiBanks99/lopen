@@ -249,14 +249,14 @@ This specification defines the **CLI command structure and flags**. It does not 
 - [x] [CLI-18] `--prompt` in TUI mode populates the input field for user review before sending
 - [x] [CLI-19] Headless mode without `--prompt` and without an active session errors with guidance
 - [x] [CLI-20] Exit codes: `0` success, `1` failure, `2` user intervention required (headless + unattended)
-- [ ] [CLI-21] `--help` and `--version` flags work as expected
+- [x] [CLI-21] `--help` and `--version` flags work as expected
 - [x] [CLI-22] .NET solution builds successfully with `dotnet build`
 - [x] [CLI-23] All test projects run successfully with `dotnet test`
 - [x] [CLI-24] Code formatting passes with `dotnet format --verify-no-changes`
 - [x] [CLI-25] CLI entry point uses `Microsoft.Extensions.Hosting` for dependency injection
 - [x] [CLI-26] CLI discovers the project root directory (nearest parent containing `.lopen/` or `.git/`, falling back to CWD) and passes it to `AddLopenCore(projectRoot)` and `AddLopenStorage(projectRoot)` so all path-dependent services are registered
 - [x] [CLI-27] `--no-welcome` flag suppresses the TUI landing page modal on startup
-- [ ] [CLI-28] Run the CLI workflow to create a fizz-buzz application with tests to validate the workflow works
+- [x] [CLI-28] Run the CLI workflow to create a fizz-buzz application with tests to validate the workflow works
 
 ---
 
