@@ -13,8 +13,11 @@
 13. Prioritize adding tests before marking a task or job as complete.
 14. Document new features or changes to features using the divio model
 15. Write the state of the module, component and task to the state store in @.lopen/module/<module>/state.json .
-15. Commit all the changes using conventional commit messages.
-16. Push the changes to the remote repository.
+16. Format the code.
+17. Run all tests and ensure they pass.
+18. Verify the features added by running the application and using the features where possible using a sub-agent with model gpt-5-mini.
+19. Commit all the changes using conventional commit messages.
+20. Push the changes to the remote repository.
 
 IMPORTANT:
 - Do not make up any requirements
@@ -29,3 +32,4 @@ IMPORTANT:
 - Verify the features added by running the application and using the features where possible.
 - If you find a bug, create a new job to be done for the bug fix and prioritize it accordingly. Do not just fix the bug without tracking it as a job to be done.
 - Ensure you update the state of each module, component and task in @.lopen/module/<module>/state.json as you work on them. This is crucial for tracking progress and understanding the current state of the project.
+- You must fix failing tests before continuing.

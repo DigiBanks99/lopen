@@ -8,6 +8,7 @@
 8. Each line should have an id, a requirement code that maps back to a @docs/requirements/core/SPECIFICATION.md for a requirement module, a brief description for human readability and a status tracking with an optional partial implementation description or issues experienced. Make use of subagents to identify the most important items and to order them by priority.
 9. Use subagents to research how to do the open jobs to be done and write them to the appropriate @docs/requirements/core/RESEARCH.md file.
 10. If @docs/requirements/core/RESEARCH.md files already exist in the relevant requirement sub-folders, use sub-agents to validate if it is still correct with the codebase and known industry developments; update where necessary or recreate if vastly different.
+11. Use a sub-agent to determine if tests are failing. If they are prioritize fixing the tests and the underlying issues as high priority jobs to be done.
 
 IMPORTANT:
 - Do not make up any requirements
