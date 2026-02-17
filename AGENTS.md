@@ -11,6 +11,8 @@ IMPORTANT:
 - Never make additional files for research. Keep all isolated to @docs/requirements/<module>/RESEARCH.md
 - Keep SPECIFICATION.md files clean of research or implementation advice
 - Functionality is driven by other Lopen modules in `src`
+- You must run the full test suite, verify that the tests pass and `lopen test tui` before committing changes and marking a job/task done
+- Use subagents as much as possible as you've got a limited context window
 
 **Lopen** is a .NET 10.0 CLI application with REPL capabilities for GitHub Copilot integration.
 
