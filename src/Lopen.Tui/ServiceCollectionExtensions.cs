@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<KeyboardHandler>();
         services.AddSingleton(_ => SlashCommandRegistry.CreateDefault());
         services.AddSingleton<ISlashCommandExecutor, SlashCommandExecutor>();
+        services.AddSingleton<GuidedConversationComponent>();
         services.AddSingleton<ITuiApplication, StubTuiApplication>();
         services.AddSingleton<IComponentGallery>(sp =>
         {
@@ -37,6 +38,7 @@ public static class ServiceCollectionExtensions
             gallery.Register(new ConfirmationModalComponent());
             gallery.Register(new ErrorModalComponent());
             gallery.Register(new SpinnerComponent());
+            gallery.Register(new GuidedConversationComponent());
             return gallery;
         });
         return services;

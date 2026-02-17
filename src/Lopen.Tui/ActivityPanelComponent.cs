@@ -172,6 +172,7 @@ public sealed class ActivityPanelComponent : IPreviewableComponent
         ActivityEntryKind.Error => "⚠",
         ActivityEntryKind.ToolCall => "⚙",
         ActivityEntryKind.Research => "📖",
+        ActivityEntryKind.Conversation => "💬",
         _ => "●",
     };
 

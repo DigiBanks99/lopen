@@ -60,4 +60,6 @@ public enum ActivityEntryKind
     ToolCall,
     /// <summary>Research finding with optional drill-into document.</summary>
     Research,
+    /// <summary>Guided conversation turn (Q&amp;A during requirement gathering).</summary>
+    Conversation,
 }
