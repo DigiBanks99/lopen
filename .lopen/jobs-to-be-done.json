@@ -4,9 +4,9 @@
     "requirement_code": "CLI-26",
     "requirement_module": "cli",
     "description": "Implement project root discovery in Program.cs \u2014 walk up from CWD to find nearest .lopen/ or .git/, pass to AddLopenCore(projectRoot) and AddLopenStorage(projectRoot) so all path-dependent services register",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "CRITICAL: Without projectRoot, ~90% of Core and Storage services never register. Commands gracefully return 'Workflow engine not available' but nothing actually works."
+    "notes": "CRITICAL: Without projectRoot, ~90% of Core and Storage services never register. Commands gracefully return 'Workflow engine not available' but nothing actually works. Implemented ProjectRootDiscovery in src/Lopen/ProjectRootDiscovery.cs, wired into Program.cs. 9 tests in ProjectRootDiscoveryTests."
   },
   {
     "id": "JOB-002",
