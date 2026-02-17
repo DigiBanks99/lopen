@@ -8,6 +8,7 @@ namespace Lopen.Configuration.Tests;
 /// Explicit acceptance criteria coverage tests for the Configuration module.
 /// Each test maps to a numbered AC from docs/requirements/configuration/SPECIFICATION.md (CFG-01 through CFG-16).
 /// </summary>
+[Collection("EnvironmentVariableTests")]
 public class ConfigurationAcceptanceCriteriaTests : IDisposable
 {
     private readonly string _tempDir;

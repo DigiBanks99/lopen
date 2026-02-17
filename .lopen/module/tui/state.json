@@ -340,7 +340,25 @@
         "JOB-007"
       ],
       "notes": "Wires existing ConsecutiveFailureCount, ErrorModalComponent, and WorkflowOptions.FailureThreshold (default 3). Guard flag prevents duplicate modals per streak."
+    },
+    "no_color_env_var": {
+      "status": "complete",
+      "implementation": "ColorPalette reads NO_COLOR env var in constructor",
+      "tests": "VisualAndCommandTests (3 NO_COLOR env var tests: set, unset, empty)",
+      "jobs": [
+        "JOB-109"
+      ],
+      "notes": "TUI-37: NO_COLOR env var disables all ANSI color output when set to non-empty value"
+    },
+    "test_tui_command_coverage": {
+      "status": "complete",
+      "implementation": "TestCommand in Lopen.Commands; gallery rendering verified via tests",
+      "tests": "TestCommandTests (TUI-49: all gallery components previewable + list mode)",
+      "jobs": [
+        "JOB-109"
+      ],
+      "notes": "TUI-49: All 15+ gallery components verified as IPreviewableComponent with non-empty RenderPreview output"
     }
   },
-  "last_updated": "2026-02-17T21:30:00Z"
+  "last_updated": "2026-02-17T23:15:00Z"
 }

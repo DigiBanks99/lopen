@@ -2,6 +2,7 @@ using System.Text.Json;
 
 namespace Lopen.Configuration.Tests;
 
+[Collection("EnvironmentVariableTests")]
 public class LopenConfigurationBuilderTests : IDisposable
 {
     private readonly string _tempDir;

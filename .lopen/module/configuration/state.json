@@ -85,7 +85,16 @@
         "JOB-106"
       ],
       "notes": "Explicit AC traceability for all 16 CFG requirements mapped to focused test methods"
+    },
+    "test_isolation": {
+      "status": "complete",
+      "implementation": "Collection(\"EnvironmentVariableTests\") attribute on both test classes that mutate env vars",
+      "tests": "All 127 configuration tests pass reliably",
+      "jobs": [
+        "JOB-108"
+      ],
+      "notes": "Prevents xUnit parallel execution of ConfigurationAcceptanceCriteriaTests and LopenConfigurationBuilderTests which both use Environment.SetEnvironmentVariable"
     }
   },
-  "last_updated": "2026-02-17T21:39:00Z"
+  "last_updated": "2026-02-17T23:15:00Z"
 }

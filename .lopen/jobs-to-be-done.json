@@ -979,5 +979,51 @@
     "status": "done",
     "priority": 1,
     "notes": "SessionStateSaverBridge bridges ISessionManager to ISessionStateSaver. Conditionally registered when projectRoot is non-null. 5 unit tests + 1 DI test pass."
+  },
+  {
+    "id": "JOB-108",
+    "title": "Fix environment variable test isolation in Configuration tests",
+    "description": "ConfigurationAcceptanceCriteriaTests and LopenConfigurationBuilderTests both use Environment.SetEnvironmentVariable which is process-global. xUnit runs different test classes in parallel, causing env var leaks between test classes. Tests setting LOPEN_Models__Building=env-builder leak into Build_GlobalConfig_OverridesDefaults which expects the default value.",
+    "module": "configuration",
+    "priority": 1,
+    "status": "done",
+    "type": "bug",
+    "acceptance_criteria": [
+      "All Configuration tests pass when run together via dotnet test",
+      "Test classes that modify environment variables are placed in the same xUnit collection to prevent parallel execution",
+      "No environment variable leaks between test classes"
+    ],
+    "tasks": [
+      {
+        "id": "TASK-1",
+        "title": "Add Collection attribute to prevent parallel execution of env-var-mutating test classes",
+        "status": "done"
+      }
+    ]
+  },
+  {
+    "id": "JOB-109",
+    "title": "Add acceptance criteria tests for TUI-37 (NO_COLOR) and TUI-49 (lopen test tui)",
+    "description": "Two TUI acceptance criteria lack test coverage: TUI-37 (NO_COLOR env var) - need to verify that the NO_COLOR environment variable is respected by TuiApplication; TUI-49 (lopen test tui) - need to verify the lopen test tui command exists and launches the gallery.",
+    "module": "tui",
+    "priority": 2,
+    "status": "done",
+    "type": "feature",
+    "acceptance_criteria": [
+      "TUI-37: NO_COLOR env var is respected and disables color output",
+      "TUI-49: lopen test tui command exists and launches component gallery"
+    ],
+    "tasks": [
+      {
+        "id": "TASK-1",
+        "title": "Add TUI-37 NO_COLOR acceptance test",
+        "status": "done"
+      },
+      {
+        "id": "TASK-2",
+        "title": "Add TUI-49 lopen test tui acceptance test",
+        "status": "done"
+      }
+    ]
   }
 ]

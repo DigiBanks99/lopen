@@ -136,6 +136,51 @@ public class VisualAndCommandTests
         Assert.Equal(codes.Length, codes.Distinct().Count());
     }
 
+    // ==================== TUI-37: NO_COLOR Environment Variable ====================
+
+    [Fact]
+    public void ColorPalette_NoColorEnvVar_DisablesColors()
+    {
+        Environment.SetEnvironmentVariable("NO_COLOR", "1");
+        try
+        {
+            var palette = new ColorPalette();
+            Assert.True(palette.NoColor);
+            Assert.Equal("", palette.Success);
+            Assert.Equal("", palette.Error);
+            Assert.Equal("", palette.Reset);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NO_COLOR", null);
+        }
+    }
+
+    [Fact]
+    public void ColorPalette_NoColorEnvVarNotSet_EnablesColors()
+    {
+        Environment.SetEnvironmentVariable("NO_COLOR", null);
+        var palette = new ColorPalette();
+        Assert.False(palette.NoColor);
+        Assert.StartsWith("\x1b[", palette.Success);
+    }
+
+    [Fact]
+    public void ColorPalette_NoColorEnvVarEmpty_EnablesColors()
+    {
+        Environment.SetEnvironmentVariable("NO_COLOR", "");
+        try
+        {
+            var palette = new ColorPalette();
+            Assert.False(palette.NoColor);
+            Assert.StartsWith("\x1b[", palette.Success);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NO_COLOR", null);
+        }
+    }
+
     // ==================== UnicodeSupport ====================
 
     [Fact]

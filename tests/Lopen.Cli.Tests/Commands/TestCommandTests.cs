@@ -70,4 +70,44 @@ public class TestCommandTests
 
         Assert.Equal(0, exitCode);
     }
+
+    // ==================== TUI-49: All components tested via lopen test tui ====================
+
+    [Fact]
+    public async Task TestTui_ListMode_ListsAllRegisteredComponents()
+    {
+        var (config, output) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["test", "tui", "--list"]);
+
+        Assert.Equal(0, exitCode);
+        var outputText = output.ToString();
+
+        // Verify key components are listed
+        Assert.Contains("TopPanel", outputText);
+        Assert.Contains("ContextPanel", outputText);
+        Assert.Contains("ActivityPanel", outputText);
+        Assert.Contains("PromptArea", outputText);
+        Assert.Contains("LandingPage", outputText);
+    }
+
+    [Fact]
+    public void TestTui_AllGalleryComponents_ArePreviewableAndFunctional()
+    {
+        var builder = Host.CreateApplicationBuilder([]);
+        builder.Services.AddLopenTui();
+        var host = builder.Build();
+
+        var gallery = host.Services.GetRequiredService<IComponentGallery>();
+        var components = gallery.GetAll();
+        Assert.True(components.Count >= 14);
+
+        foreach (var component in components)
+        {
+            var previewable = Assert.IsAssignableFrom<IPreviewableComponent>(component);
+            var lines = previewable.RenderPreview(80, 24);
+            Assert.NotNull(lines);
+            Assert.NotEmpty(lines);
+        }
+    }
 }
