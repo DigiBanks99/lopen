@@ -146,7 +146,7 @@ All auth errors must include:
 
 ## Acceptance Criteria
 
-- [ ] [AUTH-01] `lopen auth login` initiates the Copilot SDK device flow and completes authentication successfully
+- [x] [AUTH-01] `lopen auth login` initiates the Copilot SDK device flow and completes authentication successfully
 - [ ] [AUTH-02] `lopen auth status` accurately reports authenticated, unauthenticated, and invalid credential states
 - [ ] [AUTH-03] `lopen auth logout` clears SDK-managed credentials and confirms removal
 - [ ] [AUTH-04] `lopen auth logout` warns when `GH_TOKEN`/`GITHUB_TOKEN` environment variable is still set

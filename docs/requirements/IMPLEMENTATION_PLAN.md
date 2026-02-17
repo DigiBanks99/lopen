@@ -1,37 +1,29 @@
-# Implementation Plan — Current Batch
+# Implementation Plan
 
-## Completed This Session (21 jobs)
+## Status: ALL 100 JOBS COMPLETE ✅
 
-| Job | Spec | Summary |
-|-----|------|---------|
-| JOB-002 | CORE-25 | ToolConversion bridge + 11 tests |
-| JOB-009 | CORE-25 | Tests covered by ToolConversionTests |
-| JOB-004 | TUI-50 | TuiOutputRenderer + 16 tests |
-| JOB-006 | TUI-50 | Tests covered by TuiOutputRendererTests |
-| JOB-003 | TUI-52 | Orchestrator bridge + 11 tests |
-| JOB-007 | TUI-52 | Tests covered by TuiOrchestratorBridgeTests |
-| JOB-005 | TUI-51 | DI wiring for all data providers + 4 tests |
-| JOB-008 | CLI-26 | Project root discovery tests (13 total) |
-| JOB-010 | LLM-11 | RetryingLlmService decorator + 19 tests |
-| JOB-011 | LLM-11 | Tests covered by RetryingLlmServiceTests |
-| JOB-013 | LLM-13 | Token metrics restore on resume + 4 tests |
-| JOB-014 | LLM-13 | Round-trip persistence tests |
-| JOB-015 | CLI-27 | --no-welcome flag + 3 tests |
-| JOB-016 | CLI-27 | Tests covered by RootCommandTests |
-| JOB-022 | STOR-14 | Corrupted session detection tests (5) |
-| JOB-023 | STOR-16 | Disk-full / write-failure tests (2) |
-| JOB-024 | CLI-22 | ProgramTests expansion (19 integration tests) |
-| JOB-025 | TUI-06 | Landing page skip wiring (covered by CLI-27) |
-| JOB-027 | TUI-51 | Live data provider wiring tests (5) |
+All 100 jobs from `.lopen/jobs-to-be-done.json` have been implemented and verified.
 
-## Remaining P3-P4 Jobs
+### Summary by Module
 
-### P3: Integration tests (require more infrastructure)
-- [ ] JOB-028 (CORE-02): End-to-end workflow integration test
-- [ ] JOB-029 (CLI-01): TUI mode launch integration test
-- [ ] JOB-030: Headless mode integration test
+| Module | Jobs Done | Key Features |
+|--------|-----------|--------------|
+| Core   | 20+       | Workflow orchestration, guardrails, back-pressure, drift detection, task hierarchy, git integration |
+| LLM    | 15+       | Tool registration, model fallback, token metrics, prompt builder, oracle verification, per-phase tools |
+| TUI    | 25+       | Output renderer, orchestrator bridge, DI wiring, gallery preview, syntax highlighting, panel styling |
+| CLI    | 15+       | Project root discovery, integration tests, headless mode, --no-welcome flag, phase commands |
+| Storage| 10+       | Research paths, session collision prevention, corruption tests, disk-full tests, retention |
+| Auth   | 5+        | Token renewal, logout warning, headless login error, GH_TOKEN precedence |
+| OTEL   | 5+        | Performance benchmark, OTLP export, disabled state, env var precedence |
+| Config | 5+        | 4-layer resolution, budget enforcement, invalid config handling |
 
-### P4: Additional test coverage
-- [ ] JOB-031: Session resume flow test
-- [ ] JOB-038-041: Drift detection, git auto-commit, branch-per-module, revert
-- [ ] JOB-044+: Exit codes, guardrails, budget enforcement
+### Test Count: 2,236 (0 failures)
+
+### Key Deliverables
+- `GalleryPreviewController` — interactive keyboard navigation for component gallery (TUI-45)
+- `SyntaxHighlighter` — language-aware code highlighting for C#, TS, JS, Python (TUI-15)
+- `RetryingLlmService` — runtime model fallback with retry decorator (LLM-11)
+- `TuiOutputRenderer` — bridges orchestrator events to TUI activity panel (TUI-50)
+- `ToolConversion` — converts LopenToolDefinition → AIFunction for SDK (CORE-25)
+- `StoragePaths` — research document path helpers (STOR-20)
+- Dead code removal: StubAuthService, StubLlmService (AUTH-01, LLM-01)

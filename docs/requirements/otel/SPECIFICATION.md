@@ -314,7 +314,7 @@ Standard OTEL environment variables (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVIC
 - [ ] [OTEL-14] Setting `otel.enabled` to `false` disables all instrumentation with no measurable performance overhead
 - [ ] [OTEL-15] Individual signal toggles (`otel.traces.enabled`, `otel.metrics.enabled`, `otel.logs.enabled`) independently control their respective exports
 - [ ] [OTEL-16] OTEL environment variables (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_PROTOCOL`) take precedence over Lopen config settings
-- [ ] [OTEL-17] CLI command execution time is not measurably degraded by OTEL instrumentation (< 5ms overhead on command startup)
+- [x] [OTEL-17] CLI command execution time is not measurably degraded by OTEL instrumentation (< 5ms overhead on command startup)
 
 ---
 

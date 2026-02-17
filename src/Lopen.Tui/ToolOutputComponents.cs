@@ -82,6 +82,7 @@ public sealed class DiffViewerComponent : IPreviewableComponent
 
         var lines = new List<string>();
         var palette = new ColorPalette();
+        var fileExtension = Path.GetExtension(data.FilePath);
 
         // Header: file path + stats
         lines.Add($"  {palette.Bold}{data.FilePath}{palette.Reset} ({palette.Success}+{data.LinesAdded}{palette.Reset} {palette.Error}-{data.LinesRemoved}{palette.Reset})");
@@ -99,11 +100,14 @@ public sealed class DiffViewerComponent : IPreviewableComponent
                     _ => $"{lineNum,3}",
                 };
 
+                var content = line.Length > 1 ? line[1..] : "";
+                var highlighted = SyntaxHighlighter.HighlightLine(content, fileExtension);
+
                 var coloredLine = prefix switch
                 {
-                    '+' => $"{palette.Success}{line}{palette.Reset}",
-                    '-' => $"{palette.Error}{line}{palette.Reset}",
-                    _ => line,
+                    '+' => $"{palette.Success}+{highlighted}{palette.Reset}",
+                    '-' => $"{palette.Error}-{highlighted}{palette.Reset}",
+                    _ => $" {highlighted}",
                 };
 
                 lines.Add($"  {numStr} │ {coloredLine}");

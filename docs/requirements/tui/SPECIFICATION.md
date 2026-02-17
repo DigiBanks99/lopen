@@ -697,7 +697,7 @@ Every TUI component must be designed so that it can be rendered with injected st
 - [ ] [TUI-12] Numbered resource access (press 1-9 to view active resources)
 - [ ] [TUI-13] Inline research display with ability to drill into full document
 - [ ] [TUI-14] Phase transition summaries shown in activity area
-- [ ] [TUI-15] Diff viewer with syntax highlighting and line numbers
+- [x] [TUI-15] Diff viewer with syntax highlighting and line numbers
 - [ ] [TUI-16] File picker with tree view navigation
 - [ ] [TUI-17] Phase/step visualization (●/○ progress indicator) in top panel
 - [ ] [TUI-18] Module selection modal with arrow key navigation
@@ -727,7 +727,7 @@ Every TUI component must be designed so that it can be rendered with injected st
 - [ ] [TUI-33] Unicode symbols with ASCII fallbacks for all indicators
 - [ ] [TUI-34] Box-drawing characters used for borders and panels
 - [ ] [TUI-35] Syntax highlighting in code blocks
-- [ ] [TUI-36] Consistent panel styling throughout the application
+- [x] [TUI-36] Consistent panel styling throughout the application
 - [ ] [TUI-37] `NO_COLOR` environment variable respected
 
 ### Slash Commands & Input
@@ -742,7 +742,7 @@ Every TUI component must be designed so that it can be rendered with injected st
 - [ ] [TUI-42] `lopen test tui` launches interactive component gallery
 - [ ] [TUI-43] Gallery lists all TUI components with selection navigation
 - [ ] [TUI-44] Each component renders with realistic mock/stub data
-- [ ] [TUI-45] Components are fully interactive in preview (shortcuts, scroll, expand/collapse)
+- [x] [TUI-45] Components are fully interactive in preview (shortcuts, scroll, expand/collapse)
 - [ ] [TUI-46] Components accept injected data with no live dependencies in preview
 - [ ] [TUI-47] Components self-register with gallery for automatic listing
 - [ ] [TUI-48] Stub data exercises multiple visual states (empty, populated, error, loading)

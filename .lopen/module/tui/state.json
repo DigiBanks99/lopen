@@ -308,6 +308,27 @@
       "spec_ref": "TUI-51",
       "tests": "ServiceCollectionExtensionsTests (5 new live data provider tests)",
       "notes": "Tests verify providers produce real data after DI registration."
+    },
+    "gallery-preview": {
+      "status": "complete",
+      "tasks": {
+        "gallery-preview-controller": "complete",
+        "gallery-preview-tests": "complete"
+      }
+    },
+    "syntax-highlighting": {
+      "status": "complete",
+      "tasks": {
+        "syntax-highlighter": "complete",
+        "diffviewer-integration": "complete",
+        "syntax-highlighter-tests": "complete"
+      }
+    },
+    "panel-styling": {
+      "status": "complete",
+      "tasks": {
+        "panel-styling-tests": "complete"
+      }
     }
   },
   "last_updated": "2026-02-17T06:15:00Z"

@@ -218,7 +218,7 @@ This specification defines **how Lopen integrates with the LLM backend**. It doe
 
 ## Acceptance Criteria
 
-- [ ] [LLM-01] Lopen authenticates with the Copilot SDK using credentials from the [Auth module](../auth/SPECIFICATION.md)
+- [x] [LLM-01] Lopen authenticates with the Copilot SDK using credentials from the [Auth module](../auth/SPECIFICATION.md)
 - [ ] [LLM-02] Each workflow phase invokes the SDK with a fresh context window (no conversation history carried forward)
 - [ ] [LLM-03] System prompt includes: role/identity, workflow state, step instructions, relevant context, available tools, constraints
 - [ ] [LLM-04] Context window contains only section-level document extractions, not full documents

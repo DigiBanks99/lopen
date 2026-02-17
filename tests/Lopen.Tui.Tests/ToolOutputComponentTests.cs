@@ -201,7 +201,7 @@ public class ToolOutputComponentTests
             Hunks = [new DiffHunk { StartLine = 1, Lines = ["+new line"] }]
         };
         var lines = _diff.Render(data, new ScreenRect(0, 0, 80, 5));
-        Assert.Contains(lines, l => l.Contains("\x1b[32m") && l.Contains("+new line"));
+        Assert.Contains(lines, l => l.Contains("\x1b[32m") && l.Contains("+") && l.Contains("line"));
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public class ToolOutputComponentTests
             Hunks = [new DiffHunk { StartLine = 1, Lines = ["-old line"] }]
         };
         var lines = _diff.Render(data, new ScreenRect(0, 0, 80, 5));
-        Assert.Contains(lines, l => l.Contains("\x1b[31m") && l.Contains("-old line"));
+        Assert.Contains(lines, l => l.Contains("\x1b[31m") && l.Contains("-") && l.Contains("line"));
     }
 
     [Fact]

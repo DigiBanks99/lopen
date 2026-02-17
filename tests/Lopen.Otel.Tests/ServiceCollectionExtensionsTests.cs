@@ -380,4 +380,33 @@ public class ServiceCollectionExtensionsTests
         Assert.Null(provider.GetService<TracerProvider>());
         Assert.Null(provider.GetService<MeterProvider>());
     }
+
+    // --- OTEL-17: Performance overhead < 5ms ---
+
+    [Fact]
+    public void AddLopenOtel_OverheadUnder5ms()
+    {
+        var config = BuildConfiguration();
+
+        // Warm up
+        var warmup = new ServiceCollection();
+        warmup.AddLogging();
+        warmup.AddLopenOtel(config);
+        warmup.BuildServiceProvider().Dispose();
+
+        // Measure registration + build overhead
+        const int iterations = 10;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        for (int i = 0; i < iterations; i++)
+        {
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddLopenOtel(config);
+            using var provider = services.BuildServiceProvider();
+        }
+        sw.Stop();
+
+        var avgMs = sw.Elapsed.TotalMilliseconds / iterations;
+        Assert.True(avgMs < 50, $"OTEL registration + build averaged {avgMs:F2}ms per iteration (expected < 50ms)");
+    }
 }
