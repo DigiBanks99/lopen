@@ -760,18 +760,18 @@
     "requirement_code": "CORE-12",
     "requirement_module": "core",
     "description": "Write integration tests for ChurnDetectionGuardrail in live workflow scenario",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ChurnDetectionGuardrail unit tests exist. Need integration test verifying escalation behavior when a task repeatedly fails in a workflow."
+    "notes": "6 new integration tests: churn escalation through pipeline, QualityGate false completion, short-circuit behavior, DI resolution, cancellation propagation. All 2004 tests pass."
   },
   {
     "id": "JOB-086",
     "requirement_code": "CORE-13",
     "requirement_module": "core",
     "description": "Write integration tests for false completion detection (QualityGateGuardrail)",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "QualityGateGuardrail unit tests exist. Need integration test verifying rejection when required tool calls not made."
+    "notes": "Covered by GuardrailIntegrationTests: QualityGate_BlocksFalseCompletion_ThroughPipeline verifies false completion rejected when required tool calls not made. 2004 tests pass."
   },
   {
     "id": "JOB-087",
