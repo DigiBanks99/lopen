@@ -178,7 +178,8 @@ public sealed class ActivityPanelComponent : IPreviewableComponent
 
     internal static string HighlightDetailLine(string detail, ColorPalette palette)
     {
-        if (string.IsNullOrEmpty(detail)) return detail;
+        if (string.IsNullOrEmpty(detail))
+            return detail;
         return detail[0] switch
         {
             '+' => $"{palette.Success}{detail}{palette.Reset}",

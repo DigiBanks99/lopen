@@ -50,35 +50,43 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IWorkflowOrchestrator>(sp =>
             {
                 Git.IGitWorkflowService? gitService = null;
-                try { gitService = sp.GetService<Git.IGitWorkflowService>(); }
+                try
+                { gitService = sp.GetService<Git.IGitWorkflowService>(); }
                 catch { /* Git service optional — dependencies may not be registered */ }
 
                 Lopen.Storage.IAutoSaveService? autoSave = null;
-                try { autoSave = sp.GetService<Lopen.Storage.IAutoSaveService>(); }
+                try
+                { autoSave = sp.GetService<Lopen.Storage.IAutoSaveService>(); }
                 catch { /* Auto-save optional */ }
 
                 Lopen.Storage.ISessionManager? sessionMgr = null;
-                try { sessionMgr = sp.GetService<Lopen.Storage.ISessionManager>(); }
+                try
+                { sessionMgr = sp.GetService<Lopen.Storage.ISessionManager>(); }
                 catch { /* Session manager optional */ }
 
                 Lopen.Llm.ITokenTracker? tokenTracker = null;
-                try { tokenTracker = sp.GetService<Lopen.Llm.ITokenTracker>(); }
+                try
+                { tokenTracker = sp.GetService<Lopen.Llm.ITokenTracker>(); }
                 catch { /* Token tracker optional */ }
 
                 IFailureHandler? failureHandler = null;
-                try { failureHandler = sp.GetService<IFailureHandler>(); }
+                try
+                { failureHandler = sp.GetService<IFailureHandler>(); }
                 catch { /* Failure handler optional */ }
 
                 Lopen.Configuration.IBudgetEnforcer? budgetEnforcer = null;
-                try { budgetEnforcer = sp.GetService<Lopen.Configuration.IBudgetEnforcer>(); }
+                try
+                { budgetEnforcer = sp.GetService<Lopen.Configuration.IBudgetEnforcer>(); }
                 catch { /* Budget enforcer optional */ }
 
                 Lopen.Storage.IPlanManager? planMgr = null;
-                try { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
+                try
+                { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
                 catch { /* Plan manager optional */ }
 
                 IPauseController? pauseCtrl = null;
-                try { pauseCtrl = sp.GetService<IPauseController>(); }
+                try
+                { pauseCtrl = sp.GetService<IPauseController>(); }
                 catch { /* Pause controller optional */ }
 
                 return new WorkflowOrchestrator(
@@ -109,19 +117,23 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IToolHandlerBinder>(sp =>
             {
                 Git.IGitWorkflowService? gitSvc = null;
-                try { gitSvc = sp.GetService<Git.IGitWorkflowService>(); }
+                try
+                { gitSvc = sp.GetService<Git.IGitWorkflowService>(); }
                 catch { /* Git service optional */ }
 
                 Lopen.Llm.ITaskStatusGate? taskGate = null;
-                try { taskGate = sp.GetService<Lopen.Llm.ITaskStatusGate>(); }
+                try
+                { taskGate = sp.GetService<Lopen.Llm.ITaskStatusGate>(); }
                 catch { /* Task status gate optional */ }
 
                 Lopen.Storage.IPlanManager? planMgr = null;
-                try { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
+                try
+                { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
                 catch { /* Plan manager optional */ }
 
                 Lopen.Llm.IOracleVerifier? oracleVerifier = null;
-                try { oracleVerifier = sp.GetService<Lopen.Llm.IOracleVerifier>(); }
+                try
+                { oracleVerifier = sp.GetService<Lopen.Llm.IOracleVerifier>(); }
                 catch { /* Oracle verifier optional */ }
 
                 return new ToolHandlerBinder(

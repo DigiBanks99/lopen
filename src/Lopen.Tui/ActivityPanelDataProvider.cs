@@ -64,7 +64,8 @@ internal sealed class ActivityPanelDataProvider : IActivityPanelDataProvider
 
     public void Clear()
     {
-        while (_entries.TryDequeue(out _)) { }
+        while (_entries.TryDequeue(out _))
+        { }
     }
 
     public void AddPhaseTransition(string fromPhase, string toPhase, IReadOnlyList<string>? sections = null)

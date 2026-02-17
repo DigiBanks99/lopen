@@ -118,7 +118,8 @@ public sealed class GuidedConversationComponent : IPreviewableComponent
 
     internal static List<string> WrapText(string text, int width)
     {
-        if (width <= 0) return [string.Empty];
+        if (width <= 0)
+            return [string.Empty];
         var result = new List<string>();
         foreach (var line in text.Split('\n'))
         {

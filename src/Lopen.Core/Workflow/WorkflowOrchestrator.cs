@@ -359,7 +359,8 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             {
                 // Invoke LLM for spec drafting, then pause for human gate
                 var specResult = await InvokeLlmForStepAsync(moduleName, currentStep, currentPhase, cancellationToken);
-                if (!specResult.Success) return specResult;
+                if (!specResult.Success)
+                    return specResult;
                 return StepResult.NeedsConfirmation(
                     specResult.Summary ?? "Specification drafted. Please review and approve to continue.");
             }
@@ -397,7 +398,8 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 new KeyValuePair<string, object?>("lopen.task.module", moduleName));
         }
 
-        if (!llmResult.Success) return llmResult;
+        if (!llmResult.Success)
+            return llmResult;
 
         // 5. Check auto-transition conditions
         if (currentStep == WorkflowStep.BreakIntoTasks)
@@ -609,7 +611,8 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
     private async Task AutoSaveAsync(AutoSaveTrigger trigger, string moduleName, CancellationToken cancellationToken)
     {
-        if (_autoSaveService is null || _sessionId is null) return;
+        if (_autoSaveService is null || _sessionId is null)
+            return;
 
         var state = new SessionState
         {

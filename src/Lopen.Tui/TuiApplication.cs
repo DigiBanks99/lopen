@@ -68,7 +68,11 @@ internal sealed class TuiApplication : ITuiApplication
     private LandingPageData _landingPageData = new() { Version = "0.0.0" };
     private SessionResumeData _sessionResumeData = new()
     {
-        ModuleName = "", PhaseName = "", StepProgress = "", TaskProgress = "", LastActivity = ""
+        ModuleName = "",
+        PhaseName = "",
+        StepProgress = "",
+        TaskProgress = "",
+        LastActivity = ""
     };
     private ResourceViewerData _resourceViewerData = new() { Label = "" };
     private FilePickerData _filePickerData = new() { RootPath = "" };

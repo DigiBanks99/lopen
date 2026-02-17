@@ -305,7 +305,8 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        if (files.Count == 0) return;
+        if (files.Count == 0)
+            return;
 
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("# Research Index");

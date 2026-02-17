@@ -32,7 +32,8 @@ public sealed class GalleryPreviewController
     public bool HandleAction(KeyAction action)
     {
         var components = _gallery.GetAll();
-        if (components.Count == 0) return false;
+        if (components.Count == 0)
+            return false;
 
         return _inPreview
             ? HandlePreviewAction(action, components)
@@ -104,10 +105,12 @@ public sealed class GalleryPreviewController
     private void CyclePreviewState(KeyAction action, IReadOnlyList<ITuiComponent> components)
     {
         var component = components[_selectedIndex];
-        if (component is not IPreviewableComponent previewable) return;
+        if (component is not IPreviewableComponent previewable)
+            return;
 
         var states = previewable.GetPreviewStates();
-        if (states.Count <= 1) return;
+        if (states.Count <= 1)
+            return;
 
         var idx = -1;
         for (var i = 0; i < states.Count; i++)
