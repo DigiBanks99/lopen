@@ -14,6 +14,7 @@
 14. Document new features or changes to features using the divio model
 15. Write the state of the module, component and task to the state store in @.lopen/module/<module>/state.json .
 15. Commit all the changes using conventional commit messages.
+16. Push the changes to the remote repository.
 
 IMPORTANT:
 - Do not make up any requirements
