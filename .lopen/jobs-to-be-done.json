@@ -823,18 +823,18 @@
     "requirement_code": "CORE-16",
     "requirement_module": "core",
     "description": "Write integration test for git auto-commit on task completion with real git repo",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "GitCliService/GitWorkflowService tested with mocks. Need integration test with a real temporary git repo."
+    "notes": "3 real git integration tests: auto-commit on completion, disabled auto-commit, nothing-to-commit graceful handling. All 2016+ tests pass."
   },
   {
     "id": "JOB-093",
     "requirement_code": "CORE-02",
     "requirement_module": "core",
     "description": "Write integration test for end-to-end workflow execution (spec \u2192 plan \u2192 build pipeline)",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "No cross-module integration tests exist for the full workflow pipeline. Critical for proving the system works end-to-end."
+    "notes": "3 end-to-end workflow tests: spec\u2192plan\u2192build phase pipeline, WorkflowEngine state transitions, task completion triggering verification. All 2019 tests pass."
   },
   {
     "id": "JOB-094",
