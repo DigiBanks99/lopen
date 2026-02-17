@@ -58,18 +58,18 @@
     "requirement_code": "STOR-03",
     "requirement_module": "storage",
     "description": "Add per-iteration metric breakdowns to SessionMetrics \u2014 store an array of per-iteration token/premium counts alongside cumulative totals",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "SessionMetrics currently persists only CumulativeInputTokens, CumulativeOutputTokens, PremiumRequestCount, IterationCount. The spec requires per-iteration breakdowns. Need to add an IterationMetrics[] array to metrics.json."
+    "notes": "Added IterationMetric record to Lopen.Storage. Added Iterations property (IReadOnlyList<IterationMetric>) to SessionMetrics with [] default for backward compatibility. Updated AutoSaveAsync to map PerIterationTokens to IterationMetric list. Updated RestoreMetrics to accept optional priorIterations. Updated resume path to pass saved iterations."
   },
   {
     "id": "JOB-009",
     "requirement_code": "STOR-03",
     "requirement_module": "storage",
     "description": "Add tests verifying per-iteration metrics are persisted and loadable from metrics.json",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "Current tests only verify cumulative totals round-trip. Need tests for per-iteration array persistence."
+    "notes": "Added 3 storage tests: round-trip with iterations, backward compat (empty list default), cumulative-matches-iteration-sums. Added 4 LLM tests: restore with prior iterations, restore+record appends, null iterations preserves existing, full save/restore cycle."
   },
   {
     "id": "JOB-010",

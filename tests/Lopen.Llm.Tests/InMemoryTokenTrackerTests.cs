@@ -184,4 +184,85 @@ public class InMemoryTokenTrackerTests
         Assert.Equal(0, metrics.CumulativeOutputTokens);
         Assert.Equal(0, metrics.PremiumRequestCount);
     }
+
+    // --- RestoreMetrics with prior iterations (STOR-03) ---
+
+    [Fact]
+    public void RestoreMetrics_WithPriorIterations_RestoresIterationHistory()
+    {
+        var tracker = new InMemoryTokenTracker();
+        var priorIterations = new List<TokenUsage>
+        {
+            new(400, 200, 600, 128000, true),
+            new(300, 150, 450, 128000, false),
+        };
+
+        tracker.RestoreMetrics(700, 350, 1, priorIterations);
+        var metrics = tracker.GetSessionMetrics();
+
+        Assert.Equal(2, metrics.PerIterationTokens.Count);
+        Assert.Equal(400, metrics.PerIterationTokens[0].InputTokens);
+        Assert.Equal(300, metrics.PerIterationTokens[1].InputTokens);
+        Assert.Equal(700, metrics.CumulativeInputTokens);
+        Assert.Equal(350, metrics.CumulativeOutputTokens);
+    }
+
+    [Fact]
+    public void RestoreMetrics_WithPriorIterations_ThenRecord_AppendsToHistory()
+    {
+        var tracker = new InMemoryTokenTracker();
+        var priorIterations = new List<TokenUsage>
+        {
+            new(400, 200, 600, 128000, true),
+        };
+
+        tracker.RestoreMetrics(400, 200, 1, priorIterations);
+        tracker.RecordUsage(new TokenUsage(100, 50, 150, 64000, false));
+        var metrics = tracker.GetSessionMetrics();
+
+        Assert.Equal(2, metrics.PerIterationTokens.Count);
+        Assert.Equal(400, metrics.PerIterationTokens[0].InputTokens);
+        Assert.Equal(100, metrics.PerIterationTokens[1].InputTokens);
+        Assert.Equal(500, metrics.CumulativeInputTokens);
+        Assert.Equal(250, metrics.CumulativeOutputTokens);
+    }
+
+    [Fact]
+    public void RestoreMetrics_WithNullIterations_DoesNotClearExisting()
+    {
+        var tracker = new InMemoryTokenTracker();
+        tracker.RecordUsage(new TokenUsage(100, 50, 150, 128000, false));
+
+        tracker.RestoreMetrics(1000, 500, 2, null);
+        var metrics = tracker.GetSessionMetrics();
+
+        Assert.Single(metrics.PerIterationTokens);
+        Assert.Equal(1000, metrics.CumulativeInputTokens);
+    }
+
+    [Fact]
+    public void RoundTrip_SaveRestore_WithIterations_PreservesFullHistory()
+    {
+        var tracker = new InMemoryTokenTracker();
+        tracker.RecordUsage(new TokenUsage(500, 200, 700, 128000, true));
+        tracker.RecordUsage(new TokenUsage(300, 100, 400, 128000, false));
+        var saved = tracker.GetSessionMetrics();
+
+        var tracker2 = new InMemoryTokenTracker();
+        tracker2.RestoreMetrics(
+            saved.CumulativeInputTokens,
+            saved.CumulativeOutputTokens,
+            saved.PremiumRequestCount,
+            saved.PerIterationTokens.ToList());
+        tracker2.RecordUsage(new TokenUsage(200, 50, 250, 64000, true));
+
+        var final_ = tracker2.GetSessionMetrics();
+
+        Assert.Equal(3, final_.PerIterationTokens.Count);
+        Assert.Equal(500, final_.PerIterationTokens[0].InputTokens);
+        Assert.Equal(300, final_.PerIterationTokens[1].InputTokens);
+        Assert.Equal(200, final_.PerIterationTokens[2].InputTokens);
+        Assert.Equal(1000, final_.CumulativeInputTokens);
+        Assert.Equal(350, final_.CumulativeOutputTokens);
+    }
 }

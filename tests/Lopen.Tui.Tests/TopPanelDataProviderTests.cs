@@ -278,7 +278,7 @@ public sealed class TopPanelDataProviderTests
             _premiumCount = 0;
         }
 
-        public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount) =>
+        public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount, IReadOnlyList<TokenUsage>? priorIterations = null) =>
             _premiumCount = premiumCount;
     }
 

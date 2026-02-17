@@ -52,13 +52,18 @@ internal sealed class InMemoryTokenTracker : ITokenTracker
         }
     }
 
-    public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount)
+    public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount, IReadOnlyList<TokenUsage>? priorIterations = null)
     {
         lock (_lock)
         {
             _cumulativeInput = cumulativeInput;
             _cumulativeOutput = cumulativeOutput;
             _premiumCount = premiumCount;
+            if (priorIterations is not null)
+            {
+                _iterations.Clear();
+                _iterations.AddRange(priorIterations);
+            }
         }
     }
 }

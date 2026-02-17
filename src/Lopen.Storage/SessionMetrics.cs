@@ -20,6 +20,9 @@ public sealed record SessionMetrics
     /// <summary>Number of completed iterations.</summary>
     public int IterationCount { get; init; }
 
+    /// <summary>Per-iteration token usage breakdowns.</summary>
+    public IReadOnlyList<IterationMetric> Iterations { get; init; } = [];
+
     /// <summary>The timestamp of the last metrics update.</summary>
     public required DateTimeOffset UpdatedAt { get; init; }
 }

@@ -18,5 +18,5 @@ public interface ITokenTracker
     /// Restores cumulative metrics from a previously persisted session (LLM-13).
     /// Called during session resume so new recordings accumulate on top of prior values.
     /// </summary>
-    void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount);
+    void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount, IReadOnlyList<TokenUsage>? priorIterations = null);
 }

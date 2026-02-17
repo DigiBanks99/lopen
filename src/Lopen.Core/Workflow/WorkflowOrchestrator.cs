@@ -125,10 +125,13 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                         var savedMetrics = await _sessionManager.LoadSessionMetricsAsync(latestId, cancellationToken);
                         if (savedMetrics is not null)
                         {
+                            var priorIterations = savedMetrics.Iterations.Select(i => new TokenUsage(
+                                i.InputTokens, i.OutputTokens, i.TotalTokens, i.ContextWindowSize, i.IsPremiumRequest)).ToList();
                             _tokenTracker.RestoreMetrics(
                                 (int)savedMetrics.CumulativeInputTokens,
                                 (int)savedMetrics.CumulativeOutputTokens,
-                                savedMetrics.PremiumRequestCount);
+                                savedMetrics.PremiumRequestCount,
+                                priorIterations);
                             _logger.LogInformation(
                                 "Restored token metrics: {Input} in, {Output} out, {Premium} premium",
                                 savedMetrics.CumulativeInputTokens, savedMetrics.CumulativeOutputTokens,
@@ -638,6 +641,14 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 PremiumRequestCount = tokenMetrics.PremiumRequestCount,
                 IterationCount = _iterationCount,
                 UpdatedAt = DateTimeOffset.UtcNow,
+                Iterations = tokenMetrics.PerIterationTokens.Select(t => new IterationMetric
+                {
+                    InputTokens = t.InputTokens,
+                    OutputTokens = t.OutputTokens,
+                    TotalTokens = t.TotalTokens,
+                    ContextWindowSize = t.ContextWindowSize,
+                    IsPremiumRequest = t.IsPremiumRequest,
+                }).ToList(),
             };
         }
 

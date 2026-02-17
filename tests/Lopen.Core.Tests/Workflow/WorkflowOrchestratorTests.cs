@@ -2075,11 +2075,13 @@ public class WorkflowOrchestratorTests
         public int RestoredInput { get; private set; }
         public int RestoredOutput { get; private set; }
         public int RestoredPremium { get; private set; }
-        public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount)
+        public IReadOnlyList<TokenUsage>? RestoredIterations { get; private set; }
+        public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount, IReadOnlyList<TokenUsage>? priorIterations = null)
         {
             RestoredInput = cumulativeInput;
             RestoredOutput = cumulativeOutput;
             RestoredPremium = premiumCount;
+            RestoredIterations = priorIterations;
         }
     }
 

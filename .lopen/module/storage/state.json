@@ -13,6 +13,12 @@
       "tests": "SessionManagerTests (2 disk-full tests + 2 existing)",
       "notes": "Create, save state, save metrics all throw StorageException with IOException inner on disk-full."
     },
+    "per_iteration_metrics": {
+      "status": "complete",
+      "spec_ref": "STOR-03",
+      "tests": "SessionManagerTests (3 iteration tests), InMemoryTokenTrackerTests (4 prior-iteration tests)",
+      "notes": "Added IterationMetric record, Iterations property on SessionMetrics, AutoSaveAsync mapping, RestoreMetrics with priorIterations, resume path passes saved iterations."
+    },
     "research-paths": {
       "status": "complete",
       "tasks": {
@@ -27,5 +33,5 @@
       }
     }
   },
-  "last_updated": "2026-02-17T06:00:00Z"
+  "last_updated": "2026-02-17T18:38:00Z"
 }

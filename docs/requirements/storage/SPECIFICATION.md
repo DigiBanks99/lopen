@@ -195,7 +195,7 @@ This specification defines **where and how Lopen stores its state**. It does not
 
 - [x] [STOR-01] `.lopen/` directory is created in project root on first workflow run
 - [x] [STOR-02] Session state (`state.json`) persists workflow phase, step, module, component, and task hierarchy
-- [ ] [STOR-03] Session metrics (`metrics.json`) persists per-iteration and cumulative token counts and premium request counts
+- [x] [STOR-03] Session metrics (`metrics.json`) persists per-iteration and cumulative token counts and premium request counts
 - [x] [STOR-04] Session IDs follow the `{module}-YYYYMMDD-{counter}` format with no collisions
 - [x] [STOR-05] `latest` symlink points to the most recent session directory
 - [x] [STOR-06] State is auto-saved after: step completion, task completion/failure, phase transition, component completion, user pause/switch

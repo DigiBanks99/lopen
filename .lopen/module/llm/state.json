@@ -49,8 +49,8 @@
         "InMemoryTokenTracker.cs",
         "WorkflowOrchestrator.cs"
       ],
-      "tests": "InMemoryTokenTrackerTests (12 total, 4 new for restore/round-trip)",
-      "notes": "RestoreMetrics on resume ensures cumulative values monotonically increase across sessions."
+      "tests": "InMemoryTokenTrackerTests (16 total, 4 new for prior-iteration restore/round-trip)",
+      "notes": "RestoreMetrics on resume ensures cumulative values monotonically increase across sessions. RestoreMetrics now accepts optional priorIterations to preserve per-iteration history across sessions (STOR-03)."
     },
     "tool-per-phase": {
       "status": "complete",

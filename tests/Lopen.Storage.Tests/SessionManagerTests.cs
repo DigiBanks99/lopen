@@ -164,6 +164,107 @@ public class SessionManagerTests
     }
 
     [Fact]
+    public async Task SaveSessionMetricsAsync_And_LoadSessionMetricsAsync_WithIterations_RoundTrips()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var iterations = new List<IterationMetric>
+        {
+            new() { InputTokens = 400, OutputTokens = 200, TotalTokens = 600, ContextWindowSize = 128000, IsPremiumRequest = true },
+            new() { InputTokens = 300, OutputTokens = 150, TotalTokens = 450, ContextWindowSize = 128000, IsPremiumRequest = false },
+            new() { InputTokens = 300, OutputTokens = 150, TotalTokens = 450, ContextWindowSize = 64000, IsPremiumRequest = true },
+        };
+        var metrics = new SessionMetrics
+        {
+            SessionId = sessionId.ToString(),
+            CumulativeInputTokens = 1000,
+            CumulativeOutputTokens = 500,
+            PremiumRequestCount = 2,
+            IterationCount = 3,
+            Iterations = iterations,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await _manager.SaveSessionMetricsAsync(sessionId, metrics);
+        var loaded = await _manager.LoadSessionMetricsAsync(sessionId);
+
+        ItShouldRoundTripCumulativeMetrics(loaded, metrics);
+        ItShouldRoundTripPerIterationMetrics(loaded, iterations);
+    }
+
+    [Fact]
+    public async Task LoadSessionMetricsAsync_WithoutIterationsKey_DefaultsToEmptyList()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var metricsWithoutIterations = new SessionMetrics
+        {
+            SessionId = sessionId.ToString(),
+            CumulativeInputTokens = 500,
+            CumulativeOutputTokens = 250,
+            PremiumRequestCount = 1,
+            IterationCount = 2,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await _manager.SaveSessionMetricsAsync(sessionId, metricsWithoutIterations);
+        var loaded = await _manager.LoadSessionMetricsAsync(sessionId);
+
+        Assert.NotNull(loaded);
+        Assert.Empty(loaded.Iterations);
+        Assert.Equal(500, loaded.CumulativeInputTokens);
+    }
+
+    [Fact]
+    public async Task SaveSessionMetricsAsync_WithIterations_CumulativesMatchIterationSums()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var iterations = new List<IterationMetric>
+        {
+            new() { InputTokens = 400, OutputTokens = 200, TotalTokens = 600, ContextWindowSize = 128000, IsPremiumRequest = true },
+            new() { InputTokens = 600, OutputTokens = 300, TotalTokens = 900, ContextWindowSize = 128000, IsPremiumRequest = false },
+        };
+        var metrics = new SessionMetrics
+        {
+            SessionId = sessionId.ToString(),
+            CumulativeInputTokens = 1000,
+            CumulativeOutputTokens = 500,
+            PremiumRequestCount = 1,
+            IterationCount = 2,
+            Iterations = iterations,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await _manager.SaveSessionMetricsAsync(sessionId, metrics);
+        var loaded = await _manager.LoadSessionMetricsAsync(sessionId);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(loaded.CumulativeInputTokens, loaded.Iterations.Sum(i => i.InputTokens));
+        Assert.Equal(loaded.CumulativeOutputTokens, loaded.Iterations.Sum(i => i.OutputTokens));
+    }
+
+    private static void ItShouldRoundTripCumulativeMetrics(SessionMetrics? loaded, SessionMetrics original)
+    {
+        Assert.NotNull(loaded);
+        Assert.Equal(original.CumulativeInputTokens, loaded.CumulativeInputTokens);
+        Assert.Equal(original.CumulativeOutputTokens, loaded.CumulativeOutputTokens);
+        Assert.Equal(original.PremiumRequestCount, loaded.PremiumRequestCount);
+        Assert.Equal(original.IterationCount, loaded.IterationCount);
+    }
+
+    private static void ItShouldRoundTripPerIterationMetrics(SessionMetrics? loaded, List<IterationMetric> expectedIterations)
+    {
+        Assert.NotNull(loaded);
+        Assert.Equal(expectedIterations.Count, loaded.Iterations.Count);
+        for (int i = 0; i < expectedIterations.Count; i++)
+        {
+            Assert.Equal(expectedIterations[i].InputTokens, loaded.Iterations[i].InputTokens);
+            Assert.Equal(expectedIterations[i].OutputTokens, loaded.Iterations[i].OutputTokens);
+            Assert.Equal(expectedIterations[i].TotalTokens, loaded.Iterations[i].TotalTokens);
+            Assert.Equal(expectedIterations[i].ContextWindowSize, loaded.Iterations[i].ContextWindowSize);
+            Assert.Equal(expectedIterations[i].IsPremiumRequest, loaded.Iterations[i].IsPremiumRequest);
+        }
+    }
+
+    [Fact]
     public async Task LoadSessionMetricsAsync_ReturnsNull_WhenNoMetricsFile()
     {
         var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 99);

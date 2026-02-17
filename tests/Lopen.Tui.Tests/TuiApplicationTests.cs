@@ -288,7 +288,7 @@ public class TuiApplicationTests
         public void RecordUsage(Lopen.Llm.TokenUsage usage) { }
         public Lopen.Llm.SessionTokenMetrics GetSessionMetrics() => new();
         public void ResetSession() { }
-        public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount) { }
+        public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount, System.Collections.Generic.IReadOnlyList<Lopen.Llm.TokenUsage>? priorIterations = null) { }
     }
 
     private sealed class StubGitService : Lopen.Core.Git.IGitService
