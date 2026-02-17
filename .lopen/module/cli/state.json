@@ -68,7 +68,16 @@
         "JOB-001"
       ],
       "notes": "Walk-up finds .lopen/ or .git/, .lopen/ priority, file vs dir distinction, deep nesting, null fallback for DI graceful degradation."
+    },
+    "program_integration_tests": {
+      "status": "complete",
+      "spec_ref": "CLI-22",
+      "files": [
+        "ProgramTests.cs"
+      ],
+      "tests": "ProgramTests (19 integration tests)",
+      "notes": "Tests build the real IHost, resolve services, create all commands, verify command tree, invoke --help."
     }
   },
-  "last_updated": "2026-02-17T04:40:00Z"
+  "last_updated": "2026-02-17T05:30:00Z"
 }

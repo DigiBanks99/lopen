@@ -211,9 +211,9 @@
     "requirement_code": "CLI-22",
     "requirement_module": "cli",
     "description": "Expand ProgramTests.cs with real integration tests \u2014 verify DI container resolves key services, all commands parse correctly, and basic command execution succeeds",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ProgramTests.cs has only 1 test (RootCommand_CanBeCreated). Needs comprehensive coverage of Program.cs bootstrap."
+    "notes": "Expanded ProgramTests.cs from 1 trivial test to 19 real integration tests: DI resolution (LLM, Core, Storage, Auth), command creation (all 8 commands), full command tree verification, help invocations."
   },
   {
     "id": "JOB-025",
