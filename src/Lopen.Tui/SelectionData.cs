@@ -67,4 +67,7 @@ public sealed record ErrorModalData
 
     /// <summary>Currently selected recovery option index.</summary>
     public int SelectedIndex { get; init; }
+
+    /// <summary>Callback invoked when user selects a recovery option. Parameter is the selected index.</summary>
+    public Action<int>? OnSelected { get; init; }
 }

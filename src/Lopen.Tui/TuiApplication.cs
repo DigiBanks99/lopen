@@ -46,6 +46,8 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly ConfirmationModalComponent _confirmationModalComponent;
     private readonly ErrorModalComponent _errorModalComponent;
     private readonly ISessionDetector? _sessionDetector;
+    private readonly int _failureThreshold;
+    private bool _failureModalShownForCurrentStreak;
     private bool _showLandingPage;
     private readonly ILogger<TuiApplication> _logger;
 
@@ -105,7 +107,8 @@ internal sealed class TuiApplication : ITuiApplication
         IUserPromptQueue? userPromptQueue = null,
         IWorkflowOrchestrator? orchestrator = null,
         bool showLandingPage = true,
-        ISessionDetector? sessionDetector = null)
+        ISessionDetector? sessionDetector = null,
+        int failureThreshold = 3)
     {
         _topPanel = topPanel ?? throw new ArgumentNullException(nameof(topPanel));
         _activityPanel = activityPanel ?? throw new ArgumentNullException(nameof(activityPanel));
@@ -129,6 +132,7 @@ internal sealed class TuiApplication : ITuiApplication
         _errorModalComponent = new ErrorModalComponent();
         _sessionDetector = sessionDetector;
         _showLandingPage = showLandingPage;
+        _failureThreshold = failureThreshold;
     }
 
     public async Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
@@ -364,10 +368,33 @@ internal sealed class TuiApplication : ITuiApplication
         _contextData = _contextPanelDataProvider.GetCurrentData();
     }
 
-    private void RefreshActivityPanelData()
+    internal void RefreshActivityPanelData()
     {
-        if (_activityPanelDataProvider is not null)
-            _activityData = _activityPanelDataProvider.GetCurrentData();
+        if (_activityPanelDataProvider is null)
+            return;
+
+        _activityData = _activityPanelDataProvider.GetCurrentData();
+
+        var failureCount = _activityPanelDataProvider.ConsecutiveFailureCount;
+
+        // Reset guard when streak is broken
+        if (failureCount < _failureThreshold)
+        {
+            _failureModalShownForCurrentStreak = false;
+            return;
+        }
+
+        // Show error modal when threshold reached, but only once per streak
+        if (!_failureModalShownForCurrentStreak && _modalState == TuiModalState.None)
+        {
+            _failureModalShownForCurrentStreak = true;
+            OpenErrorModal(new ErrorModalData
+            {
+                Title = "Repeated Failures Detected",
+                Message = $"{failureCount} consecutive task failures. How would you like to proceed?",
+                OnSelected = HandleFailureModalSelection
+            });
+        }
     }
 
     /// <summary>
@@ -944,9 +971,20 @@ internal sealed class TuiApplication : ITuiApplication
                 }
                 break;
             case ConsoleKey.Enter:
+                var onSelected = _errorModalData.OnSelected;
                 _modalState = TuiModalState.None;
+                onSelected?.Invoke(_errorModalData.SelectedIndex);
                 break;
         }
+    }
+
+    private void HandleFailureModalSelection(int selectedIndex)
+    {
+        var options = _errorModalData.RecoveryOptions;
+        var selectedOption = selectedIndex < options.Count ? options[selectedIndex] : "Retry";
+        _logger.LogInformation("User selected failure recovery option: {Option}", selectedOption);
+
+        _userPromptQueue?.Enqueue($"[intervention:{selectedOption.ToLowerInvariant()}]");
     }
 
     private async Task CheckForActiveSessionAsync(CancellationToken cancellationToken)
