@@ -264,6 +264,140 @@ public class StorageAcceptanceCriteriaTests
         Assert.Equal("workflow_engine", loaded.Component);
     }
 
+    [Fact]
+    public async Task AC02_SessionState_PersistsTaskHierarchy()
+    {
+        var fs = new InMemoryFileSystem();
+        var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
+        fs.CreateDirectory("/project/.lopen/sessions");
+
+        var sessionId = await manager.CreateSessionAsync("core");
+        var now = DateTimeOffset.UtcNow;
+
+        var hierarchy = new List<TaskHierarchyNode>
+        {
+            new()
+            {
+                Id = "mod-core",
+                Name = "Core Module",
+                State = "InProgress",
+                NodeType = "module",
+                Children =
+                [
+                    new()
+                    {
+                        Id = "comp-engine",
+                        Name = "Workflow Engine",
+                        State = "InProgress",
+                        NodeType = "component",
+                        Children =
+                        [
+                            new()
+                            {
+                                Id = "task-init",
+                                Name = "Initialize Engine",
+                                State = "Complete",
+                                NodeType = "task",
+                                Children =
+                                [
+                                    new()
+                                    {
+                                        Id = "sub-validate",
+                                        Name = "Validate Config",
+                                        State = "Complete",
+                                        NodeType = "subtask",
+                                    },
+                                ],
+                            },
+                            new()
+                            {
+                                Id = "task-run",
+                                Name = "Run Workflow",
+                                State = "Pending",
+                                NodeType = "task",
+                            },
+                        ],
+                    },
+                ],
+            },
+        };
+
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "building",
+            Step = "iterate",
+            Module = "core",
+            Component = "workflow_engine",
+            CreatedAt = now,
+            UpdatedAt = now,
+            TaskHierarchy = hierarchy,
+        };
+        await manager.SaveSessionStateAsync(sessionId, state);
+
+        var loaded = await manager.LoadSessionStateAsync(sessionId);
+        Assert.NotNull(loaded);
+        Assert.NotNull(loaded.TaskHierarchy);
+        Assert.Single(loaded.TaskHierarchy);
+
+        var module = loaded.TaskHierarchy[0];
+        Assert.Equal("mod-core", module.Id);
+        Assert.Equal("Core Module", module.Name);
+        Assert.Equal("InProgress", module.State);
+        Assert.Equal("module", module.NodeType);
+        Assert.Single(module.Children);
+
+        var component = module.Children[0];
+        Assert.Equal("comp-engine", component.Id);
+        Assert.Equal("component", component.NodeType);
+        Assert.Equal(2, component.Children.Count);
+
+        var completedTask = component.Children[0];
+        Assert.Equal("task-init", completedTask.Id);
+        Assert.Equal("Complete", completedTask.State);
+        Assert.Equal("task", completedTask.NodeType);
+        Assert.Single(completedTask.Children);
+
+        var subtask = completedTask.Children[0];
+        Assert.Equal("sub-validate", subtask.Id);
+        Assert.Equal("subtask", subtask.NodeType);
+        Assert.Equal("Complete", subtask.State);
+        Assert.Empty(subtask.Children);
+
+        var pendingTask = component.Children[1];
+        Assert.Equal("task-run", pendingTask.Id);
+        Assert.Equal("Pending", pendingTask.State);
+        Assert.Empty(pendingTask.Children);
+    }
+
+    [Fact]
+    public async Task AC02_SessionState_NullTaskHierarchy_BackwardCompatible()
+    {
+        var fs = new InMemoryFileSystem();
+        var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
+        fs.CreateDirectory("/project/.lopen/sessions");
+
+        var sessionId = await manager.CreateSessionAsync("core");
+        var now = DateTimeOffset.UtcNow;
+
+        // Save state without task hierarchy (simulates pre-existing state.json)
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "building",
+            Step = "iterate",
+            Module = "core",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        await manager.SaveSessionStateAsync(sessionId, state);
+
+        var loaded = await manager.LoadSessionStateAsync(sessionId);
+        Assert.NotNull(loaded);
+        Assert.Null(loaded.TaskHierarchy);
+        Assert.Equal("building", loaded.Phase);
+    }
+
     // STOR-14: Corrupted session state is detected, warned, and excluded from resume options
 
     [Fact]

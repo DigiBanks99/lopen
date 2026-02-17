@@ -57,10 +57,23 @@
       "spec_ref": "STOR-22",
       "implementation": "StorageInitializer.EnsureGitignoreEntryAsync",
       "tests": "StorageInitializerTests (7 gitignore tests) + StorageAcceptanceCriteriaTests (3 AC22 tests)",
-      "jobs": ["JOB-101"],
+      "jobs": [
+        "JOB-101"
+      ],
       "notes": "Adds .lopen/ to existing .gitignore. Idempotent. Does not create .gitignore if missing. Handles trailing newlines and whitespace."
+    },
+    "task_hierarchy_persistence": {
+      "status": "complete",
+      "spec_ref": "STOR-02",
+      "implementation": "TaskHierarchyNode DTO + SessionState.TaskHierarchy property",
+      "tests": "StorageAcceptanceCriteriaTests (AC02_SessionState_PersistsTaskHierarchy, AC02_SessionState_NullTaskHierarchy_BackwardCompatible)",
+      "jobs": [
+        "JOB-112",
+        "JOB-113"
+      ],
+      "notes": "Added recursive TaskHierarchyNode DTO (Id, Name, State, NodeType, Children) to Lopen.Storage. Added optional TaskHierarchy property to SessionState. Full 4-level tree round-trips through JSON serialization. Backward compatible with existing state.json files."
     }
   },
-  "last_updated": "2026-02-17T21:30:00Z",
+  "last_updated": "2026-02-17T23:30:00Z",
   "status": "complete"
 }

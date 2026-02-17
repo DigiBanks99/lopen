@@ -1025,5 +1025,131 @@
         "status": "done"
       }
     ]
+  },
+  {
+    "id": "JOB-112",
+    "requirement_code": "STOR-02",
+    "requirement_module": "storage",
+    "description": "Add TaskHierarchyNode DTO to Lopen.Storage and wire it into SessionState so the full task tree (module/component/task/subtask with states) is persisted in state.json",
+    "status": "done",
+    "priority": 1,
+    "notes": "Added TaskHierarchyNode DTO to Lopen.Storage with recursive tree support (Id, Name, State, NodeType, Children). Added TaskHierarchy property to SessionState. All tests pass."
+  },
+  {
+    "id": "JOB-113",
+    "requirement_code": "STOR-02",
+    "requirement_module": "storage",
+    "description": "Add tests verifying task hierarchy round-trips through state.json save/load \u2014 nested module/component/task/subtask nodes with states survive serialization",
+    "status": "done",
+    "priority": 1,
+    "notes": "Added AC02_SessionState_PersistsTaskHierarchy (4-level tree round-trip) and AC02_SessionState_NullTaskHierarchy_BackwardCompatible tests. All 3 AC02 tests pass."
+  },
+  {
+    "id": "JOB-114",
+    "requirement_code": "CORE-02",
+    "requirement_module": "core",
+    "description": "Verify 7-step workflow executes in order: Draft Spec \u2192 Dependencies \u2192 Components \u2192 Select \u2192 Tasks \u2192 Iterate \u2192 Repeat",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented in WorkflowOrchestrator.cs with extensive tests in WorkflowOrchestratorTests.cs including CORE-02 tagged integration tests."
+  },
+  {
+    "id": "JOB-115",
+    "requirement_code": "CORE-25",
+    "requirement_module": "core",
+    "description": "Register Lopen-managed tool definitions with Copilot SDK session for tool handler invocation during SendAndWaitAsync",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. ToolConversion.ToAiFunctions converts bound handlers to AIFunction instances. CopilotLlmService sets SessionConfig.Tools."
+  },
+  {
+    "id": "JOB-116",
+    "requirement_code": "LLM-04",
+    "requirement_module": "llm",
+    "description": "Context window uses section-level document extractions, not full documents",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented via SectionExtractor and ContextBudgetManager with tests."
+  },
+  {
+    "id": "JOB-117",
+    "requirement_code": "LLM-07",
+    "requirement_module": "llm",
+    "description": "Oracle verification uses separate SDK invocation with standard-tier model",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. OracleVerifier uses gpt-5-mini (non-premium). Tests verify model is not premium."
+  },
+  {
+    "id": "JOB-118",
+    "requirement_code": "LLM-10",
+    "requirement_module": "llm",
+    "description": "Per-phase model selection \u2014 each phase can use a different configured model",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented in DefaultModelSelector with per-phase mapping and tests."
+  },
+  {
+    "id": "JOB-119",
+    "requirement_code": "LLM-11",
+    "requirement_module": "llm",
+    "description": "Model fallback activates when configured model is unavailable",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented in RetryingLlmService with fallback chain. Tests cover warning logging and chain iteration."
+  },
+  {
+    "id": "JOB-120",
+    "requirement_code": "LLM-12",
+    "requirement_module": "llm",
+    "description": "Token usage metrics read from SDK response metadata and recorded",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. CopilotLlmService subscribes to SDK events, InMemoryTokenTracker aggregates metrics."
+  },
+  {
+    "id": "JOB-121",
+    "requirement_code": "LLM-13",
+    "requirement_module": "llm",
+    "description": "Token metrics surfaced to TUI and persisted in session state",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented via TopPanelDataProvider and TopPanelComponent. Metrics persisted to metrics.json."
+  },
+  {
+    "id": "JOB-122",
+    "requirement_code": "TUI-49",
+    "requirement_module": "tui",
+    "description": "All TUI components tested via lopen test tui command",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. TestCommand lists and previews all registered components. Tests verify >= 14 components."
+  },
+  {
+    "id": "JOB-123",
+    "requirement_code": "TUI-50",
+    "requirement_module": "tui",
+    "description": "TuiOutputRenderer bridges orchestrator output events to TUI activity panel",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. TuiOutputRenderer implements IOutputRenderer with 13 tests covering all methods."
+  },
+  {
+    "id": "JOB-124",
+    "requirement_code": "TUI-51",
+    "requirement_module": "tui",
+    "description": "All TUI data providers registered in DI and wired to live orchestrator/session data",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented in ServiceCollectionExtensions. Tests verify registration, resolution, singleton behavior."
+  },
+  {
+    "id": "JOB-125",
+    "requirement_code": "TUI-52",
+    "requirement_module": "tui",
+    "description": "TUI RunAsync launches WorkflowOrchestrator on background thread",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. TuiApplication.TryLaunchOrchestrator uses Task.Run. 8 tests in TuiOrchestratorBridgeTests."
   }
 ]
