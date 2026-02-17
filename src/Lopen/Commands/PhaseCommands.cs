@@ -26,6 +26,7 @@ public static class PhaseCommands
             LopenTelemetryDiagnostics.CommandCount.Add(1, new KeyValuePair<string, object?>("lopen.command.name", "spec"));
             try
             {
+                GlobalOptions.ApplyConfigOverrides(services, parseResult);
                 var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
                 if (headlessError is not null)
                     return headlessError.Value;
@@ -101,6 +102,7 @@ public static class PhaseCommands
             LopenTelemetryDiagnostics.CommandCount.Add(1, new KeyValuePair<string, object?>("lopen.command.name", "plan"));
             try
             {
+                GlobalOptions.ApplyConfigOverrides(services, parseResult);
                 var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
                 if (headlessError is not null)
                     return headlessError.Value;
@@ -183,6 +185,7 @@ public static class PhaseCommands
             LopenTelemetryDiagnostics.CommandCount.Add(1, new KeyValuePair<string, object?>("lopen.command.name", "build"));
             try
             {
+                GlobalOptions.ApplyConfigOverrides(services, parseResult);
                 var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
                 if (headlessError is not null)
                     return headlessError.Value;

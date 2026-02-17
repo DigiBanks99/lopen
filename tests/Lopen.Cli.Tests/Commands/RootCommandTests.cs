@@ -330,6 +330,118 @@ public class RootCommandTests
         Assert.Equal("fix the bug", tui.InitialPrompt);
     }
 
+    // ==================== CFG-08: --model override ====================
+
+    [Fact]
+    public async Task RootCommand_Model_OverridesAllPhaseModels()
+    {
+        var builder = Host.CreateApplicationBuilder([]);
+        builder.Services.AddLopenConfiguration();
+        builder.Services.AddLopenAuth();
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage();
+        builder.Services.AddLopenLlm();
+        var fakeTui = new FakeTuiApplication();
+        builder.Services.AddSingleton<ITuiApplication>(fakeTui);
+        var host = builder.Build();
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var rootCommand = new RootCommand("Lopen — test");
+        GlobalOptions.AddTo(rootCommand);
+        RootCommandHandler.Configure(host.Services, output, error)(rootCommand);
+
+        await new CommandLineConfiguration(rootCommand).InvokeAsync(["--model", "gpt-5"]);
+
+        var modelOptions = host.Services.GetRequiredService<ModelOptions>();
+        Assert.Equal("gpt-5", modelOptions.RequirementGathering);
+        Assert.Equal("gpt-5", modelOptions.Planning);
+        Assert.Equal("gpt-5", modelOptions.Building);
+        Assert.Equal("gpt-5", modelOptions.Research);
+    }
+
+    // ==================== CFG-09: --unattended override ====================
+
+    [Fact]
+    public async Task RootCommand_Unattended_SetsWorkflowUnattended()
+    {
+        var builder = Host.CreateApplicationBuilder([]);
+        builder.Services.AddLopenConfiguration();
+        builder.Services.AddLopenAuth();
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage();
+        builder.Services.AddLopenLlm();
+        var fakeTui = new FakeTuiApplication();
+        builder.Services.AddSingleton<ITuiApplication>(fakeTui);
+        var host = builder.Build();
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var rootCommand = new RootCommand("Lopen — test");
+        GlobalOptions.AddTo(rootCommand);
+        RootCommandHandler.Configure(host.Services, output, error)(rootCommand);
+
+        await new CommandLineConfiguration(rootCommand).InvokeAsync(["--unattended"]);
+
+        var workflowOptions = host.Services.GetRequiredService<WorkflowOptions>();
+        Assert.True(workflowOptions.Unattended);
+    }
+
+    // ==================== CFG-11: --max-iterations override ====================
+
+    [Fact]
+    public async Task RootCommand_MaxIterations_SetsWorkflowMaxIterations()
+    {
+        var builder = Host.CreateApplicationBuilder([]);
+        builder.Services.AddLopenConfiguration();
+        builder.Services.AddLopenAuth();
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage();
+        builder.Services.AddLopenLlm();
+        var fakeTui = new FakeTuiApplication();
+        builder.Services.AddSingleton<ITuiApplication>(fakeTui);
+        var host = builder.Build();
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var rootCommand = new RootCommand("Lopen — test");
+        GlobalOptions.AddTo(rootCommand);
+        RootCommandHandler.Configure(host.Services, output, error)(rootCommand);
+
+        await new CommandLineConfiguration(rootCommand).InvokeAsync(["--max-iterations", "25"]);
+
+        var workflowOptions = host.Services.GetRequiredService<WorkflowOptions>();
+        Assert.Equal(25, workflowOptions.MaxIterations);
+    }
+
+    [Fact]
+    public async Task RootCommand_NoOverrideFlags_KeepsDefaults()
+    {
+        var builder = Host.CreateApplicationBuilder([]);
+        builder.Services.AddLopenConfiguration();
+        builder.Services.AddLopenAuth();
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage();
+        builder.Services.AddLopenLlm();
+        var fakeTui = new FakeTuiApplication();
+        builder.Services.AddSingleton<ITuiApplication>(fakeTui);
+        var host = builder.Build();
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var rootCommand = new RootCommand("Lopen — test");
+        GlobalOptions.AddTo(rootCommand);
+        RootCommandHandler.Configure(host.Services, output, error)(rootCommand);
+
+        await new CommandLineConfiguration(rootCommand).InvokeAsync([]);
+
+        var workflowOptions = host.Services.GetRequiredService<WorkflowOptions>();
+        var modelOptions = host.Services.GetRequiredService<ModelOptions>();
+        Assert.Equal(100, workflowOptions.MaxIterations);
+        Assert.False(workflowOptions.Unattended);
+        Assert.Equal("claude-opus-4.6", modelOptions.Building);
+    }
+
     // ==================== AUTH PRE-FLIGHT TESTS (AUTH-10) ====================
 
     private static (CommandLineConfiguration config, StringWriter output, StringWriter error, FakeTuiApplication tui) CreateConfigWithAuth(

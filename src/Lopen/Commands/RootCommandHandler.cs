@@ -35,6 +35,9 @@ public static class RootCommandHandler
 
                 try
                 {
+                    // Apply --model, --unattended, --max-iterations overrides (CFG-08, CFG-09, CFG-11)
+                    GlobalOptions.ApplyConfigOverrides(services, parseResult);
+
                     int exitCode;
                     if (headless)
                     {
