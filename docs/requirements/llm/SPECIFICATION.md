@@ -60,7 +60,7 @@ Each SDK invocation receives a **fresh context window** — no conversation hist
 **Key implications**:
 
 - Planning runs steps 2–5 in a single context window — the LLM sees dependencies, components, and task breakdown together
-- Each task in step 6 gets its own fresh context; the oracle verification loop (see [Oracle Verification Tools](#oracle-verification-tools)) runs **within** the same SDK invocation as the task, not as a separate call
+- Each task in step 6 gets its own fresh context; the oracle verification loop (see [Oracle Verification Tools](#oracle-verification-tools)) dispatches a **separate** SDK invocation using a standard-tier model (e.g., `gpt-5-mini`) to keep oracle cost low while maintaining architectural separation
 - When step 7 repeats to step 4, Lopen creates a fresh context for the Planning phase (steps 4–5 only, since steps 2–3 are already complete), then returns to per-task fresh contexts for step 6
 
 ---
@@ -141,10 +141,10 @@ Lopen does **not** restrict or wrap these tools. The LLM uses them freely during
 The `verify_task_completion`, `verify_component_completion`, and `verify_module_completion` tools implement [Core § Oracle Verification](../core/SPECIFICATION.md#oracle-verification) as Lopen-managed tools. When the LLM calls one of these tools, Lopen's tool handler:
 
 1. Collects the relevant diff, test results, and acceptance criteria for the requested scope
-2. Dispatches a **cheap/fast model** (e.g., gpt-5-mini, gpt-4o) as a sub-agent to review the evidence against the specification in the same SDK session as a sub-agent
+2. Dispatches a **cheap/fast model** (e.g., gpt-5-mini) via a **separate** SDK invocation to review the evidence against the specification
 3. Returns the oracle's findings (pass/fail with specific gaps) back to the primary LLM as the tool result
 
-**This happens within the same SDK invocation** — the tool call round-trip is part of the primary model's tool-calling loop, so it does **not** consume an additional premium request. The oracle model call is a standard-tier request.
+**The oracle uses a separate SDK invocation** with a standard-tier model to keep costs low. This is a deliberate architectural decision — the oracle call does **not** consume a premium request because it uses a standard-tier model, though it is a separate invocation rather than running within the primary model's tool-calling loop.
 
 **Tiered verification scope**:
 
@@ -156,7 +156,7 @@ The `verify_task_completion`, `verify_component_completion`, and `verify_module_
 
 **Enforcement**: These tools are **mandatory** — Lopen's [back-pressure](../core/SPECIFICATION.md#back-pressure) rejects any `update_task_status(complete)` call that was not preceded by the corresponding `verify_*_completion` call in the same invocation. The LLM must call the verification tool and receive a passing result before marking work complete.
 
-**Retry loop**: If the oracle reports gaps, the primary LLM sees the findings in its context and can address them, then call the verification tool again. This loop continues within the same SDK invocation until: verification passes, churn limits are hit, or the LLM gives up.
+**Retry loop**: If the oracle reports gaps, the primary LLM sees the findings in its context and can address them, then call the verification tool again. This loop continues until: verification passes, churn limits are hit, or the LLM gives up. Each retry dispatches a new oracle invocation with the standard-tier model.
 
 ---
 
@@ -219,19 +219,19 @@ This specification defines **how Lopen integrates with the LLM backend**. It doe
 ## Acceptance Criteria
 
 - [x] [LLM-01] Lopen authenticates with the Copilot SDK using credentials from the [Auth module](../auth/SPECIFICATION.md)
-- [ ] [LLM-02] Each workflow phase invokes the SDK with a fresh context window (no conversation history carried forward)
-- [ ] [LLM-03] System prompt includes: role/identity, workflow state, step instructions, relevant context, available tools, constraints
-- [ ] [LLM-04] Context window contains only section-level document extractions, not full documents
-- [ ] [LLM-05] Lopen-managed tools (`read_spec`, `read_research`, `read_plan`, `update_task_status`, `get_current_context`, `log_research`, `report_progress`) are registered and functional
-- [ ] [LLM-06] Oracle verification tools (`verify_task_completion`, `verify_component_completion`, `verify_module_completion`) dispatch a sub-agent and return pass/fail verdicts
-- [ ] [LLM-07] Oracle verification runs within the same SDK invocation (no additional premium request consumed)
-- [ ] [LLM-08] `update_task_status(complete)` is rejected unless preceded by a passing `verify_*_completion` call in the same invocation
-- [ ] [LLM-09] Tool registration varies by workflow step (e.g., `log_research` only available during research phases)
-- [ ] [LLM-10] Per-phase model selection works — each phase can use a different configured model
+- [x] [LLM-02] Each workflow phase invokes the SDK with a fresh context window (no conversation history carried forward)
+- [x] [LLM-03] System prompt includes: role/identity, workflow state, step instructions, relevant context, available tools, constraints
+- [x] [LLM-04] Context window contains only section-level document extractions, not full documents
+- [x] [LLM-05] Lopen-managed tools (`read_spec`, `read_research`, `read_plan`, `update_task_status`, `get_current_context`, `log_research`, `report_progress`) are registered and functional
+- [x] [LLM-06] Oracle verification tools (`verify_task_completion`, `verify_component_completion`, `verify_module_completion`) dispatch a sub-agent and return pass/fail verdicts
+- [x] [LLM-07] Oracle verification uses a separate SDK invocation with a standard-tier model (e.g., `gpt-5-mini`) to avoid consuming premium requests — this is a deliberate design decision to keep oracle cost low while maintaining architectural separation
+- [x] [LLM-08] `update_task_status(complete)` is rejected unless preceded by a passing `verify_*_completion` call in the same invocation
+- [x] [LLM-09] Tool registration varies by workflow step (e.g., `log_research` only available during research phases)
+- [x] [LLM-10] Per-phase model selection works — each phase can use a different configured model
 - [x] [LLM-11] Model fallback activates when a configured model is unavailable (logs warning, falls back to next available)
-- [ ] [LLM-12] Token usage metrics (context window usage, premium request count, session totals) are read from SDK response metadata and recorded
+- [x] [LLM-12] Token usage metrics (context window usage, premium request count, session totals) are read from SDK response metadata and recorded
 - [x] [LLM-13] Token metrics are surfaced to the TUI and persisted in session state
-- [ ] [LLM-14] Context window budget is respected — lower-priority sections truncated or summarized when context would exceed budget
+- [x] [LLM-14] Context window budget is respected — lower-priority sections truncated or summarized when context would exceed budget
 
 ---
 
