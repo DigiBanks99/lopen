@@ -63,12 +63,12 @@
     "project_root_discovery": {
       "status": "complete",
       "implementation": "ProjectRootDiscovery.FindProjectRoot walks up from CWD looking for .lopen/ then .git/. Program.cs passes result to AddLopenCore and AddLopenStorage.",
-      "tests": "ProjectRootDiscoveryTests (9 tests: .lopen/ found, .git/ found, .lopen/ priority, no markers, walk up, current dir, same dir both, git fallback, null chain)",
+      "tests": "ProjectRootDiscoveryTests (13 tests)",
       "jobs": [
         "JOB-001"
       ],
-      "notes": "Enables all path-dependent services (git, sessions, plans, caches, modules, workflow) to register at startup."
+      "notes": "Walk-up finds .lopen/ or .git/, .lopen/ priority, file vs dir distinction, deep nesting, null fallback for DI graceful degradation."
     }
   },
-  "last_updated": "2026-02-17T03:55:00Z"
+  "last_updated": "2026-02-17T04:40:00Z"
 }

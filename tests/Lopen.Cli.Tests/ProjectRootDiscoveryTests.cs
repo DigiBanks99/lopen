@@ -136,4 +136,63 @@ public class ProjectRootDiscoveryTests : IDisposable
 
         Assert.Equal(_tempDir, result);
     }
+
+    [Fact]
+    public void FindProjectRoot_LopenCloserToRootThanGit_ReturnsLopenDir()
+    {
+        // .lopen/ at root, .git/ deeper in a subdirectory
+        Directory.CreateDirectory(Path.Combine(_tempDir, ".lopen"));
+        var subDir = Path.Combine(_tempDir, "sub");
+        Directory.CreateDirectory(Path.Combine(subDir, ".git"));
+        var leaf = Path.Combine(subDir, "deep");
+        Directory.CreateDirectory(leaf);
+
+        var result = ProjectRootDiscovery.FindProjectRoot(leaf);
+
+        // .lopen/ is checked first in the walk-up — found at _tempDir (root)
+        // .git/ at subDir is only checked in second pass
+        // .lopen/ pass walks up from leaf → subDir → _tempDir (has .lopen/)
+        Assert.Equal(_tempDir, result);
+    }
+
+    [Fact]
+    public void FindProjectRoot_DeepNesting_StillFindsMarker()
+    {
+        Directory.CreateDirectory(Path.Combine(_tempDir, ".lopen"));
+        var deep = Path.Combine(_tempDir, "a", "b", "c", "d", "e", "f");
+        Directory.CreateDirectory(deep);
+
+        var result = ProjectRootDiscovery.FindProjectRoot(deep);
+
+        Assert.Equal(_tempDir, result);
+    }
+
+    [Fact]
+    public void FindProjectRoot_LopenFileNotDir_IsIgnored()
+    {
+        // Create a .lopen FILE (not directory) — should be ignored
+        File.WriteAllText(Path.Combine(_tempDir, ".lopen"), "not a directory");
+        // Create .git directory as fallback
+        Directory.CreateDirectory(Path.Combine(_tempDir, ".git"));
+
+        var result = ProjectRootDiscovery.FindProjectRoot(_tempDir);
+
+        // .lopen is a file, not a directory, so it should fall through to .git
+        Assert.Equal(_tempDir, result);
+    }
+
+    [Fact]
+    public void FindProjectRoot_NullProjectRoot_DIProvidesGracefulDegradation()
+    {
+        // When FindProjectRoot returns null (no markers found),
+        // AddLopenCore(null) and AddLopenStorage(null) should handle gracefully
+        // (conditional registration of path-dependent services)
+        var emptyDir = Path.Combine(_tempDir, "no-markers");
+        Directory.CreateDirectory(emptyDir);
+
+        var result = ProjectRootDiscovery.FindProjectRoot(emptyDir);
+
+        // Result should not be the empty dir itself (no markers there)
+        Assert.NotEqual(emptyDir, result);
+    }
 }

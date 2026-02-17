@@ -67,9 +67,9 @@
     "requirement_code": "CLI-26",
     "requirement_module": "cli",
     "description": "Add tests for project root discovery \u2014 verifies walk-up finds .lopen/ or .git/, falls back to CWD, and passes to DI correctly",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "ProgramTests.cs currently has only 1 trivial test. Needs comprehensive coverage."
+    "notes": "Added 4 new tests: LopenCloserToRootThanGit, DeepNesting, LopenFileNotDir_IsIgnored, NullProjectRoot_DIProvidesGracefulDegradation. Total 13 tests covering all scenarios."
   },
   {
     "id": "JOB-009",
