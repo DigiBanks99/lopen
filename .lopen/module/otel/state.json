@@ -1,0 +1,110 @@
+{
+  "module": "otel",
+  "description": "OpenTelemetry instrumentation - tracing, metrics, and log export",
+  "status": "in_progress",
+  "components": {
+    "span_factory": {
+      "status": "complete",
+      "implementation": "SpanFactory static methods for all span types",
+      "tests": "SpanFactoryTests (comprehensive)",
+      "notes": "Pre-existing, tested, ready for wiring"
+    },
+    "command_instrumentation": {
+      "status": "complete",
+      "implementation": "SpanFactory.StartCommand wired into RootCommandHandler and PhaseCommands",
+      "tests": "Verified via gpt-5-mini sub-agent",
+      "jobs": [
+        "JOB-022"
+      ],
+      "notes": "lopen.command span with exit code, error status on exceptions"
+    },
+    "workflow_phase_instrumentation": {
+      "status": "complete",
+      "implementation": "SpanFactory.StartWorkflowPhase wired into WorkflowOrchestrator.RunStepAsync",
+      "tests": "WorkflowOrchestratorTests.RunStepAsync_CreatesWorkflowPhaseSpan",
+      "jobs": [
+        "JOB-023"
+      ],
+      "notes": "lopen.workflow.phase span per step iteration"
+    },
+    "sdk_invocation_instrumentation": {
+      "status": "complete",
+      "implementation": "SpanFactory.StartSdkInvocation wired into WorkflowOrchestrator.InvokeLlmForStepAsync",
+      "tests": "WorkflowOrchestratorTests.RunStepAsync_CreatesSdkInvocationSpan",
+      "jobs": [
+        "JOB-024"
+      ],
+      "notes": "lopen.sdk.invocation span with token/tool call attributes, error status on failure"
+    },
+    "tool_call_instrumentation": {
+      "status": "complete",
+      "implementation": "ToolHandlerBinder.Traced() wrapper creates lopen.tool.<name> spans",
+      "tests": "ToolHandlerBinderTests.BindAll_TracedHandlers_CreateToolSpans",
+      "jobs": [
+        "JOB-025"
+      ],
+      "notes": "All 7 non-verify handlers wrapped with tool spans"
+    },
+    "oracle_verification_instrumentation": {
+      "status": "complete",
+      "implementation": "ToolHandlerBinder.TracedVerify() wrapper creates lopen.oracle.verification spans",
+      "tests": "ToolHandlerBinderTests.BindAll_VerifyHandlers_CreateOracleSpans",
+      "jobs": [
+        "JOB-026"
+      ],
+      "notes": "All 3 verify handlers wrapped with oracle spans"
+    },
+    "task_execution_instrumentation": {
+      "status": "complete",
+      "implementation": "SpanFactory.StartTask in WorkflowOrchestrator for IterateThroughTasks step",
+      "tests": "WorkflowOrchestratorTests.RunStepAsync_CreatesTaskSpanForIterateThroughTasks",
+      "jobs": [
+        "JOB-027"
+      ],
+      "notes": "lopen.task.execution span with outcome and iteration count"
+    },
+    "backpressure_instrumentation": {
+      "status": "complete",
+      "implementation": "SpanFactory.StartBackpressure + BackPressureEventCount counter in WorkflowOrchestrator guardrail handling",
+      "tests": "WorkflowOrchestratorTests.RunStepAsync_RecordsBackPressureCounterOnBlock",
+      "jobs": [
+        "JOB-028"
+      ],
+      "notes": "lopen.backpressure span + counter on block/warn"
+    },
+    "counter_metrics": {
+      "status": "complete",
+      "implementation": "LopenTelemetryDiagnostics 10 counters",
+      "tests": "Counters_IncrementCorrectly_VerifiedViaMeterListener (MeterListener-based value verification)",
+      "jobs": [
+        "JOB-047"
+      ]
+    },
+    "histogram_gauge_metrics": {
+      "status": "complete",
+      "implementation": "SdkInvocationDuration, ToolDuration, TaskDuration, CommandDuration, OracleDuration histograms + SessionIteration, ContextWindowUtilization gauges wired",
+      "tests": "RecordsSdkInvocationDurationHistogram, RecordsToolDuration, RecordsTaskMetricsOnTaskCompletion",
+      "jobs": [
+        "JOB-030"
+      ],
+      "notes": "All 5 histograms and 2 gauges from LopenTelemetryDiagnostics wired with Stopwatch timing"
+    },
+    "overhead_verification": {
+      "status": "complete",
+      "implementation": "AddLopenOtel in Program.cs + overhead benchmark test",
+      "tests": "OtlpExportTests.AddLopenOtel_Overhead_LessThan5ms",
+      "jobs": [
+        "JOB-076"
+      ]
+    },
+    "env_var_precedence": {
+      "status": "complete",
+      "implementation": "ServiceCollectionExtensions OTEL_SERVICE_NAME ?? otel:service_name ?? lopen",
+      "tests": "3 new precedence tests with value assertions",
+      "jobs": [
+        "JOB-073"
+      ]
+    }
+  },
+  "last_updated": "2026-02-17T19:15:00Z"
+}

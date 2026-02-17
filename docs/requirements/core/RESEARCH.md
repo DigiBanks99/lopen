@@ -19,6 +19,10 @@ Research into implementation patterns and technology choices for the Lopen core 
 6. [Oracle Verification Pattern](#6-oracle-verification-pattern)
 7. [Document Section Extraction](#7-document-section-extraction)
 8. [Implementation Approach](#8-implementation-approach)
+9. [Orchestration Loop Pattern](#9-orchestration-loop-pattern)
+10. [DI Registration Gap](#10-di-registration-gap)
+11. [Integration Wiring Patterns](#11-integration-wiring-patterns)
+12. [CORE-25: SDK Tool Registration](#12-core-25-sdk-tool-registration)
 
 ---
 
@@ -561,6 +565,805 @@ Lopen.Core/
 ### Relevance to Lopen
 
 This architecture maps cleanly to the Core spec's separation of concerns: workflow orchestration is isolated from LLM invocation (LLM module), persistence (Storage module), and configuration (Configuration module). Each subsystem (workflow, tasks, back-pressure, documents, git, oracle) is independently testable. The guardrail pipeline is the integration point for all four back-pressure categories. The `StateAssessor` is the single place where re-entrant assessment logic lives.
+
+---
+
+## 9. Orchestration Loop Pattern
+
+**Problem**: All building blocks exist — `WorkflowEngine` (state machine), `ILlmService` (Copilot SDK), tool handlers, `GuardrailPipeline`, `IGitWorkflowService`, `IAutoSaveService`, `IDriftDetector` — but there is no main loop that connects them into a functioning orchestration cycle.
+
+### Key Question: Separate Class vs. Part of WorkflowEngine?
+
+**Recommendation: Separate `WorkflowOrchestrator` class.**
+
+| Concern | WorkflowEngine | WorkflowOrchestrator |
+|---|---|---|
+| Responsibility | State machine transitions (pure logic) | Drive the assess → invoke → evaluate → save loop |
+| Dependencies | `IStateAssessor`, `Stateless` | Everything: engine, LLM, guardrails, git, auto-save, drift |
+| Testability | Unit-testable with fake assessor | Integration-testable with fakes for each dependency |
+| Lifetime | Scoped per module run | Scoped per module run |
+| Reuse | Reusable in CLI, tests, TUI | Entry point — only the CLI host calls it |
+
+`WorkflowEngine` is already clean and focused: it manages state transitions and guards. Embedding the orchestration loop inside it would violate SRP by coupling the state machine to LLM invocation, guardrail evaluation, and persistence concerns. The orchestrator *uses* the engine, it *is not* the engine.
+
+### The Orchestration Loop
+
+The main loop follows an assess → invoke → process → evaluate → save → advance cycle. Each iteration is one LLM session (`SendAndWaitAsync`) which internally handles the tool-calling loop.
+
+```csharp
+public sealed class WorkflowOrchestrator
+{
+    private readonly IWorkflowEngine _engine;
+    private readonly ILlmService _llmService;
+    private readonly IGuardrailPipeline _guardrails;
+    private readonly IDriftDetector _driftDetector;
+    private readonly IAutoSaveService _autoSave;
+    private readonly IGitWorkflowService _gitWorkflow;
+    private readonly IStateAssessor _assessor;
+    private readonly IOutputRenderer _renderer;
+    private readonly ILogger<WorkflowOrchestrator> _logger;
+
+    // Constructor: inject all dependencies
+
+    public async Task RunAsync(string moduleName, CancellationToken cancellationToken)
+    {
+        // 1. Initialize: assess reality and set starting step
+        await _engine.InitializeAsync(moduleName, cancellationToken);
+        await _gitWorkflow.EnsureModuleBranchAsync(moduleName, cancellationToken);
+
+        // 2. Main loop — runs until workflow is complete or cancelled
+        while (!_engine.IsComplete && !cancellationToken.IsCancellationRequested)
+        {
+            await RunIterationAsync(moduleName, cancellationToken);
+        }
+    }
+
+    private async Task RunIterationAsync(string moduleName, CancellationToken ct)
+    {
+        var step = _engine.CurrentStep;
+        var phase = _engine.CurrentPhase;
+
+        // ── Step 1: Drift detection on re-entry ──
+        await AssessDriftAsync(moduleName, ct);
+
+        // ── Step 2: Build guardrail context and evaluate ──
+        var guardrailCtx = BuildGuardrailContext(moduleName, step);
+        var guardrailResults = await _guardrails.EvaluateAsync(guardrailCtx, ct);
+
+        if (guardrailResults.Any(r => r.Outcome == GuardrailOutcome.Block))
+        {
+            await _renderer.RenderErrorAsync(
+                "Guardrail blocked execution", exception: null, ct);
+            return; // Do not invoke LLM — wait for human intervention
+        }
+
+        // ── Step 3: Build prompt with corrective instructions ──
+        var systemPrompt = BuildSystemPrompt(step, phase, guardrailResults);
+
+        // ── Step 4: Invoke LLM (SDK handles tool-calling loop internally) ──
+        var result = await _llmService.InvokeAsync(
+            systemPrompt, SelectModel(phase), GetToolsForStep(step), ct);
+
+        // ── Step 5: Post-invocation save ──
+        await _autoSave.SaveAsync(
+            AutoSaveTrigger.IterationComplete,
+            _sessionId, BuildSessionState(), BuildMetrics(result), ct);
+
+        // ── Step 6: Determine trigger and advance state machine ──
+        var trigger = DetermineTrigger(step, result);
+        if (trigger.HasValue)
+        {
+            _engine.Fire(trigger.Value);
+
+            // Auto-commit on task completion
+            if (trigger == WorkflowTrigger.TaskIterationComplete
+                || trigger == WorkflowTrigger.ComponentComplete)
+            {
+                await _gitWorkflow.CommitTaskCompletionAsync(
+                    moduleName, _currentComponent, _currentTask, ct);
+            }
+        }
+
+        await _renderer.RenderProgressAsync(
+            phase.ToString(), step.ToString(), ComputeProgress(), ct);
+    }
+}
+```
+
+### Async Event-Driven Nature of the Copilot SDK
+
+The Copilot SDK's `SendAndWaitAsync` is a **blocking async call** that internally runs the full LLM → tool → handler → result → LLM loop. The orchestrator does *not* need to implement the tool-calling loop — the SDK does this. Each `SendAndWaitAsync` call is one "iteration" from the orchestrator's perspective.
+
+```
+┌─────────────────────────────────────────────────┐
+│  Orchestrator (our code)                        │
+│                                                 │
+│  while (!complete)                              │
+│    assess → guardrails → build prompt           │
+│    ┌─────────────────────────────────────────┐  │
+│    │  SDK: SendAndWaitAsync (blocking async)  │  │
+│    │    LLM response                         │  │
+│    │    → tool call → handler → result       │  │
+│    │    → LLM response                       │  │
+│    │    → tool call → handler → result       │  │
+│    │    → ... (SDK manages internally)       │  │
+│    │    → final response (no more tool calls)│  │
+│    └─────────────────────────────────────────┘  │
+│    save state → advance state machine           │
+│  end while                                      │
+└─────────────────────────────────────────────────┘
+```
+
+**Key implications:**
+- Guardrails run *between* SDK invocations, not *within* the tool-calling loop. The SDK's `SessionHooks` (`OnToolCallReceived`, `OnErrorOccurred`) provide the only injection points during an invocation.
+- Tool handlers registered via `AIFunctionFactory.Create` execute synchronously within the SDK's loop. Guardrail checks that must run per-tool-call should be embedded in tool handler wrappers.
+- The `ToolCallAuditLog` should be populated by tool handler wrappers that intercept calls and log them before delegating to the real handler.
+
+### Error Propagation Through the Loop
+
+Errors fall into three categories with distinct handling:
+
+```csharp
+private async Task RunIterationAsync(string moduleName, CancellationToken ct)
+{
+    try
+    {
+        // ... iteration body ...
+    }
+    catch (OperationCanceledException)
+    {
+        // Category 1: Cancellation — propagate immediately, do not save
+        throw;
+    }
+    catch (LlmException ex) when (ex.IsRetryable)
+    {
+        // Category 2: Transient LLM failures — log, save state, retry on next iteration
+        _logger.LogWarning(ex, "Transient LLM error, will retry");
+        await _autoSave.SaveAsync(AutoSaveTrigger.Error, _sessionId, BuildSessionState(), null, ct);
+        // Do NOT throw — loop continues on next iteration
+    }
+    catch (LlmException ex)
+    {
+        // Category 3: Fatal LLM failures — save state and surface to user
+        _logger.LogError(ex, "Fatal LLM error");
+        await _autoSave.SaveAsync(AutoSaveTrigger.Error, _sessionId, BuildSessionState(), null, ct);
+        await _renderer.RenderErrorAsync(ex.Message, ex, ct);
+        throw; // Exits the loop
+    }
+    catch (Exception ex)
+    {
+        // Category 4: Unexpected — save what we can, surface to user
+        _logger.LogError(ex, "Unexpected error in orchestration loop");
+        try { await _autoSave.SaveAsync(AutoSaveTrigger.Error, _sessionId, BuildSessionState(), null, ct); }
+        catch { /* fail-open: don't mask the original error */ }
+        throw;
+    }
+}
+```
+
+**Principle**: Always attempt to save state before propagating fatal errors. This ensures re-entrant resume works even after crashes. `IAutoSaveService.SaveAsync` already swallows `StorageException` internally, so calling it in error paths is safe.
+
+### Cancellation Token Flow
+
+The `CancellationToken` flows from the CLI host through every async boundary:
+
+```
+CLI Host (Ctrl+C handler)
+  → WorkflowOrchestrator.RunAsync(ct)
+    → RunIterationAsync(ct)
+      → IGuardrailPipeline.EvaluateAsync(ctx, ct)
+      → ILlmService.InvokeAsync(prompt, model, tools, ct)
+        → CopilotClient.CreateSessionAsync(config, ct)
+        → session.SendAndWaitAsync(options, timeout, ct)
+      → IAutoSaveService.SaveAsync(trigger, ..., ct)
+      → IGitWorkflowService.CommitTaskCompletionAsync(..., ct)
+```
+
+The SDK's `SendAndWaitAsync` accepts a `CancellationToken` and a `TimeSpan` timeout. On cancellation:
+1. The SDK aborts the current tool-calling loop
+2. `OperationCanceledException` propagates up to `RunIterationAsync`
+3. The orchestrator saves state (if possible) before exiting
+4. Re-entry on next run resumes from the last persisted step
+
+### Trigger Determination Logic
+
+After each LLM invocation, the orchestrator must determine which trigger to fire based on the current step and the LLM's output:
+
+```csharp
+private WorkflowTrigger? DetermineTrigger(WorkflowStep step, LlmInvocationResult result)
+{
+    return step switch
+    {
+        // Requirement Gathering → wait for human approval (not auto-advanced)
+        WorkflowStep.DraftSpecification => null,
+
+        // Planning steps → auto-advance when LLM indicates completion
+        WorkflowStep.DetermineDependencies => WorkflowTrigger.DependenciesDetermined,
+        WorkflowStep.IdentifyComponents => WorkflowTrigger.ComponentsIdentified,
+        WorkflowStep.SelectNextComponent => WorkflowTrigger.ComponentSelected,
+        WorkflowStep.BreakIntoTasks => WorkflowTrigger.TasksBrokenDown,
+
+        // Building → check if tasks/components remain
+        WorkflowStep.IterateThroughTasks => DetermineIterationTrigger(),
+        WorkflowStep.Repeat => DetermineRepeatTrigger(),
+
+        _ => null,
+    };
+}
+
+private WorkflowTrigger DetermineIterationTrigger()
+{
+    // If all tasks in current component are done → ComponentComplete
+    // Otherwise → TaskIterationComplete (re-enters Step 6 for next task)
+    return _taskTracker.AllTasksComplete(_currentComponent)
+        ? WorkflowTrigger.ComponentComplete
+        : WorkflowTrigger.TaskIterationComplete;
+}
+
+private WorkflowTrigger DetermineRepeatTrigger()
+{
+    // If more components → Assess (loops to Step 4)
+    // Otherwise → ModuleComplete (but this is fired from Step 4)
+    return WorkflowTrigger.Assess;
+}
+```
+
+---
+
+## 10. DI Registration Gap
+
+**Problem**: `WorkflowEngine`, `IStateAssessor`, and `IPhaseTransitionController` are implemented but not registered in `ServiceCollectionExtensions.AddLopenCore()`. The current registration covers documents, guardrails, git, and rendering — but not the workflow subsystem itself.
+
+### Current State of DI Registration
+
+```csharp
+// ✅ Registered in AddLopenCore():
+services.AddSingleton<IGitService>(sp => new GitCliService(...));
+services.AddSingleton<IGitWorkflowService, GitWorkflowService>();
+services.AddSingleton<IRevertService, RevertService>();
+services.AddSingleton<IModuleScanner>(sp => new ModuleScanner(...));
+services.AddSingleton<IModuleLister, ModuleLister>();
+services.AddSingleton<ISpecificationParser, MarkdigSpecificationParser>();
+services.AddSingleton<IContentHasher, XxHashContentHasher>();
+services.AddSingleton<IDriftDetector, DriftDetector>();
+services.AddSingleton<ISectionExtractor, SectionExtractor>();
+services.AddSingleton<IGuardrail>(...);  // ToolDisciplineGuardrail
+services.AddSingleton<IGuardrail>(...);  // QualityGateGuardrail
+services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
+services.TryAddSingleton<IOutputRenderer>(new HeadlessRenderer());
+
+// ❌ NOT registered:
+// IStateAssessor / StateAssessor
+// IPhaseTransitionController / PhaseTransitionController
+// IWorkflowEngine / WorkflowEngine
+// WorkflowOrchestrator (does not exist yet)
+```
+
+### Recommended Registration Pattern
+
+```csharp
+public static IServiceCollection AddLopenCore(this IServiceCollection services, string? projectRoot = null)
+{
+    // ... existing registrations ...
+
+    // ── Workflow subsystem ──
+    services.AddSingleton<IPhaseTransitionController, PhaseTransitionController>();
+    services.AddSingleton<IStateAssessor, StateAssessor>();
+    services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
+    services.AddSingleton<WorkflowOrchestrator>();
+
+    return services;
+}
+```
+
+### Lifetime Analysis
+
+| Type | Lifetime | Rationale |
+|---|---|---|
+| `IStateAssessor` | **Singleton** | Stateless service — assesses reality on every call. No mutable per-request state. |
+| `IPhaseTransitionController` | **Singleton** | Holds approval state (`IsRequirementGatheringToPlannningApproved`) that persists across the full module run. Single module at a time. |
+| `IWorkflowEngine` | **Singleton** | Holds `_currentStep` and Stateless machine. One workflow per process. `InitializeAsync()` resets state for each module. |
+| `WorkflowOrchestrator` | **Singleton** | Stateful only during `RunAsync()`. Single module run per process lifetime. |
+
+**Why Singleton over Scoped**: Lopen is a CLI application, not a web app. There is no HTTP request scope. The DI container is built once in `Program.cs` and lives for the process lifetime. `Scoped` in a non-web context requires manually creating scopes, which adds complexity without benefit. All per-module state is initialized via `InitializeAsync()` / `RunAsync()`.
+
+**Alternative — Scoped with manual scope**: If future multi-module parallelism is needed, convert to `Scoped` and create `IServiceScope` per module run. But the current spec is explicitly single-module-at-a-time.
+
+### StateAssessor Dependency Consideration
+
+`StateAssessor` likely depends on `ISessionManager` (from `Lopen.Storage`) to read persisted state. If `StateAssessor` requires `projectRoot`, use the same factory pattern already used for `IGitService`:
+
+```csharp
+services.AddSingleton<IStateAssessor>(sp =>
+    new StateAssessor(
+        sp.GetRequiredService<ISessionManager>(),
+        sp.GetRequiredService<IModuleScanner>(),
+        sp.GetRequiredService<ILogger<StateAssessor>>(),
+        projectRoot));
+```
+
+---
+
+## 11. Integration Wiring Patterns
+
+**Problem**: Individual subsystems (guardrails, drift detection, auto-save, git workflow) are implemented but not connected to the orchestration loop. This section describes the specific wiring patterns.
+
+### 11.1 GuardrailPipeline into the Iteration Step
+
+The guardrail pipeline evaluates *between* LLM invocations, not within them. It acts as a pre-invocation gate.
+
+```csharp
+// In WorkflowOrchestrator.RunIterationAsync():
+var guardrailCtx = new GuardrailContext
+{
+    Step = _engine.CurrentStep,
+    Phase = _engine.CurrentPhase,
+    ModuleName = moduleName,
+    TaskName = _currentTask,
+    ComponentName = _currentComponent,
+    ToolCallAuditLog = _auditLog,
+    TokensConsumed = _metrics.TotalTokens,
+    IterationCount = _iterationCount,
+};
+
+var results = await _guardrails.EvaluateAsync(guardrailCtx, ct);
+
+// Partition results by outcome
+var blocks = results.Where(r => r.Outcome == GuardrailOutcome.Block).ToList();
+var warnings = results.Where(r => r.Outcome == GuardrailOutcome.Warn).ToList();
+
+if (blocks.Count > 0)
+{
+    // Hard stop — render errors and exit iteration without invoking LLM
+    foreach (var block in blocks)
+        await _renderer.RenderErrorAsync($"Blocked: {block.Message}", null, ct);
+    return;
+}
+
+// Warnings become corrective instructions appended to the system prompt
+var correctiveInstructions = warnings
+    .Select(w => w.CorrectiveInstruction)
+    .Where(i => i is not null)
+    .ToList();
+```
+
+**Per-tool-call guardrails** (within the SDK's internal loop) require tool handler wrappers:
+
+```csharp
+// Wrap tool handlers to intercept and audit each tool call
+public class AuditingToolWrapper
+{
+    private readonly Func<string, Task<string>> _innerHandler;
+    private readonly ToolCallAuditLog _auditLog;
+
+    public async Task<string> HandleAsync(string input)
+    {
+        _auditLog.Record(new ToolCallEntry(ToolName, input, DateTimeOffset.UtcNow));
+        var result = await _innerHandler(input);
+        _auditLog.RecordResult(ToolName, result);
+        return result;
+    }
+}
+```
+
+### 11.2 DriftDetector into Re-Entry Assessment
+
+Drift detection runs at the *start* of each iteration (not at the end) to catch spec changes that happened while the orchestrator was paused or between runs.
+
+```csharp
+private async Task AssessDriftAsync(string moduleName, CancellationToken ct)
+{
+    var specPath = _moduleScanner.GetSpecificationPath(moduleName);
+    if (specPath is null) return;
+
+    var currentContent = await File.ReadAllTextAsync(specPath, ct);
+    var cachedSections = _sectionCache.GetCachedSections(specPath);
+
+    var driftResults = _driftDetector.DetectDrift(specPath, currentContent, cachedSections);
+
+    if (driftResults.Count == 0) return;
+
+    var driftedSections = driftResults
+        .Where(d => !d.IsNew && !d.IsRemoved)
+        .Select(d => d.Header)
+        .ToList();
+
+    if (driftedSections.Count > 0)
+    {
+        _logger.LogWarning("Spec drift detected in sections: {Sections}",
+            string.Join(", ", driftedSections));
+
+        // Determine if drift requires re-assessment of workflow step
+        var reEntryStep = DetermineReEntryStep(driftedSections);
+        if (reEntryStep.HasValue && reEntryStep.Value != _engine.CurrentStep)
+        {
+            _logger.LogInformation("Drift requires re-entry at step {Step}", reEntryStep);
+            await _engine.InitializeAsync(moduleName, ct); // Re-assess from reality
+        }
+
+        // Invalidate cached sections that drifted
+        foreach (var drift in driftResults)
+            _sectionCache.Invalidate(specPath, drift.Header);
+    }
+}
+
+/// <summary>
+/// Maps drifted spec sections to the earliest workflow step that must be re-evaluated.
+/// </summary>
+private static WorkflowStep? DetermineReEntryStep(IReadOnlyList<string> driftedSections)
+{
+    // Acceptance Criteria drift → re-assess from Step 3 (component identification may change)
+    if (driftedSections.Any(s => s.Contains("Acceptance Criteria", StringComparison.OrdinalIgnoreCase)))
+        return WorkflowStep.IdentifyComponents;
+
+    // Dependencies drift → re-assess from Step 2
+    if (driftedSections.Any(s => s.Contains("Dependencies", StringComparison.OrdinalIgnoreCase)))
+        return WorkflowStep.DetermineDependencies;
+
+    // Any other drift → flag but don't force re-entry
+    return null;
+}
+```
+
+### 11.3 AutoSaveService into Workflow Events
+
+`IAutoSaveService` (from `Lopen.Storage`) triggers at specific workflow boundaries, not on a timer. The orchestrator calls it at four points:
+
+```
+Save Points:
+  1. After each LLM invocation completes       → AutoSaveTrigger.IterationComplete
+  2. After a state machine transition           → AutoSaveTrigger.StepTransition
+  3. On error (before propagating)              → AutoSaveTrigger.Error
+  4. On workflow completion                     → AutoSaveTrigger.WorkflowComplete
+```
+
+```csharp
+// In RunIterationAsync(), after LLM invocation:
+await _autoSave.SaveAsync(
+    AutoSaveTrigger.IterationComplete,
+    _sessionId,
+    new SessionState
+    {
+        ModuleName = moduleName,
+        CurrentStep = _engine.CurrentStep,
+        CurrentPhase = _engine.CurrentPhase,
+        CurrentComponent = _currentComponent,
+        CurrentTask = _currentTask,
+        TaskHierarchy = _taskHierarchy,
+        SectionHashes = _sectionCache.GetAllHashes(),
+    },
+    new SessionMetrics
+    {
+        TotalTokens = _metrics.TotalTokens,
+        ToolCallCount = _metrics.ToolCallCount,
+        IterationCount = _iterationCount,
+    },
+    ct);
+
+// After state machine transition:
+if (trigger.HasValue && _engine.Fire(trigger.Value))
+{
+    await _autoSave.SaveAsync(
+        AutoSaveTrigger.StepTransition,
+        _sessionId, BuildSessionState(), BuildMetrics(result), ct);
+}
+```
+
+**Key design**: `IAutoSaveService.SaveAsync` is fire-and-forget-safe — it catches `StorageException` internally. The orchestrator should still `await` it (for backpressure), but a save failure must never crash the loop.
+
+### 11.4 GitWorkflowService into Task Completion
+
+`IGitWorkflowService` integrates at two points in the orchestration loop:
+
+**1. Module start — branch creation:**
+```csharp
+public async Task RunAsync(string moduleName, CancellationToken ct)
+{
+    await _engine.InitializeAsync(moduleName, ct);
+
+    // Create lopen/{moduleName} branch if it doesn't exist
+    var branchResult = await _gitWorkflow.EnsureModuleBranchAsync(moduleName, ct);
+    if (branchResult is not null)
+        _logger.LogInformation("Working on branch: {Branch}", branchResult.Output);
+
+    while (!_engine.IsComplete && !ct.IsCancellationRequested)
+        await RunIterationAsync(moduleName, ct);
+}
+```
+
+**2. Task/component completion — auto-commit:**
+```csharp
+// In RunIterationAsync(), after state machine advances:
+if (trigger == WorkflowTrigger.TaskIterationComplete)
+{
+    await _gitWorkflow.CommitTaskCompletionAsync(
+        moduleName, _currentComponent, _currentTask, ct);
+}
+else if (trigger == WorkflowTrigger.ComponentComplete)
+{
+    await _gitWorkflow.CommitTaskCompletionAsync(
+        moduleName, _currentComponent, "component-complete", ct);
+}
+```
+
+The commit message format from `IGitWorkflowService.FormatCommitMessage` follows conventional commits: `feat(moduleName): complete taskName in componentName`.
+
+### 11.5 Complete Wiring Diagram
+
+```
+WorkflowOrchestrator.RunAsync(moduleName)
+│
+├── engine.InitializeAsync()          ← IStateAssessor reads persisted state
+├── gitWorkflow.EnsureModuleBranch()  ← IGitWorkflowService creates branch
+│
+└── while (!complete)
+    │
+    ├── AssessDriftAsync()            ← IDriftDetector + ISectionCache
+    │   └── engine.InitializeAsync()  ← Re-assess if drift requires it
+    │
+    ├── guardrails.EvaluateAsync()    ← IGuardrailPipeline (all 4 categories)
+    │   ├── Block? → render error, skip iteration
+    │   └── Warn? → append corrective instructions to prompt
+    │
+    ├── llmService.InvokeAsync()      ← ILlmService (Copilot SDK)
+    │   └── [SDK tool-calling loop]
+    │       ├── Tool handlers record to ToolCallAuditLog
+    │       └── Oracle tools dispatch sub-agent
+    │
+    ├── autoSave.SaveAsync()          ← IAutoSaveService (iteration complete)
+    │
+    ├── DetermineTrigger()
+    ├── engine.Fire(trigger)
+    │
+    ├── gitWorkflow.CommitAsync()     ← IGitWorkflowService (on task/component done)
+    └── autoSave.SaveAsync()          ← IAutoSaveService (step transition)
+```
+
+### 11.6 Full DI Registration (All Subsystems)
+
+The complete `AddLopenCore` method after wiring all subsystems:
+
+```csharp
+public static IServiceCollection AddLopenCore(this IServiceCollection services, string? projectRoot = null)
+{
+    // ── Git ──
+    if (!string.IsNullOrWhiteSpace(projectRoot))
+    {
+        services.AddSingleton<IGitService>(sp =>
+            new GitCliService(
+                sp.GetRequiredService<ILogger<GitCliService>>(),
+                projectRoot));
+        services.AddSingleton<IGitWorkflowService, GitWorkflowService>();
+        services.AddSingleton<IRevertService, RevertService>();
+        services.AddSingleton<IModuleScanner>(sp =>
+            new ModuleScanner(
+                sp.GetRequiredService<IFileSystem>(),
+                sp.GetRequiredService<ILogger<ModuleScanner>>(),
+                projectRoot));
+        services.AddSingleton<IModuleLister, ModuleLister>();
+    }
+
+    // ── Documents ──
+    services.AddSingleton<ISpecificationParser, MarkdigSpecificationParser>();
+    services.AddSingleton<IContentHasher, XxHashContentHasher>();
+    services.AddSingleton<IDriftDetector, DriftDetector>();
+    services.AddSingleton<ISectionExtractor, SectionExtractor>();
+
+    // ── Guardrails ──
+    services.AddSingleton<IGuardrail>(sp => /* ... ToolDisciplineGuardrail ... */);
+    services.AddSingleton<IGuardrail>(sp => /* ... QualityGateGuardrail ... */);
+    services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
+
+    // ── Workflow (NEW) ──
+    services.AddSingleton<IPhaseTransitionController, PhaseTransitionController>();
+    services.AddSingleton<IStateAssessor, StateAssessor>();
+    services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
+    services.AddSingleton<WorkflowOrchestrator>();
+
+    // ── Output ──
+    services.TryAddSingleton<IOutputRenderer>(new HeadlessRenderer());
+
+    return services;
+}
+```
+
+### Relevance to Lopen
+
+These wiring patterns complete the gap between implemented subsystems and a functioning orchestrator. The `WorkflowOrchestrator` is the single entry point that the CLI host calls — `orchestrator.RunAsync("auth", ct)`. All subsystem integration happens through DI-injected interfaces, maintaining the testability principle established in the existing architecture. The auto-save and error-handling patterns ensure re-entrant resume works even after crashes, which is a core requirement of the spec.
+
+---
+
+## 12. CORE-25: SDK Tool Registration
+
+**Problem**: `CopilotLlmService.InvokeAsync` accepts `IReadOnlyList<LopenToolDefinition> tools` but never passes them to the Copilot SDK session. Tools are logged and counted, but `SessionConfig` has no `Tools` property set — meaning the LLM cannot invoke Lopen-managed tool handlers during `SendAndWaitAsync`. This is the gap described by [CORE-25] in the specification.
+
+### Current State
+
+```
+CopilotLlmService.InvokeAsync(systemPrompt, model, tools, ct)
+  ├─ tools parameter: validated (line 36), logged (line 38) ← ✅
+  ├─ ToolExecutionCompleteEvent counter: tracked (line 96-97) ← ✅
+  ├─ SessionConfig.Tools: NOT SET                             ← ❌ gap
+  └─ SessionConfig.Hooks: only OnErrorOccurred                ← partial
+```
+
+The 10 built-in tools (registered in `DefaultToolRegistry`, handlers bound by `ToolHandlerBinder`) flow through the system as `LopenToolDefinition` records with `Handler` delegates — but they're never converted to SDK-native tool types for the session.
+
+### SDK Tool API (GitHub.Copilot.SDK 0.1.23)
+
+Analysis of the SDK assembly reveals the tool registration surface:
+
+| SDK Type | Purpose |
+|---|---|
+| `SessionConfig.Tools` | `List<AIFunction>` property — tools available to the LLM during the session |
+| `SessionConfig.AllowedTools` | Controls which native (built-in) tools are available |
+| `SessionConfig.ExcludedTools` | Excludes specific native tools |
+| `SessionConfig.AvailableTools` | Alternative native tool configuration |
+| `SessionHooks.OnPreToolUse` | Pre-invocation hook (`PreToolUseHookInput` → `PreToolUseHookOutput`) |
+| `SessionHooks.OnPostToolUse` | Post-invocation hook (`PostToolUseHookInput` → `PostToolUseHookOutput`) |
+| `ToolExecutionCompleteEvent` | Already subscribed in `CopilotLlmService` for counting |
+
+The SDK uses `Microsoft.Extensions.AI.Abstractions` (transitive dependency, v10.x available in the NuGet cache). Key types:
+
+| M.E.AI Type | Role |
+|---|---|
+| `AIFunction` | Abstract base — invocable tool with name, description, JSON schema |
+| `AIFunctionFactory.Create(Delegate, string, string)` | Creates an `AIFunction` from a delegate with name and description |
+| `AIFunctionFactory.Create(Delegate, AIFunctionFactoryOptions)` | Overload with options for schema, serializer settings |
+| `AIFunctionDeclaration` | Base class of `AIFunction` — metadata only (name, description, schema) |
+| `AIFunctionArguments` | Dictionary passed to `AIFunction.InvokeAsync` — includes `Services` for DI |
+
+### Recommended Implementation: `ToolConversion` Bridge
+
+A static conversion class maps `LopenToolDefinition` → `AIFunction` using `AIFunctionFactory.Create`:
+
+```csharp
+using Microsoft.Extensions.AI;
+
+namespace Lopen.Llm;
+
+/// <summary>
+/// Converts Lopen-managed tool definitions to SDK AIFunction instances
+/// for registration on SessionConfig.Tools.
+/// </summary>
+internal static class ToolConversion
+{
+    public static List<AIFunction> ToAiFunctions(IReadOnlyList<LopenToolDefinition> tools)
+    {
+        return tools
+            .Where(t => t.Handler is not null)
+            .Select(ToAiFunction)
+            .ToList();
+    }
+
+    private static AIFunction ToAiFunction(LopenToolDefinition tool)
+    {
+        // AIFunctionFactory.Create wraps a delegate as an invocable AIFunction.
+        // The SDK will call this delegate when the LLM emits a tool_call
+        // for a tool matching this name.
+        return AIFunctionFactory.Create(
+            async (string arguments, CancellationToken cancellationToken) =>
+            {
+                return await tool.Handler!(arguments, cancellationToken);
+            },
+            tool.Name,
+            tool.Description);
+    }
+}
+```
+
+**Why `AIFunctionFactory.Create`**: The factory handles JSON schema generation from the delegate signature, serialization/deserialization of arguments, and `CancellationToken` propagation. The `(string arguments, CancellationToken)` signature aligns exactly with `LopenToolDefinition.Handler`'s `Func<string, CancellationToken, Task<string>>`.
+
+**Parameter Schema**: `LopenToolDefinition.ParameterSchema` (optional JSON schema string) is not directly consumed by `AIFunctionFactory.Create` when using the delegate overload — the factory infers a schema from the delegate parameters. For richer schemas, the `AIFunctionFactoryOptions` overload or `AIFunctionFactory.CreateDeclaration` could be used, but the simple delegate approach is sufficient for the current tools since all 10 accept a single `string arguments` parameter (raw JSON).
+
+### Integration Point: `CopilotLlmService.InvokeAsync`
+
+The change to wire tools into the session is surgical — add `Tools` to the existing `SessionConfig`:
+
+```csharp
+var config = new SessionConfig
+{
+    Model = model,
+    SystemMessage = new SystemMessageConfig
+    {
+        Content = systemPrompt,
+        Mode = SystemMessageMode.Replace,
+    },
+    Streaming = false,
+    Tools = ToolConversion.ToAiFunctions(tools),  // ← CORE-25: register tools
+    Hooks = new SessionHooks
+    {
+        OnErrorOccurred = async (input, _) =>
+        {
+            var result = await _authErrorHandler.HandleErrorAsync(input, cancellationToken);
+            return result ?? new ErrorOccurredHookOutput();
+        },
+    },
+};
+```
+
+This requires adding `using Microsoft.Extensions.AI;` and a package reference to `Microsoft.Extensions.AI.Abstractions` in `Lopen.Llm.csproj` (the SDK already depends on it transitively, but an explicit reference ensures API availability).
+
+### Tool Call Round-Trip Flow
+
+Once tools are registered on `SessionConfig.Tools`, the SDK handles the tool-calling loop automatically during `SendAndWaitAsync`:
+
+```
+SendAndWaitAsync(prompt)
+  │
+  ├─ LLM generates response with tool_call(s)
+  │    └─ SDK receives tool_call via JSON-RPC from Copilot CLI
+  │
+  ├─ SDK matches tool_call.name → registered AIFunction
+  │    └─ Invokes AIFunction.InvokeAsync(arguments, ct) in-process
+  │         └─ Calls LopenToolDefinition.Handler(argsJson, ct)
+  │              └─ e.g. reads spec, dispatches oracle, updates status
+  │
+  ├─ Handler returns result string
+  │    └─ SDK fires ToolExecutionCompleteEvent (already tracked, line 96)
+  │    └─ SDK sends result back to CLI via JSON-RPC
+  │    └─ CLI forwards result to model
+  │
+  ├─ LLM generates next response (may call more tools)
+  │    └─ Cycle repeats
+  │
+  └─ LLM produces final message (no tool_calls)
+       └─ SendAndWaitAsync resolves with response
+```
+
+The existing `ToolExecutionCompleteEvent` subscription (line 96–97 of `CopilotLlmService`) will automatically count all handler invocations without code changes.
+
+### Hook Integration for Back-Pressure
+
+The `SessionHooks` should be extended with `OnPreToolUse` and `OnPostToolUse` to enforce the verification-before-completion gate. This is a separate concern from CORE-25 registration but can be wired in the same `SessionConfig`:
+
+```csharp
+Hooks = new SessionHooks
+{
+    OnErrorOccurred = ...,
+    OnPreToolUse = async (input, _) =>
+    {
+        // Gate: reject update_task_status(complete) without prior verification
+        if (input.ToolName == "update_task_status")
+        {
+            // Parse arguments, check TaskStatusGate
+            // Return PreToolUseHookOutput { Decision = "reject" } if blocked
+        }
+        return null; // allow
+    },
+    OnPostToolUse = async (input, _) =>
+    {
+        // Track verification results from verify_* tools
+        return null;
+    }
+}
+```
+
+The hook types (`PreToolUseHookInput`, `PreToolUseHookOutput`, `PostToolUseHookInput`, `PostToolUseHookOutput`) are present in the SDK assembly. The `PreToolUseHookInput` exposes `ToolName` and `ToolArgs` properties; `PreToolUseHookOutput` has a `Decision` property.
+
+### Tools Without Handlers
+
+Tools where `Handler` is `null` (definition-only, not yet bound) are filtered out by `ToolConversion.ToAiFunctions()`. This is correct — `DefaultToolRegistry` registers all 10 tools with `null` handlers initially, then `ToolHandlerBinder.BindAll()` sets handlers via `IToolRegistry.BindHandler()`. The conversion must happen _after_ handler binding (at invocation time, not registration time), which is the case since `InvokeAsync` receives the already-bound tool list from the orchestrator.
+
+### Package Dependencies
+
+| Package | Current State | Action Needed |
+|---|---|---|
+| `GitHub.Copilot.SDK` 0.1.23 | Already referenced in `Lopen.Llm.csproj` | None |
+| `Microsoft.Extensions.AI.Abstractions` | Transitive via SDK, cached at v10.1.1 and v10.2.0 | Add explicit `<PackageReference>` to `Lopen.Llm.csproj` |
+
+### Implementation Checklist
+
+1. Add `Microsoft.Extensions.AI.Abstractions` package reference to `Lopen.Llm.csproj`
+2. Create `ToolConversion.cs` in `Lopen.Llm` with `ToAiFunctions()` method
+3. Modify `CopilotLlmService.InvokeAsync` to set `Tools = ToolConversion.ToAiFunctions(tools)` on `SessionConfig`
+4. Add unit tests for `ToolConversion` (null handler filtering, name/description mapping)
+5. Verify existing `ToolExecutionCompleteEvent` tracking still works with real tool calls
+6. (Future) Add `OnPreToolUse`/`OnPostToolUse` hooks for back-pressure enforcement
+
+### Relevance to Lopen
+
+This is the critical bridge between Lopen's tool management system (10 built-in tools with phase-aware filtering, handler binding, telemetry tracing) and the Copilot SDK's function-calling infrastructure. Without it, the LLM can only receive tool descriptions as text in the system prompt and must simulate tool usage in its output — it cannot actually _invoke_ tool handlers. Completing CORE-25 enables the autonomous build loop where the LLM reads specs, dispatches oracle verification, updates task status, and reports progress through real tool calls.
 
 ---
 

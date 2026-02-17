@@ -1,0 +1,72 @@
+{
+  "module": "configuration",
+  "description": "Configuration management with layered resolution and validation",
+  "status": "complete",
+  "components": {
+    "options": {
+      "status": "complete",
+      "implementation": "LopenOptions + OracleOptions + ToolDisciplineOptions + ModelAssignments + BudgetOptions",
+      "tests": "LopenOptionsTests, LopenOptionsValidatorTests",
+      "jobs": [
+        "JOB-020",
+        "JOB-021",
+        "JOB-023"
+      ]
+    },
+    "layered_resolution": {
+      "status": "complete",
+      "implementation": "LayeredConfigurationBuilder",
+      "tests": "LayeredConfigurationTests",
+      "jobs": [
+        "JOB-022"
+      ]
+    },
+    "budget_enforcer": {
+      "status": "complete",
+      "implementation": "BudgetEnforcer",
+      "tests": "BudgetEnforcerTests (24 tests)",
+      "jobs": [
+        "JOB-028"
+      ]
+    },
+    "config_passthrough": {
+      "status": "complete",
+      "implementation": "OracleOptions → OracleVerifier, ToolDisciplineOptions → ToolDisciplineGuardrail",
+      "tests": "ToolDisciplineGuardrailTests (21 tests), OracleVerifierTests (30 tests)",
+      "jobs": [
+        "JOB-029"
+      ],
+      "notes": "Oracle model passthrough via DI singleton. Tool discipline passthrough via ToolDisciplineGuardrail constructor from options."
+    },
+    "config_diagnostics": {
+      "status": "complete",
+      "implementation": "ConfigurationDiagnostics + IConfigurationRoot registered in DI",
+      "tests": "ConfigCommandTests (4 tests)",
+      "jobs": [
+        "JOB-081"
+      ],
+      "notes": "IConfigurationRoot now registered in AddLopenConfiguration for use by lopen config show."
+    },
+    "budget_enforcer_wiring": {
+      "status": "complete",
+      "implementation": "IBudgetEnforcer wired into WorkflowOrchestrator.CheckBudgetAsync() via DI",
+      "tests": "WorkflowOrchestratorTests (10 budget tests) + ServiceCollectionExtensionsTests (1 DI test)",
+      "jobs": [
+        "JOB-084"
+      ],
+      "notes": "Pre-invocation budget check: Ok→proceed, Warning→log+continue, ConfirmationRequired→prompt/halt, Exceeded→auto-save+halt"
+    },
+    "cli_override_wiring": {
+      "status": "complete",
+      "implementation": "GlobalOptions.ApplyConfigOverrides mutates DI-registered ModelOptions and WorkflowOptions",
+      "tests": "RootCommandTests (4 tests: model override, unattended, max-iterations, default preservation)",
+      "jobs": [
+        "JOB-096",
+        "JOB-097",
+        "JOB-098"
+      ],
+      "notes": "CFG-08 (--model), CFG-09 (--unattended), CFG-11 (--max-iterations) CLI flags now wired. ApplyConfigOverrides reads from ParseResult and mutates singleton options before orchestrator invocation."
+    }
+  },
+  "last_updated": "2026-02-17T20:07:00Z"
+}

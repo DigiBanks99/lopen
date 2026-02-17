@@ -94,6 +94,7 @@ State is auto-saved after:
 4. **Resume** — On startup, Lopen checks for existing sessions and offers to resume (see [Configuration § Resume Behavior](../configuration/SPECIFICATION.md))
 5. **Complete** — Session marked as complete when module workflow finishes; retained for reference
 6. **Cleanup** — Old completed sessions can be pruned (configurable retention policy)
+7. **Delete** — Individual sessions can be explicitly deleted via CLI
 
 ### Resume Behavior
 
@@ -192,26 +193,27 @@ This specification defines **where and how Lopen stores its state**. It does not
 
 ## Acceptance Criteria
 
-- [ ] `.lopen/` directory is created in project root on first workflow run
-- [ ] Session state (`state.json`) persists workflow phase, step, module, component, and task hierarchy
-- [ ] Session metrics (`metrics.json`) persists per-iteration and cumulative token counts and premium request counts
-- [ ] Session IDs follow the `{module}-YYYYMMDD-{counter}` format with no collisions
-- [ ] `latest` symlink points to the most recent session directory
-- [ ] State is auto-saved after: step completion, task completion/failure, phase transition, component completion, user pause/switch
-- [ ] Session resume loads state from `.lopen/sessions/latest` and offers resume or start fresh
-- [ ] `--resume {id}` resumes a specific session; `--no-resume` starts fresh
-- [ ] Plans are stored at `.lopen/modules/{module}/plan.md` with checkbox task hierarchy
-- [ ] Plan checkboxes are updated programmatically by Lopen, not by the LLM
-- [ ] Section cache (`.lopen/cache/sections/`) is keyed by file path + section header + modification timestamp
-- [ ] Section cache is invalidated when the source file changes
-- [ ] Assessment cache is short-lived and invalidated on any file change in the assessed scope
-- [ ] Corrupted session state is detected, warned, and the session is excluded from resume options
-- [ ] Corrupted files are moved to `.lopen/corrupted/` for manual inspection
-- [ ] Disk full / write failure is treated as a critical system error and pauses the workflow
-- [ ] Corrupted cache entries are silently invalidated and regenerated
-- [ ] Completed sessions are retained up to the configured `session_retention` limit, then pruned
-- [ ] Research documents are stored at `docs/requirements/{module}/RESEARCH-{topic}.md` (in source, not `.lopen/`)
-- [ ] Storage format is compact JSON by default, with on-demand prettification via `lopen session show --format`
+- [x] [STOR-01] `.lopen/` directory is created in project root on first workflow run
+- [x] [STOR-02] Session state (`state.json`) persists workflow phase, step, module, component, and task hierarchy
+- [x] [STOR-03] Session metrics (`metrics.json`) persists per-iteration and cumulative token counts and premium request counts
+- [x] [STOR-04] Session IDs follow the `{module}-YYYYMMDD-{counter}` format with no collisions
+- [x] [STOR-05] `latest` symlink points to the most recent session directory
+- [x] [STOR-06] State is auto-saved after: step completion, task completion/failure, phase transition, component completion, user pause/switch
+- [x] [STOR-07] Session resume loads state from `.lopen/sessions/latest` and offers resume or start fresh
+- [x] [STOR-08] `--resume {id}` resumes a specific session; `--no-resume` starts fresh
+- [x] [STOR-09] Plans are stored at `.lopen/modules/{module}/plan.md` with checkbox task hierarchy
+- [x] [STOR-10] Plan checkboxes are updated programmatically by Lopen, not by the LLM
+- [x] [STOR-11] Section cache (`.lopen/cache/sections/`) is keyed by file path + section header + modification timestamp
+- [x] [STOR-12] Section cache is invalidated when the source file changes
+- [x] [STOR-13] Assessment cache is short-lived and invalidated on any file change in the assessed scope
+- [x] [STOR-14] Corrupted session state is detected, warned, and the session is excluded from resume options
+- [x] [STOR-15] Corrupted files are moved to `.lopen/corrupted/` for manual inspection
+- [x] [STOR-16] Disk full / write failure is treated as a critical system error and pauses the workflow
+- [x] [STOR-17] Corrupted cache entries are silently invalidated and regenerated
+- [x] [STOR-18] Completed sessions are retained up to the configured `session_retention` limit, then pruned
+- [x] [STOR-19] Individual sessions can be deleted via `DeleteSessionAsync`, removing the session directory and all files
+- [x] [STOR-20] Research documents are stored at `docs/requirements/{module}/RESEARCH-{topic}.md` (in source, not `.lopen/`)
+- [x] [STOR-21] Storage format is compact JSON by default, with on-demand prettification via `lopen session show --format`
 
 ---
 

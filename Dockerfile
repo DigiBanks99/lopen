@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0
+FROM mcr.microsoft.com/dotnet/sdk:10.0 as base
 
 COPY out/.copilot /root/.copilot
 
@@ -18,15 +18,17 @@ RUN (type -p wget >/dev/null || (apt update && apt install wget -y)) && \
         gh && \
     rm -rf /var/lib/apt/lists/* && \
     curl -fsSL https://gh.io/copilot-install | bash && \
-    curl -fsSL https://pyenv.run | bash && \
     mkdir source && \
     cd source && \
-    git clone https://github.com/digibanks99/lopen.git && \
+    git clone https://github.com/DigiBanks99/lopen.git && \
     cd lopen && \
+    git checkout feat/next-job && \
     dotnet build && \
-    touch /root/.bashrc && \
-    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /root/.bashrc && \
-    echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >> /root/.bashrc && \
-    echo 'eval "$(pyenv init - bash)"' >> /root/.bashrc
+    touch /root/.bashrc
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+RUN uv python install && \
+    echo "PATH=\"/root/.local/bin:\$PATH\"" >> /root/.bashrc
 
 ENTRYPOINT [ "tail", "-f", "/dev/null" ]

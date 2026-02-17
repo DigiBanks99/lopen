@@ -1,0 +1,346 @@
+{
+  "module": "tui",
+  "description": "Terminal User Interface (Spectre.Tui)",
+  "status": "in_progress",
+  "components": {
+    "layout_calculator": {
+      "status": "complete",
+      "implementation": "LayoutCalculator + ScreenRect + LayoutRegions",
+      "tests": "LayoutCalculatorTests (12) + ScreenRectTests (4)",
+      "jobs": [
+        "JOB-084"
+      ]
+    },
+    "top_panel": {
+      "status": "complete",
+      "implementation": "TopPanelComponent + TopPanelData",
+      "tests": "TopPanelComponentTests (34)",
+      "jobs": [
+        "JOB-085"
+      ]
+    },
+    "context_panel": {
+      "status": "complete",
+      "implementation": "ContextPanelComponent + ContextPanelData + RenderProgressBar + ResourceViewerModalComponent",
+      "tests": "ContextPanelComponentTests (28) + ResourceViewerModalComponentTests (10)",
+      "jobs": [
+        "JOB-086",
+        "JOB-044",
+        "JOB-045"
+      ],
+      "notes": "Visual progress bar [\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591] for task progress. Data pipeline: IPlanManager \u2192 ContextPanelDataProvider \u2192 1s polling \u2192 renderer. Task name, %, subtask tree with \u2713/\u25b6/\u25cb icons. Numbered resource access (1-9 keys) opens ResourceViewerModal (scrollable, Esc-dismiss). ResourceItem has optional Content property."
+    },
+    "activity_panel": {
+      "status": "complete",
+      "implementation": "ActivityPanelComponent + ActivityPanelData + IActivityPanelDataProvider + ActivityPanelDataProvider",
+      "tests": "ActivityPanelComponentTests (27) + ActivityPanelDataProviderTests (36)",
+      "jobs": [
+        "JOB-087",
+        "JOB-040",
+        "JOB-042",
+        "JOB-043",
+        "JOB-046",
+        "JOB-047",
+        "JOB-048"
+      ],
+      "notes": "Thread-safe ConcurrentQueue for workflow events. Auto-scroll on new entries. Progressive disclosure via IsExpanded/Details. Wired into TuiApplication render loop. DI via AddActivityPanelDataProvider(). Progressive disclosure: latest entry auto-expanded, previous collapsed, errors stay expanded. SelectedEntryIndex for keyboard navigation. ToolCall kind with \u2699 prefix. \u25bc/\u25b6 expand indicators. > selection marker. Research kind with \ud83d\udcd6 prefix and FullDocumentContent drill-into via ResourceViewerModal. AddPhaseTransition method for phase transition summaries with \u25c6 prefix. AddFileEdit method for diff display with +/- markers and FullDocumentContent drill-into."
+    },
+    "prompt_area": {
+      "status": "complete",
+      "implementation": "PromptAreaComponent + PromptAreaData + IUserPromptQueue + UserPromptQueue",
+      "tests": "PromptAreaComponentTests (16) + UserPromptQueueTests (12)",
+      "jobs": [
+        "JOB-088",
+        "JOB-041"
+      ],
+      "notes": "Multi-line input with Enter/Alt+Enter/Backspace. Context-aware hints wired from KeyboardHandler.GetHints(). Non-slash prompts enqueued to IUserPromptQueue. Thread-safe ConcurrentQueue + SemaphoreSlim. DI via AddUserPromptQueue()."
+    },
+    "modals": {
+      "status": "complete",
+      "implementation": "LandingPageComponent + SessionResumeModalComponent + ModalData + TuiModalState + ISessionDetector + SessionDetector",
+      "tests": "ModalComponentTests (22) + TuiLandingPageTests (13) + SessionDetectorTests (16)",
+      "jobs": [
+        "JOB-089",
+        "JOB-038",
+        "JOB-039"
+      ],
+      "notes": "Landing page shows on startup as fullscreen modal. Session resume modal shown when active session detected. Arrow keys navigate options, Enter confirms, Escape dismisses. SessionDetector maps ISessionManager state to SessionResumeData."
+    },
+    "tool_outputs": {
+      "status": "complete",
+      "implementation": "DiffViewerComponent + PhaseTransitionComponent + ResearchDisplayComponent + ToolOutputData",
+      "tests": "ToolOutputComponentTests (16)",
+      "jobs": [
+        "JOB-090"
+      ]
+    },
+    "selection_components": {
+      "status": "complete",
+      "implementation": "FilePickerComponent + SelectionModalComponent + ConfirmationModalComponent + ErrorModalComponent + SelectionData",
+      "tests": "SelectionComponentTests (19)",
+      "jobs": [
+        "JOB-091",
+        "JOB-093"
+      ]
+    },
+    "spinner": {
+      "status": "complete",
+      "implementation": "SpinnerComponent + SpinnerData",
+      "tests": "VisualAndCommandTests (8 spinner tests)",
+      "jobs": [
+        "JOB-094"
+      ]
+    },
+    "visual_design": {
+      "status": "complete",
+      "implementation": "ColorPalette + UnicodeSupport",
+      "tests": "VisualAndCommandTests (5 visual tests)",
+      "jobs": [
+        "JOB-095"
+      ]
+    },
+    "slash_commands": {
+      "status": "complete",
+      "implementation": "SlashCommandRegistry + SlashCommandDefinition + ISlashCommandExecutor + SlashCommandExecutor + SlashCommandResult",
+      "tests": "VisualAndCommandTests (8 command tests) + SlashCommandExecutorTests (37 tests)",
+      "jobs": [
+        "JOB-096",
+        "JOB-036"
+      ],
+      "notes": "SlashCommandExecutor parses via SlashCommandRegistry, dispatches to registered handlers. /help built-in. Unknown commands return error with valid list. Wired into TuiApplication.SubmitPrompt. DI registered in AddLopenTui()."
+    },
+    "keyboard_handler": {
+      "status": "complete",
+      "implementation": "KeyboardHandler + KeyInput + FocusPanel + KeyAction (Backspace, ScrollUp, ScrollDown)",
+      "tests": "KeyboardHandlerTests (42)",
+      "jobs": [
+        "JOB-092",
+        "JOB-041",
+        "JOB-042"
+      ]
+    },
+    "gallery_registration": {
+      "status": "complete",
+      "implementation": "GalleryListComponent + self-registration in AddLopenTui + IPreviewableComponent",
+      "tests": "ComponentGalleryRegistrationTests (13)",
+      "jobs": [
+        "JOB-097"
+      ]
+    },
+    "component_gallery": {
+      "status": "complete",
+      "implementation": "ComponentGallery (in-memory registry) + ITuiComponent interface",
+      "tests": "ComponentGalleryTests (existing) + ComponentGalleryRegistrationTests (13)"
+    },
+    "stub_application": {
+      "status": "complete",
+      "implementation": "StubTuiApplication (no-op for headless mode)",
+      "tests": "StubTuiApplicationTests (existing)"
+    },
+    "application_shell": {
+      "status": "complete",
+      "implementation": "TuiApplication in Lopen.Tui with Spectre.Tui fullscreen render loop",
+      "tests": "TuiApplicationTests (12 tests) covering DI, lifecycle, state updates, constructor validation",
+      "jobs": [
+        "JOB-008",
+        "JOB-037",
+        "JOB-041",
+        "JOB-038",
+        "JOB-039",
+        "JOB-042"
+      ],
+      "notes": "Uses FullscreenMode, Renderer@30fps, LayoutCalculator for regions, KeyboardHandler for input. UseRealTui() for non-test DI. Ctrl+P toggles IPauseController. Slash commands wired via ISlashCommandExecutor. Context-aware hints wired each frame. Non-slash prompts flow to IUserPromptQueue. Landing page modal state machine in DrainKeyboardInput and RenderFrame. Session resume modal with option navigation. ToggleExpand, ScrollUp/Down for activity panel entry navigation."
+    },
+    "component_gallery_command": {
+      "status": "complete",
+      "implementation": "TestCommand in Lopen/Commands with test tui subcommand",
+      "tests": "TestCommandTests (4 tests) - help, list mode, no gallery, gallery listing",
+      "jobs": [
+        "JOB-035"
+      ],
+      "notes": "Interactive arrow key navigation + Enter preview. --list for CI/text mode."
+    },
+    "top_panel_data_provider": {
+      "status": "complete",
+      "implementation": "TopPanelDataProvider aggregates ITokenTracker, IGitService, IAuthService, IWorkflowEngine, IModelSelector into TopPanelData. TuiApplication refreshes with 1s throttle.",
+      "tests": "TopPanelDataProviderTests (31 tests) + TuiApplicationTests (4 new integration tests)",
+      "jobs": [
+        "JOB-011"
+      ],
+      "notes": "GetCurrentBranchAsync added to IGitService. AddTopPanelDataProvider() DI method. Async data (branch, auth) cached, sync data (tokens, workflow) read fresh each frame."
+    },
+    "context_panel_data_provider": {
+      "status": "complete",
+      "implementation": "ContextPanelDataProvider maps IPlanManager tasks to ContextPanelData hierarchy. TuiApplication refreshes with 1s throttle. SetActiveModule() for module switching.",
+      "tests": "ContextPanelDataProviderTests (30 unit tests) + TuiApplication integration tests (2 tests)",
+      "jobs": [
+        "JOB-012"
+      ],
+      "notes": "Level 0=components, Level 1=tasks, Level 2+=subtasks. First incomplete item at each level marked InProgress. Resources placeholder (empty list) until IDocumentManager is implemented."
+    },
+    "file_picker": {
+      "status": "complete",
+      "implementation": "FilePickerComponent + FilePickerData + FileNode + TuiApplication modal",
+      "tests": "SelectionComponentTests (file picker: 7) + TuiApplicationTests (2)",
+      "jobs": [
+        "JOB-049"
+      ],
+      "notes": "File picker modal with tree view. \ud83d\udcc1/\ud83d\udcc2/\ud83d\udcc4 icons, \u25b6 selection, Up/Down nav, Enter expand/collapse dirs, Esc close."
+    },
+    "module_selection": {
+      "status": "complete",
+      "implementation": "SelectionModalComponent + ModuleSelectionData + TuiApplication modal",
+      "tests": "SelectionComponentTests (selection: 5) + TuiApplicationTests (2)",
+      "jobs": [
+        "JOB-051"
+      ],
+      "notes": "Module selection modal with \u25b6 indicator, Up/Down nav, Enter select, Esc cancel."
+    },
+    "confirmation_modal": {
+      "status": "complete",
+      "implementation": "ConfirmationModalComponent + ConfirmationData + TuiApplication modal",
+      "tests": "SelectionComponentTests (confirmation: 4) + TuiApplicationTests (1)",
+      "jobs": [
+        "JOB-053"
+      ],
+      "notes": "Confirmation modal with [>selected<] highlighting, Left/Right nav, Enter select, Esc cancel."
+    },
+    "error_modal": {
+      "status": "complete",
+      "implementation": "ErrorModalComponent + ErrorModalData + TuiApplication modal + AddTaskFailure",
+      "tests": "SelectionComponentTests (error: 5) + ActivityPanelDataProviderTests (5) + TuiApplicationTests (1)",
+      "jobs": [
+        "JOB-054",
+        "JOB-056"
+      ],
+      "notes": "Error modal with Retry/Skip/Abort recovery options. AddTaskFailure creates Error entries that auto-expand."
+    },
+    "consecutive_failure_tracking": {
+      "status": "complete",
+      "implementation": "ConsecutiveFailureCount on IActivityPanelDataProvider, incremented on Error entries, reset on non-Error",
+      "tests": "ActivityPanelDataProviderTests (4 consecutive failure tests)",
+      "jobs": [
+        "JOB-055"
+      ],
+      "notes": "Volatile int with Interlocked operations. Callers check threshold and trigger confirmation modal."
+    },
+    "spinner_wiring": {
+      "status": "complete",
+      "implementation": "PromptAreaData.Spinner shows SpinnerComponent output instead of input when active",
+      "tests": "PromptAreaComponentTests (3 spinner integration tests)",
+      "jobs": [
+        "JOB-057"
+      ],
+      "notes": "Renders braille frame animation with message when Spinner is non-null."
+    },
+    "gallery_previews": {
+      "status": "complete",
+      "implementation": "All 15 components implement IPreviewableComponent with RenderPreview(width, height)",
+      "tests": "ComponentGalleryRegistrationTests (31 preview tests: 15 non-empty + 15 type checks + 1 gallery-wide)",
+      "jobs": [
+        "JOB-065"
+      ],
+      "notes": "Each component creates realistic stub data and calls its Render method. SpinnerComponent wraps single string in array."
+    },
+    "multi_state_previews": {
+      "status": "complete",
+      "implementation": "IPreviewableComponent.GetPreviewStates() + RenderPreview(state) with default implementations. 5 core components support 4 states.",
+      "tests": "ComponentGalleryRegistrationTests (19 multi-state tests)",
+      "jobs": [
+        "JOB-066"
+      ]
+    },
+    "syntax_highlighting": {
+      "status": "complete",
+      "implementation": "DiffViewerComponent highlights +/- lines with ANSI green/red. ActivityPanelComponent highlights error summaries and diff-like detail lines.",
+      "tests": "ActivityPanelComponentTests (6 highlighting tests) + ToolOutputComponentTests (3 diff highlighting tests)",
+      "jobs": [
+        "JOB-100"
+      ]
+    },
+    "user_prompt_queue": {
+      "status": "complete",
+      "implementation": "IUserPromptQueue (Core) + UserPromptQueue (Tui) + orchestrator drain logic",
+      "tests": "WorkflowOrchestratorTests (6 TUI-40 tests) + UserPromptQueueTests",
+      "jobs": [
+        "JOB-063"
+      ]
+    },
+    "guided_conversation": {
+      "status": "complete",
+      "implementation": "GuidedConversationComponent + GuidedConversationData + ActivityEntryKind.Conversation",
+      "tests": "GuidedConversationComponentTests (30) + KindPrefix_Conversation (1) + Gallery name (1)",
+      "jobs": [
+        "JOB-052"
+      ]
+    },
+    "tui_output_renderer": {
+      "status": "complete",
+      "implementation": "TuiOutputRenderer : IOutputRenderer in Lopen.Tui. Bridges orchestrator events to IActivityPanelDataProvider. AddTuiOutputRenderer DI method replaces HeadlessRenderer.",
+      "tests": "TuiOutputRendererTests (16 tests)",
+      "jobs": [
+        "JOB-004",
+        "JOB-006"
+      ],
+      "notes": "TUI-50: Maps RenderProgress\u2192PhaseTransition, RenderError\u2192TaskFailure, RenderResult\u2192Action, Prompt\u2192UserPromptQueue.DequeueAsync with Conversation entry."
+    },
+    "orchestrator_bridge": {
+      "status": "complete",
+      "implementation": "TuiApplication accepts IWorkflowOrchestrator?, launches RunAsync on Task.Run background thread. TryLaunchOrchestrator/CheckOrchestratorCompletion in render loop.",
+      "tests": "TuiOrchestratorBridgeTests (11 tests)",
+      "jobs": [
+        "JOB-003",
+        "JOB-007"
+      ],
+      "notes": "TUI-52: Background launch after modals dismissed. Completion/failure/interruption entries added to activity panel. SetOrchestratorModule for module name injection."
+    },
+    "di_wiring": {
+      "status": "complete",
+      "implementation": "All TUI data providers registered in Program.cs: AddContextPanelDataProvider, AddActivityPanelDataProvider, AddUserPromptQueue, AddSessionDetector, AddTuiOutputRenderer.",
+      "tests": "ServiceCollectionExtensionsTests (4 new tests)",
+      "jobs": [
+        "JOB-005"
+      ],
+      "notes": "TUI-51: All 4 required interfaces registered. TuiOutputRenderer replaces HeadlessRenderer in TUI mode."
+    },
+    "data_provider_wiring_tests": {
+      "status": "complete",
+      "spec_ref": "TUI-51",
+      "tests": "ServiceCollectionExtensionsTests (5 new live data provider tests)",
+      "notes": "Tests verify providers produce real data after DI registration."
+    },
+    "gallery-preview": {
+      "status": "complete",
+      "tasks": {
+        "gallery-preview-controller": "complete",
+        "gallery-preview-tests": "complete"
+      }
+    },
+    "syntax-highlighting": {
+      "status": "complete",
+      "tasks": {
+        "syntax-highlighter": "complete",
+        "diffviewer-integration": "complete",
+        "syntax-highlighter-tests": "complete"
+      }
+    },
+    "panel-styling": {
+      "status": "complete",
+      "tasks": {
+        "panel-styling-tests": "complete"
+      }
+    },
+    "failure_modal_wiring": {
+      "status": "complete",
+      "spec_ref": "TUI-26",
+      "implementation": "RefreshActivityPanelData checks ConsecutiveFailureCount >= failureThreshold, opens ErrorModal once per streak with OnSelected callback. HandleErrorModalInput Enter invokes callback. HandleFailureModalSelection enqueues intervention to IUserPromptQueue.",
+      "tests": "FailureModalWiringTests (15 tests)",
+      "jobs": [
+        "JOB-006",
+        "JOB-007"
+      ],
+      "notes": "Wires existing ConsecutiveFailureCount, ErrorModalComponent, and WorkflowOptions.FailureThreshold (default 3). Guard flag prevents duplicate modals per streak."
+    }
+  },
+  "last_updated": "2026-02-17T18:20:00Z"
+}

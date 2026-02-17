@@ -229,31 +229,34 @@ This specification defines the **CLI command structure and flags**. It does not 
 
 ## Acceptance Criteria
 
-- [ ] `lopen` (root command) starts the TUI with full workflow; offers session resume if active session exists
-- [ ] `lopen --headless` runs the full workflow autonomously with plain text output to stdout/stderr
-- [ ] `lopen spec` runs the Requirement Gathering phase (step 1) with guided conversation
-- [ ] `lopen plan` runs the Planning phase (steps 2–5); errors if no specification exists for the target module
-- [ ] `lopen build` runs the Building phase (steps 6–7); errors if no specification and plan exist
-- [ ] `lopen auth login` initiates the Copilot SDK device flow
-- [ ] `lopen auth status` reports current authentication state
-- [ ] `lopen auth logout` clears SDK-managed credentials
-- [ ] `lopen session list` lists all sessions (active and completed)
-- [ ] `lopen session show` displays session details with optional `--format` flag
-- [ ] `lopen session resume [id]` resumes a specific session
-- [ ] `lopen session delete <id>` deletes a session
-- [ ] `lopen session prune` removes completed sessions beyond retention limit
-- [ ] `lopen config show` displays resolved configuration with sources
-- [ ] `lopen revert` rolls back to the last task-completion commit and updates session state
-- [ ] `--headless` / `--quiet` / `-q` disables TUI entirely; output is plain text to stdout/stderr
-- [ ] `--prompt <text>` injects user instructions into LLM context
-- [ ] `--prompt` in TUI mode populates the input field for user review before sending
-- [ ] Headless mode without `--prompt` and without an active session errors with guidance
-- [ ] Exit codes: `0` success, `1` failure, `2` user intervention required (headless + unattended)
-- [ ] `--help` and `--version` flags work as expected
-- [ ] .NET solution builds successfully with `dotnet build`
-- [ ] All test projects run successfully with `dotnet test`
-- [ ] Code formatting passes with `dotnet format --verify-no-changes`
-- [ ] CLI entry point uses `Microsoft.Extensions.Hosting` for dependency injection
+- [x] [CLI-01] `lopen` (root command) starts the TUI with full workflow; offers session resume if active session exists
+- [x] [CLI-02] `lopen --headless` runs the full workflow autonomously with plain text output to stdout/stderr
+- [x] [CLI-03] `lopen spec` runs the Requirement Gathering phase (step 1) with guided conversation
+- [x] [CLI-04] `lopen plan` runs the Planning phase (steps 2–5); errors if no specification exists for the target module
+- [x] [CLI-05] `lopen build` runs the Building phase (steps 6–7); errors if no specification and plan exist
+- [x] [CLI-06] `lopen auth login` initiates the Copilot SDK device flow
+- [x] [CLI-07] `lopen auth status` reports current authentication state
+- [x] [CLI-08] `lopen auth logout` clears SDK-managed credentials
+- [x] [CLI-09] `lopen session list` lists all sessions (active and completed)
+- [x] [CLI-10] `lopen session show` displays session details with optional `--format` flag
+- [x] [CLI-11] `lopen session resume [id]` resumes a specific session
+- [x] [CLI-12] `lopen session delete <id>` deletes a session
+- [x] [CLI-13] `lopen session prune` removes completed sessions beyond retention limit
+- [x] [CLI-14] `lopen config show` displays resolved configuration with sources
+- [x] [CLI-15] `lopen revert` rolls back to the last task-completion commit and updates session state
+- [x] [CLI-16] `--headless` / `--quiet` / `-q` disables TUI entirely; output is plain text to stdout/stderr
+- [x] [CLI-17] `--prompt <text>` injects user instructions into LLM context
+- [x] [CLI-18] `--prompt` in TUI mode populates the input field for user review before sending
+- [x] [CLI-19] Headless mode without `--prompt` and without an active session errors with guidance
+- [x] [CLI-20] Exit codes: `0` success, `1` failure, `2` user intervention required (headless + unattended)
+- [x] [CLI-21] `--help` and `--version` flags work as expected
+- [x] [CLI-22] .NET solution builds successfully with `dotnet build`
+- [x] [CLI-23] All test projects run successfully with `dotnet test`
+- [x] [CLI-24] Code formatting passes with `dotnet format --verify-no-changes`
+- [x] [CLI-25] CLI entry point uses `Microsoft.Extensions.Hosting` for dependency injection
+- [x] [CLI-26] CLI discovers the project root directory (nearest parent containing `.lopen/` or `.git/`, falling back to CWD) and passes it to `AddLopenCore(projectRoot)` and `AddLopenStorage(projectRoot)` so all path-dependent services are registered
+- [x] [CLI-27] `--no-welcome` flag suppresses the TUI landing page modal on startup
+- [x] [CLI-28] Run the CLI workflow to create a fizz-buzz application with tests to validate the workflow works
 
 ---
 

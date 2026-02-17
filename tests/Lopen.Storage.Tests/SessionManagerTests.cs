@@ -1,0 +1,675 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace Lopen.Storage.Tests;
+
+public class SessionManagerTests
+{
+    private readonly InMemoryFileSystem _fileSystem;
+    private readonly ILogger<SessionManager> _logger;
+    private readonly string _projectRoot;
+    private readonly SessionManager _manager;
+
+    public SessionManagerTests()
+    {
+        _fileSystem = new InMemoryFileSystem();
+        _logger = NullLogger<SessionManager>.Instance;
+        _projectRoot = "/test/project";
+        _manager = new SessionManager(_fileSystem, _logger, _projectRoot);
+    }
+
+    [Fact]
+    public void Constructor_ThrowsOnNullFileSystem()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new SessionManager(null!, _logger, _projectRoot));
+    }
+
+    [Fact]
+    public void Constructor_ThrowsOnNullLogger()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new SessionManager(_fileSystem, null!, _projectRoot));
+    }
+
+    [Fact]
+    public void Constructor_ThrowsOnNullProjectRoot()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            new SessionManager(_fileSystem, _logger, null!));
+    }
+
+    [Fact]
+    public void Constructor_ThrowsOnEmptyProjectRoot()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new SessionManager(_fileSystem, _logger, ""));
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_ReturnsSessionIdWithCorrectModule()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+
+        Assert.Equal("auth", sessionId.Module);
+        Assert.Equal(1, sessionId.Counter);
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_CreatesSessionDirectory()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+
+        var sessionDir = StoragePaths.GetSessionDirectory(_projectRoot, sessionId);
+        Assert.True(_fileSystem.DirectoryExists(sessionDir));
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_SavesInitialState()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+
+        var state = await _manager.LoadSessionStateAsync(sessionId);
+        Assert.NotNull(state);
+        Assert.Equal(sessionId.ToString(), state.SessionId);
+        Assert.Equal("auth", state.Module);
+        Assert.Equal("req-gathering", state.Phase);
+        Assert.Equal("draft-spec", state.Step);
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_SetsLatestSymlink()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+
+        var latest = await _manager.GetLatestSessionIdAsync();
+        Assert.NotNull(latest);
+        Assert.Equal(sessionId, latest);
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_IncrementsCounter()
+    {
+        var first = await _manager.CreateSessionAsync("auth");
+        var second = await _manager.CreateSessionAsync("auth");
+
+        Assert.Equal(1, first.Counter);
+        Assert.Equal(2, second.Counter);
+    }
+
+    [Fact]
+    public async Task CreateSessionAsync_ThrowsOnNullModule()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _manager.CreateSessionAsync(null!));
+    }
+
+    [Fact]
+    public async Task SaveSessionStateAsync_And_LoadSessionStateAsync_RoundTrips()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "building",
+            Step = "implement",
+            Module = "auth",
+            Component = "login",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+            IsComplete = false,
+        };
+
+        await _manager.SaveSessionStateAsync(sessionId, state);
+        var loaded = await _manager.LoadSessionStateAsync(sessionId);
+
+        Assert.NotNull(loaded);
+        Assert.Equal("building", loaded.Phase);
+        Assert.Equal("implement", loaded.Step);
+        Assert.Equal("login", loaded.Component);
+    }
+
+    [Fact]
+    public async Task LoadSessionStateAsync_ReturnsNull_WhenNoStateFile()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 99);
+
+        var result = await _manager.LoadSessionStateAsync(sessionId);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task SaveSessionMetricsAsync_And_LoadSessionMetricsAsync_RoundTrips()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var metrics = new SessionMetrics
+        {
+            SessionId = sessionId.ToString(),
+            CumulativeInputTokens = 1000,
+            CumulativeOutputTokens = 500,
+            PremiumRequestCount = 3,
+            IterationCount = 5,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await _manager.SaveSessionMetricsAsync(sessionId, metrics);
+        var loaded = await _manager.LoadSessionMetricsAsync(sessionId);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(1000, loaded.CumulativeInputTokens);
+        Assert.Equal(500, loaded.CumulativeOutputTokens);
+        Assert.Equal(3, loaded.PremiumRequestCount);
+        Assert.Equal(5, loaded.IterationCount);
+    }
+
+    [Fact]
+    public async Task SaveSessionMetricsAsync_And_LoadSessionMetricsAsync_WithIterations_RoundTrips()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var iterations = new List<IterationMetric>
+        {
+            new() { InputTokens = 400, OutputTokens = 200, TotalTokens = 600, ContextWindowSize = 128000, IsPremiumRequest = true },
+            new() { InputTokens = 300, OutputTokens = 150, TotalTokens = 450, ContextWindowSize = 128000, IsPremiumRequest = false },
+            new() { InputTokens = 300, OutputTokens = 150, TotalTokens = 450, ContextWindowSize = 64000, IsPremiumRequest = true },
+        };
+        var metrics = new SessionMetrics
+        {
+            SessionId = sessionId.ToString(),
+            CumulativeInputTokens = 1000,
+            CumulativeOutputTokens = 500,
+            PremiumRequestCount = 2,
+            IterationCount = 3,
+            Iterations = iterations,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await _manager.SaveSessionMetricsAsync(sessionId, metrics);
+        var loaded = await _manager.LoadSessionMetricsAsync(sessionId);
+
+        ItShouldRoundTripCumulativeMetrics(loaded, metrics);
+        ItShouldRoundTripPerIterationMetrics(loaded, iterations);
+    }
+
+    [Fact]
+    public async Task LoadSessionMetricsAsync_WithoutIterationsKey_DefaultsToEmptyList()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var metricsWithoutIterations = new SessionMetrics
+        {
+            SessionId = sessionId.ToString(),
+            CumulativeInputTokens = 500,
+            CumulativeOutputTokens = 250,
+            PremiumRequestCount = 1,
+            IterationCount = 2,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await _manager.SaveSessionMetricsAsync(sessionId, metricsWithoutIterations);
+        var loaded = await _manager.LoadSessionMetricsAsync(sessionId);
+
+        Assert.NotNull(loaded);
+        Assert.Empty(loaded.Iterations);
+        Assert.Equal(500, loaded.CumulativeInputTokens);
+    }
+
+    [Fact]
+    public async Task SaveSessionMetricsAsync_WithIterations_CumulativesMatchIterationSums()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var iterations = new List<IterationMetric>
+        {
+            new() { InputTokens = 400, OutputTokens = 200, TotalTokens = 600, ContextWindowSize = 128000, IsPremiumRequest = true },
+            new() { InputTokens = 600, OutputTokens = 300, TotalTokens = 900, ContextWindowSize = 128000, IsPremiumRequest = false },
+        };
+        var metrics = new SessionMetrics
+        {
+            SessionId = sessionId.ToString(),
+            CumulativeInputTokens = 1000,
+            CumulativeOutputTokens = 500,
+            PremiumRequestCount = 1,
+            IterationCount = 2,
+            Iterations = iterations,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await _manager.SaveSessionMetricsAsync(sessionId, metrics);
+        var loaded = await _manager.LoadSessionMetricsAsync(sessionId);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(loaded.CumulativeInputTokens, loaded.Iterations.Sum(i => i.InputTokens));
+        Assert.Equal(loaded.CumulativeOutputTokens, loaded.Iterations.Sum(i => i.OutputTokens));
+    }
+
+    private static void ItShouldRoundTripCumulativeMetrics(SessionMetrics? loaded, SessionMetrics original)
+    {
+        Assert.NotNull(loaded);
+        Assert.Equal(original.CumulativeInputTokens, loaded.CumulativeInputTokens);
+        Assert.Equal(original.CumulativeOutputTokens, loaded.CumulativeOutputTokens);
+        Assert.Equal(original.PremiumRequestCount, loaded.PremiumRequestCount);
+        Assert.Equal(original.IterationCount, loaded.IterationCount);
+    }
+
+    private static void ItShouldRoundTripPerIterationMetrics(SessionMetrics? loaded, List<IterationMetric> expectedIterations)
+    {
+        Assert.NotNull(loaded);
+        Assert.Equal(expectedIterations.Count, loaded.Iterations.Count);
+        for (int i = 0; i < expectedIterations.Count; i++)
+        {
+            Assert.Equal(expectedIterations[i].InputTokens, loaded.Iterations[i].InputTokens);
+            Assert.Equal(expectedIterations[i].OutputTokens, loaded.Iterations[i].OutputTokens);
+            Assert.Equal(expectedIterations[i].TotalTokens, loaded.Iterations[i].TotalTokens);
+            Assert.Equal(expectedIterations[i].ContextWindowSize, loaded.Iterations[i].ContextWindowSize);
+            Assert.Equal(expectedIterations[i].IsPremiumRequest, loaded.Iterations[i].IsPremiumRequest);
+        }
+    }
+
+    [Fact]
+    public async Task LoadSessionMetricsAsync_ReturnsNull_WhenNoMetricsFile()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 99);
+
+        var result = await _manager.LoadSessionMetricsAsync(sessionId);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task ListSessionsAsync_ReturnsEmpty_WhenNoSessions()
+    {
+        var sessions = await _manager.ListSessionsAsync();
+
+        Assert.Empty(sessions);
+    }
+
+    [Fact]
+    public async Task ListSessionsAsync_ReturnsCreatedSessions()
+    {
+        await _manager.CreateSessionAsync("auth");
+        await _manager.CreateSessionAsync("core");
+
+        var sessions = await _manager.ListSessionsAsync();
+
+        Assert.Equal(2, sessions.Count);
+        Assert.Contains(sessions, s => s.Module == "auth");
+        Assert.Contains(sessions, s => s.Module == "core");
+    }
+
+    [Fact]
+    public async Task SetLatestAsync_UpdatesSymlink()
+    {
+        var first = await _manager.CreateSessionAsync("auth");
+        var second = await _manager.CreateSessionAsync("core");
+
+        await _manager.SetLatestAsync(first);
+        var latest = await _manager.GetLatestSessionIdAsync();
+
+        Assert.Equal(first, latest);
+    }
+
+    [Fact]
+    public async Task GetLatestSessionIdAsync_ReturnsNull_WhenNoSymlink()
+    {
+        var result = await _manager.GetLatestSessionIdAsync();
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task SaveSessionStateAsync_UsesAtomicWrite()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "planning",
+            Step = "dependencies",
+            Module = "auth",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await _manager.SaveSessionStateAsync(sessionId, state);
+
+        // The temp file should not exist after save
+        var statePath = StoragePaths.GetSessionStatePath(_projectRoot, sessionId);
+        var tempPath = statePath + ".tmp";
+        Assert.False(_fileSystem.FileExists(tempPath));
+
+        // The actual file should exist
+        Assert.True(_fileSystem.FileExists(statePath));
+    }
+
+    [Fact]
+    public async Task SaveSessionStateAsync_ThrowsOnNullSessionId()
+    {
+        var state = new SessionState
+        {
+            SessionId = "test",
+            Phase = "p",
+            Step = "s",
+            Module = "m",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _manager.SaveSessionStateAsync(null!, state));
+    }
+
+    [Fact]
+    public async Task SaveSessionStateAsync_ThrowsOnNullState()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _manager.SaveSessionStateAsync(sessionId, null!));
+    }
+
+    // === QuarantineCorruptedSessionAsync ===
+
+    [Fact]
+    public async Task QuarantineCorruptedSessionAsync_MovesSessionToCorruptedDir()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+
+        await _manager.QuarantineCorruptedSessionAsync(sessionId);
+
+        var corruptedDir = StoragePaths.GetCorruptedDirectory(_projectRoot);
+        Assert.True(_fileSystem.DirectoryExists(Path.Combine(corruptedDir, sessionId.ToString())));
+    }
+
+    [Fact]
+    public async Task QuarantineCorruptedSessionAsync_NonExistentSession_DoesNotThrow()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 99);
+
+        await _manager.QuarantineCorruptedSessionAsync(sessionId);
+    }
+
+    [Fact]
+    public async Task QuarantineCorruptedSessionAsync_NullSessionId_Throws()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _manager.QuarantineCorruptedSessionAsync(null!));
+    }
+
+    // === PruneSessionsAsync ===
+
+    [Fact]
+    public async Task PruneSessionsAsync_FewerThanRetention_PrunesNothing()
+    {
+        await _manager.CreateSessionAsync("auth");
+        await _manager.CreateSessionAsync("auth");
+
+        var pruned = await _manager.PruneSessionsAsync(5);
+
+        Assert.Equal(0, pruned);
+        var sessions = await _manager.ListSessionsAsync();
+        Assert.Equal(2, sessions.Count);
+    }
+
+    [Fact]
+    public async Task PruneSessionsAsync_ExactlyRetention_PrunesNothing()
+    {
+        await _manager.CreateSessionAsync("auth");
+        await _manager.CreateSessionAsync("core");
+        await _manager.CreateSessionAsync("llm");
+
+        var pruned = await _manager.PruneSessionsAsync(3);
+
+        Assert.Equal(0, pruned);
+    }
+
+    [Fact]
+    public async Task PruneSessionsAsync_MoreThanRetention_PrunesOldest()
+    {
+        await _manager.CreateSessionAsync("auth");
+        await _manager.CreateSessionAsync("auth");
+        await _manager.CreateSessionAsync("auth");
+
+        var pruned = await _manager.PruneSessionsAsync(1);
+
+        Assert.Equal(2, pruned);
+    }
+
+    [Fact]
+    public async Task PruneSessionsAsync_InvalidRetention_Throws()
+    {
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _manager.PruneSessionsAsync(0));
+    }
+
+    // === DeleteSessionAsync ===
+
+    [Fact]
+    public async Task DeleteSessionAsync_ExistingSession_RemovesDirectory()
+    {
+        var session = await _manager.CreateSessionAsync("auth");
+        await _manager.DeleteSessionAsync(session);
+
+        // Session should no longer appear in list
+        var sessions = await _manager.ListSessionsAsync();
+        Assert.DoesNotContain(sessions, s => s.Equals(session));
+    }
+
+    [Fact]
+    public async Task DeleteSessionAsync_NonexistentSession_ThrowsStorageException()
+    {
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 99);
+
+        await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.DeleteSessionAsync(sessionId));
+    }
+
+    [Fact]
+    public async Task DeleteSessionAsync_NullSessionId_Throws()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _manager.DeleteSessionAsync(null!));
+    }
+
+    // === IO Error Wrapping ===
+
+    [Fact]
+    public async Task SaveSessionStateAsync_IoError_ThrowsStorageException()
+    {
+        var failFs = new FailingWriteFileSystem();
+        var mgr = new SessionManager(failFs, _logger, _projectRoot);
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "p",
+            Step = "s",
+            Module = "m",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await Assert.ThrowsAsync<StorageException>(() =>
+            mgr.SaveSessionStateAsync(sessionId, state));
+    }
+
+    [Fact]
+    public async Task SaveSessionMetricsAsync_IoError_ThrowsStorageException()
+    {
+        var failFs = new FailingWriteFileSystem();
+        var mgr = new SessionManager(failFs, _logger, _projectRoot);
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var metrics = new SessionMetrics
+        {
+            SessionId = sessionId.ToString(),
+            CumulativeInputTokens = 100,
+            CumulativeOutputTokens = 50,
+            PremiumRequestCount = 1,
+            IterationCount = 1,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        await Assert.ThrowsAsync<StorageException>(() =>
+            mgr.SaveSessionMetricsAsync(sessionId, metrics));
+    }
+
+    /// <summary>
+    /// File system that fails on write operations (simulates disk full/write failure).
+    /// </summary>
+    private sealed class FailingWriteFileSystem : IFileSystem
+    {
+        private readonly HashSet<string> _directories = new(StringComparer.Ordinal);
+
+        public void CreateDirectory(string path) => _directories.Add(path);
+        public bool FileExists(string path) => false;
+        public bool DirectoryExists(string path) => _directories.Contains(path);
+        public Task<string> ReadAllTextAsync(string path, CancellationToken ct) => throw new FileNotFoundException();
+        public Task WriteAllTextAsync(string path, string content, CancellationToken ct) => throw new IOException("Disk full");
+        public IEnumerable<string> GetFiles(string path, string searchPattern = "*") => [];
+        public IEnumerable<string> GetDirectories(string path) => [];
+        public void MoveFile(string src, string dst) => throw new IOException("Disk full");
+        public void DeleteFile(string path) { }
+        public void DeleteDirectory(string path, bool recursive = true) { }
+        public void CreateSymlink(string linkPath, string targetPath) { }
+        public string? GetSymlinkTarget(string linkPath) => null;
+        public DateTime GetLastWriteTimeUtc(string path) => DateTime.MinValue;
+    }
+
+    // === STOR-14: Corrupted session detection ===
+
+    [Fact]
+    public async Task LoadSessionStateAsync_TruncatedJson_ThrowsStorageException()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+        var statePath = StoragePaths.GetSessionStatePath(_projectRoot, sessionId);
+        await _fileSystem.WriteAllTextAsync(statePath, "{\"SessionId\":", default);
+
+        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.LoadSessionStateAsync(sessionId));
+        Assert.IsType<System.Text.Json.JsonException>(ex.InnerException);
+    }
+
+    [Fact]
+    public async Task LoadSessionStateAsync_BinaryGarbage_ThrowsStorageException()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+        var statePath = StoragePaths.GetSessionStatePath(_projectRoot, sessionId);
+        await _fileSystem.WriteAllTextAsync(statePath, "\x00\x01\x02\xFF garbage", default);
+
+        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.LoadSessionStateAsync(sessionId));
+        Assert.IsType<System.Text.Json.JsonException>(ex.InnerException);
+    }
+
+    [Fact]
+    public async Task LoadSessionStateAsync_EmptyFile_ThrowsStorageException()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+        var statePath = StoragePaths.GetSessionStatePath(_projectRoot, sessionId);
+        await _fileSystem.WriteAllTextAsync(statePath, "", default);
+
+        await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.LoadSessionStateAsync(sessionId));
+    }
+
+    [Fact]
+    public async Task LoadSessionMetricsAsync_CorruptJson_ThrowsStorageException()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+        var metricsPath = StoragePaths.GetSessionMetricsPath(_projectRoot, sessionId);
+        _fileSystem.CreateDirectory(Path.GetDirectoryName(metricsPath)!);
+        await _fileSystem.WriteAllTextAsync(metricsPath, "not json", default);
+
+        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.LoadSessionMetricsAsync(sessionId));
+        Assert.IsType<System.Text.Json.JsonException>(ex.InnerException);
+    }
+
+    [Fact]
+    public async Task CorruptSession_DetectAndQuarantine_FilesMovedToCorruptedDir()
+    {
+        var goodId = await _manager.CreateSessionAsync("auth");
+        var badId = await _manager.CreateSessionAsync("auth");
+
+        // Corrupt the bad session
+        var statePath = StoragePaths.GetSessionStatePath(_projectRoot, badId);
+        await _fileSystem.WriteAllTextAsync(statePath, "corrupt!", default);
+
+        // Detect corruption
+        await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.LoadSessionStateAsync(badId));
+
+        // Quarantine it — files move to .lopen/corrupted/
+        await _manager.QuarantineCorruptedSessionAsync(badId);
+
+        // Verify files moved to corrupted dir
+        var corruptedDir = StoragePaths.GetCorruptedDirectory(_projectRoot);
+        Assert.True(_fileSystem.DirectoryExists(Path.Combine(corruptedDir, badId.ToString())));
+
+        // Good session still loads
+        var goodState = await _manager.LoadSessionStateAsync(goodId);
+        Assert.NotNull(goodState);
+    }
+
+    // === STOR-16: Disk-full / write-failure ===
+
+    [Fact]
+    public async Task CreateSessionAsync_IoError_ThrowsStorageException()
+    {
+        var failFs = new FailingWriteFileSystem();
+        var mgr = new SessionManager(failFs, _logger, _projectRoot);
+
+        await Assert.ThrowsAsync<StorageException>(() =>
+            mgr.CreateSessionAsync("auth"));
+    }
+
+    [Fact]
+    public async Task SaveSessionStateAsync_IoError_InnerExceptionIsIOException()
+    {
+        var failFs = new FailingWriteFileSystem();
+        var mgr = new SessionManager(failFs, _logger, _projectRoot);
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "p",
+            Step = "s",
+            Module = "m",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+            mgr.SaveSessionStateAsync(sessionId, state));
+        Assert.IsType<IOException>(ex.InnerException);
+        Assert.Contains("Disk full", ex.InnerException!.Message);
+    }
+
+    // ==================== STOR-04: Session ID collision prevention ====================
+
+    [Fact]
+    public async Task CreateSession_SequentialCallsSameModule_ProduceUniqueIds()
+    {
+        var id1 = await _manager.CreateSessionAsync("auth");
+        var id2 = await _manager.CreateSessionAsync("auth");
+        var id3 = await _manager.CreateSessionAsync("auth");
+
+        Assert.NotEqual(id1, id2);
+        Assert.NotEqual(id2, id3);
+        Assert.NotEqual(id1, id3);
+
+        // Counters should be sequential
+        Assert.Equal(1, id1.Counter);
+        Assert.Equal(2, id2.Counter);
+        Assert.Equal(3, id3.Counter);
+    }
+
+    [Fact]
+    public async Task CreateSession_DifferentModules_ProduceIndependentCounters()
+    {
+        var authId = await _manager.CreateSessionAsync("auth");
+        var coreId = await _manager.CreateSessionAsync("core");
+
+        Assert.Equal(1, authId.Counter);
+        Assert.Equal(1, coreId.Counter);
+        Assert.NotEqual(authId.Module, coreId.Module);
+    }
+}

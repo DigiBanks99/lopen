@@ -1,6 +1,6 @@
 ---
-name: unit-tests
-description: Writing good, consistent unit tests according to best practices
+name: write-unit-tests
+description: Write well-structured unit tests that conform to standards for the lopen codebase to ensure code quality and reliability.
 ---
 
 Unit tests are a limited form of testing that are focussed on the integrity of a single unit of code, such as a method or class. They are designed to be fast and isolated, allowing developers to quickly verify that their code behaves as expected under various conditions.
@@ -13,7 +13,7 @@ Unit tests are a limited form of testing that are focussed on the integrity of a
 4. Tests are deterministic and produce the same result every time they are run
 5. Tests assert outputs for a given set of inputs and conditions
 6. Test expectations can consist of multiple assertions
-7. Assertions are done with `Shouldly`
+7. Assertions are done with `Shouldly` and not with `Assert` or other assertion libraries, to improve readability and consistency across tests
 8. Mocks and stubs are done with `NSubstitute`
 9. Logging and telemetry are never tested
   1. Use `NullLogger.Instance` for tests (`Microsoft.Extensions.Logging.Abstractions` namespace)

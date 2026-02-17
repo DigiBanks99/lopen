@@ -1,0 +1,69 @@
+{
+  "module": "llm",
+  "description": "LLM service, model selection, token tracking, tool registry, prompt building",
+  "status": "in_progress",
+  "components": {
+    "tool_handlers": {
+      "status": "complete",
+      "implementation": "ToolHandlerBinder (10 handlers), Handler delegate on LopenToolDefinition, BindHandler on IToolRegistry",
+      "tests": "ToolHandlerBinderTests (22 tests)",
+      "jobs": [
+        "JOB-003"
+      ],
+      "notes": "Handlers: read_spec, read_research, read_plan, update_task_status, get_current_context, log_research, report_progress, verify_task/component/module_completion. Oracle verification enforced before task completion."
+    },
+    "oracle_verifier_wiring": {
+      "status": "complete",
+      "implementation": "IOracleVerifier wired into ToolHandlerBinder. Verify handlers call VerifyAsync() with evidence/criteria. Auto-pass fallback when oracle unavailable.",
+      "tests": "ToolHandlerBinderTests (12 new: oracle dispatch pass/fail, fallback, end-to-end with update_task_status)",
+      "jobs": [
+        "JOB-082"
+      ],
+      "notes": "LLM-06 met. DI registration updated in ServiceCollectionExtensions.cs."
+    },
+    "sdk_tool_registration": {
+      "status": "complete",
+      "implementation": "ToolConversion static class in Lopen.Llm converts LopenToolDefinition \u2192 AIFunction via AIFunctionFactory.Create. CopilotLlmService sets SessionConfig.Tools before session creation.",
+      "tests": "ToolConversionTests (11 tests)",
+      "jobs": [
+        "JOB-002"
+      ],
+      "notes": "CORE-25: Filters null handlers. Maps name/description. Wraps handler delegate for SDK compatibility. Microsoft.Extensions.AI.Abstractions added as explicit dependency."
+    },
+    "model_fallback": {
+      "status": "complete",
+      "spec_ref": "LLM-11",
+      "files": [
+        "RetryingLlmService.cs",
+        "LlmException.cs",
+        "DefaultModelSelector.cs"
+      ],
+      "tests": "RetryingLlmServiceTests (19 tests)",
+      "notes": "Decorator wraps CopilotLlmService. Per-phase fallback chains in ModelOptions. IsModelUnavailable flag on LlmException with heuristic detection."
+    },
+    "token_metrics_persistence": {
+      "status": "complete",
+      "spec_ref": "LLM-13",
+      "files": [
+        "ITokenTracker.cs",
+        "InMemoryTokenTracker.cs",
+        "WorkflowOrchestrator.cs"
+      ],
+      "tests": "InMemoryTokenTrackerTests (16 total, 4 new for prior-iteration restore/round-trip)",
+      "notes": "RestoreMetrics on resume ensures cumulative values monotonically increase across sessions. RestoreMetrics now accepts optional priorIterations to preserve per-iteration history across sessions (STOR-03)."
+    },
+    "tool-per-phase": {
+      "status": "complete",
+      "tasks": {
+        "add-comprehensive-per-phase-tests": "complete"
+      }
+    },
+    "stub-cleanup": {
+      "status": "complete",
+      "tasks": {
+        "remove-stub-llm-service": "complete"
+      }
+    }
+  },
+  "last_updated": "2026-02-17T05:20:00Z"
+}

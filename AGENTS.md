@@ -10,6 +10,9 @@ IMPORTANT:
 - Keep AGENTS.md concise and only with information to help solve problems quickly.
 - Never make additional files for research. Keep all isolated to @docs/requirements/<module>/RESEARCH.md
 - Keep SPECIFICATION.md files clean of research or implementation advice
+- Functionality is driven by other Lopen modules in `src`
+- You must run the full test suite, verify that the tests pass and `lopen test tui` before committing changes and marking a job/task done
+- Use subagents as much as possible as you've got a limited context window
 
 **Lopen** is a .NET 10.0 CLI application with REPL capabilities for GitHub Copilot integration.
 
@@ -43,3 +46,5 @@ core, llm, storage, configuration, cli, auth, tui, otel — each under `docs/req
 4. The Copilot SDK package is `GitHub.Copilot.SDK` (NuGet, technical preview)
 5. CLI parsing uses `System.CommandLine`
 6. TUI uses Spectre.Tui (cell-based rendering, Ratatui-inspired) with Spectre.Console for non-TUI output
+7. Run a sub-agent with model gpt-5-mini to verify that all the acceptance criteria have been met before marking a task as done. Be clear on what task was done and where to find the acceptance criteria
+8. Write the state of jobs to @.lopen/module/<module>/state.json and keep it up to date with progress

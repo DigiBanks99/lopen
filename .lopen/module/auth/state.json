@@ -1,0 +1,44 @@
+{
+  "module": "auth",
+  "description": "Authentication for GitHub Copilot SDK access",
+  "status": "complete",
+  "components": {
+    "token_renewal": {
+      "status": "complete",
+      "implementation": "AuthErrorHandler in LLM module handles SDK OnErrorOccurred",
+      "tests": "AuthErrorHandlerTests (12 tests)",
+      "jobs": [
+        "JOB-018"
+      ],
+      "notes": "Token renewal via SDK retry mechanism; failed renewal saves state and aborts"
+    },
+    "pre_flight_auth_check": {
+      "status": "complete",
+      "implementation": "ValidateAuthAsync helper in PhaseCommands; wired into spec/plan/build commands and RootCommandHandler (headless + interactive)",
+      "tests": "PhaseCommandTests (AUTH-10: 6 tests), RootCommandTests (AUTH-10: 2 tests)",
+      "jobs": [
+        "JOB-001",
+        "JOB-002"
+      ],
+      "notes": "Calls IAuthService.ValidateAsync before workflow execution; gracefully skips when auth module not registered"
+    },
+    "no_credential_storage": {
+      "status": "complete",
+      "implementation": "CopilotAuthService delegates all storage to IGhCliAdapter/env vars",
+      "tests": "AuthNoCredentialStorageTests (17 tests: behavioral + reflection + source-scan)",
+      "jobs": [
+        "JOB-087"
+      ]
+    },
+    "acceptance_criteria_tests": {
+      "status": "complete",
+      "implementation": "AuthAcceptanceCriteriaTests.cs covers AUTH-01 through AUTH-15",
+      "tests": "AuthAcceptanceCriteriaTests (31 tests: AC01-AC15)",
+      "jobs": [
+        "JOB-099"
+      ],
+      "notes": "Consolidated acceptance criteria tests with explicit AUTH-XX requirement code traceability"
+    }
+  },
+  "last_updated": "2026-02-17T19:15:00Z"
+}

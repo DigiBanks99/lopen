@@ -929,6 +929,1411 @@ Building on Spectre.Tui provides a clean, single-library architecture with the c
 
 ---
 
+## 13. TUI Application Shell Architecture
+
+### Current State
+
+The TUI module has a complete set of building blocks but no running application:
+
+- **`StubTuiApplication`** implements `ITuiApplication` as a no-op. `RunAsync` sets `IsRunning = true` and returns immediately. Registered via DI in `ServiceCollectionExtensions.AddLopenTui()`.
+- **15 real components** exist (`TopPanelComponent`, `ActivityPanelComponent`, `ContextPanelComponent`, `PromptAreaComponent`, `GalleryListComponent`, `LandingPageComponent`, `SessionResumeModalComponent`, `DiffViewerComponent`, `PhaseTransitionComponent`, `ResearchDisplayComponent`, `FilePickerComponent`, `SelectionModalComponent`, `ConfirmationModalComponent`, `ErrorModalComponent`, `SpinnerComponent`). All render to `string[]` — pure functions of `(Data, ScreenRect) → string[]`.
+- **`LayoutCalculator`** computes `LayoutRegions` (Header, Activity, Context, Prompt) from screen dimensions and split percentage. Fully implemented, returns `ScreenRect` records.
+- **`KeyboardHandler`** maps `KeyInput` → `KeyAction` with focus-aware routing. Supports Tab cycling, Ctrl+P pause, Ctrl+C cancel, Enter submit, Alt+Enter newline, 1-9 resource view, Space/Enter expand. Fully implemented.
+- **`Spectre.Tui` 0.0.0-preview.0.46** is referenced in the csproj but never used — no `Terminal.Create()`, no `Renderer`, no `IWidget` implementations.
+
+### The Gap
+
+A real `ITuiApplication` implementation must:
+
+1. Create a `Terminal` + `Renderer` (Spectre.Tui)
+2. Run a render loop that reads state, calls components, and writes output to cells
+3. Poll `Console.ReadKey` and feed through `KeyboardHandler`
+4. Bridge the `string[]` component output → Spectre.Tui's `RenderContext` cell buffer
+5. Handle terminal resize, alt-screen, and graceful shutdown
+
+### Application Shell Design
+
+```csharp
+internal sealed class TuiApplication : ITuiApplication
+{
+    private readonly IComponentGallery _gallery;
+    private readonly KeyboardHandler _keyboard;
+    private readonly ILogger<TuiApplication> _logger;
+    private volatile bool _running;
+
+    public bool IsRunning => _running;
+
+    public async Task RunAsync(CancellationToken cancellationToken = default)
+    {
+        _running = true;
+
+        using var terminal = Terminal.Create(new FullscreenMode());
+        var renderer = new Renderer(terminal);
+        renderer.SetTargetFps(30);
+
+        var state = new TuiState();
+
+        while (!cancellationToken.IsCancellationRequested && _running)
+        {
+            // 1. Drain input
+            while (Console.KeyAvailable)
+            {
+                var keyInfo = Console.ReadKey(intercept: true);
+                var input = MapToKeyInput(keyInfo);
+                var action = _keyboard.Handle(input, state.CurrentFocus);
+                ApplyAction(action, state, keyInfo);
+            }
+
+            // 2. Render frame
+            renderer.Draw((ctx, elapsed) =>
+            {
+                var regions = LayoutCalculator.Calculate(
+                    ctx.Viewport.Width, ctx.Viewport.Height,
+                    state.SplitPercent);
+
+                RenderRegion(ctx, regions.Header, _topPanel.Render(state.TopData, ToScreenRect(regions.Header)));
+                RenderRegion(ctx, regions.Activity, _activityPanel.Render(state.ActivityData, ToScreenRect(regions.Activity)));
+                RenderRegion(ctx, regions.Context, _contextPanel.Render(state.ContextData, ToScreenRect(regions.Context)));
+                RenderRegion(ctx, regions.Prompt, _promptArea.Render(state.PromptData, ToScreenRect(regions.Prompt)));
+
+                if (state.ActiveModal is not null)
+                    RenderModal(ctx, state);
+            });
+
+            // 3. Yield to avoid busy-waiting (Renderer.Draw handles FPS throttling internally)
+            await Task.Delay(1, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    public Task StopAsync()
+    {
+        _running = false;
+        return Task.CompletedTask;
+    }
+}
+```
+
+### Bridging `string[]` Components → Spectre.Tui Cells
+
+The existing components produce `string[]`. Each line maps to a row of cells in the Spectre.Tui buffer:
+
+```csharp
+private static void RenderRegion(RenderContext ctx, LayoutRegions.ScreenRect region, string[] lines)
+{
+    for (int row = 0; row < lines.Length && row < region.Height; row++)
+    {
+        ctx.SetString(region.X, region.Y + row, lines[row], Style.Plain, region.Width);
+    }
+}
+```
+
+This is the **minimal bridge** — plain text, no styling. To add color, components would need to evolve to produce `TextLine[]` (Spectre.Tui's styled span model) instead of `string[]`. This can be done incrementally:
+
+1. **Phase 1**: `string[]` → `SetString` with `Style.Plain`. Validates layout and composition.
+2. **Phase 2**: Introduce `IStyledTuiComponent<TData>` returning `TextLine[]`. Components opt in one at a time.
+3. **Phase 3**: Components use `ColorPalette` to produce `TextSpan`s with semantic styles (success=green, error=red, muted=grey).
+
+### ScreenRect → Rectangle Mapping
+
+The existing `ScreenRect` record is decoupled from Spectre.Tui by design. The bridge is trivial:
+
+```csharp
+private static Rectangle ToRectangle(ScreenRect rect) =>
+    new(rect.X, rect.Y, rect.Width, rect.Height);
+```
+
+Alternatively, `RenderRegion` can use `ctx.SetString(x, y, ...)` directly with `ScreenRect` coordinates, avoiding Spectre.Tui `Rectangle` entirely in the component layer. This keeps components framework-agnostic.
+
+### Main Render Loop Pattern
+
+The loop follows the standard game-loop pattern that Spectre.Tui is designed for:
+
+```
+┌─────────────────────────────────┐
+│ 1. Poll Input (non-blocking)    │
+│    └─ Console.ReadKey if avail  │
+│    └─ Map to KeyInput           │
+│    └─ KeyboardHandler.Handle()  │
+│    └─ Apply KeyAction to state  │
+│                                 │
+│ 2. Update State                 │
+│    └─ Drain workflow events     │
+│    └─ Advance spinner frame     │
+│    └─ Process pending prompts   │
+│                                 │
+│ 3. Render Frame                 │
+│    └─ LayoutCalculator regions  │
+│    └─ Component.Render(data)    │
+│    └─ Bridge string[] → cells   │
+│    └─ Modal overlay if active   │
+│    └─ Renderer diffs + flushes  │
+│                                 │
+│ 4. Throttle (FPS target)        │
+│    └─ Renderer.Draw handles it  │
+└────────────── loop ─────────────┘
+```
+
+### Terminal I/O Considerations
+
+**Spectre.Tui `FullscreenMode`** switches to the alternate screen buffer and hides the cursor. This is the correct mode for Lopen's full-screen layout. On exit (dispose), it restores the original screen.
+
+**Input polling**: `Console.ReadKey(intercept: true)` is used inside the loop. Spectre.Tui does not provide an input abstraction — this is by design (rendering-only framework). The existing `KeyboardHandler` already expects `KeyInput` records built from `ConsoleKeyInfo`, so the mapping is:
+
+```csharp
+private static KeyInput MapToKeyInput(ConsoleKeyInfo info) => new()
+{
+    Key = info.Key,
+    Modifiers = info.Modifiers,
+    KeyChar = info.KeyChar
+};
+```
+
+**Resize handling**: Spectre.Tui's `Renderer` detects terminal size changes between frames. The `RenderContext.Viewport` reflects the current terminal size each frame, so `LayoutCalculator.Calculate` is called with fresh dimensions every frame — no explicit resize handler needed.
+
+**Cursor for prompt**: The prompt area needs a visible cursor at the text insertion point. After rendering the prompt region, position the terminal cursor:
+
+```csharp
+// After rendering, position cursor at end of prompt text
+var promptRect = regions.Prompt;
+int cursorX = promptRect.X + 2 + state.PromptCursorOffset; // ">" prefix + text offset
+int cursorY = promptRect.Y;
+ctx.SetStyle(cursorX, cursorY, new Style(decoration: Decoration.Underline));
+```
+
+### TuiState: Central State Object
+
+```csharp
+internal sealed class TuiState
+{
+    // Focus
+    public FocusPanel CurrentFocus { get; set; } = FocusPanel.Prompt;
+
+    // Layout
+    public int SplitPercent { get; set; } = 60;
+
+    // Component data (updated by workflow thread, read by render loop)
+    public TopPanelData TopData { get; set; } = TopPanelData.Default;
+    public ActivityPanelData ActivityData { get; set; } = ActivityPanelData.Empty;
+    public ContextPanelData ContextData { get; set; } = ContextPanelData.Empty;
+    public PromptAreaData PromptData { get; set; } = PromptAreaData.Default;
+
+    // Modal
+    public ModalState? ActiveModal { get; set; }
+
+    // Prompt input buffer
+    public StringBuilder InputBuffer { get; } = new();
+    public int PromptCursorOffset => InputBuffer.Length;
+
+    // Spinner frame (incremented each render)
+    public int SpinnerFrame { get; set; }
+}
+```
+
+Data objects are replaced atomically (reference assignment is atomic in .NET). The workflow thread creates a new `TopPanelData` / `ActivityPanelData` and assigns it; the render loop reads the latest reference each frame.
+
+### DI Registration
+
+```csharp
+public static IServiceCollection AddLopenTui(this IServiceCollection services)
+{
+    // Replace stub with real implementation
+    services.AddSingleton<ITuiApplication, TuiApplication>();
+
+    // Existing registrations unchanged
+    services.AddSingleton<IComponentGallery>(sp => { /* ... */ });
+    return services;
+}
+```
+
+The `--headless` flag continues to use `StubTuiApplication` via a conditional registration or named resolution.
+
+---
+
+## 14. Component Gallery Launcher (`lopen test tui`)
+
+### Purpose
+
+An interactive gallery that lets developers browse and preview all registered TUI components with mock data. This validates component rendering without running the full workflow.
+
+### Existing Infrastructure
+
+- **`IComponentGallery`** / **`ComponentGallery`**: Registry with `Register()`, `GetAll()`, `GetByName()`. All 14 built-in components are registered in `AddLopenTui()`.
+- **`GalleryListComponent`**: Renders a selectable list of components with `▶` selection marker. `FromGallery()` creates `GalleryListData` from the registry.
+- **`IPreviewableComponent`**: Optional interface with `RenderPreview(width, height) → string[]`. Components that implement this can show preview output in the gallery.
+- **`ITuiComponent`**: All components have `Name` and `Description` properties for gallery listing.
+
+### Implementation Design
+
+The gallery launcher is a self-contained TUI application (separate from the main workflow TUI) that uses the same Spectre.Tui renderer:
+
+```csharp
+internal sealed class ComponentGalleryApp
+{
+    private readonly IComponentGallery _gallery;
+
+    public async Task RunAsync(CancellationToken ct)
+    {
+        using var terminal = Terminal.Create(new FullscreenMode());
+        var renderer = new Renderer(terminal);
+        renderer.SetTargetFps(30);
+
+        var components = _gallery.GetAll();
+        int selectedIndex = 0;
+        ITuiComponent? previewComponent = null;
+
+        while (!ct.IsCancellationRequested)
+        {
+            renderer.Draw((ctx, elapsed) =>
+            {
+                var screen = ctx.Viewport;
+
+                // Left half: component list
+                int listWidth = screen.Width / 3;
+                var listRegion = new ScreenRect(0, 0, listWidth, screen.Height);
+                var listData = new GalleryListData
+                {
+                    Items = components.Select(c => new GalleryItem(c.Name, c.Description)).ToList(),
+                    SelectedIndex = selectedIndex
+                };
+                var listLines = new GalleryListComponent().Render(listData, listRegion);
+                RenderLines(ctx, listRegion, listLines);
+
+                // Right two-thirds: preview
+                int previewX = listWidth + 1;
+                int previewWidth = screen.Width - previewX;
+                var previewRegion = new ScreenRect(previewX, 0, previewWidth, screen.Height);
+
+                if (components[selectedIndex] is IPreviewableComponent previewable)
+                {
+                    var previewLines = previewable.RenderPreview(previewWidth, screen.Height);
+                    RenderLines(ctx, previewRegion, previewLines);
+                }
+                else
+                {
+                    ctx.SetString(previewX, 1, $"  {components[selectedIndex].Name}", Style.Plain, previewWidth);
+                    ctx.SetString(previewX, 2, $"  {components[selectedIndex].Description}", Style.Plain, previewWidth);
+                    ctx.SetString(previewX, 4, "  (No preview available — implement IPreviewableComponent)", Style.Plain, previewWidth);
+                }
+
+                // Divider line
+                for (int y = 0; y < screen.Height; y++)
+                    ctx.SetString(listWidth, y, "│", Style.Plain, 1);
+
+                // Footer
+                ctx.SetString(0, screen.Height - 1, " ↑↓: Navigate  Enter: Select  Q: Quit", Style.Plain, screen.Width);
+            });
+
+            // Input
+            while (Console.KeyAvailable)
+            {
+                var key = Console.ReadKey(intercept: true);
+                switch (key.Key)
+                {
+                    case ConsoleKey.UpArrow:
+                        selectedIndex = Math.Max(0, selectedIndex - 1);
+                        break;
+                    case ConsoleKey.DownArrow:
+                        selectedIndex = Math.Min(components.Count - 1, selectedIndex + 1);
+                        break;
+                    case ConsoleKey.Q:
+                    case ConsoleKey.Escape:
+                        return;
+                }
+            }
+
+            await Task.Delay(1, ct).ConfigureAwait(false);
+        }
+    }
+}
+```
+
+### Making Components Previewable
+
+Components that want gallery previews implement `IPreviewableComponent`:
+
+```csharp
+public sealed class TopPanelComponent : ITuiComponent, IPreviewableComponent
+{
+    // ... existing Render method ...
+
+    public string[] RenderPreview(int width, int height)
+    {
+        var stubData = new TopPanelData
+        {
+            Version = "v0.1.0",
+            ModelName = "Claude Sonnet 4",
+            ContextUsedTokens = 24_000,
+            ContextMaxTokens = 128_000,
+            GitBranch = "feature/tui",
+            IsAuthenticated = true,
+            PhaseName = "Building",
+            CurrentStep = 3,
+            TotalSteps = 7,
+            StepLabel = "Iterate through tasks",
+            ShowLogo = true,
+        };
+        return Render(stubData, new ScreenRect(0, 0, width, height));
+    }
+}
+```
+
+### CLI Integration
+
+The gallery is launched via a CLI subcommand:
+
+```csharp
+// In command registration:
+var testTuiCommand = new Command("tui", "Launch TUI component gallery");
+testCommand.AddCommand(testTuiCommand);
+
+testTuiCommand.SetAction(async (ParseResult _, CancellationToken ct) =>
+{
+    var gallery = services.GetRequiredService<IComponentGallery>();
+    var app = new ComponentGalleryApp(gallery);
+    await app.RunAsync(ct);
+    return ExitCodes.Success;
+});
+```
+
+### Gallery Features (Incremental)
+
+1. **v1**: List + preview pane with `IPreviewableComponent`. Arrow key navigation, Q to quit.
+2. **v2**: Multiple stub scenarios per component (e.g., "empty state", "in progress", "error state"). Use a scenarios list below the preview.
+3. **v3**: Live resize testing — gallery re-renders as terminal is resized, validating responsive layout.
+4. **v4**: Side-by-side comparison — show two components simultaneously to verify visual consistency.
+
+---
+
+## 15. Workflow Integration
+
+### Architecture Overview
+
+The TUI runs on the main thread (render loop). The workflow engine runs on a background thread. Communication is via shared state with atomic reference updates.
+
+```
+┌──────────────────────┐       ┌──────────────────────┐
+│   TUI Thread (main)  │       │  Workflow Thread      │
+│                      │       │                       │
+│  Render loop:        │       │  WorkflowEngine:      │
+│  ┌─ poll input       │       │  ┌─ InitializeAsync   │
+│  ├─ read TuiState    │◄──────┤  ├─ Fire(trigger)     │
+│  ├─ render frame     │       │  ├─ Execute step      │
+│  └─ throttle         │       │  └─ Update TuiState   │
+│                      │       │                       │
+│  User actions:       │───────►  Commands:            │
+│  ├─ SubmitPrompt     │       │  ├─ process prompt    │
+│  ├─ TogglePause      │       │  ├─ pause/resume      │
+│  └─ Cancel           │       │  └─ cancel            │
+└──────────────────────┘       └──────────────────────┘
+```
+
+### Event-Driven Updates (Workflow → TUI)
+
+The workflow thread produces events that the TUI consumes. Rather than a complex event bus, use a `ConcurrentQueue` of typed events:
+
+```csharp
+/// <summary>
+/// Events produced by the workflow engine for TUI consumption.
+/// </summary>
+public abstract record TuiEvent;
+
+public sealed record ActivityEntryEvent(ActivityEntry Entry) : TuiEvent;
+public sealed record PhaseChangedEvent(string PhaseName, int CurrentStep, int TotalSteps) : TuiEvent;
+public sealed record TaskProgressEvent(string TaskName, TaskState State) : TuiEvent;
+public sealed record ContextUpdatedEvent(ContextPanelData NewContext) : TuiEvent;
+public sealed record TokenUsageEvent(long UsedTokens, long MaxTokens) : TuiEvent;
+public sealed record ModalRequestEvent(ModalState Modal) : TuiEvent;
+public sealed record SpinnerEvent(string Message, int ProgressPercent) : TuiEvent;
+
+internal sealed class TuiEventBus
+{
+    private readonly ConcurrentQueue<TuiEvent> _events = new();
+
+    /// <summary>Called by workflow thread to post events.</summary>
+    public void Post(TuiEvent evt) => _events.Enqueue(evt);
+
+    /// <summary>Called by TUI thread each frame to drain events.</summary>
+    public void DrainInto(TuiState state)
+    {
+        while (_events.TryDequeue(out var evt))
+        {
+            switch (evt)
+            {
+                case ActivityEntryEvent e:
+                    state.ActivityData = state.ActivityData.WithEntry(e.Entry);
+                    break;
+                case PhaseChangedEvent e:
+                    state.TopData = state.TopData with
+                    {
+                        PhaseName = e.PhaseName,
+                        CurrentStep = e.CurrentStep,
+                        TotalSteps = e.TotalSteps
+                    };
+                    break;
+                case ContextUpdatedEvent e:
+                    state.ContextData = e.NewContext;
+                    break;
+                case TokenUsageEvent e:
+                    state.TopData = state.TopData with
+                    {
+                        ContextUsedTokens = e.UsedTokens,
+                        ContextMaxTokens = e.MaxTokens
+                    };
+                    break;
+                case ModalRequestEvent e:
+                    state.ActiveModal = e.Modal;
+                    break;
+                // ... other events
+            }
+        }
+    }
+}
+```
+
+### User Input → Orchestration Commands (TUI → Workflow)
+
+When the user submits a prompt or triggers an action, the TUI posts a command to the workflow thread:
+
+```csharp
+/// <summary>
+/// Commands from TUI to workflow engine.
+/// </summary>
+public abstract record TuiCommand;
+
+public sealed record SubmitPromptCommand(string Text) : TuiCommand;
+public sealed record TogglePauseCommand : TuiCommand;
+public sealed record CancelCommand : TuiCommand;
+public sealed record SlashCommand(string Command, string? Arguments) : TuiCommand;
+
+internal sealed class TuiCommandBus
+{
+    private readonly ConcurrentQueue<TuiCommand> _commands = new();
+
+    /// <summary>Called by TUI thread when user acts.</summary>
+    public void Post(TuiCommand cmd) => _commands.Enqueue(cmd);
+
+    /// <summary>Called by workflow thread to drain commands.</summary>
+    public bool TryDequeue(out TuiCommand? command) => _commands.TryDequeue(out command);
+}
+```
+
+### Applying KeyActions in the Render Loop
+
+```csharp
+private void ApplyAction(KeyAction action, TuiState state, ConsoleKeyInfo keyInfo)
+{
+    switch (action)
+    {
+        case KeyAction.SubmitPrompt:
+            var text = state.InputBuffer.ToString().Trim();
+            if (!string.IsNullOrEmpty(text))
+            {
+                var slashCmd = _slashRegistry.TryParse(text);
+                if (slashCmd is not null)
+                    _commandBus.Post(new SlashCommand(slashCmd.Command, text));
+                else
+                    _commandBus.Post(new SubmitPromptCommand(text));
+                state.InputBuffer.Clear();
+            }
+            break;
+
+        case KeyAction.InsertNewline:
+            state.InputBuffer.AppendLine();
+            break;
+
+        case KeyAction.TogglePause:
+            _commandBus.Post(new TogglePauseCommand());
+            state.PromptData = state.PromptData with { IsPaused = !state.PromptData.IsPaused };
+            break;
+
+        case KeyAction.Cancel:
+            _commandBus.Post(new CancelCommand());
+            break;
+
+        case KeyAction.CycleFocusForward:
+            state.CurrentFocus = KeyboardHandler.CycleFocus(state.CurrentFocus);
+            state.PromptData = state.PromptData with
+            {
+                CustomHints = KeyboardHandler.GetHints(state.CurrentFocus, state.PromptData.IsPaused)
+                    .ToArray()
+            };
+            break;
+
+        case KeyAction.None:
+            // Character input (only when prompt focused)
+            if (state.CurrentFocus == FocusPanel.Prompt && !char.IsControl(keyInfo.KeyChar))
+            {
+                state.InputBuffer.Append(keyInfo.KeyChar);
+                state.PromptData = state.PromptData with { Text = state.InputBuffer.ToString() };
+            }
+            else if (state.CurrentFocus == FocusPanel.Prompt && keyInfo.Key == ConsoleKey.Backspace
+                     && state.InputBuffer.Length > 0)
+            {
+                state.InputBuffer.Remove(state.InputBuffer.Length - 1, 1);
+                state.PromptData = state.PromptData with { Text = state.InputBuffer.ToString() };
+            }
+            break;
+
+        // ViewResource1-9, ToggleExpand handled similarly
+    }
+}
+```
+
+### Thread Safety Strategy
+
+The design avoids locks by using:
+
+1. **Immutable data records**: `TopPanelData`, `ActivityPanelData`, `ContextPanelData`, `PromptAreaData` are all records. The workflow thread creates a new instance; the render loop reads the latest reference. Reference assignment is atomic in .NET.
+2. **`ConcurrentQueue<T>`** for event/command buses: Lock-free, thread-safe FIFO.
+3. **Single-writer principle**: Each queue has one producer and one consumer. `TuiEventBus` is written by the workflow thread, read by the TUI thread. `TuiCommandBus` is the reverse.
+4. **No shared mutable state**: The `TuiState` object is only mutated by the TUI thread (in `DrainInto` and `ApplyAction`). The workflow thread never reads it directly.
+
+### Workflow Integration in the Render Loop
+
+```csharp
+public async Task RunAsync(CancellationToken ct)
+{
+    // ... terminal/renderer setup ...
+
+    // Start workflow on background thread
+    var workflowTask = Task.Run(() => RunWorkflowAsync(ct), ct);
+
+    while (!ct.IsCancellationRequested && _running)
+    {
+        // 1. Drain workflow events into TUI state
+        _eventBus.DrainInto(state);
+
+        // 2. Advance spinner
+        state.SpinnerFrame++;
+
+        // 3. Poll input
+        while (Console.KeyAvailable)
+        {
+            var keyInfo = Console.ReadKey(intercept: true);
+            var input = MapToKeyInput(keyInfo);
+            var action = _keyboard.Handle(input, state.CurrentFocus);
+            ApplyAction(action, state, keyInfo);
+        }
+
+        // 4. Render
+        renderer.Draw((ctx, elapsed) =>
+        {
+            var regions = LayoutCalculator.Calculate(
+                ctx.Viewport.Width, ctx.Viewport.Height,
+                state.SplitPercent);
+            // ... render components ...
+        });
+
+        await Task.Delay(1, ct).ConfigureAwait(false);
+    }
+
+    await workflowTask.ConfigureAwait(false);
+}
+```
+
+### Modal Interaction Flow
+
+Modals require bidirectional communication. The workflow requests a modal (e.g., confirmation for multi-file edit), and the TUI collects the user's response:
+
+```
+Workflow Thread                    TUI Thread
+     │                                  │
+     ├─ Post(ModalRequestEvent)  ──────►│
+     │                                  ├─ state.ActiveModal = modal
+     │                                  ├─ Render modal overlay
+     │                                  ├─ Route input to modal
+     │                                  ├─ User selects option
+     │◄────── Post(ModalResponseCmd) ───┤
+     ├─ Read response                   ├─ state.ActiveModal = null
+     ├─ Continue workflow               │
+```
+
+For blocking modal responses, use a `TaskCompletionSource<T>`:
+
+```csharp
+public sealed record ModalRequestEvent(ModalState Modal, TaskCompletionSource<string> Response) : TuiEvent;
+
+// Workflow thread:
+var tcs = new TaskCompletionSource<string>();
+_eventBus.Post(new ModalRequestEvent(modal, tcs));
+var userChoice = await tcs.Task; // blocks workflow until user responds
+
+// TUI thread (when user selects an option):
+state.ActiveModal.ResponseTcs.SetResult(selectedOption);
+state.ActiveModal = null;
+```
+
+### Startup Sequence
+
+```
+lopen (root command)
+  │
+  ├─ Parse CLI flags (--headless, --no-welcome, --resume)
+  ├─ Build DI container
+  │    ├─ If headless: register StubTuiApplication
+  │    └─ If interactive: register TuiApplication
+  ├─ Resolve ITuiApplication
+  ├─ app.RunAsync(ct)
+  │    ├─ Create Terminal (FullscreenMode)
+  │    ├─ Create Renderer (30 FPS)
+  │    ├─ Check for existing session
+  │    │    ├─ If found: show SessionResumeModal
+  │    │    └─ If not found && !--no-welcome: show LandingPageComponent
+  │    ├─ Initialize WorkflowEngine on background thread
+  │    └─ Enter main render loop
+  └─ On Ctrl+C: app.StopAsync() → restore terminal
+```
+
+---
+
+## 16. Alternative Rendering Approaches
+
+### Alternative A: Spectre.Console Live (Without Spectre.Tui)
+
+If Spectre.Tui proves too immature, the application shell could be built on Spectre.Console's `Live` display with a custom input thread:
+
+```csharp
+// Dedicated input thread reads keys while Live display runs
+var inputThread = new Thread(() =>
+{
+    while (running)
+    {
+        if (Console.KeyAvailable)
+        {
+            var key = Console.ReadKey(intercept: true);
+            inputQueue.Enqueue(key);
+        }
+        Thread.Sleep(10);
+    }
+});
+inputThread.IsBackground = true;
+inputThread.Start();
+
+await AnsiConsole.Live(layout)
+    .Overflow(VerticalOverflow.Crop)
+    .StartAsync(async ctx =>
+    {
+        while (running)
+        {
+            // Drain input
+            while (inputQueue.TryDequeue(out var key))
+                ProcessKey(key, state);
+
+            // Update layout sections
+            layout["Header"].Update(BuildHeaderPanel(state));
+            layout["Activity"].Update(BuildActivityPanel(state));
+            layout["Context"].Update(BuildContextPanel(state));
+            layout["PromptArea"].Update(BuildPromptPanel(state));
+
+            ctx.Refresh();
+            await Task.Delay(33, ct); // ~30 FPS
+        }
+    });
+```
+
+**Pros**: Mature widget library (Panel, Table, Tree, Layout), rich styling, broad .NET support.
+
+**Cons**: `Live` + input thread is fighting the library's design. `Live` is not thread-safe — all `Refresh()` calls must happen on the same thread. No alt-screen management. Modal overlays require manual composition of `IRenderable` objects over the layout. The `Layout` widget does not support rendering over/on-top-of other sections.
+
+### Alternative B: Direct ANSI with `System.Console`
+
+Skip frameworks entirely and write ANSI escape codes directly:
+
+```csharp
+Console.Write("\x1b[?1049h"); // Alt screen
+Console.Write("\x1b[?25l");   // Hide cursor
+
+// Render loop
+Console.SetCursorPosition(x, y);
+Console.Write("\x1b[32m" + text + "\x1b[0m"); // Green text
+
+Console.Write("\x1b[?25h"); // Show cursor
+Console.Write("\x1b[?1049l"); // Restore screen
+```
+
+**Pros**: Zero dependencies, full control, works everywhere.
+
+**Cons**: Must implement double-buffering, diff, resize detection, Unicode width calculation, color system detection. Essentially rebuilding what Spectre.Tui provides.
+
+### Recommendation
+
+Stick with **Spectre.Tui** as recommended in Section 12. The existing `string[]` component architecture makes the framework choice less critical — if Spectre.Tui breaks or stalls, swapping the renderer (the `RenderRegion` bridge function) is a contained change. The components themselves are framework-agnostic.
+
+---
+
+## 17. TUI-50: TuiOutputRenderer
+
+> Implement an `IOutputRenderer` that bridges orchestrator events to the TUI activity panel, replacing `HeadlessRenderer` when TUI mode is active.
+
+### Contract Analysis
+
+`IOutputRenderer` (defined in `Lopen.Core/IOutputRenderer.cs`) exposes four async methods:
+
+| Method | Purpose | Orchestrator usage |
+|---|---|---|
+| `RenderProgressAsync(phase, step, progress, ct)` | Phase/step transitions | Called once per LLM invocation in `InvokeLlmForStepAsync` with calculated progress % |
+| `RenderErrorAsync(message, exception?, ct)` | Error display | Step failures, guardrail warnings, drift warnings, LLM errors, budget warnings |
+| `RenderResultAsync(message, ct)` | Informational output | Session resume, pause/resume status, user confirmation, completion summary |
+| `PromptAsync(message, ct)` | User input | Repeated-failure intervention, budget limit confirmations |
+
+The `HeadlessRenderer` reference implementation writes to `TextWriter` (stdout/stderr) and returns `null` from `PromptAsync`. The TUI renderer must instead push entries into the shared activity data model.
+
+### Target Data Model
+
+`ActivityPanelData` (`Lopen.Tui/ActivityPanelData.cs`) contains:
+
+- `Entries: IReadOnlyList<ActivityEntry>` — ordered entries, newest last
+- `ScrollOffset: int` — `-1` = auto-scroll to bottom
+- `SelectedEntryIndex: int` — `-1` = no selection
+
+Each `ActivityEntry` has: `Summary` (required string), `Details` (list of strings), `IsExpanded` (bool), `Kind` (`ActivityEntryKind` enum), and optional `FullDocumentContent`.
+
+`ActivityEntryKind` values: `Action`, `FileEdit`, `Command`, `TestResult`, `PhaseTransition`, `Error`, `ToolCall`, `Research`, `Conversation`.
+
+### Implementation Design
+
+```csharp
+internal sealed class TuiOutputRenderer : IOutputRenderer
+{
+    private readonly IActivityPanelDataProvider _activityProvider;
+    private readonly IUserPromptQueue _promptQueue;
+
+    // Constructor: inject IActivityPanelDataProvider + IUserPromptQueue
+    // Both are already thread-safe (ConcurrentQueue-backed)
+
+    public Task RenderProgressAsync(string phase, string step, double progress, CancellationToken ct)
+    {
+        // Map to ActivityEntry with Kind = PhaseTransition
+        // Use AddPhaseTransition() or AddEntry() with formatted summary
+        // Summary: "● [phase] step (progress%)"
+        _activityProvider.AddEntry(new ActivityEntry
+        {
+            Summary = FormatProgress(phase, step, progress),
+            Kind = ActivityEntryKind.PhaseTransition,
+        });
+        return Task.CompletedTask;
+    }
+
+    public Task RenderErrorAsync(string message, Exception? ex, CancellationToken ct)
+    {
+        // Map to ActivityEntry with Kind = Error
+        // Include exception details in Details list
+        var details = new List<string>();
+        if (ex != null)
+            details.Add($"{ex.GetType().Name}: {ex.Message}");
+
+        _activityProvider.AddEntry(new ActivityEntry
+        {
+            Summary = $"✗ Error: {message}",
+            Kind = ActivityEntryKind.Error,
+            Details = details,
+            IsExpanded = true, // Errors auto-expand
+        });
+        return Task.CompletedTask;
+    }
+
+    public Task RenderResultAsync(string message, CancellationToken ct)
+    {
+        _activityProvider.AddEntry(new ActivityEntry
+        {
+            Summary = message,
+            Kind = ActivityEntryKind.Action,
+        });
+        return Task.CompletedTask;
+    }
+
+    public Task<string?> PromptAsync(string message, CancellationToken ct)
+    {
+        // For TUI-52 bridge: render prompt message as an entry, then
+        // await user input through the prompt area / IUserPromptQueue.
+        // Implementation depends on TUI-52 prompt forwarding design.
+        // Simplest: render message + await _promptQueue.DequeueAsync(ct)
+        _activityProvider.AddEntry(new ActivityEntry
+        {
+            Summary = $"⟩ {message}",
+            Kind = ActivityEntryKind.Conversation,
+        });
+        return _promptQueue.DequeueAsync(ct)!;
+    }
+}
+```
+
+### Thread Safety Analysis
+
+**Problem**: The orchestrator runs on a background thread (`Task.Run`), while the TUI render loop runs on the main thread at 30 FPS. Both access `IActivityPanelDataProvider`.
+
+**Solution**: The existing `ActivityPanelDataProvider` is already thread-safe:
+
+1. **`ConcurrentQueue<ActivityEntry>`** — Lock-free enqueue from orchestrator thread, snapshot via `ToArray()` from render thread.
+2. **`volatile` fields** — `_scrollOffset` and `_consecutiveFailures` ensure visibility across threads.
+3. **`Interlocked` operations** — Atomic failure counter updates.
+4. **Snapshot isolation** — `GetCurrentData()` calls `_entries.ToArray()` producing an immutable snapshot the render loop reads. New entries added concurrently are simply picked up next frame.
+
+`TuiOutputRenderer` methods are **synchronous writes** to the `ConcurrentQueue` wrapped in `Task.CompletedTask` — no async I/O, no blocking. The render loop's `RefreshActivityPanelData()` reads the latest snapshot each frame (throttled to 1s intervals).
+
+**Known weakness**: `CollapseNonErrorEntries()` drains and re-enqueues the entire `ConcurrentQueue`, which is not atomic. Under high contention, entries added between drain and re-enqueue could be lost or reordered. Mitigation: only call collapse from the `AddEntry` path (same thread as orchestrator), or gate it with a lightweight lock.
+
+### Mapping Table: Orchestrator Events → Activity Entries
+
+| Orchestrator call | `ActivityEntryKind` | Summary format | Details |
+|---|---|---|---|
+| `RenderProgressAsync(phase, step, progress)` | `PhaseTransition` | `● [phase] step (N%)` | None |
+| `RenderErrorAsync(msg, ex)` | `Error` | `✗ Error: msg` | Exception type + message |
+| `RenderResultAsync(msg)` | `Action` | Message as-is | None |
+| `PromptAsync(msg)` | `Conversation` | `⟩ msg` | None (awaits user input) |
+
+### DI Registration
+
+```csharp
+// In Lopen.Tui ServiceCollectionExtensions:
+public static IServiceCollection AddTuiOutputRenderer(this IServiceCollection services)
+{
+    // Remove the default HeadlessRenderer registered by AddLopenCore()
+    // TryAddSingleton won't overwrite, so we must remove first
+    var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IOutputRenderer));
+    if (descriptor != null)
+        services.Remove(descriptor);
+
+    services.AddSingleton<IOutputRenderer, TuiOutputRenderer>();
+    return services;
+}
+```
+
+Called from `UseRealTui()` so that TUI mode automatically replaces headless rendering. The `TryAddSingleton<IOutputRenderer>(new HeadlessRenderer())` in `AddLopenCore()` will already be registered by the time `UseRealTui()` runs, so the remove-then-add pattern is required.
+
+---
+
+## 18. TUI-51: Data Provider Wiring
+
+> Register all TUI data providers in DI and wire them to live orchestrator/session data when TUI mode is active.
+
+### Current Registration State
+
+Inspecting `Program.cs`, only **one** data provider is explicitly registered:
+
+```csharp
+builder.Services.AddLopenTui();              // Base components (stubs)
+builder.Services.UseRealTui();               // Real TuiApplication
+builder.Services.AddTopPanelDataProvider();   // ✅ Only this one
+```
+
+The following are **missing** from `Program.cs`:
+
+| Provider | Extension method | Status |
+|---|---|---|
+| `ITopPanelDataProvider` → `TopPanelDataProvider` | `AddTopPanelDataProvider()` | ✅ Registered |
+| `IContextPanelDataProvider` → `ContextPanelDataProvider` | `AddContextPanelDataProvider()` | ❌ Not registered |
+| `IActivityPanelDataProvider` → `ActivityPanelDataProvider` | `AddActivityPanelDataProvider()` | ❌ Not registered |
+| `IUserPromptQueue` → `UserPromptQueue` | `AddUserPromptQueue()` | ❌ Not registered |
+| `ISessionDetector` → `SessionDetector` | `AddSessionDetector()` | ❌ Not registered |
+
+### Provider Interface Contracts
+
+All three panel data providers share a common `GetCurrentData()` → typed snapshot pattern:
+
+**`ITopPanelDataProvider`** — Aggregates token tracking, git, auth, workflow, model selection:
+- `GetCurrentData()` → `TopPanelData`
+- `RefreshAsync()` — pulls from live services (git branch, auth status, token counts)
+
+**`IContextPanelDataProvider`** — Aggregates plan management, workflow engine, resource tracking:
+- `GetCurrentData()` → `ContextPanelData`
+- `RefreshAsync()` — pulls plan tasks, workflow state
+- `SetActiveModule(string moduleName)` — selects which module's plan to display
+
+**`IActivityPanelDataProvider`** — Event-driven (entries pushed in, not pulled from services):
+- `GetCurrentData()` → `ActivityPanelData` (snapshot via `ConcurrentQueue.ToArray()`)
+- `AddEntry(ActivityEntry)` — thread-safe entry push
+- `AddPhaseTransition(...)`, `AddFileEdit(...)`, `AddTaskFailure(...)` — convenience methods
+- `Clear()` — resets all entries
+- `ConsecutiveFailureCount` — tracks consecutive failures
+
+**`IUserPromptQueue`** — Thread-safe prompt forwarding (TUI → Orchestrator):
+- `Enqueue(string prompt)` — TUI enqueues on user submit
+- `TryDequeue(out string prompt)` — non-blocking dequeue
+- `DequeueAsync(CancellationToken)` — async wait for prompt
+- `Count` — current queue depth
+
+**`ISessionDetector`** — Session resumption detection:
+- Requires `ISessionManager` from `Lopen.Storage`
+
+### Implementation: Required Changes to Program.cs
+
+```csharp
+// Program.cs — add missing registrations after UseRealTui():
+builder.Services.AddLopenTui();
+builder.Services.UseRealTui();
+builder.Services.AddTopPanelDataProvider();       // ✅ Already present
+builder.Services.AddContextPanelDataProvider();   // ➕ Add
+builder.Services.AddActivityPanelDataProvider();  // ➕ Add
+builder.Services.AddUserPromptQueue();            // ➕ Add
+builder.Services.AddSessionDetector();            // ➕ Add
+```
+
+### Dependency Requirements
+
+Each provider has upstream dependencies that must already be registered:
+
+| Provider | Required services | Module |
+|---|---|---|
+| `TopPanelDataProvider` | `ITokenTracker`, `IGitService`, `IAuthService`, `IWorkflowEngine`, `IModelSelector` | Core, Auth, Storage |
+| `ContextPanelDataProvider` | `IPlanManager`, `IWorkflowEngine` | Core |
+| `ActivityPanelDataProvider` | None (self-contained) | — |
+| `UserPromptQueue` | None (self-contained) | — |
+| `SessionDetector` | `ISessionManager` | Storage |
+
+`ActivityPanelDataProvider` and `UserPromptQueue` are self-contained with no upstream dependencies — they can be registered unconditionally. The others use optional resolution (try/catch) in the `AddLopenCore` factory pattern, so missing upstream services won't crash at startup.
+
+### Data Flow Wiring
+
+Once all providers are registered, the data flow is:
+
+```
+Orchestrator thread                    TUI render thread
+─────────────────                      ─────────────────
+WorkflowOrchestrator.RunAsync()        TuiApplication.RunAsync()
+  │                                      │
+  ├─ IOutputRenderer                     ├─ RefreshTopPanelDataAsync()
+  │   (TuiOutputRenderer)               │     └─ _topProvider.RefreshAsync()
+  │   └─ IActivityPanelDataProvider      │         └─ _topProvider.GetCurrentData()
+  │       .AddEntry(...)                 │
+  │                                      ├─ RefreshContextPanelDataAsync()
+  ├─ IPauseController                   │     └─ _contextProvider.RefreshAsync()
+  │   .WaitIfPausedAsync()              │         └─ _contextProvider.GetCurrentData()
+  │                                      │
+  ├─ IUserPromptQueue                   ├─ RefreshActivityPanelData()
+  │   .TryDequeue()                     │     └─ _activityProvider.GetCurrentData()
+  │                                      │         (snapshot via ToArray())
+  └─ CancellationToken                  │
+      (from TUI's CTS)                  └─ RenderFrame(ctx)
+                                               └─ renders all panel data
+```
+
+### TuiApplication Constructor Wiring
+
+`TuiApplication` already accepts all providers as **optional** constructor parameters:
+
+```csharp
+internal sealed class TuiApplication(
+    // ... required component params ...
+    ITopPanelDataProvider? topPanelDataProvider = null,
+    IContextPanelDataProvider? contextPanelDataProvider = null,
+    IActivityPanelDataProvider? activityPanelDataProvider = null,
+    ISlashCommandExecutor? slashCommandExecutor = null,
+    IPauseController? pauseController = null,
+    IUserPromptQueue? userPromptQueue = null,
+    // ...
+)
+```
+
+When providers are `null`, the corresponding panel renders with placeholder/empty data. When registered, the render loop automatically picks them up — no code changes needed inside `TuiApplication` itself. The wiring is purely a DI registration concern.
+
+---
+
+## 19. TUI-52: TUI-Orchestrator Bridge
+
+> TUI `RunAsync` launches the `WorkflowOrchestrator` on a background thread and renders its progress in real time.
+
+### Current Architecture
+
+**Headless mode** (in `RootCommandHandler`): resolves `IWorkflowOrchestrator` directly and calls `orchestrator.RunAsync(module, prompt, ct)` synchronously.
+
+**TUI mode** (in `RootCommandHandler`): calls `app.RunAsync(prompt, ct)` on `ITuiApplication`. The handler does **not** touch the orchestrator — it delegates entirely to the TUI application.
+
+Currently, `TuiApplication.RunAsync` runs the render loop but does **not** launch the orchestrator. TUI-52 bridges this gap.
+
+### Design: Producer-Consumer Architecture
+
+```
+┌──────────────────────────────────────────────────────┐
+│                  TuiApplication.RunAsync              │
+│                                                       │
+│  ┌─────────────────────┐  ┌─────────────────────────┐│
+│  │  Render Thread       │  │  Orchestrator Thread     ││
+│  │  (main)              │  │  (Task.Run)              ││
+│  │                      │  │                          ││
+│  │  while (!ct.Cancel)  │  │  orchestrator.RunAsync() ││
+│  │  {                   │  │    │                     ││
+│  │    DrainKeyboard()   │  │    ├─ RenderProgress()   ││
+│  │    RefreshPanels()   │◄─┤    │   → AddEntry()     ││
+│  │    RenderFrame()     │  │    ├─ RenderError()      ││
+│  │    Task.Delay(1)     │  │    │   → AddEntry()     ││
+│  │  }                   │  │    ├─ RenderResult()     ││
+│  │                      │  │    │   → AddEntry()     ││
+│  │                      │  │    └─ PromptAsync()      ││
+│  │  IActivityPanel      │  │        → AddEntry() +   ││
+│  │  DataProvider        │  │          DequeueAsync()  ││
+│  │  .GetCurrentData()   │  │                          ││
+│  │  (snapshot read)     │  │  Returns: Orchestration  ││
+│  │                      │  │           Result         ││
+│  └─────────────────────┘  └─────────────────────────┘│
+│           ▲                          │                │
+│           └────── ConcurrentQueue ───┘                │
+│                                                       │
+│  Cross-thread primitives:                             │
+│  • ConcurrentQueue (activity entries)                 │
+│  • SemaphoreSlim (prompt queue signal)                │
+│  • SemaphoreSlim (pause gate)                         │
+│  • CancellationTokenSource (stop signal)              │
+└──────────────────────────────────────────────────────┘
+```
+
+### Implementation: Launching the Orchestrator
+
+The orchestrator should be launched inside `TuiApplication.RunAsync`, after terminal setup and before the render loop, on a background task:
+
+```csharp
+public async Task RunAsync(string? prompt, CancellationToken cancellationToken)
+{
+    // ... existing guard, CTS creation, terminal setup ...
+
+    // Launch orchestrator on background thread
+    Task<OrchestrationResult>? orchestratorTask = null;
+    if (prompt != null)
+    {
+        var orchestrator = _serviceProvider.GetService<IWorkflowOrchestrator>();
+        if (orchestrator != null)
+        {
+            var moduleName = ResolveModuleName(); // from session/config
+            orchestratorTask = Task.Run(
+                () => orchestrator.RunAsync(moduleName, prompt, _cts.Token),
+                _cts.Token);
+        }
+    }
+
+    // Render loop (existing code, unchanged)
+    while (!ct.IsCancellationRequested)
+    {
+        DrainKeyboardInput();
+        await RefreshTopPanelDataAsync();
+        await RefreshContextPanelDataAsync();
+        RefreshActivityPanelData();
+        renderer.Draw((ctx, _) => RenderFrame(ctx));
+        await Task.Delay(1, ct);
+
+        // Check if orchestrator completed
+        if (orchestratorTask?.IsCompleted == true)
+        {
+            await HandleOrchestrationCompleteAsync(orchestratorTask);
+            orchestratorTask = null; // Allow re-launch from prompt
+        }
+    }
+}
+```
+
+### Lifecycle Events
+
+**Startup**:
+1. `TuiApplication.RunAsync` receives `prompt` from `RootCommandHandler`
+2. Resolves `IWorkflowOrchestrator` from DI (registered as singleton via `AddLopenCore`)
+3. Fires `Task.Run(() => orchestrator.RunAsync(...))` with the linked `CancellationToken`
+4. Enters render loop immediately — no blocking wait
+
+**Progress rendering**:
+1. Orchestrator calls `IOutputRenderer.RenderProgressAsync(...)` on its thread
+2. `TuiOutputRenderer` calls `_activityProvider.AddEntry(...)` — lock-free `ConcurrentQueue.Enqueue`
+3. Render loop calls `_activityProvider.GetCurrentData()` — `ConcurrentQueue.ToArray()` snapshot
+4. `ActivityPanelComponent` renders the latest entries in the activity region
+5. Throttled to 1s refresh intervals (existing `RefreshActivityPanelData` logic)
+
+**Completion**:
+1. `orchestratorTask.IsCompleted` becomes `true`
+2. Render loop detects completion, calls `HandleOrchestrationCompleteAsync`
+3. Inspect `OrchestrationResult`: `IsComplete`, `WasInterrupted`, `IsCriticalError`
+4. Render a completion/interruption/error summary entry via `_activityProvider.AddEntry(...)`
+5. TUI remains alive for user review — does **not** auto-exit
+
+```csharp
+private async Task HandleOrchestrationCompleteAsync(Task<OrchestrationResult> task)
+{
+    try
+    {
+        var result = await task; // already completed, won't block
+        if (result.IsComplete)
+        {
+            _activityProvider?.AddEntry(new ActivityEntry
+            {
+                Summary = $"✓ Workflow complete: {result.Summary ?? "Done"}",
+                Kind = ActivityEntryKind.PhaseTransition,
+            });
+        }
+        else if (result.WasInterrupted)
+        {
+            _activityProvider?.AddEntry(new ActivityEntry
+            {
+                Summary = $"⏸ Interrupted: {result.InterruptionReason}",
+                Kind = ActivityEntryKind.Action,
+            });
+        }
+    }
+    catch (Exception ex)
+    {
+        _activityProvider?.AddEntry(new ActivityEntry
+        {
+            Summary = $"✗ Orchestrator failed: {ex.Message}",
+            Kind = ActivityEntryKind.Error,
+            IsExpanded = true,
+            Details = [ex.ToString()],
+        });
+    }
+}
+```
+
+**Error handling**:
+- `OperationCanceledException` — expected on user cancel (Ctrl+C). Orchestrator auto-saves state.
+- General exceptions — caught, rendered as error entries, TUI stays alive for review.
+- Critical errors (`IsCriticalError`) — render with expanded details, optionally show error modal.
+
+**Cancellation**:
+- User presses Ctrl+C → `_stopCts.Cancel()` → linked `CancellationToken` propagates to orchestrator
+- Orchestrator checks `cancellationToken.IsCancellationRequested` at loop top, auto-saves, returns `OrchestrationResult.Interrupted`
+- TUI detects task completion, renders interruption message
+
+**Pause/Resume**:
+- User presses Ctrl+P → `_pauseController.Toggle()` (existing code at line 378)
+- Orchestrator calls `_pauseController.WaitIfPausedAsync(ct)` at each loop iteration (existing code at line 137)
+- No changes needed — the `IPauseController` bridge already works cross-thread via `SemaphoreSlim`
+
+### Prompt Re-launch
+
+After the orchestrator completes, the user may type a new prompt in the prompt area. The TUI should support re-launching:
+
+```csharp
+// In keyboard/prompt handling (existing path for user submit):
+if (submittedText != null && !submittedText.StartsWith("/"))
+{
+    if (orchestratorTask == null || orchestratorTask.IsCompleted)
+    {
+        // Launch new orchestrator run
+        orchestratorTask = Task.Run(
+            () => orchestrator.RunAsync(moduleName, submittedText, _cts.Token),
+            _cts.Token);
+    }
+    else
+    {
+        // Orchestrator still running — queue as mid-session message
+        _userPromptQueue?.Enqueue(submittedText);
+    }
+}
+```
+
+This distinguishes between:
+- **Orchestrator idle** → start a new `RunAsync` with the prompt
+- **Orchestrator running** → enqueue via `IUserPromptQueue` for mid-session injection (existing pattern: orchestrator drains queued messages before each LLM call)
+
+### Cross-Thread Communication Summary
+
+| Mechanism | Direction | Primitive | Purpose |
+|---|---|---|---|
+| `TuiOutputRenderer` → `IActivityPanelDataProvider` | Orchestrator → TUI | `ConcurrentQueue` | Activity entries |
+| `IUserPromptQueue` | TUI → Orchestrator | `ConcurrentQueue` + `SemaphoreSlim` | User messages |
+| `IPauseController` | TUI → Orchestrator | `SemaphoreSlim` gate | Pause/resume |
+| `CancellationTokenSource` | TUI → Orchestrator | Cooperative cancellation | Stop signal |
+| `Task<OrchestrationResult>` | Orchestrator → TUI | `Task` completion | Lifecycle events |
+
+All five mechanisms are **already implemented** in the codebase. TUI-52 only needs to wire them together inside `TuiApplication.RunAsync`.
+
+### IServiceProvider Access
+
+`TuiApplication` needs access to `IWorkflowOrchestrator`, which is not currently a constructor parameter. Two options:
+
+1. **Add as optional constructor parameter** (preferred — matches existing pattern):
+   ```csharp
+   IWorkflowOrchestrator? orchestrator = null
+   ```
+   Added to `TuiApplication`'s constructor alongside existing optional params.
+
+2. **Inject `IServiceProvider`** and resolve at runtime:
+   ```csharp
+   var orchestrator = _serviceProvider.GetService<IWorkflowOrchestrator>();
+   ```
+   Less explicit but avoids circular dependency concerns.
+
+Option 1 is preferred because `TuiApplication` already takes 14 constructor parameters (6 required + 8 optional) and follows the explicit-dependency pattern throughout. The orchestrator is registered as a singleton in `AddLopenCore()`, so it's always available when TUI mode is active.
+
+### Implementation Checklist
+
+1. **`TuiOutputRenderer`** (new class in `Lopen.Tui`) — implements `IOutputRenderer`, injects `IActivityPanelDataProvider`
+2. **`AddTuiOutputRenderer()`** extension method — replaces `HeadlessRenderer` registration
+3. **Wire in `UseRealTui()`** — call `AddTuiOutputRenderer()` alongside existing setup
+4. **Register missing providers in `Program.cs`** — `AddContextPanelDataProvider()`, `AddActivityPanelDataProvider()`, `AddUserPromptQueue()`, `AddSessionDetector()`
+5. **Add `IWorkflowOrchestrator?` to `TuiApplication` constructor** — optional parameter
+6. **Launch orchestrator in `RunAsync`** — `Task.Run` before render loop
+7. **Detect completion in render loop** — check `orchestratorTask.IsCompleted` each frame
+8. **Handle prompt re-launch** — distinguish idle vs running orchestrator in prompt submit path
+9. **Unit tests** — `TuiOutputRenderer` mapping, thread-safety under concurrent writes, lifecycle events
+
+---
+
+## 20. TUI-26: Repeated Failure Confirmation Modal
+
+### Current State
+
+Three components exist independently but are **completely unwired**:
+
+1. **`ActivityPanelDataProvider.ConsecutiveFailureCount`** — Thread-safe counter (`volatile int` + `Interlocked`) that increments on `ActivityEntryKind.Error` entries and resets on non-error entries. Exposed via `IActivityPanelDataProvider.ConsecutiveFailureCount`. **Never read** by `TuiApplication` or any render-loop code.
+
+2. **`ErrorModalComponent`** — Renders a modal with `Title`, `Message`, and `RecoveryOptions` (defaults: `["Retry", "Skip", "Abort"]`). Located in `SelectionComponents.cs`. The selected option is highlighted with `[>...<]` syntax. **Never triggered** from production code — only from a single unit test.
+
+3. **`FailureHandler`** (Core layer) — Maintains per-task failure counts with a configurable threshold (default 3 via `WorkflowOptions.FailureThreshold`). When threshold is reached, returns `FailureAction.PromptUser`. Currently prompts via `IOutputRenderer.PromptAsync()` → text-based y/N prompt through `IUserPromptQueue`, **not** through `ErrorModalComponent`.
+
+**Key gaps identified:**
+
+- `TuiApplication.RefreshActivityPanelData()` only calls `GetCurrentData()` — no threshold check.
+- `OpenErrorModal(ErrorModalData)` is `internal` and has **zero production call sites**.
+- `HandleErrorModalInput` dismisses the modal on Enter/Escape but **discards the selected option** — no callback, event, or `TaskCompletionSource` is fired. The user's choice (Retry/Skip/Abort) is lost.
+- No mechanism bridges `ConsecutiveFailureCount` reaching a threshold to showing the modal.
+
+### Recommended Approach
+
+#### Where to Check Threshold
+
+The threshold check should be injected into `RefreshActivityPanelData()` in `TuiApplication.cs`. This method runs every frame (30 FPS) and already reads from `_activityPanelDataProvider`. The check is a simple integer comparison with negligible cost.
+
+```csharp
+private void RefreshActivityPanelData()
+{
+    if (_activityPanelDataProvider is not null)
+    {
+        _activityData = _activityPanelDataProvider.GetCurrentData();
+
+        // TUI-26: Auto-show error modal on repeated failures
+        if (_modalState == TuiModalState.None
+            && _activityPanelDataProvider.ConsecutiveFailureCount >= _failureThreshold
+            && !_failureModalShownForCurrentStreak)
+        {
+            var count = _activityPanelDataProvider.ConsecutiveFailureCount;
+            OpenErrorModal(new ErrorModalData
+            {
+                Title = "Repeated Failures Detected",
+                Message = $"The last {count} operations failed consecutively.",
+                RecoveryOptions = ["Retry", "Skip", "Abort"]
+            });
+            _failureModalShownForCurrentStreak = true;
+        }
+
+        // Reset the shown flag when failures clear
+        if (_activityPanelDataProvider.ConsecutiveFailureCount == 0)
+            _failureModalShownForCurrentStreak = false;
+    }
+}
+```
+
+**Guard conditions** prevent re-triggering:
+- `_modalState == TuiModalState.None` — don't interrupt another modal.
+- `_failureModalShownForCurrentStreak` — show at most once per failure streak. Resets when `ConsecutiveFailureCount` returns to 0 (i.e., a non-error entry arrives).
+
+#### How to Trigger the Modal
+
+`OpenErrorModal` already exists and correctly sets `_modalState = TuiModalState.ErrorModal`. No changes needed to the open/render path.
+
+#### How to Act on the User's Choice
+
+`HandleErrorModalInput` must be extended to propagate the selected recovery action. The recommended pattern is an `Action<int>?` callback on `ErrorModalData`, consistent with the existing fire-and-forget modal architecture:
+
+```csharp
+// In ErrorModalData (SelectionData.cs):
+public Action<int>? OnSelected { get; init; }
+
+// In HandleErrorModalInput, Enter case:
+case ConsoleKey.Enter:
+    var selectedIndex = _errorModalData.SelectedIndex;
+    _modalState = TuiModalState.None;
+    _errorModalData.OnSelected?.Invoke(selectedIndex);
+    break;
+```
+
+The callback wired from `RefreshActivityPanelData` would map the selected index to an action:
+
+| Index | Option | Action |
+|-------|--------|--------|
+| 0     | Retry  | No-op — orchestrator continues its next iteration naturally |
+| 1     | Skip   | Post a skip command via `IUserPromptQueue` or set a skip flag on the orchestrator |
+| 2     | Abort  | Cancel the orchestrator's `CancellationTokenSource` to trigger graceful shutdown |
+
+For the initial implementation, Retry (dismiss and continue) is sufficient. Skip and Abort can be wired incrementally as the orchestrator's command interface matures.
+
+### Configurable Threshold Strategy
+
+The failure threshold should be configurable and should reuse the existing `WorkflowOptions.FailureThreshold` (default 3) rather than introducing a separate TUI-specific threshold. Rationale:
+
+1. **Single source of truth** — `WorkflowOptions.FailureThreshold` already governs when `FailureHandler` escalates to `PromptUser`. The TUI modal should trigger at the same boundary.
+2. **Already validated** — `LopenOptionsValidator` ensures `FailureThreshold > 0`.
+3. **Already wired via DI** — `WorkflowOptions` is resolved from `IServiceProvider` in `ServiceCollectionExtensions.cs`.
+
+**Implementation:** Inject the threshold into `TuiApplication` at construction time:
+
+```csharp
+// In TuiApplication constructor or factory:
+private readonly int _failureThreshold;
+
+// Resolved from DI:
+var workflowOptions = serviceProvider.GetService<WorkflowOptions>();
+_failureThreshold = workflowOptions?.FailureThreshold ?? 3;
+```
+
+If a future requirement demands a TUI-specific threshold (e.g., showing the modal after 5 failures while `FailureHandler` escalates after 3), a `TuiOptions.FailureModalThreshold` can be added following the same pattern as `WorkflowOptions`. The proposed `TuiOptions` class in Section 18 (TUI-51) already exists as a design placeholder and could host this.
+
+### Interaction with FailureHandler's PromptUser Flow
+
+Currently, when `FailureHandler` returns `FailureAction.PromptUser`, the `WorkflowOrchestrator` calls `IOutputRenderer.PromptAsync()`, which blocks on `IUserPromptQueue`. This is a **text-based prompt** that coexists awkwardly with the TUI modal.
+
+**Recommended approach for TUI-26:**
+
+- The TUI modal should **replace** the text-based prompt for TUI mode. When the modal is shown and the user selects an option, the result should be fed into `IUserPromptQueue` as the response to the pending `PromptAsync` call.
+- This avoids two competing prompts (modal + text prompt) for the same failure event.
+- The `_failureModalShownForCurrentStreak` guard ensures the modal doesn't re-trigger while the orchestrator is already waiting on the prompt queue.
+
+### New Fields Required in TuiApplication
+
+```csharp
+private readonly int _failureThreshold;          // From WorkflowOptions
+private bool _failureModalShownForCurrentStreak;  // Guard against re-triggering
+```
+
+### Test Strategy
+
+#### Unit Tests (TuiApplicationTests.cs)
+
+1. **Threshold triggers modal** — Set up `ActivityPanelDataProvider`, add N error entries where N ≥ threshold, call `RefreshActivityPanelData()`, assert `_modalState == TuiModalState.ErrorModal`.
+
+2. **Below threshold does not trigger** — Add N-1 error entries, refresh, assert `_modalState == TuiModalState.None`.
+
+3. **Non-error entry resets streak** — Add N error entries (modal shown), then add a non-error entry, dismiss modal, add N more errors — assert modal is shown again (streak was reset).
+
+4. **Modal shown only once per streak** — Add N error entries (modal shown), dismiss modal, add 1 more error entry without a non-error reset — assert modal is NOT shown again.
+
+5. **Modal not shown over another modal** — Set `_modalState = TuiModalState.Confirmation`, add N error entries, refresh — assert `_modalState` remains `Confirmation` (not overwritten).
+
+6. **Enter propagates selected option** — Open error modal, simulate Right arrow (select "Skip"), simulate Enter, assert callback was invoked with index 1.
+
+7. **Escape dismisses without callback** — Open error modal, simulate Escape, assert callback was NOT invoked, assert `_modalState == None`.
+
+#### Integration Tests
+
+8. **End-to-end flow** — Orchestrator encounters repeated failures → `AddTaskFailure` is called N times → `ConsecutiveFailureCount` reaches threshold → modal appears → user selects Retry → orchestrator continues.
+
+9. **Configurable threshold** — Set `WorkflowOptions.FailureThreshold = 5`, verify modal only appears after 5 consecutive failures.
+
+#### ErrorModalComponent Tests (SelectionComponentTests.cs)
+
+10. **Render displays all options** — Verify `Render()` output contains "Retry", "Skip", "Abort".
+
+11. **Selected option highlighting** — Verify selected index renders with `[>...<]` syntax.
+
+12. **Custom recovery options** — Provide custom `RecoveryOptions`, verify they render correctly.
+
+### Implementation Checklist
+
+- [ ] Add `_failureThreshold` and `_failureModalShownForCurrentStreak` fields to `TuiApplication`
+- [ ] Inject `WorkflowOptions.FailureThreshold` into `TuiApplication` via DI
+- [ ] Extend `RefreshActivityPanelData()` with threshold check and modal trigger
+- [ ] Add `Action<int>? OnSelected` callback to `ErrorModalData`
+- [ ] Update `HandleErrorModalInput` Enter case to invoke `OnSelected`
+- [ ] Wire `OnSelected` callback to feed response into `IUserPromptQueue` (replacing text prompt in TUI mode)
+- [ ] Add unit tests for threshold triggering, streak reset, guard conditions
+- [ ] Add unit tests for modal input handling with callback
+- [ ] Add integration test for end-to-end failure → modal → recovery flow
+
 ## References
 
 - [Spectre.Tui GitHub](https://github.com/spectreconsole/spectre.tui)

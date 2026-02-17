@@ -1,21 +1,21 @@
 # Research: Oracle Verification in Copilot SDK Tool-Calling Loop
 
+> **Last validated**: February 2026
+
 ## Summary
 
-This document covers the pattern for implementing oracle verification tools (`verify_task_completion`, `verify_component_completion`, `verify_module_completion`) within the Copilot SDK's tool-calling loop. The oracle tools collect evidence, dispatch a cheap sub-agent model to review it, and return pass/fail verdicts — all within a single SDK invocation.
+This document covers the pattern for implementing oracle verification tools (`verify_task_completion`, `verify_component_completion`, `verify_module_completion`) within the Copilot SDK's tool-calling loop. The oracle tools collect evidence and dispatch a **separate SDK invocation** with a cheap standard-tier model to review it, returning pass/fail verdicts.
 
 ## Key Finding: Copilot SDK Architecture
 
-> **⚠️ API Note**: The Copilot SDK's `CopilotSession` does not have a `SendAndWaitAsync` method. The canonical API is `SendAsync` (returns message ID) + event handlers for responses. Examples in this document use `SendAndWaitAsync` for brevity — see [RESEARCH.md § Model API](RESEARCH.md#2-model-api--chat-completions) for the convenience wrapper implementation that must be built.
-
-The Copilot SDK (.NET package `GitHub.Copilot.SDK`) communicates with the Copilot CLI via JSON-RPC. The **CLI handles the tool-calling loop internally** — the SDK registers custom tools via `AIFunctionFactory.Create` (from `Microsoft.Extensions.AI`), and the CLI automatically invokes handlers when the LLM calls them.
+The Copilot SDK (.NET package `GitHub.Copilot.SDK`) communicates with the Copilot CLI via JSON-RPC. The **CLI handles the tool-calling loop internally** — the SDK registers custom tools via `AIFunctionFactory.Create` (from `Microsoft.Extensions.AI`), and the CLI automatically invokes handlers when the LLM calls them. The SDK provides `SendAndWaitAsync` natively for awaiting responses.
 
 **Critical distinction**: Unlike raw OpenAI SDK usage where you manually loop on `FinishReason.ToolCalls`, the Copilot SDK abstracts this. You:
 1. Register tools in `SessionConfig.Tools`
 2. The CLI runs the LLM → tool-call → handler → result → LLM loop internally
 3. You receive events (`ToolExecutionStartEvent`, `ToolExecutionCompleteEvent`, `AssistantMessageEvent`, `SessionIdleEvent`)
 
-The oracle sub-agent call happens **inside your tool handler** — it's just another `CopilotClient.CreateSessionAsync` + `SendAndWaitAsync` call using a cheaper model.
+The oracle verification call happens via a **separate `ILlmService.InvokeAsync()` call** — the `OracleVerifier` dispatches a separate SDK invocation using a standard-tier model (e.g., `gpt-5-mini`). This avoids consuming a premium request and maintains architectural separation between the primary agent and the oracle reviewer.
 
 ---
 
@@ -24,24 +24,24 @@ The oracle sub-agent call happens **inside your tool handler** — it's just ano
 ### Copilot SDK Approach (Primary)
 
 ```csharp
-using GitHub.Copilot.SDK;
-using Microsoft.Extensions.AI;
 using System.ComponentModel;
 using System.Text.Json;
+using Microsoft.Extensions.AI;
 
-// The CopilotClient is shared — sub-agent sessions use the same CLI server
+// OracleVerifier dispatches a separate ILlmService.InvokeAsync() call
+// with a standard-tier model — not a tool-within-a-tool pattern.
 public class OracleVerificationTools
 {
-    private readonly CopilotClient _client;
+    private readonly ILlmService _llmService;
     private readonly EvidenceCollector _evidence;
     private readonly string _oracleModel;
 
     public OracleVerificationTools(
-        CopilotClient client,
+        ILlmService llmService,
         EvidenceCollector evidence,
-        string oracleModel = "gpt-4.1")
+        string oracleModel = "gpt-5-mini")
     {
-        _client = client;
+        _llmService = llmService;
         _evidence = evidence;
         _oracleModel = oracleModel;
     }
@@ -88,26 +88,19 @@ public class OracleVerificationTools
         VerificationEvidence evidence,
         VerificationScope scope)
     {
-        // Create a separate session with a cheap model for the oracle
-        await using var oracleSession = await _client.CreateSessionAsync(new SessionConfig
-        {
-            Model = _oracleModel,
-            SystemMessage = new SystemMessageConfig
-            {
-                Mode = SystemMessageMode.Replace,
-                Content = BuildOracleSystemPrompt(scope)
-            },
-            // No tools — oracle is a pure reviewer, not an agent
-            InfiniteSessions = new InfiniteSessionConfig { Enabled = false }
-        });
+        // Dispatch a separate SDK invocation with a standard-tier model.
+        // No tools — the oracle is a pure reviewer, not an agent.
+        var systemPrompt = BuildOracleSystemPrompt(scope);
+        var evidencePrompt = FormatEvidencePrompt(evidence, scope);
+        var prompt = $"{systemPrompt}\n\n{evidencePrompt}";
 
-        var prompt = FormatEvidencePrompt(evidence, scope);
+        var result = await _llmService.InvokeAsync(
+            prompt,
+            _oracleModel,
+            Array.Empty<LopenToolDefinition>(),
+            CancellationToken.None);
 
-        var response = await oracleSession.SendAndWaitAsync(
-            new MessageOptions { Prompt = prompt },
-            timeout: TimeSpan.FromSeconds(30));
-
-        var content = response?.Data?.Content ?? "";
+        var content = result.Output ?? "";
         return ParseOracleResponse(content);
     }
 }
@@ -118,7 +111,7 @@ public class OracleVerificationTools
 ```csharp
 public class TaskOrchestrator
 {
-    private readonly CopilotClient _client;
+    private readonly ILlmService _llmService;
     private readonly OracleVerificationTools _oracleTools;
     private readonly SessionState _state;
 
@@ -126,48 +119,29 @@ public class TaskOrchestrator
     {
         var oracleTools = _oracleTools.CreateTools();
 
-        // Primary session — premium model for task execution
-        await using var session = await _client.CreateSessionAsync(new SessionConfig
+        // Primary invocation — premium model for task execution.
+        // Oracle verification tools are registered as Lopen-managed tools;
+        // when called, they dispatch a separate ILlmService.InvokeAsync()
+        // with a standard-tier model (e.g. gpt-5-mini).
+        var tools = new List<LopenToolDefinition>
         {
-            Model = _state.GetModelForPhase("building"), // e.g. "claude-opus-4.6"
-            SystemMessage = new SystemMessageConfig
-            {
-                Mode = SystemMessageMode.Append,
-                Content = BuildTaskSystemPrompt(task)
-            },
-            Tools = [
-                ..oracleTools,
-                // Other Lopen-managed tools
-                AIFunctionFactory.Create(ReadSpec, "read_spec"),
-                AIFunctionFactory.Create(UpdateTaskStatus, "update_task_status"),
-            ]
-        });
+            // Oracle tools dispatch a separate invocation internally
+            ..oracleTools.Select(t => LopenToolDefinition.FromAIFunction(t)),
+            // Other Lopen-managed tools
+            LopenToolDefinition.FromAIFunction(
+                AIFunctionFactory.Create(ReadSpec, "read_spec")),
+            LopenToolDefinition.FromAIFunction(
+                AIFunctionFactory.Create(UpdateTaskStatus, "update_task_status")),
+        };
 
-        // Listen for events to track tool calls and enforce back-pressure
-        bool oraclePassed = false;
-        session.On(evt =>
-        {
-            if (evt is ToolExecutionCompleteEvent toolComplete)
-            {
-                // Track that oracle was called and passed
-                if (toolComplete.Data.ToolName?.StartsWith("verify_") == true)
-                {
-                    var verdict = JsonSerializer.Deserialize<OracleVerdict>(
-                        toolComplete.Data.Result ?? "{}");
-                    if (verdict?.Passed == true)
-                        oraclePassed = true;
-                }
-            }
-        });
-
-        // Send the task prompt — the CLI handles the full tool-calling loop
-        // The LLM will: implement → call verify_task_completion → fix if needed → loop
-        await session.SendAndWaitAsync(
-            new MessageOptions { Prompt = BuildTaskPrompt(task) },
-            timeout: TimeSpan.FromMinutes(10));
+        var result = await _llmService.InvokeAsync(
+            BuildTaskSystemPrompt(task),
+            _state.GetModelForPhase("building"), // e.g. "claude-opus-4.6"
+            tools,
+            CancellationToken.None);
 
         // Back-pressure enforcement
-        if (!oraclePassed)
+        if (!_verificationTracker.HasPassedVerification(task.Id))
         {
             _state.MarkTaskFailed(task.Id, "Oracle verification did not pass");
         }
@@ -695,7 +669,7 @@ public class VerificationTracker
 │                    Lopen Orchestrator                    │
 │                                                         │
 │  1. Prepares context, system prompt, tools              │
-│  2. Calls session.SendAndWaitAsync(taskPrompt)          │
+│  2. Calls ILlmService.InvokeAsync(taskPrompt)           │
 │     ┌──────────────────────────────────────────────┐    │
 │     │           Copilot CLI (via JSON-RPC)          │    │
 │     │                                               │    │
@@ -713,10 +687,11 @@ public class VerificationTracker
 │     │    │     │     ├── dotnet test                 │    │
 │     │    │     │     └── acceptance criteria         │    │
 │     │    │     │                                    │    │
-│     │    │     ├── DispatchOracleAsync()             │    │
-│     │    │     │     ├── CreateSessionAsync(         │    │
-│     │    │     │     │     model: "gpt-4.1")        │    │
-│     │    │     │     └── SendAndWaitAsync(evidence)  │    │
+│     │    │     ├── OracleVerifier.VerifyAsync()      │    │
+│     │    │     │     └── ILlmService.InvokeAsync(    │    │
+│     │    │     │           model: "gpt-5-mini",      │    │
+│     │    │     │           tools: [],                │    │
+│     │    │     │           prompt: evidence)         │    │
 │     │    │     │           ▼                        │    │
 │     │    │     │     Oracle verdict (JSON)           │    │
 │     │    │     │                                    │    │
@@ -736,24 +711,23 @@ public class VerificationTracker
 
 ## Key Design Decisions
 
-### Why Copilot SDK for the Oracle (not raw OpenAI HTTP)?
+### Why a Separate SDK Invocation (not a Tool-Within-a-Tool)?
 
-1. **Authentication reuse** — Same `CopilotClient` instance, same GitHub credentials
-2. **Model availability** — All models available via Copilot CLI are accessible
-3. **Billing alignment** — Oracle calls use standard-tier models (e.g., `gpt-4.1`), counted as standard requests
-4. **No additional dependencies** — No need for `Azure.AI.OpenAI` or `OpenAI` NuGet packages
+The oracle uses `ILlmService.InvokeAsync()` to dispatch a **separate SDK invocation** with a standard-tier model. This is a deliberate design choice:
 
-### Why `SystemMessageMode.Replace` for Oracle?
+1. **Cost separation** — The oracle call uses a standard-tier model (e.g., `gpt-5-mini`), so it does not consume a premium request
+2. **Authentication reuse** — Same `ILlmService` instance, same underlying Copilot SDK credentials
+3. **Model availability** — All models available via Copilot CLI are accessible
+4. **Architectural clarity** — The oracle is a pure reviewer with no tools registered (`Array.Empty<LopenToolDefinition>()`), cleanly separated from the primary agent's context
+5. **No additional dependencies** — No need for `Azure.AI.OpenAI` or `OpenAI` NuGet packages
 
-The oracle session needs a completely controlled system prompt — no Copilot CLI defaults about being helpful, file editing capabilities, etc. The oracle is a pure reviewer that outputs structured JSON.
+### Why a Pure Reviewer (No Tools)?
 
-### Why `InfiniteSessions = Enabled: false` for Oracle?
+The oracle invocation passes an empty tools array (`Array.Empty<LopenToolDefinition>()`). The oracle is a pure reviewer that receives evidence in its prompt and outputs structured JSON — no need for tool-calling capabilities, session persistence, or context compaction.
 
-Oracle sessions are single-shot (one prompt → one response). No need for context compaction or session persistence. This keeps them fast and lightweight.
+### Oracle Call is Synchronous from CLI's Perspective
 
-### Tool Handler is Synchronous from CLI's Perspective
-
-When the LLM calls `verify_task_completion`, the CLI waits for the tool handler to return. Inside the handler, we create an oracle session and wait for its response. The CLI doesn't know or care that we're making another LLM call — it just sees a tool handler that takes a bit longer than usual.
+When the LLM calls `verify_task_completion`, the CLI waits for the tool handler to return. Inside the handler, `OracleVerifier` dispatches a separate `ILlmService.InvokeAsync()` call with a standard-tier model and waits for its response. The CLI doesn't know or care that we're making another LLM call — it just sees a tool handler that takes a bit longer than usual.
 
 ### Diff Size Management
 

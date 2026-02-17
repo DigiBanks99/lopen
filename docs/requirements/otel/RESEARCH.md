@@ -628,6 +628,662 @@ Key points summarized here:
 
 ---
 
+## 12. Instrumentation Wiring Patterns
+
+The OTEL module defines all spans (`SpanFactory`) and metrics (`LopenTelemetryDiagnostics`) but none are called from production code. This section researches patterns for wiring them in.
+
+### Current State
+
+| Component | Static Class | Methods/Instruments |
+|---|---|---|
+| Traces | `SpanFactory` | 10 span-creation methods: `StartCommand`, `StartWorkflowPhase`, `StartSdkInvocation`, `StartTool`, `StartOracleVerification`, `StartTask`, `StartSession`, `StartGit`, `StartBackpressure`, + result setters |
+| Metrics | `LopenTelemetryDiagnostics` | 10 counters, 5 histograms, 2 gauges |
+| DI Registration | `ServiceCollectionExtensions.AddLopenOtel()` | Registers sources, meters, OTLP exporter |
+
+None of these are called from `CopilotLlmService`, `WorkflowEngine`, `GuardrailPipeline`, `SessionManager`, `GitWorkflowService`, or `RootCommandHandler`.
+
+### Pattern Analysis: Decorator vs Direct Instrumentation vs AOP
+
+#### Option A: Direct Instrumentation (Inline Calls)
+
+Add `SpanFactory` and metric recording calls directly into each service implementation.
+
+```csharp
+// In CopilotLlmService.InvokeAsync
+public async Task<LlmInvocationResult> InvokeAsync(
+    string systemPrompt, string model,
+    IReadOnlyList<LopenToolDefinition> tools,
+    CancellationToken ct)
+{
+    using var activity = SpanFactory.StartSdkInvocation(model);
+    LopenTelemetryDiagnostics.SdkInvocationCount.Add(1, new("model", model));
+    var sw = Stopwatch.StartNew();
+    try
+    {
+        var result = await InvokeInternalAsync(systemPrompt, model, tools, ct);
+        SpanFactory.SetSdkResult(activity, result.TokenUsage.InputTokens,
+            result.TokenUsage.OutputTokens, result.TokenUsage.IsPremiumRequest,
+            result.ToolCallsMade);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        return result;
+    }
+    catch (Exception ex)
+    {
+        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+        activity?.RecordException(ex);
+        throw;
+    }
+    finally
+    {
+        sw.Stop();
+        LopenTelemetryDiagnostics.SdkInvocationDuration.Record(sw.Elapsed.TotalMilliseconds,
+            new("model", model));
+    }
+}
+```
+
+**Pros:**
+- Simplest — no new types, no DI changes, no indirection
+- Full access to method parameters and return values for rich attributes
+- Zero runtime overhead when OTEL is disabled (null propagation, no-op counters)
+- Matches how the .NET runtime itself is instrumented (`HttpClient`, `System.Net.Sockets`)
+
+**Cons:**
+- Instrumentation code is mixed with business logic
+- Each service must reference `Lopen.Otel` (but this is only `System.Diagnostics` types via static classes)
+- Cannot swap instrumentation strategy without modifying service code
+
+#### Option B: DI Decorator Pattern (Instrumented Wrappers)
+
+Create wrapper classes that implement the same interface and delegate to the inner service.
+
+```csharp
+public class InstrumentedLlmService(ILlmService inner) : ILlmService
+{
+    public async Task<LlmInvocationResult> InvokeAsync(
+        string systemPrompt, string model,
+        IReadOnlyList<LopenToolDefinition> tools,
+        CancellationToken ct)
+    {
+        using var activity = SpanFactory.StartSdkInvocation(model);
+        LopenTelemetryDiagnostics.SdkInvocationCount.Add(1, new("model", model));
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var result = await inner.InvokeAsync(systemPrompt, model, tools, ct);
+            SpanFactory.SetSdkResult(activity, result.TokenUsage.InputTokens,
+                result.TokenUsage.OutputTokens, result.TokenUsage.IsPremiumRequest,
+                result.ToolCallsMade);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.RecordException(ex);
+            throw;
+        }
+        finally
+        {
+            sw.Stop();
+            LopenTelemetryDiagnostics.SdkInvocationDuration.Record(
+                sw.Elapsed.TotalMilliseconds, new("model", model));
+        }
+    }
+}
+```
+
+DI registration using manual decoration (no Scrutor):
+
+```csharp
+public static IServiceCollection AddLopenOtelDecorators(this IServiceCollection services)
+{
+    services.Decorate<ILlmService>(inner => new InstrumentedLlmService(inner));
+    services.Decorate<IGitService>(inner => new InstrumentedGitService(inner));
+    services.Decorate<ISessionManager>(inner => new InstrumentedSessionManager(inner));
+    return services;
+}
+
+// Manual Decorate<T> extension (without Scrutor):
+public static IServiceCollection Decorate<TService>(
+    this IServiceCollection services,
+    Func<TService, TService> decorator)
+    where TService : class
+{
+    var descriptor = services.LastOrDefault(d => d.ServiceType == typeof(TService))
+        ?? throw new InvalidOperationException($"No registration found for {typeof(TService)}");
+
+    services.Remove(descriptor);
+    services.Add(ServiceDescriptor.Describe(
+        typeof(TService),
+        sp =>
+        {
+            var inner = (TService)descriptor.ImplementationFactory?.Invoke(sp)
+                ?? ActivatorUtilities.CreateInstance(sp, descriptor.ImplementationType!);
+            return decorator(inner);
+        },
+        descriptor.Lifetime));
+
+    return services;
+}
+```
+
+**Pros:**
+- Clean separation — services stay free of OTEL code
+- Instrumentation can be toggled on/off at DI registration time
+- Each decorator is independently testable
+- All instrumentation lives in `Lopen.Otel` module
+
+**Cons:**
+- Requires one wrapper class per instrumented interface (6–8 classes)
+- Wrapper must re-implement every interface method, even those that don't need spans
+- Some return values needed for attributes are only available after the inner call completes
+- Manual `Decorate<T>` helper needed (Lopen doesn't use Scrutor)
+- Extra allocation per call (one wrapper object is singleton, but delegate closure in factory)
+
+#### Option C: AOP / Source Generator
+
+Use compile-time source generators or runtime interceptors (`DispatchProxy`, Castle.DynamicProxy) to auto-generate instrumented wrappers.
+
+**Pros:**
+- Zero boilerplate — spans auto-generated from interface metadata
+- Attributes could be derived from parameter names via conventions
+
+**Cons:**
+- Significant complexity for a CLI tool
+- `DispatchProxy` adds runtime overhead and allocation
+- Castle.DynamicProxy is a heavy dependency
+- Source generators require substantial upfront investment
+- Attribute selection (which parameters become span tags) needs explicit configuration anyway
+
+### Recommendation
+
+**Use Option A (direct instrumentation) for the initial wiring, with Option B reserved for `ILlmService` only.**
+
+Rationale:
+1. **Lopen services already depend on `Lopen.Otel` transitively** — `LopenTelemetryDiagnostics` uses only `System.Diagnostics` types which are part of the .NET runtime. No new dependency is introduced.
+2. **The null-propagation pattern (`activity?.SetTag()`) is the idiomatic .NET approach.** The .NET runtime, ASP.NET Core, and HttpClient all use direct instrumentation — not decorators.
+3. **Rich attributes require access to internals.** `CopilotLlmService` tracks token usage via internal events (`session.TokenUsageUpdated`). A decorator only sees the final `LlmInvocationResult` and misses streaming-granularity data.
+4. **6–8 decorator classes for a CLI tool is excessive ceremony** given that the instrumentation code is ~5–10 lines per method.
+5. **The `ILlmService` decorator is warranted** because it is the most expensive operation (network I/O, seconds of latency), the interface has a single method, and the decorator pattern gives clean before/after timing with no internal coupling.
+
+### Wiring Map
+
+| Production Service | Span | Key Metrics | Wiring Pattern |
+|---|---|---|---|
+| `RootCommandHandler` / `PhaseCommands` | `SpanFactory.StartCommand()` | `CommandCount`, `CommandDuration` | Direct (command entry point) |
+| `WorkflowEngine.Fire()` | `SpanFactory.StartWorkflowPhase()` | — | Direct (state machine transition) |
+| `CopilotLlmService.InvokeAsync()` | `SpanFactory.StartSdkInvocation()` | `SdkInvocationCount`, `SdkInvocationDuration`, `TokensConsumed`, `PremiumRequestCount`, `ContextWindowUtilization` | Decorator (`InstrumentedLlmService`) |
+| Tool execution (via Copilot SDK events) | `SpanFactory.StartTool()` | `ToolCount`, `ToolDuration` | Direct (event handler in `CopilotLlmService`) |
+| `GuardrailPipeline.EvaluateAsync()` | `SpanFactory.StartBackpressure()` | `BackPressureEventCount` | Direct |
+| `SessionManager` save/load | `SpanFactory.StartSession()` | `SessionIteration` | Direct |
+| `GitWorkflowService.CommitTaskCompletionAsync()` | `SpanFactory.StartGit()` | `GitCommitCount` | Direct |
+| Oracle verification | `SpanFactory.StartOracleVerification()` | `OracleVerdictCount`, `OracleDuration` | Direct |
+
+---
+
+## 13. Cross-Cutting Instrumentation Without Tight Coupling
+
+### Problem
+
+Adding OTEL calls to every service risks creating a dependency web where `Lopen.Core`, `Lopen.Llm`, `Lopen.Storage` all reference `Lopen.Otel`. The goal is to add observability without tight module coupling.
+
+### Why Tight Coupling Is Not Actually a Problem Here
+
+The key architectural insight from Section 1 bears repeating: **instrumentation code depends only on `System.Diagnostics`, not on the OTEL SDK**. The `SpanFactory` and `LopenTelemetryDiagnostics` classes use:
+
+- `System.Diagnostics.ActivitySource` / `Activity` — built into the .NET runtime
+- `System.Diagnostics.Metrics.Meter` / `Counter<T>` / `Histogram<T>` / `Gauge<T>` — built into the .NET runtime
+
+These are **not** OpenTelemetry types. They are .NET BCL types available in every .NET 10.0 project with zero additional package references. The OTEL SDK (`OpenTelemetry.Exporter.OpenTelemetryProtocol`, etc.) is referenced only by `Lopen.Otel`'s `ServiceCollectionExtensions` — the composition root.
+
+Therefore, referencing `Lopen.Otel` from other modules adds a dependency on a project that exposes only `System.Diagnostics` statics. This is comparable to referencing a shared constants/telemetry-names project.
+
+### Approach: Shared Telemetry Statics in `Lopen.Otel`
+
+The current design is already correct:
+
+```
+Lopen.Otel (defines ActivitySources, Meter, SpanFactory)
+    ↑ referenced by
+Lopen.Core, Lopen.Llm, Lopen.Storage (call SpanFactory / record metrics)
+    ↑ referenced by
+Lopen.Cli (composition root — calls AddLopenOtel to wire SDK + exporters)
+```
+
+Each module calls the static `SpanFactory` and `LopenTelemetryDiagnostics` methods directly. When no OTEL listener is registered:
+- `ActivitySource.StartActivity()` returns `null` → zero allocation
+- `Counter.Add()` / `Histogram.Record()` → no-op (no `MeterProvider` listening)
+
+### Root Span: CLI Command Entry Point
+
+The root span wraps the entire command execution. It must be the **outermost** span so all child spans (workflow, SDK, tool, git) are automatically parented:
+
+```csharp
+// In RootCommandHandler's SetAction lambda (or PhaseCommands equivalent)
+using var commandSpan = SpanFactory.StartCommand(commandName, headless, hasPrompt);
+LopenTelemetryDiagnostics.CommandCount.Add(1, new("command.name", commandName));
+var sw = Stopwatch.StartNew();
+try
+{
+    var exitCode = await ExecuteCommandAsync(context, ct);
+    SpanFactory.SetCommandExitCode(commandSpan, exitCode);
+    commandSpan?.SetStatus(exitCode == 0 ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
+    return exitCode;
+}
+catch (Exception ex)
+{
+    SpanFactory.SetCommandExitCode(commandSpan, 1);
+    commandSpan?.SetStatus(ActivityStatusCode.Error, ex.Message);
+    commandSpan?.RecordException(ex);
+    throw;
+}
+finally
+{
+    sw.Stop();
+    LopenTelemetryDiagnostics.CommandDuration.Record(sw.Elapsed.TotalMilliseconds,
+        new("command.name", commandName));
+}
+```
+
+### Workflow Phase Transitions
+
+Each `WorkflowEngine.Fire()` call transitions the state machine. The span wraps the phase duration:
+
+```csharp
+// Inside WorkflowEngine or the orchestrator that calls Fire()
+public bool Fire(WorkflowTrigger trigger)
+{
+    using var phaseSpan = SpanFactory.StartWorkflowPhase(
+        CurrentPhase.ToString(), _moduleName, _iteration);
+    var success = _machine.Fire(trigger);
+    phaseSpan?.SetTag("lopen.workflow.trigger", trigger.ToString());
+    phaseSpan?.SetTag("lopen.workflow.transition.success", success);
+    return success;
+}
+```
+
+### LLM SDK Invocation (Decorator)
+
+The `InstrumentedLlmService` decorator wraps `ILlmService` and is the **only** decorator in the system. See Section 12 for the full implementation.
+
+### Tool Handler Execution
+
+Tool execution in Lopen is handled by the Copilot SDK via `ToolExecutionCompleteEvent`. The instrumentation hooks into the event handler already present in `CopilotLlmService`:
+
+```csharp
+// In CopilotLlmService's event handler for tool execution
+session.ToolExecutionComplete += (sender, args) =>
+{
+    using var toolSpan = SpanFactory.StartTool(args.ToolName, _currentModule);
+    SpanFactory.SetToolResult(toolSpan, args.Success, args.Error);
+    LopenTelemetryDiagnostics.ToolCount.Add(1,
+        new("tool.name", args.ToolName),
+        new("tool.success", args.Success));
+    LopenTelemetryDiagnostics.ToolDuration.Record(args.Duration.TotalMilliseconds,
+        new("tool.name", args.ToolName));
+};
+```
+
+### Back-Pressure Events
+
+Instrument the `GuardrailPipeline.EvaluateAsync()` method directly. Only create a backpressure span when a `Warn` or `Block` result occurs:
+
+```csharp
+// In GuardrailPipeline.EvaluateAsync
+var results = await EvaluateAllAsync(context, ct);
+foreach (var result in results.Where(r => r is not GuardrailResult.Pass))
+{
+    using var bpSpan = SpanFactory.StartBackpressure(
+        result.Category, result.Trigger, result.Action);
+    LopenTelemetryDiagnostics.BackPressureEventCount.Add(1,
+        new("category", result.Category),
+        new("action", result.Action));
+}
+```
+
+### Trace Hierarchy
+
+The ambient `Activity.Current` (tracked via `AsyncLocal<T>`) automatically creates parent-child relationships when spans are nested within `using` blocks:
+
+```
+lopen.command (root)
+├── lopen.workflow.phase (RequirementGathering)
+│   └── lopen.sdk.invocation (claude-sonnet-4)
+│       ├── lopen.tool.read_spec
+│       └── lopen.tool.log_research
+├── lopen.workflow.phase (Planning)
+│   └── lopen.sdk.invocation (claude-sonnet-4)
+│       └── lopen.tool.update_task_status
+├── lopen.workflow.phase (Building)
+│   ├── lopen.task.execution (implement-parser)
+│   │   └── lopen.sdk.invocation (claude-sonnet-4)
+│   │       ├── lopen.tool.read_plan
+│   │       └── lopen.tool.report_progress
+│   ├── lopen.oracle.verification
+│   └── lopen.git.commit
+├── lopen.backpressure.event (warn)
+└── lopen.session.save
+```
+
+No explicit parent ID passing is needed. The `using` block scoping handles everything.
+
+### Module Dependency Impact
+
+Adding direct instrumentation requires these project references:
+
+| Module | New Reference | Already Exists? |
+|---|---|---|
+| `Lopen.Core` → `Lopen.Otel` | `SpanFactory`, `LopenTelemetryDiagnostics` | Check `.csproj` |
+| `Lopen.Llm` → `Lopen.Otel` | `SpanFactory`, `LopenTelemetryDiagnostics` | Check `.csproj` |
+| `Lopen.Storage` → `Lopen.Otel` | `SpanFactory`, `LopenTelemetryDiagnostics` | Check `.csproj` |
+| `Lopen` (CLI) → `Lopen.Otel` | `SpanFactory` (command spans) | Already referenced |
+
+These references add zero runtime cost — `Lopen.Otel` contains only static `System.Diagnostics` type declarations. No OTEL SDK packages are pulled transitively.
+
+---
+
+## 14. Aspire AppHost Integration
+
+### Current State
+
+Lopen already has an Aspire AppHost project at `src/Lopen.AppHost/`:
+
+```csharp
+// Program.cs (current — minimal)
+var builder = DistributedApplication.CreateBuilder(args);
+builder.AddProject<Projects.Lopen>("lopen");
+builder.Build().Run();
+```
+
+The `.csproj` references `Aspire.AppHost.Sdk` v13.1.1 and `Aspire.Hosting.AppHost`.
+
+### How the AppHost Wires OTEL Automatically
+
+When `aspire run` launches the AppHost, the Aspire orchestrator automatically:
+
+1. **Starts the Aspire Dashboard** — a Blazor app listening on ports 18888 (UI), 18889 (OTLP/gRPC), 18890 (OTLP/HTTP)
+2. **Sets OTEL environment variables** on the `lopen` process:
+   - `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:18889` (gRPC) — points to the Dashboard
+   - `OTEL_SERVICE_NAME=lopen`
+   - `OTEL_RESOURCE_ATTRIBUTES=service.instance.id=<guid>`
+   - `OTEL_BSP_SCHEDULE_DELAY`, `OTEL_BLRP_SCHEDULE_DELAY`, `OTEL_METRIC_EXPORT_INTERVAL`
+3. **Launches Lopen** as a managed resource with console log capture
+
+Because `ServiceCollectionExtensions.AddLopenOtel()` already checks for `OTEL_EXPORTER_OTLP_ENDPOINT` and conditionally calls `UseOtlpExporter()`, the existing code **automatically exports telemetry when run under Aspire** — no code changes needed.
+
+### CLI Tool Considerations with AppHost
+
+Lopen is a CLI tool, not a long-running service. This creates specific AppHost considerations:
+
+1. **Short-lived process** — Lopen runs a command and exits. The AppHost treats this as a resource that starts and stops. The Dashboard continues running and retains telemetry in memory after Lopen exits.
+
+2. **`AddProject` vs `AddExecutable`** — The current `AddProject<Projects.Lopen>("lopen")` is correct for .NET projects. If Lopen were a published binary, `AddExecutable("lopen", "lopen", workingDirectory)` would be used instead.
+
+3. **Passing CLI arguments** — To run Lopen with specific commands under Aspire:
+
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+builder.AddProject<Projects.Lopen>("lopen")
+    .WithArgs("build", "--headless", "--prompt", "implement the parser module");
+builder.Build().Run();
+```
+
+4. **ForceFlush on exit** — `IHost.StopAsync()` disposes the `TracerProvider` and `MeterProvider`, which triggers `ForceFlush()` on all processors. Since Lopen uses `IHost`, the final telemetry batch is exported before exit. No manual `ForceFlush()` call is needed as long as `IHost` is properly disposed (via `await host.RunAsync()` or `using` block).
+
+### Enhanced AppHost Configuration
+
+The current minimal AppHost can be enhanced for a better developer experience:
+
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+
+var lopen = builder.AddProject<Projects.Lopen>("lopen")
+    .WithEnvironment("otel__enabled", "true")
+    .WithEnvironment("otel__traces__enabled", "true")
+    .WithEnvironment("otel__metrics__enabled", "true")
+    .WithEnvironment("otel__logs__enabled", "true");
+
+builder.Build().Run();
+```
+
+The `__` separator maps to `:` in `IConfiguration`, so `otel__enabled` becomes `otel:enabled`. This ensures all signals are active during Aspire development even if the user's config file has them disabled.
+
+### Developer Workflow
+
+```bash
+# 1. Install the Aspire CLI (one-time)
+curl -sSL https://aspire.dev/install.sh | bash
+
+# 2. Run Lopen under Aspire
+cd src/Lopen.AppHost
+aspire run
+
+# 3. Open the Dashboard
+# Browse to http://localhost:18888
+# - Traces page: see command → workflow → SDK invocation spans
+# - Metrics page: see counters, histograms, gauges
+# - Structured Logs page: see ILogger output correlated with traces
+
+# 4. Run a Lopen command (in another terminal, or via AppHost args)
+# Telemetry appears in the Dashboard in real-time
+```
+
+### Standalone Dashboard (Without AppHost)
+
+For developers who don't want the full Aspire orchestration:
+
+```bash
+# Start the Dashboard standalone via Docker
+docker run --rm -d \
+    -p 18888:18888 \
+    -p 4317:18889 \
+    -e DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true \
+    --name aspire-dashboard \
+    mcr.microsoft.com/dotnet/aspire-dashboard:latest
+
+# Run Lopen with OTEL export pointed at the Dashboard
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \
+OTEL_SERVICE_NAME=lopen \
+dotnet run --project src/Lopen -- build --headless --prompt "implement parser"
+
+# View telemetry at http://localhost:18888
+```
+
+This works because the OTLP protocol is standard — the Dashboard accepts telemetry from any OTLP-speaking source.
+
+### Relevance to Lopen
+
+The Aspire AppHost is already set up and functional. The auto-wiring of OTEL environment variables means that once instrumentation calls are added to production code (Section 12), telemetry will flow to the Dashboard immediately during `aspire run`. No additional AppHost configuration is needed for the basic workflow. The enhanced configuration (explicit signal toggles, CLI arguments) is optional polish.
+
+---
+
+## 15. Aspire Run Support (OTEL-13)
+
+OTEL-13 requires that `aspire run` starts the Aspire Dashboard and Lopen with OTEL telemetry pre-configured and visible in the Dashboard. This section covers what's needed for the AppHost project and manifest.
+
+### Current AppHost State
+
+The AppHost project (`src/Lopen.AppHost/`) is already functional with a minimal `Program.cs`:
+
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+builder.AddProject<Projects.Lopen>("lopen");
+builder.Build().Run();
+```
+
+This uses `Aspire.AppHost.Sdk` version 13.1.1 and `Aspire.Hosting.AppHost` NuGet package. The `<IsAspireHost>true</IsAspireHost>` property in the `.csproj` enables the Aspire tooling integration.
+
+### What Aspire Does Automatically
+
+When `aspire run` executes the AppHost:
+
+1. **Dashboard launch** — Starts the Aspire Dashboard (Blazor app) on ports 18888 (UI), 18889 (OTLP/gRPC), 18890 (OTLP/HTTP)
+2. **Environment injection** — Sets OTEL environment variables on the Lopen process:
+   - `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:18889`
+   - `OTEL_SERVICE_NAME=lopen`
+   - `OTEL_RESOURCE_ATTRIBUTES=service.instance.id=<guid>`
+   - `OTEL_BSP_SCHEDULE_DELAY`, `OTEL_BLRP_SCHEDULE_DELAY`, `OTEL_METRIC_EXPORT_INTERVAL`
+3. **Process management** — Launches Lopen as a managed resource with console log capture
+
+Since `AddLopenOtel()` already checks for `OTEL_EXPORTER_OTLP_ENDPOINT` and conditionally calls `UseOtlpExporter()`, telemetry flows automatically — no code changes needed for the basic flow.
+
+### What's Needed for Full OTEL-13 Compliance
+
+1. **CLI argument passthrough** — The AppHost should forward CLI arguments to Lopen so developers can run specific commands:
+
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+builder.AddProject<Projects.Lopen>("lopen")
+    .WithArgs("build", "--headless", "--prompt", "implement parser");
+builder.Build().Run();
+```
+
+2. **Signal overrides** — Ensure all signals are enabled during Aspire development even if the user's config disables them:
+
+```csharp
+builder.AddProject<Projects.Lopen>("lopen")
+    .WithEnvironment("otel__enabled", "true")
+    .WithEnvironment("otel__traces__enabled", "true")
+    .WithEnvironment("otel__metrics__enabled", "true")
+    .WithEnvironment("otel__logs__enabled", "true");
+```
+
+3. **ForceFlush on exit** — Since Lopen is a CLI tool (short-lived), `IHost.StopAsync()` disposes `TracerProvider` and `MeterProvider`, triggering `ForceFlush()`. No manual flush needed as long as `IHost` is properly disposed via `await host.RunAsync()`.
+
+### Aspire Manifest (Optional)
+
+For `aspire publish` scenarios (deployment manifests), a manifest is auto-generated. For local dev with `aspire run`, no manifest file is needed — the AppHost `Program.cs` is the source of truth.
+
+### Testing OTEL-13
+
+Verification is primarily manual (start `aspire run`, open Dashboard, confirm telemetry appears). Automated verification options:
+
+- **Integration test**: Start the AppHost programmatically, verify the Lopen process receives OTEL environment variables
+- **Smoke test**: Run `aspire run` in CI, curl the Dashboard health endpoint, check that the `lopen` resource appears
+
+### Relevance to Lopen
+
+The AppHost is already functional. OTEL-13 compliance requires verifying the end-to-end flow (`aspire run` → Dashboard shows traces/metrics/logs) and optionally enhancing the AppHost with CLI argument passthrough and signal overrides. The heavy lifting (OTEL SDK wiring, OTLP export) is already in `AddLopenOtel()`.
+
+---
+
+## 16. Performance Benchmark Approach (OTEL-17)
+
+OTEL-17 requires that CLI command execution time is not measurably degraded by OTEL instrumentation (< 5ms overhead on command startup). This section covers how to measure instrumentation overhead accurately.
+
+### What "< 5ms Overhead" Means
+
+The 5ms budget applies to **command startup time** — the time from process entry to the first meaningful work. This includes:
+
+- `IHost` build + DI container construction
+- `TracerProvider` and `MeterProvider` initialization
+- `ActivitySource` and `Meter` registration
+- OTLP exporter channel establishment (lazy — should not block startup)
+
+It does **not** include per-span or per-metric recording overhead (which is sub-microsecond when no listener is attached).
+
+### Measurement Approach: Differential Benchmarking
+
+Compare startup time with and without OTEL instrumentation:
+
+```csharp
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Running;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+[MemoryDiagnoser]
+public class OtelStartupBenchmark
+{
+    [Benchmark(Baseline = true)]
+    public IHost BuildHost_WithoutOtel()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        // Register all Lopen services EXCEPT OTEL
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage("/tmp/bench");
+        return builder.Build();
+    }
+
+    [Benchmark]
+    public IHost BuildHost_WithOtel()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage("/tmp/bench");
+        builder.Services.AddLopenOtel(); // ← the overhead we're measuring
+        return builder.Build();
+    }
+}
+```
+
+Run with: `dotnet run -c Release -- --filter OtelStartupBenchmark`
+
+### Expected Results
+
+Based on OpenTelemetry .NET SDK characteristics:
+
+| Component | Expected Overhead |
+|---|---|
+| `TracerProvider` build | ~0.5–1ms |
+| `MeterProvider` build | ~0.5–1ms |
+| `ILoggerProvider` registration | ~0.1ms |
+| OTLP exporter creation (lazy channel) | ~0.1ms |
+| **Total** | **~1.2–2.3ms** |
+
+When `otel.enabled = false` and instrumentation is skipped entirely, the overhead should be < 0.1ms (just reading the config value).
+
+### Alternative: Stopwatch-Based Measurement
+
+For CI verification without BenchmarkDotNet:
+
+```csharp
+[Fact]
+public void OtelInstrumentation_AddsLessThan5msOverhead()
+{
+    const int iterations = 100;
+
+    // Warm up
+    BuildHostWithOtel();
+    BuildHostWithoutOtel();
+
+    // Measure without OTEL
+    var swWithout = Stopwatch.StartNew();
+    for (int i = 0; i < iterations; i++)
+        BuildHostWithoutOtel().Dispose();
+    swWithout.Stop();
+
+    // Measure with OTEL
+    var swWith = Stopwatch.StartNew();
+    for (int i = 0; i < iterations; i++)
+        BuildHostWithOtel().Dispose();
+    swWith.Stop();
+
+    var overheadMs = (swWith.Elapsed - swWithout.Elapsed).TotalMilliseconds / iterations;
+    Assert.True(overheadMs < 5.0,
+        $"OTEL overhead was {overheadMs:F2}ms, exceeding the 5ms budget");
+}
+```
+
+### Key Considerations
+
+1. **No-listener fast path** — When OTEL is disabled (`otel.enabled = false`), `ActivitySource.StartActivity()` returns `null` with zero allocation. The benchmark should verify this path separately.
+
+2. **OTLP channel is lazy** — The gRPC/HTTP channel to the OTLP endpoint is established on first export, not during `TracerProvider` build. Startup benchmarks should not conflate channel establishment with provider initialization.
+
+3. **AOT impact** — Source-generated JSON serializers and trimming affect startup. Benchmarks should run in both JIT and AOT modes (`dotnet publish -c Release` + run the native binary).
+
+4. **CI stability** — Stopwatch-based tests can be flaky on CI runners with variable load. Use a generous margin (e.g., assert < 5ms even though expected is ~2ms) and run multiple iterations to average out noise.
+
+5. **Memory overhead** — `[MemoryDiagnoser]` in BenchmarkDotNet tracks allocations. OTEL SDK initialization should add < 50KB of allocations to the startup path.
+
+### Relevance to Lopen
+
+The differential benchmarking approach isolates OTEL overhead from the rest of Lopen's startup. The < 5ms budget is generous given the expected ~2ms overhead of the OTEL .NET SDK. A Stopwatch-based test in the CI suite provides continuous regression detection, while BenchmarkDotNet gives detailed profiling for optimization. The key insight is that the .NET `System.Diagnostics` API has zero overhead when no listener is registered — so the disabled path is essentially free.
+
+---
+
 ## References
 
 - [OTEL Specification](./SPECIFICATION.md) — Lopen's OTEL specification (traces, metrics, logs, configuration)
@@ -636,3 +1292,4 @@ Key points summarized here:
 - [OTLP Exporter README](https://github.com/open-telemetry/opentelemetry-dotnet/tree/main/src/OpenTelemetry.Exporter.OpenTelemetryProtocol) — Configuration, environment variables, `UseOtlpExporter()`
 - [.NET Distributed Tracing](https://learn.microsoft.com/dotnet/core/diagnostics/distributed-tracing) — `ActivitySource`, `Activity` API reference
 - [.NET Metrics](https://learn.microsoft.com/dotnet/core/diagnostics/metrics) — `Meter`, `Counter`, `Histogram`, `Gauge` API reference
+- [BenchmarkDotNet](https://benchmarkdotnet.org/) — Micro-benchmarking library for .NET performance measurement

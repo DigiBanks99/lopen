@@ -1,0 +1,1034 @@
+using Lopen.Core;
+using Lopen.Core.Workflow;
+using Microsoft.Extensions.Logging;
+using Spectre.Tui;
+
+namespace Lopen.Tui;
+
+/// <summary>
+/// Tracks which modal overlay (if any) is currently displayed.
+/// </summary>
+internal enum TuiModalState
+{
+    None,
+    LandingPage,
+    SessionResume,
+    ResourceViewer,
+    FilePicker,
+    ModuleSelection,
+    Confirmation,
+    ErrorModal
+}
+
+/// <summary>
+/// Real TUI application shell using Spectre.Tui for full-screen cell-based rendering.
+/// Manages the render loop, keyboard input, layout calculation, and component rendering.
+/// </summary>
+internal sealed class TuiApplication : ITuiApplication
+{
+    private readonly TopPanelComponent _topPanel;
+    private readonly ActivityPanelComponent _activityPanel;
+    private readonly ContextPanelComponent _contextPanel;
+    private readonly PromptAreaComponent _promptArea;
+    private readonly KeyboardHandler _keyboardHandler;
+    private readonly ITopPanelDataProvider? _topPanelDataProvider;
+    private readonly IContextPanelDataProvider? _contextPanelDataProvider;
+    private readonly IActivityPanelDataProvider? _activityPanelDataProvider;
+    private readonly ISlashCommandExecutor? _slashCommandExecutor;
+    private readonly IPauseController? _pauseController;
+    private readonly IUserPromptQueue? _userPromptQueue;
+    private readonly IWorkflowOrchestrator? _orchestrator;
+    private readonly LandingPageComponent _landingPage;
+    private readonly SessionResumeModalComponent _sessionResumeModal;
+    private readonly ResourceViewerModalComponent _resourceViewerModal;
+    private readonly FilePickerComponent _filePickerComponent;
+    private readonly SelectionModalComponent _selectionModalComponent;
+    private readonly ConfirmationModalComponent _confirmationModalComponent;
+    private readonly ErrorModalComponent _errorModalComponent;
+    private readonly ISessionDetector? _sessionDetector;
+    private readonly int _failureThreshold;
+    private bool _failureModalShownForCurrentStreak;
+    private bool _showLandingPage;
+    private readonly ILogger<TuiApplication> _logger;
+
+    private volatile bool _running;
+    private CancellationTokenSource? _stopCts;
+    private Task<OrchestrationResult>? _orchestratorTask;
+    private string? _orchestratorModule;
+
+    // Mutable state — updated by keyboard input and external events
+    private FocusPanel _focus = FocusPanel.Prompt;
+    private bool _isPaused;
+    private int _splitPercent = 60;
+    private TuiModalState _modalState = TuiModalState.None;
+
+    // Data bags for each panel (updated externally or by keyboard events)
+    private TopPanelData _topData = new() { Version = "0.0.0" };
+    private ActivityPanelData _activityData = new();
+    private ContextPanelData _contextData = new();
+    private PromptAreaData _promptData = new();
+    private LandingPageData _landingPageData = new() { Version = "0.0.0" };
+    private SessionResumeData _sessionResumeData = new()
+    {
+        ModuleName = "",
+        PhaseName = "",
+        StepProgress = "",
+        TaskProgress = "",
+        LastActivity = ""
+    };
+    private ResourceViewerData _resourceViewerData = new() { Label = "" };
+    private FilePickerData _filePickerData = new() { RootPath = "" };
+    private ModuleSelectionData _moduleSelectionData = new() { Title = "" };
+    private ConfirmationData _confirmationData = new() { Title = "" };
+    private ErrorModalData _errorModalData = new() { Title = "", Message = "" };
+
+    // Throttle for data provider refresh (avoid calling async services every frame)
+    private DateTime _lastProviderRefresh = DateTime.MinValue;
+    private DateTime _lastContextProviderRefresh = DateTime.MinValue;
+    internal static readonly TimeSpan ProviderRefreshInterval = TimeSpan.FromSeconds(1);
+
+    public bool IsRunning => _running;
+
+    internal TuiModalState CurrentModalState => _modalState;
+    internal ErrorModalData CurrentErrorModalData => _errorModalData;
+    internal void DismissModal() => _modalState = TuiModalState.None;
+
+    // Allow test injection of the terminal factory
+    internal Func<ITerminal>? TerminalFactory { get; set; }
+
+    public TuiApplication(
+        TopPanelComponent topPanel,
+        ActivityPanelComponent activityPanel,
+        ContextPanelComponent contextPanel,
+        PromptAreaComponent promptArea,
+        KeyboardHandler keyboardHandler,
+        ILogger<TuiApplication> logger,
+        ITopPanelDataProvider? topPanelDataProvider = null,
+        IContextPanelDataProvider? contextPanelDataProvider = null,
+        IActivityPanelDataProvider? activityPanelDataProvider = null,
+        ISlashCommandExecutor? slashCommandExecutor = null,
+        IPauseController? pauseController = null,
+        IUserPromptQueue? userPromptQueue = null,
+        IWorkflowOrchestrator? orchestrator = null,
+        bool showLandingPage = true,
+        ISessionDetector? sessionDetector = null,
+        int failureThreshold = 3)
+    {
+        _topPanel = topPanel ?? throw new ArgumentNullException(nameof(topPanel));
+        _activityPanel = activityPanel ?? throw new ArgumentNullException(nameof(activityPanel));
+        _contextPanel = contextPanel ?? throw new ArgumentNullException(nameof(contextPanel));
+        _promptArea = promptArea ?? throw new ArgumentNullException(nameof(promptArea));
+        _keyboardHandler = keyboardHandler ?? throw new ArgumentNullException(nameof(keyboardHandler));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _topPanelDataProvider = topPanelDataProvider;
+        _contextPanelDataProvider = contextPanelDataProvider;
+        _activityPanelDataProvider = activityPanelDataProvider;
+        _slashCommandExecutor = slashCommandExecutor;
+        _pauseController = pauseController;
+        _userPromptQueue = userPromptQueue;
+        _orchestrator = orchestrator;
+        _landingPage = new LandingPageComponent();
+        _sessionResumeModal = new SessionResumeModalComponent();
+        _resourceViewerModal = new ResourceViewerModalComponent();
+        _filePickerComponent = new FilePickerComponent();
+        _selectionModalComponent = new SelectionModalComponent();
+        _confirmationModalComponent = new ConfirmationModalComponent();
+        _errorModalComponent = new ErrorModalComponent();
+        _sessionDetector = sessionDetector;
+        _showLandingPage = showLandingPage;
+        _failureThreshold = failureThreshold;
+    }
+
+    public async Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
+    {
+        if (_running)
+        {
+            _logger.LogWarning("TUI application is already running");
+            return;
+        }
+
+        _running = true;
+        _stopCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var ct = _stopCts.Token;
+
+        _logger.LogInformation("Starting TUI application");
+
+        // Show landing page on startup (unless disabled via --no-welcome)
+        if (_showLandingPage)
+            _modalState = TuiModalState.LandingPage;
+        else
+            await CheckForActiveSessionAsync(ct).ConfigureAwait(false);
+
+        ITerminal? terminal = null;
+        try
+        {
+            terminal = TerminalFactory?.Invoke()
+                ?? Terminal.Create(new FullscreenMode());
+            var renderer = new Renderer(terminal);
+            renderer.SetTargetFps(30);
+
+            while (!ct.IsCancellationRequested)
+            {
+                // 1. Poll keyboard input
+                DrainKeyboardInput();
+
+                // 1b. Launch orchestrator if available and not yet started
+                TryLaunchOrchestrator(initialPrompt, ct);
+
+                // 1c. Check if orchestrator completed
+                CheckOrchestratorCompletion();
+
+                // 2. Refresh top panel data from provider (throttled)
+                await RefreshTopPanelDataAsync(ct).ConfigureAwait(false);
+
+                // 2b. Refresh context panel data from provider (throttled)
+                await RefreshContextPanelDataAsync(ct).ConfigureAwait(false);
+
+                // 2c. Refresh activity panel data from provider
+                RefreshActivityPanelData();
+
+                // 2d. Refresh context-aware keyboard hints
+                _promptData = _promptData with
+                {
+                    CustomHints = KeyboardHandler.GetHints(_focus, _isPaused)
+                };
+
+                // 3. Render frame
+                renderer.Draw((ctx, _) => RenderFrame(ctx));
+
+                // 4. Yield to avoid busy-wait
+                await Task.Delay(1, ct).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Normal shutdown
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "TUI application error");
+        }
+        finally
+        {
+            if (terminal is IDisposable disposable)
+                disposable.Dispose();
+            _running = false;
+            _logger.LogInformation("TUI application stopped");
+        }
+    }
+
+    public Task StopAsync()
+    {
+        _logger.LogInformation("Stopping TUI application");
+        _stopCts?.Cancel();
+        _running = false;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Launches the workflow orchestrator on a background thread if available and not yet started.
+    /// Only launches when no modal overlay is active (landing page / session resume dismissed).
+    /// </summary>
+    private void TryLaunchOrchestrator(string? initialPrompt, CancellationToken cancellationToken)
+    {
+        if (_orchestrator is null || _orchestratorTask is not null)
+            return;
+
+        // Don't launch while a modal is showing (user hasn't completed setup flow yet)
+        if (_modalState != TuiModalState.None)
+            return;
+
+        _logger.LogInformation("Launching workflow orchestrator on background thread");
+
+        // Use the module name if already resolved, otherwise use a default
+        var moduleName = _orchestratorModule ?? "default";
+        var prompt = initialPrompt;
+
+        _orchestratorTask = Task.Run(async () =>
+        {
+            try
+            {
+                return await _orchestrator.RunAsync(moduleName, prompt, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return OrchestrationResult.Interrupted(0, WorkflowStep.DraftSpecification, "Orchestration cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Orchestrator failed");
+                _activityPanelDataProvider?.AddTaskFailure(
+                    "Orchestrator", ex.Message,
+                    [ex.GetType().Name]);
+                return OrchestrationResult.Interrupted(0, WorkflowStep.DraftSpecification, $"Orchestrator error: {ex.Message}");
+            }
+        }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Checks if the orchestrator background task has completed and handles the result.
+    /// </summary>
+    private void CheckOrchestratorCompletion()
+    {
+        if (_orchestratorTask is null || !_orchestratorTask.IsCompleted)
+            return;
+
+        try
+        {
+            var result = _orchestratorTask.GetAwaiter().GetResult();
+
+            if (result.IsComplete)
+            {
+                _logger.LogInformation("Orchestrator completed: {Summary}", result.Summary);
+                _activityPanelDataProvider?.AddEntry(new ActivityEntry
+                {
+                    Summary = $"✓ Workflow complete: {result.Summary ?? "Module finished"}",
+                    Kind = ActivityEntryKind.Action,
+                });
+            }
+            else if (result.WasInterrupted)
+            {
+                _logger.LogWarning("Orchestrator interrupted: {Summary}", result.Summary);
+                _activityPanelDataProvider?.AddEntry(new ActivityEntry
+                {
+                    Summary = $"⚠ Workflow interrupted: {result.Summary ?? "User intervention required"}",
+                    Kind = ActivityEntryKind.Error,
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading orchestrator result");
+        }
+
+        _orchestratorTask = null;
+    }
+
+    /// <summary>
+    /// Sets the module name that the orchestrator will use when launched.
+    /// </summary>
+    internal void SetOrchestratorModule(string moduleName)
+    {
+        _orchestratorModule = moduleName;
+    }
+
+    /// <summary>
+    /// Updates the top panel data for the next render frame.
+    /// </summary>
+    public void UpdateTopPanel(TopPanelData data) => _topData = data;
+
+    private async Task RefreshTopPanelDataAsync(CancellationToken cancellationToken)
+    {
+        if (_topPanelDataProvider is null)
+            return;
+
+        var now = DateTime.UtcNow;
+        if (now - _lastProviderRefresh >= ProviderRefreshInterval)
+        {
+            _lastProviderRefresh = now;
+            try
+            {
+                await _topPanelDataProvider.RefreshAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogDebug(ex, "Failed to refresh top panel async data");
+            }
+        }
+
+        // Always read synchronous data (tokens, workflow) fresh each frame
+        _topData = _topPanelDataProvider.GetCurrentData();
+
+        // Keep landing page version in sync
+        if (_modalState == TuiModalState.LandingPage)
+        {
+            _landingPageData = _landingPageData with
+            {
+                Version = _topData.Version,
+                IsAuthenticated = _topData.IsAuthenticated
+            };
+        }
+    }
+
+    private async Task RefreshContextPanelDataAsync(CancellationToken cancellationToken)
+    {
+        if (_contextPanelDataProvider is null)
+            return;
+
+        var now = DateTime.UtcNow;
+        if (now - _lastContextProviderRefresh >= ProviderRefreshInterval)
+        {
+            _lastContextProviderRefresh = now;
+            try
+            {
+                await _contextPanelDataProvider.RefreshAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogDebug(ex, "Failed to refresh context panel async data");
+            }
+        }
+
+        _contextData = _contextPanelDataProvider.GetCurrentData();
+    }
+
+    internal void RefreshActivityPanelData()
+    {
+        if (_activityPanelDataProvider is null)
+            return;
+
+        _activityData = _activityPanelDataProvider.GetCurrentData();
+
+        var failureCount = _activityPanelDataProvider.ConsecutiveFailureCount;
+
+        // Reset guard when streak is broken
+        if (failureCount < _failureThreshold)
+        {
+            _failureModalShownForCurrentStreak = false;
+            return;
+        }
+
+        // Show error modal when threshold reached, but only once per streak
+        if (!_failureModalShownForCurrentStreak && _modalState == TuiModalState.None)
+        {
+            _failureModalShownForCurrentStreak = true;
+            OpenErrorModal(new ErrorModalData
+            {
+                Title = "Repeated Failures Detected",
+                Message = $"{failureCount} consecutive task failures. How would you like to proceed?",
+                OnSelected = HandleFailureModalSelection
+            });
+        }
+    }
+
+    /// <summary>
+    /// Updates the activity panel data for the next render frame.
+    /// </summary>
+    public void UpdateActivityPanel(ActivityPanelData data) => _activityData = data;
+
+    /// <summary>
+    /// Updates the context panel data for the next render frame.
+    /// </summary>
+    public void UpdateContextPanel(ContextPanelData data) => _contextData = data;
+
+    /// <summary>
+    /// Updates the prompt area data for the next render frame.
+    /// </summary>
+    public void UpdatePromptArea(PromptAreaData data) => _promptData = data;
+
+    /// <summary>
+    /// Updates the context panel data for the next render frame.
+    /// </summary>
+    public void UpdateContextData(ContextPanelData data) => _contextData = data;
+
+    /// <summary>
+    /// Updates the landing page data for the modal overlay.
+    /// </summary>
+    public void UpdateLandingPage(LandingPageData data) => _landingPageData = data;
+
+    /// <inheritdoc />
+    public void SuppressLandingPage() => _showLandingPage = false;
+
+    /// <summary>
+    /// Updates the session resume data for the modal overlay.
+    /// </summary>
+    public void UpdateSessionResume(SessionResumeData data) => _sessionResumeData = data;
+
+    private void DrainKeyboardInput()
+    {
+        if (Console.IsInputRedirected)
+            return;
+
+        try
+        {
+            while (Console.KeyAvailable)
+            {
+                var keyInfo = Console.ReadKey(intercept: true);
+
+                // Landing page: any keypress dismisses it, then check for session
+                if (_modalState == TuiModalState.LandingPage)
+                {
+                    _modalState = TuiModalState.None;
+                    _ = CheckForActiveSessionAsync(_stopCts?.Token ?? CancellationToken.None);
+                    continue;
+                }
+
+                // Session resume modal: arrow keys navigate, enter confirms
+                if (_modalState == TuiModalState.SessionResume)
+                {
+                    HandleSessionResumeInput(keyInfo);
+                    continue;
+                }
+
+                // Resource viewer modal: Esc closes, Up/Down scrolls
+                if (_modalState == TuiModalState.ResourceViewer)
+                {
+                    HandleResourceViewerInput(keyInfo);
+                    continue;
+                }
+
+                // File picker modal: Esc closes, Up/Down navigates, Enter expands/collapses
+                if (_modalState == TuiModalState.FilePicker)
+                {
+                    HandleFilePickerInput(keyInfo);
+                    continue;
+                }
+
+                // Module selection modal: Up/Down navigates, Enter selects, Esc closes
+                if (_modalState == TuiModalState.ModuleSelection)
+                {
+                    HandleModuleSelectionInput(keyInfo);
+                    continue;
+                }
+
+                // Confirmation modal: Left/Right navigates, Enter selects, Esc cancels
+                if (_modalState == TuiModalState.Confirmation)
+                {
+                    HandleConfirmationInput(keyInfo);
+                    continue;
+                }
+
+                // Error modal: Left/Right navigates, Enter selects, Esc closes
+                if (_modalState == TuiModalState.ErrorModal)
+                {
+                    HandleErrorModalInput(keyInfo);
+                    continue;
+                }
+
+                var input = new KeyInput
+                {
+                    Key = keyInfo.Key,
+                    Modifiers = keyInfo.Modifiers,
+                    KeyChar = keyInfo.KeyChar
+                };
+                var action = _keyboardHandler.Handle(input, _focus);
+                ApplyAction(action, keyInfo);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogDebug(ex, "Keyboard input is unavailable (console redirected)");
+        }
+    }
+
+    private void ApplyAction(KeyAction action, ConsoleKeyInfo keyInfo)
+    {
+        switch (action)
+        {
+            case KeyAction.CycleFocusForward:
+                _focus = KeyboardHandler.CycleFocus(_focus);
+                break;
+
+            case KeyAction.TogglePause:
+                _isPaused = !_isPaused;
+                _pauseController?.Toggle();
+                _promptData = _promptData with { IsPaused = _isPaused };
+                break;
+
+            case KeyAction.Cancel:
+                _stopCts?.Cancel();
+                break;
+
+            case KeyAction.InsertNewline:
+                _promptData = _promptData with
+                {
+                    Text = _promptData.Text + Environment.NewLine,
+                    CursorPosition = _promptData.CursorPosition + Environment.NewLine.Length
+                };
+                break;
+
+            case KeyAction.Backspace:
+                if (_promptData.Text.Length > 0)
+                {
+                    _promptData = _promptData with
+                    {
+                        Text = _promptData.Text[..^1],
+                        CursorPosition = Math.Max(0, _promptData.CursorPosition - 1)
+                    };
+                }
+                break;
+
+            case KeyAction.SubmitPrompt:
+                var submittedText = _promptData.Text;
+                _promptData = _promptData with { Text = string.Empty, CursorPosition = 0 };
+                if (submittedText.StartsWith('/'))
+                    _ = ProcessSlashCommandAsync(submittedText);
+                else if (!string.IsNullOrWhiteSpace(submittedText))
+                    _userPromptQueue?.Enqueue(submittedText);
+                break;
+
+            case KeyAction.None when !char.IsControl(keyInfo.KeyChar) && keyInfo.KeyChar != '\0':
+                _promptData = _promptData with
+                {
+                    Text = _promptData.Text + keyInfo.KeyChar,
+                    CursorPosition = _promptData.CursorPosition + 1
+                };
+                break;
+
+            case KeyAction.ToggleExpand:
+                ToggleSelectedEntry();
+                break;
+
+            case KeyAction.ScrollUp:
+                if (_focus == FocusPanel.Activity && _activityData.Entries.Count > 0)
+                {
+                    var idx = _activityData.SelectedEntryIndex;
+                    _activityData = _activityData with
+                    {
+                        SelectedEntryIndex = Math.Max(0, idx <= 0 ? _activityData.Entries.Count - 1 : idx - 1)
+                    };
+                }
+                break;
+
+            case KeyAction.ScrollDown:
+                if (_focus == FocusPanel.Activity && _activityData.Entries.Count > 0)
+                {
+                    var idx2 = _activityData.SelectedEntryIndex;
+                    _activityData = _activityData with
+                    {
+                        SelectedEntryIndex = idx2 >= _activityData.Entries.Count - 1 ? 0 : idx2 + 1
+                    };
+                }
+                break;
+
+            case KeyAction.ViewResource1:
+            case KeyAction.ViewResource2:
+            case KeyAction.ViewResource3:
+            case KeyAction.ViewResource4:
+            case KeyAction.ViewResource5:
+            case KeyAction.ViewResource6:
+            case KeyAction.ViewResource7:
+            case KeyAction.ViewResource8:
+            case KeyAction.ViewResource9:
+                OpenResourceViewer(action - KeyAction.ViewResource1);
+                break;
+        }
+    }
+
+    internal void RenderFrame(RenderContext ctx)
+    {
+        var viewport = ctx.Viewport;
+
+        // If a modal is active, render it fullscreen
+        if (_modalState == TuiModalState.LandingPage)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _landingPage.Render(_landingPageData, region));
+            return;
+        }
+
+        if (_modalState == TuiModalState.SessionResume)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _sessionResumeModal.Render(_sessionResumeData, region));
+            return;
+        }
+
+        if (_modalState == TuiModalState.ResourceViewer)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _resourceViewerModal.Render(_resourceViewerData, region));
+            return;
+        }
+
+        if (_modalState == TuiModalState.FilePicker)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _filePickerComponent.Render(_filePickerData, region));
+            return;
+        }
+
+        if (_modalState == TuiModalState.ModuleSelection)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _selectionModalComponent.Render(_moduleSelectionData, region));
+            return;
+        }
+
+        if (_modalState == TuiModalState.Confirmation)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _confirmationModalComponent.Render(_confirmationData, region));
+            return;
+        }
+
+        if (_modalState == TuiModalState.ErrorModal)
+        {
+            var region = new ScreenRect(0, 0, viewport.Width, viewport.Height);
+            RenderRegion(ctx, region, _errorModalComponent.Render(_errorModalData, region));
+            return;
+        }
+
+        var regions = LayoutCalculator.Calculate(
+            viewport.Width, viewport.Height, _splitPercent);
+
+        RenderRegion(ctx, regions.Header,
+            _topPanel.Render(_topData, regions.Header));
+        RenderRegion(ctx, regions.Activity,
+            _activityPanel.Render(_activityData, regions.Activity));
+        RenderRegion(ctx, regions.Context,
+            _contextPanel.Render(_contextData, regions.Context));
+        RenderRegion(ctx, regions.Prompt,
+            _promptArea.Render(_promptData, regions.Prompt));
+    }
+
+    private async Task ProcessSlashCommandAsync(string input)
+    {
+        if (_slashCommandExecutor is null)
+        {
+            _logger.LogDebug("No slash command executor available");
+            return;
+        }
+
+        try
+        {
+            var result = await _slashCommandExecutor.ExecuteAsync(input, _stopCts?.Token ?? CancellationToken.None)
+                .ConfigureAwait(false);
+
+            var kind = result.IsSuccess ? ActivityEntryKind.Command : ActivityEntryKind.Error;
+            var summary = result.IsSuccess
+                ? result.OutputMessage ?? $"Executed {result.Command}"
+                : result.ErrorMessage ?? $"Failed: {result.Command}";
+
+            var entry = new ActivityEntry
+            {
+                Summary = summary,
+                Kind = kind
+            };
+
+            if (_activityPanelDataProvider is not null)
+            {
+                _activityPanelDataProvider.AddEntry(entry);
+            }
+            else
+            {
+                var entries = _activityData.Entries.Append(entry).ToList();
+                _activityData = new ActivityPanelData { Entries = entries, ScrollOffset = _activityData.ScrollOffset };
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Error processing slash command: {Input}", input);
+        }
+    }
+
+    private void HandleSessionResumeInput(ConsoleKeyInfo keyInfo)
+    {
+        const int optionCount = 3; // Resume, Start New, View Details
+
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.LeftArrow:
+                _sessionResumeData = _sessionResumeData with
+                {
+                    SelectedOption = Math.Max(0, _sessionResumeData.SelectedOption - 1)
+                };
+                break;
+
+            case ConsoleKey.RightArrow:
+                _sessionResumeData = _sessionResumeData with
+                {
+                    SelectedOption = Math.Min(optionCount - 1, _sessionResumeData.SelectedOption + 1)
+                };
+                break;
+
+            case ConsoleKey.Enter:
+                var selected = _sessionResumeData.SelectedOption;
+                _modalState = TuiModalState.None;
+                _logger.LogInformation("Session resume option selected: {Option}",
+                    SessionResumeModalComponent.Options[selected]);
+                break;
+
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+        }
+    }
+
+    private void ToggleSelectedEntry()
+    {
+        if (_focus != FocusPanel.Activity || _activityData.Entries.Count == 0)
+            return;
+
+        var idx = _activityData.SelectedEntryIndex;
+        if (idx < 0 || idx >= _activityData.Entries.Count)
+            return;
+
+        var entry = _activityData.Entries[idx];
+
+        // If already expanded and has full document, drill into it
+        if (entry.IsExpanded && entry.FullDocumentContent is not null)
+        {
+            _resourceViewerData = new ResourceViewerData
+            {
+                Label = entry.Summary,
+                Lines = entry.FullDocumentContent.Split('\n').ToList(),
+                ScrollOffset = 0
+            };
+            _modalState = TuiModalState.ResourceViewer;
+            return;
+        }
+
+        var entries = _activityData.Entries.ToList();
+        entries[idx] = entry with { IsExpanded = !entry.IsExpanded };
+        _activityData = _activityData with { Entries = entries };
+    }
+
+    internal void OpenResourceViewer(int resourceIndex)
+    {
+        if (resourceIndex < 0 || resourceIndex >= _contextData.Resources.Count)
+            return;
+
+        var resource = _contextData.Resources[resourceIndex];
+        var contentLines = (resource.Content ?? "(No content available)")
+            .Split('\n')
+            .ToList();
+
+        _resourceViewerData = new ResourceViewerData
+        {
+            Label = resource.Label,
+            Lines = contentLines,
+            ScrollOffset = 0
+        };
+        _modalState = TuiModalState.ResourceViewer;
+    }
+
+    private void HandleResourceViewerInput(ConsoleKeyInfo keyInfo)
+    {
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+            case ConsoleKey.UpArrow:
+                _resourceViewerData = _resourceViewerData with
+                {
+                    ScrollOffset = Math.Max(0, _resourceViewerData.ScrollOffset - 1)
+                };
+                break;
+            case ConsoleKey.DownArrow:
+                _resourceViewerData = _resourceViewerData with
+                {
+                    ScrollOffset = _resourceViewerData.ScrollOffset + 1
+                };
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Opens the file picker modal with the specified data.
+    /// </summary>
+    internal void OpenFilePicker(FilePickerData data)
+    {
+        _filePickerData = data;
+        _modalState = TuiModalState.FilePicker;
+    }
+
+    private void HandleFilePickerInput(ConsoleKeyInfo keyInfo)
+    {
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+            case ConsoleKey.UpArrow:
+                if (_filePickerData.Nodes.Count > 0)
+                {
+                    _filePickerData = _filePickerData with
+                    {
+                        SelectedIndex = Math.Max(0, _filePickerData.SelectedIndex - 1)
+                    };
+                }
+                break;
+            case ConsoleKey.DownArrow:
+                if (_filePickerData.Nodes.Count > 0)
+                {
+                    _filePickerData = _filePickerData with
+                    {
+                        SelectedIndex = Math.Min(_filePickerData.Nodes.Count - 1, _filePickerData.SelectedIndex + 1)
+                    };
+                }
+                break;
+            case ConsoleKey.Enter:
+                ToggleFilePickerNode();
+                break;
+        }
+    }
+
+    private void ToggleFilePickerNode()
+    {
+        var idx = _filePickerData.SelectedIndex;
+        if (idx < 0 || idx >= _filePickerData.Nodes.Count)
+            return;
+
+        var node = _filePickerData.Nodes[idx];
+        if (!node.IsDirectory)
+            return;
+
+        var nodes = _filePickerData.Nodes.ToList();
+        nodes[idx] = node with { IsExpanded = !node.IsExpanded };
+        _filePickerData = _filePickerData with { Nodes = nodes };
+    }
+
+    /// <summary>
+    /// Opens the module selection modal with the specified data.
+    /// </summary>
+    internal void OpenModuleSelection(ModuleSelectionData data)
+    {
+        _moduleSelectionData = data;
+        _modalState = TuiModalState.ModuleSelection;
+    }
+
+    private void HandleModuleSelectionInput(ConsoleKeyInfo keyInfo)
+    {
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+            case ConsoleKey.UpArrow:
+                if (_moduleSelectionData.Options.Count > 0)
+                {
+                    _moduleSelectionData = _moduleSelectionData with
+                    {
+                        SelectedIndex = Math.Max(0, _moduleSelectionData.SelectedIndex - 1)
+                    };
+                }
+                break;
+            case ConsoleKey.DownArrow:
+                if (_moduleSelectionData.Options.Count > 0)
+                {
+                    _moduleSelectionData = _moduleSelectionData with
+                    {
+                        SelectedIndex = Math.Min(_moduleSelectionData.Options.Count - 1, _moduleSelectionData.SelectedIndex + 1)
+                    };
+                }
+                break;
+            case ConsoleKey.Enter:
+                _modalState = TuiModalState.None;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Opens the confirmation modal with the specified data.
+    /// </summary>
+    internal void OpenConfirmation(ConfirmationData data)
+    {
+        _confirmationData = data;
+        _modalState = TuiModalState.Confirmation;
+    }
+
+    private void HandleConfirmationInput(ConsoleKeyInfo keyInfo)
+    {
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+            case ConsoleKey.LeftArrow:
+                if (_confirmationData.Options.Count > 0)
+                {
+                    _confirmationData = _confirmationData with
+                    {
+                        SelectedIndex = Math.Max(0, _confirmationData.SelectedIndex - 1)
+                    };
+                }
+                break;
+            case ConsoleKey.RightArrow:
+                if (_confirmationData.Options.Count > 0)
+                {
+                    _confirmationData = _confirmationData with
+                    {
+                        SelectedIndex = Math.Min(_confirmationData.Options.Count - 1, _confirmationData.SelectedIndex + 1)
+                    };
+                }
+                break;
+            case ConsoleKey.Enter:
+                _modalState = TuiModalState.None;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Opens the error modal with the specified data.
+    /// </summary>
+    internal void OpenErrorModal(ErrorModalData data)
+    {
+        _errorModalData = data;
+        _modalState = TuiModalState.ErrorModal;
+    }
+
+    internal void HandleErrorModalInput(ConsoleKeyInfo keyInfo)
+    {
+        switch (keyInfo.Key)
+        {
+            case ConsoleKey.Escape:
+                _modalState = TuiModalState.None;
+                break;
+            case ConsoleKey.LeftArrow:
+                if (_errorModalData.RecoveryOptions.Count > 0)
+                {
+                    _errorModalData = _errorModalData with
+                    {
+                        SelectedIndex = Math.Max(0, _errorModalData.SelectedIndex - 1)
+                    };
+                }
+                break;
+            case ConsoleKey.RightArrow:
+                if (_errorModalData.RecoveryOptions.Count > 0)
+                {
+                    _errorModalData = _errorModalData with
+                    {
+                        SelectedIndex = Math.Min(_errorModalData.RecoveryOptions.Count - 1, _errorModalData.SelectedIndex + 1)
+                    };
+                }
+                break;
+            case ConsoleKey.Enter:
+                var onSelected = _errorModalData.OnSelected;
+                _modalState = TuiModalState.None;
+                onSelected?.Invoke(_errorModalData.SelectedIndex);
+                break;
+        }
+    }
+
+    private void HandleFailureModalSelection(int selectedIndex)
+    {
+        var options = _errorModalData.RecoveryOptions;
+        var selectedOption = selectedIndex < options.Count ? options[selectedIndex] : "Retry";
+        _logger.LogInformation("User selected failure recovery option: {Option}", selectedOption);
+
+        _userPromptQueue?.Enqueue($"[intervention:{selectedOption.ToLowerInvariant()}]");
+    }
+
+    private async Task CheckForActiveSessionAsync(CancellationToken cancellationToken)
+    {
+        if (_sessionDetector is null)
+            return;
+
+        try
+        {
+            var resumeData = await _sessionDetector.DetectActiveSessionAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (resumeData is not null)
+            {
+                _sessionResumeData = resumeData;
+                _modalState = TuiModalState.SessionResume;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "Failed to detect active session");
+        }
+    }
+
+    private static void RenderRegion(RenderContext ctx, ScreenRect region, string[] lines)
+    {
+        for (var row = 0; row < region.Height; row++)
+        {
+            var line = row < lines.Length ? lines[row] : string.Empty;
+            ctx.SetString(region.X, region.Y + row, line, null, region.Width);
+        }
+    }
+}

@@ -1,0 +1,133 @@
+{
+  "module": "cli",
+  "description": "CLI commands and argument parsing",
+  "status": "complete",
+  "components": {
+    "phase_commands_wiring": {
+      "status": "complete",
+      "implementation": "PhaseCommands.cs wired to IWorkflowOrchestrator with prompt injection",
+      "tests": "PhaseCommandTests (including orchestrator wiring, prompt passing, exit codes)",
+      "jobs": [
+        "JOB-004",
+        "JOB-005",
+        "JOB-006"
+      ],
+      "notes": "spec/plan/build commands invoke WorkflowOrchestrator.RunAsync with prompt when session and module are available."
+    },
+    "root_tui_wiring": {
+      "status": "complete",
+      "implementation": "Program.cs calls UseRealTui(). RootCommandHandler resolves ITuiApplication.",
+      "tests": "RootCommandTests (existing tests), TuiApplicationTests (UseRealTui DI tests)",
+      "jobs": [
+        "JOB-077"
+      ],
+      "notes": "UseRealTui replaces stub with TuiApplication for real CLI. Tests/headless use stub."
+    },
+    "prompt_injection": {
+      "status": "complete",
+      "implementation": "--prompt flag wired through IWorkflowOrchestrator to IPromptBuilder contextSections, and to ITuiApplication.RunAsync for TUI pre-population",
+      "tests": "Spec_WithPrompt_PassesPromptToOrchestrator, RootCommand_WithPrompt_PassesPromptToTui, StubTuiApplication prompt tests",
+      "jobs": [
+        "JOB-031",
+        "JOB-032"
+      ],
+      "notes": "Headless: prompt injected via contextSections[user_prompt]. TUI: prompt passed as initialPrompt parameter."
+    },
+    "headless_validation": {
+      "status": "complete",
+      "implementation": "ValidateHeadlessPromptAsync checks headless mode requires --prompt or active session",
+      "tests": "Headless_NoPrompt_NoSession_ReturnsExitCode1",
+      "jobs": [
+        "JOB-033"
+      ],
+      "notes": "Returns ExitCodes.Failure with guidance message."
+    },
+    "exit_codes": {
+      "status": "complete",
+      "implementation": "ExitCodes.Success=0, Failure=1, UserInterventionRequired=2. WasInterrupted in headless returns code 2.",
+      "tests": "ExitCodes_AreCorrect, headless interrupt paths",
+      "jobs": [
+        "JOB-034"
+      ],
+      "notes": "Phase commands and RootCommandHandler both return code 2 when headless + WasInterrupted."
+    },
+    "quiet_flag": {
+      "status": "complete",
+      "implementation": "GlobalOptions --headless/-q/--quiet, HeadlessRenderer, RootCommandHandler headless path, PhaseCommands headless validation",
+      "tests": "GlobalOptionsTests (alias verification), RootCommandTests (headless paths), PhaseCommandTests (headless validation), HeadlessRendererTests, CliIntegrationTests",
+      "jobs": [
+        "JOB-078"
+      ],
+      "notes": "Already fully implemented prior to JOB-078 being tracked."
+    },
+    "project_root_discovery": {
+      "status": "complete",
+      "implementation": "ProjectRootDiscovery.FindProjectRoot walks up from CWD looking for .lopen/ then .git/. Program.cs passes result to AddLopenCore and AddLopenStorage.",
+      "tests": "ProjectRootDiscoveryTests (13 tests)",
+      "jobs": [
+        "JOB-001"
+      ],
+      "notes": "Walk-up finds .lopen/ or .git/, .lopen/ priority, file vs dir distinction, deep nesting, null fallback for DI graceful degradation."
+    },
+    "program_integration_tests": {
+      "status": "complete",
+      "spec_ref": "CLI-22",
+      "files": [
+        "ProgramTests.cs"
+      ],
+      "tests": "ProgramTests (19 integration tests)",
+      "notes": "Tests build the real IHost, resolve services, create all commands, verify command tree, invoke --help."
+    },
+    "no_welcome_flag": {
+      "status": "complete",
+      "spec_ref": "CLI-27",
+      "files": [
+        "GlobalOptions.cs",
+        "RootCommandHandler.cs",
+        "ITuiApplication.cs",
+        "TuiApplication.cs"
+      ],
+      "tests": "RootCommandTests (3 new tests for --no-welcome)",
+      "notes": "--no-welcome flag parsed by System.CommandLine, calls SuppressLandingPage() before RunAsync."
+    },
+    "help_version_flags": {
+      "status": "complete",
+      "spec_ref": "CLI-21",
+      "files": [
+        "Directory.Build.props",
+        "CliIntegrationTests.cs"
+      ],
+      "tests": "GlobalOptionsTests (version/help exit codes), CliIntegrationTests (VersionFlag_OnRoot_OutputsVersionString)",
+      "notes": "Version 0.1.0 set in Directory.Build.props. --help and --version handled by System.CommandLine automatically. Test verifies assembly carries semver version attribute."
+    },
+    "fizzbuzz_workflow_tests": {
+      "status": "complete",
+      "spec_ref": "CLI-28",
+      "files": [
+        "FizzBuzzWorkflowTests.cs"
+      ],
+      "tests": "FizzBuzzWorkflowTests (10 tests)",
+      "jobs": [
+        "JOB-096"
+      ],
+      "notes": "E2E integration tests simulating fizz-buzz workflow through spec→plan→build phases. Tests use TrackingOrchestrator fake to verify phase invocation, prerequisite enforcement, prompt passthrough, and headless mode."
+    },
+    "config_override_flags": {
+      "status": "complete",
+      "spec_ref": "CFG-08, CFG-09, CFG-11",
+      "files": [
+        "GlobalOptions.cs",
+        "RootCommandHandler.cs",
+        "PhaseCommands.cs"
+      ],
+      "tests": "GlobalOptionsTests (parse/recursive/addto tests), RootCommandTests (model/unattended/max-iterations override verification, default preservation)",
+      "jobs": [
+        "JOB-096",
+        "JOB-097",
+        "JOB-098"
+      ],
+      "notes": "--model overrides all 4 phase models, --unattended sets WorkflowOptions.Unattended, --max-iterations sets WorkflowOptions.MaxIterations. ApplyConfigOverrides called before orchestrator in all command handlers."
+    }
+  },
+  "last_updated": "2026-02-17T20:07:00Z"
+}

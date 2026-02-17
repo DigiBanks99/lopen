@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Lopen.Auth/Lopen.Auth.csproj" />
+    <Project Path="src/Lopen.Configuration/Lopen.Configuration.csproj" />
+    <Project Path="src/Lopen.Core/Lopen.Core.csproj" />
+    <Project Path="src/Lopen.Llm/Lopen.Llm.csproj" />
+    <Project Path="src/Lopen.Otel/Lopen.Otel.csproj" />
+    <Project Path="src/Lopen.Storage/Lopen.Storage.csproj" />
+    <Project Path="src/Lopen.Tui/Lopen.Tui.csproj" />
+    <Project Path="src/Lopen/Lopen.csproj" />
+    <Project Path="src/Lopen.AppHost/Lopen.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Lopen.Auth.Tests/Lopen.Auth.Tests.csproj" />
+    <Project Path="tests/Lopen.Cli.Tests/Lopen.Cli.Tests.csproj" />
+    <Project Path="tests/Lopen.Configuration.Tests/Lopen.Configuration.Tests.csproj" />
+    <Project Path="tests/Lopen.Core.Tests/Lopen.Core.Tests.csproj" />
+    <Project Path="tests/Lopen.Llm.Tests/Lopen.Llm.Tests.csproj" />
+    <Project Path="tests/Lopen.Otel.Tests/Lopen.Otel.Tests.csproj" />
+    <Project Path="tests/Lopen.Storage.Tests/Lopen.Storage.Tests.csproj" />
+    <Project Path="tests/Lopen.Tui.Tests/Lopen.Tui.Tests.csproj" />
+  </Folder>
+</Solution>
