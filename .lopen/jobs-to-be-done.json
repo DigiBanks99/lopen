@@ -112,18 +112,18 @@
     "requirement_code": "LLM-13",
     "requirement_module": "llm",
     "description": "Verify token metrics are persisted to session state files \u2014 ensure InMemoryTokenTracker data is saved via AutoSaveService and loadable on session resume",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "InMemoryTokenTracker records metrics in memory. Tests verify interface exposure but not round-trip file persistence."
+    "notes": "Added RestoreMetrics to ITokenTracker/InMemoryTokenTracker. Orchestrator resume path loads saved metrics and calls RestoreMetrics so usage accumulates on top."
   },
   {
     "id": "JOB-014",
     "requirement_code": "LLM-13",
     "requirement_module": "llm",
     "description": "Add round-trip persistence test for token metrics \u2014 verify metrics survive save-to-disk and reload",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Depends on JOB-013 verification."
+    "notes": "4 new tests: RestoreMetrics_SetsCumulativeValues, RestoreMetrics_ThenRecord_AccumulatesOnTop, RoundTrip_SaveRestore_ValuesMonotonicallyIncrease, RestoreMetrics_ThenReset_ClearsEverything."
   },
   {
     "id": "JOB-015",

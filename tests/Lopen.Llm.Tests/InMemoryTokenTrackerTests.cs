@@ -109,4 +109,79 @@ public class InMemoryTokenTrackerTests
         Assert.Single(first.PerIterationTokens);
         Assert.Equal(2, second.PerIterationTokens.Count);
     }
+
+    // --- RestoreMetrics tests (LLM-13) ---
+
+    [Fact]
+    public void RestoreMetrics_SetsCumulativeValues()
+    {
+        var tracker = new InMemoryTokenTracker();
+        tracker.RestoreMetrics(1000, 500, 3);
+
+        var metrics = tracker.GetSessionMetrics();
+
+        Assert.Equal(1000, metrics.CumulativeInputTokens);
+        Assert.Equal(500, metrics.CumulativeOutputTokens);
+        Assert.Equal(3, metrics.PremiumRequestCount);
+        Assert.Empty(metrics.PerIterationTokens);
+    }
+
+    [Fact]
+    public void RestoreMetrics_ThenRecord_AccumulatesOnTop()
+    {
+        var tracker = new InMemoryTokenTracker();
+        tracker.RestoreMetrics(1000, 500, 2);
+        tracker.RecordUsage(new TokenUsage(100, 50, 150, 128000, true));
+
+        var metrics = tracker.GetSessionMetrics();
+
+        Assert.Equal(1100, metrics.CumulativeInputTokens);
+        Assert.Equal(550, metrics.CumulativeOutputTokens);
+        Assert.Equal(3, metrics.PremiumRequestCount);
+        Assert.Single(metrics.PerIterationTokens);
+    }
+
+    [Fact]
+    public void RoundTrip_SaveRestore_ValuesMonotonicallyIncrease()
+    {
+        var tracker = new InMemoryTokenTracker();
+
+        // First session: record some usage
+        tracker.RecordUsage(new TokenUsage(500, 200, 700, 128000, true));
+        tracker.RecordUsage(new TokenUsage(300, 100, 400, 128000, false));
+        var saved = tracker.GetSessionMetrics();
+
+        // Simulate save → new tracker → restore
+        var tracker2 = new InMemoryTokenTracker();
+        tracker2.RestoreMetrics(saved.CumulativeInputTokens, saved.CumulativeOutputTokens, saved.PremiumRequestCount);
+
+        // Record more usage in new session
+        tracker2.RecordUsage(new TokenUsage(200, 50, 250, 64000, true));
+
+        var final_ = tracker2.GetSessionMetrics();
+
+        // Values should be strictly greater than saved
+        Assert.True(final_.CumulativeInputTokens > saved.CumulativeInputTokens);
+        Assert.True(final_.CumulativeOutputTokens > saved.CumulativeOutputTokens);
+        Assert.True(final_.PremiumRequestCount > saved.PremiumRequestCount);
+
+        // Exact values
+        Assert.Equal(1000, final_.CumulativeInputTokens);
+        Assert.Equal(350, final_.CumulativeOutputTokens);
+        Assert.Equal(2, final_.PremiumRequestCount);
+    }
+
+    [Fact]
+    public void RestoreMetrics_ThenReset_ClearsEverything()
+    {
+        var tracker = new InMemoryTokenTracker();
+        tracker.RestoreMetrics(1000, 500, 3);
+        tracker.ResetSession();
+
+        var metrics = tracker.GetSessionMetrics();
+
+        Assert.Equal(0, metrics.CumulativeInputTokens);
+        Assert.Equal(0, metrics.CumulativeOutputTokens);
+        Assert.Equal(0, metrics.PremiumRequestCount);
+    }
 }

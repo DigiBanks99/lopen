@@ -487,8 +487,9 @@ public class CoreAcceptanceCriteriaTests
             new() { PremiumRequestCount = PremiumRequests };
 
         public void ResetSession() => PremiumRequests = 0;
+        public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount) =>
+            PremiumRequests = premiumCount;
     }
-
     private sealed class FakeGitService : IGitService
     {
         private readonly bool _success;

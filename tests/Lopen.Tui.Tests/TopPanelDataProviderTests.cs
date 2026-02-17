@@ -276,6 +276,9 @@ public sealed class TopPanelDataProviderTests
             _usages.Clear();
             _premiumCount = 0;
         }
+
+        public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount) =>
+            _premiumCount = premiumCount;
     }
 
     private sealed class FakeGitService : IGitService

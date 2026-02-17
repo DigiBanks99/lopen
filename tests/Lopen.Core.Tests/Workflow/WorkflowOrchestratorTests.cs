@@ -2069,6 +2069,16 @@ public class WorkflowOrchestratorTests
         };
 
         public void ResetSession() => RecordedUsages.Clear();
+
+        public int RestoredInput { get; private set; }
+        public int RestoredOutput { get; private set; }
+        public int RestoredPremium { get; private set; }
+        public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount)
+        {
+            RestoredInput = cumulativeInput;
+            RestoredOutput = cumulativeOutput;
+            RestoredPremium = premiumCount;
+        }
     }
 
     private sealed class StubFailureHandler : IFailureHandler

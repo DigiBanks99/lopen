@@ -13,4 +13,10 @@ public interface ITokenTracker
 
     /// <summary>Resets all tracked metrics for a new session.</summary>
     void ResetSession();
+
+    /// <summary>
+    /// Restores cumulative metrics from a previously persisted session (LLM-13).
+    /// Called during session resume so new recordings accumulate on top of prior values.
+    /// </summary>
+    void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount);
 }

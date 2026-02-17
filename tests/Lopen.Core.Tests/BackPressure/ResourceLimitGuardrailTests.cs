@@ -163,5 +163,7 @@ public class ResourceLimitGuardrailTests
             new() { PremiumRequestCount = PremiumRequests };
 
         public void ResetSession() => PremiumRequests = 0;
+        public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount) =>
+            PremiumRequests = premiumCount;
     }
 }

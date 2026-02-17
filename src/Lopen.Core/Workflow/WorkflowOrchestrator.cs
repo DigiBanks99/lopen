@@ -118,6 +118,24 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                     _logger.LogInformation("Resuming session {SessionId} for module {Module}",
                         latestId, moduleName);
                     _sessionId = latestId;
+
+                    // Restore token metrics so new usage accumulates on top (LLM-13)
+                    if (_tokenTracker is not null)
+                    {
+                        var savedMetrics = await _sessionManager.LoadSessionMetricsAsync(latestId, cancellationToken);
+                        if (savedMetrics is not null)
+                        {
+                            _tokenTracker.RestoreMetrics(
+                                (int)savedMetrics.CumulativeInputTokens,
+                                (int)savedMetrics.CumulativeOutputTokens,
+                                savedMetrics.PremiumRequestCount);
+                            _logger.LogInformation(
+                                "Restored token metrics: {Input} in, {Output} out, {Premium} premium",
+                                savedMetrics.CumulativeInputTokens, savedMetrics.CumulativeOutputTokens,
+                                savedMetrics.PremiumRequestCount);
+                        }
+                    }
+
                     await _renderer.RenderResultAsync(
                         $"Resuming session {latestId} at step {savedState.Step}");
                 }

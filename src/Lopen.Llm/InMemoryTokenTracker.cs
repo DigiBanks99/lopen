@@ -51,4 +51,14 @@ internal sealed class InMemoryTokenTracker : ITokenTracker
             _premiumCount = 0;
         }
     }
+
+    public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount)
+    {
+        lock (_lock)
+        {
+            _cumulativeInput = cumulativeInput;
+            _cumulativeOutput = cumulativeOutput;
+            _premiumCount = premiumCount;
+        }
+    }
 }
