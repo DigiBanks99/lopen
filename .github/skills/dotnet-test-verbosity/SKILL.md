@@ -23,6 +23,7 @@ description: Run `dotnet test` with a predictable verbosity level so the LLM can
 
 3. **Capture the failure summary** – after the run, highlight the block that includes `Failed tests:` and the `Summary` table; the `artifacts/test-output.txt` file is perfect for sharing with the LLM because it preserves the verbose console log without truncation.
 4. **Identify flaky or filtered tests** – if only one test failed, re-run with `--filter FullyQualifiedName~TestName` so the LLM can see the same failure repeatedly and know the exact test case to patch.
+5. Don't grep for failed or succeeded output, but read the lines. The dotnet CLI will keep the context small on your behalf.
 
 ## Troubleshooting tips
 
