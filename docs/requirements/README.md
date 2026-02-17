@@ -9,11 +9,11 @@ This document describes the known modules (requirements) for Lopen.
 
 | Requirement   | Location                          | Summary                                                          | State          |
 | ------------- | --------------------------------- | ---------------------------------------------------------------- | -------------- |
-| Core          | `docs/requirements/core`          | Workflow orchestration, task management, failure handling (25 reqs) | Implementing |
-| LLM           | `docs/requirements/llm`           | Copilot SDK integration, model selection, tool strategy (14 reqs)  | Implementing |
+| Core          | `docs/requirements/core`          | Workflow orchestration, task management, failure handling (25 reqs) | Complete     |
+| LLM           | `docs/requirements/llm`           | Copilot SDK integration, model selection, tool strategy (14 reqs)  | Complete     |
 | Storage       | `docs/requirements/storage`       | Session persistence, `.lopen/` structure, document formats (21 reqs) | Implementing |
 | Configuration | `docs/requirements/configuration` | Settings hierarchy, CLI flags, model assignments, defaults (15 reqs) | Complete     |
 | CLI           | `docs/requirements/cli`           | Command structure, global flags, headless mode, prompt injection (27 reqs) | Implementing |
-| Auth          | `docs/requirements/auth`          | GitHub Copilot authentication and credential management (15 reqs)  | Complete     |
+| Auth          | `docs/requirements/auth`          | GitHub Copilot authentication and credential management (15 reqs)  | Implementing |
 | TUI           | `docs/requirements/tui`           | Terminal UI layout, progressive disclosure, visual design (52 reqs) | Implementing |
-| OTEL          | `docs/requirements/otel`          | OpenTelemetry observability, tracing, metrics, Aspire Dashboard (17 reqs) | Implementing |
+| OTEL          | `docs/requirements/otel`          | OpenTelemetry observability, tracing, metrics, Aspire Dashboard (17 reqs) | Complete     |
