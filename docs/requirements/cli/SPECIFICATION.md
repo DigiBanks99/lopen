@@ -254,6 +254,8 @@ This specification defines the **CLI command structure and flags**. It does not 
 - [ ] [CLI-23] All test projects run successfully with `dotnet test`
 - [ ] [CLI-24] Code formatting passes with `dotnet format --verify-no-changes`
 - [ ] [CLI-25] CLI entry point uses `Microsoft.Extensions.Hosting` for dependency injection
+- [ ] [CLI-26] CLI discovers the project root directory (nearest parent containing `.lopen/` or `.git/`, falling back to CWD) and passes it to `AddLopenCore(projectRoot)` and `AddLopenStorage(projectRoot)` so all path-dependent services are registered
+- [ ] [CLI-27] `--no-welcome` flag suppresses the TUI landing page modal on startup
 
 ---
 
