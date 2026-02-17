@@ -110,7 +110,7 @@
       "jobs": [
         "JOB-096"
       ],
-      "notes": "E2E integration tests simulating fizz-buzz workflow through spec→plan→build phases. Tests use TrackingOrchestrator fake to verify phase invocation, prerequisite enforcement, prompt passthrough, and headless mode."
+      "notes": "E2E integration tests simulating fizz-buzz workflow through spec\u2192plan\u2192build phases. Tests use TrackingOrchestrator fake to verify phase invocation, prerequisite enforcement, prompt passthrough, and headless mode."
     },
     "config_override_flags": {
       "status": "complete",
@@ -127,6 +127,15 @@
         "JOB-098"
       ],
       "notes": "--model overrides all 4 phase models, --unattended sets WorkflowOptions.Unattended, --max-iterations sets WorkflowOptions.MaxIterations. ApplyConfigOverrides called before orchestrator in all command handlers."
+    },
+    "acceptance_criteria_traceability": {
+      "status": "complete",
+      "implementation": "CliAcceptanceCriteriaTests.cs with AC01-AC28 prefix naming",
+      "tests": "CliAcceptanceCriteriaTests (28 tests, 25 pass, 3 CI-only skipped)",
+      "jobs": [
+        "JOB-107"
+      ],
+      "notes": "Explicit AC traceability for all 28 CLI requirements mapped to focused test methods"
     }
   },
   "last_updated": "2026-02-17T20:07:00Z"

@@ -31,7 +31,7 @@
     },
     "config_passthrough": {
       "status": "complete",
-      "implementation": "OracleOptions → OracleVerifier, ToolDisciplineOptions → ToolDisciplineGuardrail",
+      "implementation": "OracleOptions \u2192 OracleVerifier, ToolDisciplineOptions \u2192 ToolDisciplineGuardrail",
       "tests": "ToolDisciplineGuardrailTests (21 tests), OracleVerifierTests (30 tests)",
       "jobs": [
         "JOB-029"
@@ -54,7 +54,7 @@
       "jobs": [
         "JOB-084"
       ],
-      "notes": "Pre-invocation budget check: Ok→proceed, Warning→log+continue, ConfirmationRequired→prompt/halt, Exceeded→auto-save+halt"
+      "notes": "Pre-invocation budget check: Ok\u2192proceed, Warning\u2192log+continue, ConfirmationRequired\u2192prompt/halt, Exceeded\u2192auto-save+halt"
     },
     "cli_override_wiring": {
       "status": "complete",
@@ -76,6 +76,15 @@
         "JOB-103"
       ],
       "notes": "CFG-16: LOPEN_-prefixed environment variables override file-based config but are overridden by CLI flags. Uses Microsoft.Extensions.Configuration __ separator for nested keys."
+    },
+    "acceptance_criteria_traceability": {
+      "status": "complete",
+      "implementation": "ConfigurationAcceptanceCriteriaTests.cs with AC01-AC16 prefix naming",
+      "tests": "ConfigurationAcceptanceCriteriaTests (46 tests)",
+      "jobs": [
+        "JOB-106"
+      ],
+      "notes": "Explicit AC traceability for all 16 CFG requirements mapped to focused test methods"
     }
   },
   "last_updated": "2026-02-17T21:39:00Z"

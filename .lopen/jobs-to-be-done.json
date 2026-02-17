@@ -943,5 +943,23 @@
     "status": "complete",
     "priority": 1,
     "notes": "Fixed pre-existing test failure by replacing fragile test that assumed no ActivityListeners with one using an isolated ActivitySource. Also added [Collection(\"ActivityListener\")] to OtlpExportTests and ServiceCollectionExtensionsTests to prevent parallel test interference."
+  },
+  {
+    "id": "JOB-106",
+    "requirement_code": "CFG-01 through CFG-16",
+    "requirement_module": "configuration",
+    "description": "Create ConfigurationAcceptanceCriteriaTests.cs with explicit requirement code traceability for all 16 CFG requirements (CFG-01 through CFG-16). Add AC prefix naming to map each test to its specification requirement code.",
+    "status": "done",
+    "priority": 1,
+    "notes": "Created ConfigurationAcceptanceCriteriaTests.cs with 46 tests covering all 16 CFG requirements (CFG-01 through CFG-16). All tests pass."
+  },
+  {
+    "id": "JOB-107",
+    "requirement_code": "CLI-01 through CLI-28",
+    "requirement_module": "cli",
+    "description": "Create CliAcceptanceCriteriaTests.cs with explicit requirement code traceability for CLI requirements (CLI-01 through CLI-28). Add AC prefix naming to map each test to its specification requirement code.",
+    "status": "done",
+    "priority": 2,
+    "notes": "Created CliAcceptanceCriteriaTests.cs with 28 tests covering all 28 CLI requirements (CLI-01 through CLI-28). 25 pass, 3 skipped (CI-only: build/test/format)."
   }
 ]
