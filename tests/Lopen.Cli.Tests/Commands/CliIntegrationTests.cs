@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Reflection;
 using Lopen.Auth;
+using Lopen.Cli.Tests.Fakes;
 using Lopen.Commands;
 using Lopen.Configuration;
 using Lopen.Core;
@@ -22,7 +23,7 @@ public class CliIntegrationTests
     {
         var builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
-        builder.Services.AddLopenAuth();
+        builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
@@ -53,7 +54,7 @@ public class CliIntegrationTests
     {
         var builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
-        builder.Services.AddLopenAuth();
+        builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();

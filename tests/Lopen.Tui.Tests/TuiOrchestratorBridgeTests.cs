@@ -1,5 +1,6 @@
 using Lopen.Core.Workflow;
 using Microsoft.Extensions.Logging.Abstractions;
+using Spectre.Tui;
 
 namespace Lopen.Tui.Tests;
 
@@ -13,7 +14,7 @@ public class TuiOrchestratorBridgeTests
         IActivityPanelDataProvider? activityProvider = null,
         bool showLandingPage = false)
     {
-        return new TuiApplication(
+        var app = new TuiApplication(
             new TopPanelComponent(),
             new ActivityPanelComponent(),
             new ContextPanelComponent(),
@@ -23,6 +24,11 @@ public class TuiOrchestratorBridgeTests
             activityPanelDataProvider: activityProvider,
             orchestrator: orchestrator,
             showLandingPage: showLandingPage);
+
+        // Inject a stub terminal to avoid creating a real terminal in tests
+        app.TerminalFactory = () => new StubTerminal();
+
+        return app;
     }
 
     [Fact]
@@ -209,6 +215,39 @@ public class TuiOrchestratorBridgeTests
             string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
+        }
+    }
+
+    /// <summary>
+    /// Stub terminal for testing without a real TTY.
+    /// </summary>
+    private sealed class StubTerminal : ITerminal
+    {
+        public Size GetSize() => new Size(120, 40);
+
+        public void Clear()
+        {
+            // No-op for tests
+        }
+
+        public void MoveTo(int x, int y)
+        {
+            // No-op for tests
+        }
+
+        public void Write(Cell cell)
+        {
+            // No-op for tests
+        }
+
+        public void Flush()
+        {
+            // No-op for tests
+        }
+
+        public void Dispose()
+        {
+            // No-op for tests
         }
     }
 }
