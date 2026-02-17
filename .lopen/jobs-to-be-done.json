@@ -844,5 +844,14 @@
     "status": "open",
     "priority": 3,
     "notes": "ModuleSelectionService formats list with status symbols. Need test verifying format and selection."
+  },
+  {
+    "id": "JOB-096",
+    "requirement_code": "CLI-28",
+    "requirement_module": "cli",
+    "description": "Use the CLI to build a small fizz-buzz application with tests to verify the workflow works",
+    "status": "open",
+    "priority": 5,
+    "notes": "This is a high-level integration test to verify the end-to-end workflow of Requirement Gathering, Planning, and Building phases using the CLI commands. The test should cover creating a specification for a fizz-buzz application, generating a plan from that specification, and then building the application while verifying that each phase completes successfully and produces the expected outputs."
   }
 ]
