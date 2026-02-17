@@ -29,7 +29,18 @@
         "JOB-002"
       ],
       "notes": "CORE-25: Filters null handlers. Maps name/description. Wraps handler delegate for SDK compatibility. Microsoft.Extensions.AI.Abstractions added as explicit dependency."
+    },
+    "model_fallback": {
+      "status": "complete",
+      "spec_ref": "LLM-11",
+      "files": [
+        "RetryingLlmService.cs",
+        "LlmException.cs",
+        "DefaultModelSelector.cs"
+      ],
+      "tests": "RetryingLlmServiceTests (19 tests)",
+      "notes": "Decorator wraps CopilotLlmService. Per-phase fallback chains in ModelOptions. IsModelUnavailable flag on LlmException with heuristic detection."
     }
   },
-  "last_updated": "2026-02-17T04:00:00Z"
+  "last_updated": "2026-02-17T05:00:00Z"
 }

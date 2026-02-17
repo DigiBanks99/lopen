@@ -43,4 +43,30 @@ internal sealed class DefaultModelSelector : IModelSelector
 
         return new ModelFallbackResult(FallbackModel, WasFallback: true, OriginalModel: configured);
     }
+
+    public IReadOnlyList<string> GetFallbackChain(WorkflowPhase phase)
+    {
+        var primary = SelectModel(phase).SelectedModel;
+        var phaseFallbacks = phase switch
+        {
+            WorkflowPhase.RequirementGathering => _modelOptions.RequirementGatheringFallbacks,
+            WorkflowPhase.Planning => _modelOptions.PlanningFallbacks,
+            WorkflowPhase.Building => _modelOptions.BuildingFallbacks,
+            WorkflowPhase.Research => _modelOptions.ResearchFallbacks,
+            _ => [],
+        };
+
+        var chain = new List<string> { primary };
+
+        foreach (var fallback in phaseFallbacks)
+        {
+            if (!string.IsNullOrWhiteSpace(fallback) && !chain.Contains(fallback, StringComparer.OrdinalIgnoreCase))
+                chain.Add(fallback);
+        }
+
+        if (!chain.Contains(_modelOptions.GlobalFallback, StringComparer.OrdinalIgnoreCase))
+            chain.Add(_modelOptions.GlobalFallback);
+
+        return chain;
+    }
 }

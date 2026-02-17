@@ -144,7 +144,10 @@ internal sealed class CopilotLlmService : ILlmService
         catch (Exception ex) when (ex is not LlmException)
         {
             _logger.LogError(ex, "SDK invocation failed for model {Model}", model);
-            throw new LlmException($"SDK invocation failed: {ex.Message}", model, ex);
+            throw new LlmException($"SDK invocation failed: {ex.Message}", model, ex)
+            {
+                IsModelUnavailable = LlmException.LooksLikeModelUnavailable(ex),
+            };
         }
     }
 

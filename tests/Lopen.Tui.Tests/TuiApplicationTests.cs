@@ -330,6 +330,9 @@ public class TuiApplicationTests
     {
         public Lopen.Llm.ModelFallbackResult SelectModel(Lopen.Llm.WorkflowPhase phase) =>
             new("stub-model", false);
+
+        public IReadOnlyList<string> GetFallbackChain(Lopen.Llm.WorkflowPhase phase) =>
+            ["stub-model"];
     }
 
     private sealed class StubSessionDetector : ISessionDetector

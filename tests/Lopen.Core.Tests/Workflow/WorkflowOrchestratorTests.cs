@@ -1905,6 +1905,9 @@ public class WorkflowOrchestratorTests
             PhasesRequested.Add(phase);
             return new ModelFallbackResult("gpt-4", false);
         }
+
+        public IReadOnlyList<string> GetFallbackChain(WorkflowPhase phase) =>
+            ["gpt-4"];
     }
 
     private sealed class StubGuardrailPipeline : IGuardrailPipeline

@@ -27,7 +27,7 @@ public class ServiceCollectionExtensionsTests
             var service = provider.GetService<ILlmService>();
 
             Assert.NotNull(service);
-            Assert.IsType<CopilotLlmService>(service);
+            Assert.IsType<RetryingLlmService>(service);
         }
         finally
         {

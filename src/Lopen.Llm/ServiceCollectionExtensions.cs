@@ -1,5 +1,8 @@
+using Lopen.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Lopen.Llm;
 
@@ -19,7 +22,13 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<ICopilotClientProvider, CopilotClientProvider>();
         services.TryAddSingleton<ISessionStateSaver, NullSessionStateSaver>();
         services.AddSingleton<IAuthErrorHandler, AuthErrorHandler>();
-        services.AddSingleton<ILlmService, CopilotLlmService>();
+        services.AddSingleton<CopilotLlmService>();
+        services.AddSingleton<ILlmService>(sp =>
+            new RetryingLlmService(
+                sp.GetRequiredService<CopilotLlmService>(),
+                sp.GetRequiredService<IModelSelector>(),
+                sp.GetRequiredService<IOptions<LopenOptions>>(),
+                sp.GetRequiredService<ILogger<RetryingLlmService>>()));
         services.AddSingleton<IModelSelector, DefaultModelSelector>();
         services.AddSingleton<ITokenTracker, InMemoryTokenTracker>();
         services.AddSingleton<IToolRegistry, DefaultToolRegistry>();

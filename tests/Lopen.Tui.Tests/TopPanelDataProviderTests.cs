@@ -341,5 +341,8 @@ public sealed class TopPanelDataProviderTests
 
         public ModelFallbackResult SelectModel(WorkflowPhase phase) =>
             new(Model, false);
+
+        public IReadOnlyList<string> GetFallbackChain(WorkflowPhase phase) =>
+            [Model];
     }
 }

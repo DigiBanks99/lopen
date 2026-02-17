@@ -1,22 +1,28 @@
 # Implementation Plan — Current Batch
 
-## JOB-002 (CORE-25): Register Lopen-managed tools with Copilot SDK session ✅
+## Completed This Session
 
-### Tasks
-- [x] Create `ToolConversion.cs` — converts `LopenToolDefinition` → `AIFunction`
-- [x] Wire `SessionConfig.Tools` in `CopilotLlmService`
-- [x] 11 tests in `ToolConversionTests`
+| Job | Spec | Summary |
+|-----|------|---------|
+| JOB-002 | CORE-25 | ToolConversion bridge + 11 tests |
+| JOB-009 | CORE-25 | Tests covered by ToolConversionTests |
+| JOB-004 | TUI-50 | TuiOutputRenderer + 16 tests |
+| JOB-006 | TUI-50 | Tests covered by TuiOutputRendererTests |
+| JOB-003 | TUI-52 | Orchestrator bridge + 11 tests |
+| JOB-007 | TUI-52 | Tests covered by TuiOrchestratorBridgeTests |
+| JOB-005 | TUI-51 | DI wiring for all data providers + 4 tests |
+| JOB-008 | CLI-26 | Project root discovery tests (13 total) |
 
-## JOB-004 (TUI-50): Implement TuiOutputRenderer ✅
+## Next Priority: P3 Jobs
 
-### Tasks
-- [x] Create `TuiOutputRenderer.cs` — bridges IOutputRenderer to IActivityPanelDataProvider
-- [x] Add `AddTuiOutputRenderer()` DI registration
-- [x] 16 tests in `TuiOutputRendererTests`
+### JOB-010 (LLM-11): Runtime model fallback
+- [ ] Implement catch-retry logic in CopilotLlmService for model-unavailable errors
+- [ ] Add fallback chain configuration
+- [ ] Tests (JOB-011)
 
-## JOB-003 (TUI-52): Bridge TUI to WorkflowOrchestrator ✅
+### JOB-013/014 (LLM-13): Token metrics persistence
+- [ ] Verify InMemoryTokenTracker round-trip with AutoSaveService
+- [ ] Add persistence tests
 
-### Tasks
-- [x] Add `IWorkflowOrchestrator?` to `TuiApplication` constructor
-- [x] `TryLaunchOrchestrator` / `CheckOrchestratorCompletion` in render loop
-- [x] 11 tests in `TuiOrchestratorBridgeTests`
+### JOB-024 (CLI-22): Expand ProgramTests.cs
+- [ ] Integration tests for DI container resolution

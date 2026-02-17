@@ -24,6 +24,17 @@ public sealed class ModelOptions
     public string Planning { get; set; } = "claude-opus-4.6";
     public string Building { get; set; } = "claude-opus-4.6";
     public string Research { get; set; } = "claude-opus-4.6";
+
+    /// <summary>Per-phase fallback chains for runtime model unavailability (LLM-11).</summary>
+    public List<string> RequirementGatheringFallbacks { get; set; } = [];
+    public List<string> PlanningFallbacks { get; set; } = [];
+    public List<string> BuildingFallbacks { get; set; } = [];
+    public List<string> ResearchFallbacks { get; set; } = [];
+
+    /// <summary>
+    /// Global fallback model used when all per-phase fallbacks are exhausted.
+    /// </summary>
+    public string GlobalFallback { get; set; } = "claude-sonnet-4";
 }
 
 public sealed class BudgetOptions

@@ -85,18 +85,18 @@
     "requirement_code": "LLM-11",
     "requirement_module": "llm",
     "description": "Implement runtime model fallback \u2014 when SDK returns model-unavailable error, catch it and retry with next configured model from fallback chain",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Currently only has config-empty fallback to claude-sonnet-4 with warning log. No runtime SDK-error-based model failover."
+    "notes": "RetryingLlmService decorator catches model-unavailable errors and retries with fallback chain. LlmException.IsModelUnavailable + heuristic detection. Per-phase fallback config in ModelOptions."
   },
   {
     "id": "JOB-011",
     "requirement_code": "LLM-11",
     "requirement_module": "llm",
     "description": "Add tests for runtime model fallback \u2014 verify SDK error triggers retry with fallback model, warning logged, and failure when all models exhausted",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Depends on JOB-010 implementation."
+    "notes": "19 tests in RetryingLlmServiceTests covering success, fallback, all-fail, dedup, non-model errors, cancellation, chain building, and detection heuristics."
   },
   {
     "id": "JOB-012",

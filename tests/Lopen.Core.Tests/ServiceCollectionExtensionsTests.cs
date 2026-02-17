@@ -313,5 +313,8 @@ public class ServiceCollectionExtensionsTests
     {
         public Lopen.Llm.ModelFallbackResult SelectModel(Lopen.Llm.WorkflowPhase phase) =>
             new("gpt-4", false);
+
+        public IReadOnlyList<string> GetFallbackChain(Lopen.Llm.WorkflowPhase phase) =>
+            ["gpt-4"];
     }
 }
