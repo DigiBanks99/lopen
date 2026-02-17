@@ -110,8 +110,24 @@
       "jobs": [
         "JOB-096"
       ],
-      "notes": "E2E integration tests simulating fizz-buzz workflow through spec\u2192plan\u2192build phases. Tests use TrackingOrchestrator fake to verify phase invocation, prerequisite enforcement, prompt passthrough, and headless mode."
+      "notes": "E2E integration tests simulating fizz-buzz workflow through spec→plan→build phases. Tests use TrackingOrchestrator fake to verify phase invocation, prerequisite enforcement, prompt passthrough, and headless mode."
+    },
+    "config_override_flags": {
+      "status": "complete",
+      "spec_ref": "CFG-08, CFG-09, CFG-11",
+      "files": [
+        "GlobalOptions.cs",
+        "RootCommandHandler.cs",
+        "PhaseCommands.cs"
+      ],
+      "tests": "GlobalOptionsTests (parse/recursive/addto tests), RootCommandTests (model/unattended/max-iterations override verification, default preservation)",
+      "jobs": [
+        "JOB-096",
+        "JOB-097",
+        "JOB-098"
+      ],
+      "notes": "--model overrides all 4 phase models, --unattended sets WorkflowOptions.Unattended, --max-iterations sets WorkflowOptions.MaxIterations. ApplyConfigOverrides called before orchestrator in all command handlers."
     }
   },
-  "last_updated": "2026-02-17T19:32:00Z"
+  "last_updated": "2026-02-17T20:07:00Z"
 }
