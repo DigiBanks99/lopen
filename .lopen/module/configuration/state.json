@@ -66,7 +66,17 @@
         "JOB-098"
       ],
       "notes": "CFG-08 (--model), CFG-09 (--unattended), CFG-11 (--max-iterations) CLI flags now wired. ApplyConfigOverrides reads from ParseResult and mutates singleton options before orchestrator invocation."
+    },
+    "env_var_overrides": {
+      "status": "complete",
+      "implementation": "LopenConfigurationBuilder.Build() calls AddEnvironmentVariables(\"LOPEN_\") as Layer 3",
+      "tests": "LopenConfigurationBuilderTests (5 env var tests: override project config, CLI overrides env var, override global config, nested key binding, full 4-layer precedence)",
+      "jobs": [
+        "JOB-102",
+        "JOB-103"
+      ],
+      "notes": "CFG-16: LOPEN_-prefixed environment variables override file-based config but are overridden by CLI flags. Uses Microsoft.Extensions.Configuration __ separator for nested keys."
     }
   },
-  "last_updated": "2026-02-17T20:07:00Z"
+  "last_updated": "2026-02-17T21:39:00Z"
 }

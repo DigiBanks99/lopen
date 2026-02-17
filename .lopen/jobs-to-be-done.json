@@ -907,5 +907,23 @@
     "status": "done",
     "priority": 2,
     "notes": "EnsureGitignoreEntryAsync added to StorageInitializer. 7 unit tests + 3 acceptance criteria tests. Only modifies existing .gitignore, does not create one."
+  },
+  {
+    "id": "JOB-102",
+    "requirement_code": "CFG-16",
+    "requirement_module": "configuration",
+    "description": "Document LOPEN_-prefixed environment variable overrides in Configuration SPECIFICATION.md and add acceptance criterion CFG-16",
+    "status": "done",
+    "priority": 2,
+    "notes": "Added Environment Variables section to SPECIFICATION.md with naming convention table, updated hierarchy to 5 layers, added CFG-16 acceptance criterion."
+  },
+  {
+    "id": "JOB-103",
+    "requirement_code": "CFG-16",
+    "requirement_module": "configuration",
+    "description": "Add tests verifying LOPEN_-prefixed environment variables override file-based config and are overridden by CLI flags",
+    "status": "done",
+    "priority": 2,
+    "notes": "Added 5 tests in LopenConfigurationBuilderTests.cs: env var overrides project config, CLI overrides env var, env var overrides global config, nested key binding, and full 4-layer precedence test. All 81 configuration tests pass."
   }
 ]
