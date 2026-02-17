@@ -12,12 +12,17 @@
 - [x] AddLopenOtel wired into CLI Program.cs
 - [x] Overhead benchmark test (50 iterations, < 5ms assertion)
 
-## Remaining Open Jobs
+### JOB-075 (OTEL-13): Aspire Dashboard Integration ✅
+- [x] AppHost project already exists with Lopen reference
+- [x] OTEL reads OTEL_EXPORTER_OTLP_ENDPOINT auto-injected by Aspire
+- [x] Tests verify AppHost structure and OTLP activation
 
-### JOB-052 (TUI-22): Guided Conversation UI for Requirement Gathering
-- Priority: P3
-- Status: Not started — complex, requires spec study
+### JOB-052 (TUI-22): Guided Conversation UI ✅
+- [x] GuidedConversationData model (turns, phases, draft spec)
+- [x] GuidedConversationComponent renders all phases with Q&A prefixes
+- [x] ActivityEntryKind.Conversation with 💬 prefix
+- [x] Registered in ComponentGallery with 4 preview states
+- [x] 31 new tests + 1 gallery name + 1 kind prefix
 
-### JOB-075 (OTEL-13): Aspire Dashboard Integration
-- Priority: P3
-- Status: Not started — requires aspire tooling
+## All Jobs Complete 🎉
+All jobs in jobs-to-be-done.json are marked as done.

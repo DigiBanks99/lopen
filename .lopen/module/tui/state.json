@@ -265,6 +265,14 @@
       "jobs": [
         "JOB-063"
       ]
+    },
+    "guided_conversation": {
+      "status": "complete",
+      "implementation": "GuidedConversationComponent + GuidedConversationData + ActivityEntryKind.Conversation",
+      "tests": "GuidedConversationComponentTests (30) + KindPrefix_Conversation (1) + Gallery name (1)",
+      "jobs": [
+        "JOB-052"
+      ]
     }
   },
   "last_updated": "2026-02-17T05:00:00Z"

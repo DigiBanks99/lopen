@@ -463,9 +463,9 @@
     "requirement_code": "TUI-22",
     "requirement_module": "tui",
     "description": "Implement guided conversation UI for requirement gathering (workflow step 1)",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Requirement gathering needs a guided conversation flow in the TUI where the user answers questions to shape the spec."
+    "notes": "GuidedConversationComponent + data model + ActivityEntryKind.Conversation + gallery registration. 31 tests."
   },
   {
     "id": "JOB-053",
