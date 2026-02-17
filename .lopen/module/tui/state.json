@@ -283,7 +283,17 @@
         "JOB-006"
       ],
       "notes": "TUI-50: Maps RenderProgress\u2192PhaseTransition, RenderError\u2192TaskFailure, RenderResult\u2192Action, Prompt\u2192UserPromptQueue.DequeueAsync with Conversation entry."
+    },
+    "orchestrator_bridge": {
+      "status": "complete",
+      "implementation": "TuiApplication accepts IWorkflowOrchestrator?, launches RunAsync on Task.Run background thread. TryLaunchOrchestrator/CheckOrchestratorCompletion in render loop.",
+      "tests": "TuiOrchestratorBridgeTests (11 tests)",
+      "jobs": [
+        "JOB-003",
+        "JOB-007"
+      ],
+      "notes": "TUI-52: Background launch after modals dismissed. Completion/failure/interruption entries added to activity panel. SetOrchestratorModule for module name injection."
     }
   },
-  "last_updated": "2026-02-17T04:10:00Z"
+  "last_updated": "2026-02-17T04:20:00Z"
 }

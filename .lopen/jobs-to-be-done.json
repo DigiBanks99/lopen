@@ -22,9 +22,9 @@
     "requirement_code": "TUI-52",
     "requirement_module": "tui",
     "description": "Bridge TUI to WorkflowOrchestrator \u2014 TuiApplication.RunAsync must launch orchestrator on a background thread and display workflow progress in real time",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "CRITICAL: TuiApplication.RunAsync is a pure render loop that never calls WorkflowOrchestrator.RunAsync. The TUI is a UI shell with no backend driver."
+    "notes": "TuiApplication now accepts IWorkflowOrchestrator? and launches it on a background thread via Task.Run. TryLaunchOrchestrator/CheckOrchestratorCompletion called each frame. 11 tests in TuiOrchestratorBridgeTests."
   },
   {
     "id": "JOB-004",
@@ -58,9 +58,9 @@
     "requirement_code": "TUI-52",
     "requirement_module": "tui",
     "description": "Add tests for TUI-orchestrator bridge verifying workflow launches on background thread, progress updates render, and cancellation is handled",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "New integration point needs tests."
+    "notes": "Covered by 11 tests in TuiOrchestratorBridgeTests: background launch, prompt/module passing, completion/failure/interruption handling, landing page blocking."
   },
   {
     "id": "JOB-008",

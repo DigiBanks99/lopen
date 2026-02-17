@@ -37,6 +37,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly ISlashCommandExecutor? _slashCommandExecutor;
     private readonly IPauseController? _pauseController;
     private readonly IUserPromptQueue? _userPromptQueue;
+    private readonly IWorkflowOrchestrator? _orchestrator;
     private readonly LandingPageComponent _landingPage;
     private readonly SessionResumeModalComponent _sessionResumeModal;
     private readonly ResourceViewerModalComponent _resourceViewerModal;
@@ -50,6 +51,8 @@ internal sealed class TuiApplication : ITuiApplication
 
     private volatile bool _running;
     private CancellationTokenSource? _stopCts;
+    private Task<OrchestrationResult>? _orchestratorTask;
+    private string? _orchestratorModule;
 
     // Mutable state — updated by keyboard input and external events
     private FocusPanel _focus = FocusPanel.Prompt;
@@ -96,6 +99,7 @@ internal sealed class TuiApplication : ITuiApplication
         ISlashCommandExecutor? slashCommandExecutor = null,
         IPauseController? pauseController = null,
         IUserPromptQueue? userPromptQueue = null,
+        IWorkflowOrchestrator? orchestrator = null,
         bool showLandingPage = true,
         ISessionDetector? sessionDetector = null)
     {
@@ -111,6 +115,7 @@ internal sealed class TuiApplication : ITuiApplication
         _slashCommandExecutor = slashCommandExecutor;
         _pauseController = pauseController;
         _userPromptQueue = userPromptQueue;
+        _orchestrator = orchestrator;
         _landingPage = new LandingPageComponent();
         _sessionResumeModal = new SessionResumeModalComponent();
         _resourceViewerModal = new ResourceViewerModalComponent();
@@ -154,6 +159,12 @@ internal sealed class TuiApplication : ITuiApplication
             {
                 // 1. Poll keyboard input
                 DrainKeyboardInput();
+
+                // 1b. Launch orchestrator if available and not yet started
+                TryLaunchOrchestrator(initialPrompt, ct);
+
+                // 1c. Check if orchestrator completed
+                CheckOrchestratorCompletion();
 
                 // 2. Refresh top panel data from provider (throttled)
                 await RefreshTopPanelDataAsync(ct).ConfigureAwait(false);
@@ -200,6 +211,93 @@ internal sealed class TuiApplication : ITuiApplication
         _stopCts?.Cancel();
         _running = false;
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Launches the workflow orchestrator on a background thread if available and not yet started.
+    /// Only launches when no modal overlay is active (landing page / session resume dismissed).
+    /// </summary>
+    private void TryLaunchOrchestrator(string? initialPrompt, CancellationToken cancellationToken)
+    {
+        if (_orchestrator is null || _orchestratorTask is not null)
+            return;
+
+        // Don't launch while a modal is showing (user hasn't completed setup flow yet)
+        if (_modalState != TuiModalState.None)
+            return;
+
+        _logger.LogInformation("Launching workflow orchestrator on background thread");
+
+        // Use the module name if already resolved, otherwise use a default
+        var moduleName = _orchestratorModule ?? "default";
+        var prompt = initialPrompt;
+
+        _orchestratorTask = Task.Run(async () =>
+        {
+            try
+            {
+                return await _orchestrator.RunAsync(moduleName, prompt, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return OrchestrationResult.Interrupted(0, WorkflowStep.DraftSpecification, "Orchestration cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Orchestrator failed");
+                _activityPanelDataProvider?.AddTaskFailure(
+                    "Orchestrator", ex.Message,
+                    [ex.GetType().Name]);
+                return OrchestrationResult.Interrupted(0, WorkflowStep.DraftSpecification, $"Orchestrator error: {ex.Message}");
+            }
+        }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Checks if the orchestrator background task has completed and handles the result.
+    /// </summary>
+    private void CheckOrchestratorCompletion()
+    {
+        if (_orchestratorTask is null || !_orchestratorTask.IsCompleted)
+            return;
+
+        try
+        {
+            var result = _orchestratorTask.GetAwaiter().GetResult();
+
+            if (result.IsComplete)
+            {
+                _logger.LogInformation("Orchestrator completed: {Summary}", result.Summary);
+                _activityPanelDataProvider?.AddEntry(new ActivityEntry
+                {
+                    Summary = $"✓ Workflow complete: {result.Summary ?? "Module finished"}",
+                    Kind = ActivityEntryKind.Action,
+                });
+            }
+            else if (result.WasInterrupted)
+            {
+                _logger.LogWarning("Orchestrator interrupted: {Summary}", result.Summary);
+                _activityPanelDataProvider?.AddEntry(new ActivityEntry
+                {
+                    Summary = $"⚠ Workflow interrupted: {result.Summary ?? "User intervention required"}",
+                    Kind = ActivityEntryKind.Error,
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading orchestrator result");
+        }
+
+        _orchestratorTask = null;
+    }
+
+    /// <summary>
+    /// Sets the module name that the orchestrator will use when launched.
+    /// </summary>
+    internal void SetOrchestratorModule(string moduleName)
+    {
+        _orchestratorModule = moduleName;
     }
 
     /// <summary>
