@@ -955,7 +955,8 @@ public class ToolHandlerBinderTests
         public void RecordVerification(VerificationScope scope, string identifier, bool passed)
         {
             RecordedVerifications.Add((scope.ToString(), identifier));
-            if (passed) VerifiedItems.Add((scope.ToString(), identifier));
+            if (passed)
+                VerifiedItems.Add((scope.ToString(), identifier));
         }
 
         public bool IsVerified(VerificationScope scope, string identifier) =>

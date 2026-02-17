@@ -566,7 +566,8 @@ public sealed class ContextPanelDataProviderTests
         {
             ReadTasksCallCount++;
             LastModuleRead = module;
-            if (ShouldThrow) throw new InvalidOperationException("plan read failed");
+            if (ShouldThrow)
+                throw new InvalidOperationException("plan read failed");
             if (Tasks.TryGetValue(module, out var tasks))
                 return Task.FromResult(tasks);
             return Task.FromResult<IReadOnlyList<PlanTask>>([]);

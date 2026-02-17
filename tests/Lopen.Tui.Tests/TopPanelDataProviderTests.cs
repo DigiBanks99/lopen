@@ -257,7 +257,8 @@ public sealed class TopPanelDataProviderTests
         public void RecordUsage(TokenUsage usage)
         {
             _usages.Add(usage);
-            if (usage.IsPremiumRequest) _premiumCount++;
+            if (usage.IsPremiumRequest)
+                _premiumCount++;
         }
 
         public SessionTokenMetrics GetSessionMetrics()
@@ -288,7 +289,8 @@ public sealed class TopPanelDataProviderTests
 
         public Task<string?> GetCurrentBranchAsync(CancellationToken cancellationToken = default)
         {
-            if (ShouldThrow) throw new GitException("failed", "git branch", 1, "error");
+            if (ShouldThrow)
+                throw new GitException("failed", "git branch", 1, "error");
             return Task.FromResult(Branch);
         }
 
@@ -314,7 +316,8 @@ public sealed class TopPanelDataProviderTests
 
         public Task<AuthStatusResult> GetStatusAsync(CancellationToken cancellationToken = default)
         {
-            if (ShouldThrow) throw new InvalidOperationException("auth failed");
+            if (ShouldThrow)
+                throw new InvalidOperationException("auth failed");
             return Task.FromResult(Status);
         }
 

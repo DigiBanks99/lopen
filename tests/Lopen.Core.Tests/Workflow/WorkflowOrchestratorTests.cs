@@ -2003,9 +2003,11 @@ public class WorkflowOrchestratorTests
             Lopen.Storage.SessionState state, Lopen.Storage.SessionMetrics? metrics = null,
             CancellationToken cancellationToken = default)
         {
-            if (ThrowOnSave) throw new InvalidOperationException("Auto-save forced failure");
+            if (ThrowOnSave)
+                throw new InvalidOperationException("Auto-save forced failure");
             Saves.Add((trigger, sessionId.ToString()));
-            if (metrics is not null) MetricsIncluded = true;
+            if (metrics is not null)
+                MetricsIncluded = true;
             return Task.CompletedTask;
         }
     }

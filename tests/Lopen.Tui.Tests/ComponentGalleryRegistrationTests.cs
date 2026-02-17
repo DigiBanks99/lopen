@@ -319,7 +319,8 @@ public class ComponentGalleryRegistrationTests
         {
             var previewable = (IPreviewableComponent)component;
             var lines = previewable.RenderPreview(80, 24);
-            if (lines.Length == 0) continue;
+            if (lines.Length == 0)
+                continue;
 
             var output = string.Join("\n", lines);
             // In Unicode mode, border lines should not contain ASCII-only '+', '-', '|' as borders

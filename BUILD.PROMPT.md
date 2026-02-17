@@ -26,7 +26,6 @@ IMPORTANT:
 - You must fix failing tests before continuing.
 - You don't get to decide that tests are optional or don't add value.
 - If a new module is needed, create a new requirement folder in @docs/requirements and add a minimal SPECIFICATION.md file there. Update @docs/requirements/README.md to reference the new module.
-- Recreate IMPLEMENTATION_PLAN.md at the start.
 - Run a sub-agent with model gpt-5-mini to verify that all the acceptance criteria have been met before marking a task as done. Be clear on what task was done and where to find the acceptance criteria.
 - Verify the features added by running the application and using the features where possible.
 - If you find a bug, create a new job to be done for the bug fix and prioritize it accordingly. Do not just fix the bug without tracking it as a job to be done.
