@@ -89,6 +89,14 @@
         "JOB-030"
       ],
       "notes": "All 5 histograms and 2 gauges from LopenTelemetryDiagnostics wired with Stopwatch timing"
+    },
+    "overhead_verification": {
+      "status": "complete",
+      "implementation": "AddLopenOtel in Program.cs + overhead benchmark test",
+      "tests": "OtlpExportTests.AddLopenOtel_Overhead_LessThan5ms",
+      "jobs": [
+        "JOB-076"
+      ]
     }
   },
   "last_updated": "2026-02-16T20:00:00Z"

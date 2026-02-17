@@ -562,7 +562,7 @@
     "requirement_code": "TUI-40",
     "requirement_module": "tui",
     "description": "Implement queued user messages delivered as context in next SDK invocation",
-    "status": "open",
+    "status": "done",
     "priority": 3,
     "notes": "When user types messages during agent execution, they should be queued and included in the next LLM prompt."
   },
@@ -670,16 +670,16 @@
     "requirement_code": "OTEL-13",
     "requirement_module": "otel",
     "description": "Implement Aspire Dashboard integration - 'aspire run' starts Dashboard + Lopen with OTEL pre-configured",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Need AppHost project for .NET Aspire that starts both the Aspire Dashboard and Lopen with OTEL endpoint pre-configured."
+    "notes": "AppHost project exists with Lopen reference. OTEL reads OTEL_EXPORTER_OTLP_ENDPOINT auto-injected by Aspire. Tests verify structure and all 3 signals."
   },
   {
     "id": "JOB-076",
     "requirement_code": "OTEL-17",
     "requirement_module": "otel",
     "description": "Verify OTEL instrumentation overhead is < 5ms on CLI command startup",
-    "status": "open",
+    "status": "done",
     "priority": 3,
     "notes": "Need performance benchmark test to verify that OTEL instrumentation doesn't measurably degrade CLI startup time."
   },

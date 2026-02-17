@@ -28,7 +28,7 @@
         "JOB-044",
         "JOB-045"
       ],
-      "notes": "Visual progress bar [████░░░░] for task progress. Data pipeline: IPlanManager → ContextPanelDataProvider → 1s polling → renderer. Task name, %, subtask tree with ✓/▶/○ icons. Numbered resource access (1-9 keys) opens ResourceViewerModal (scrollable, Esc-dismiss). ResourceItem has optional Content property."
+      "notes": "Visual progress bar [\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591] for task progress. Data pipeline: IPlanManager \u2192 ContextPanelDataProvider \u2192 1s polling \u2192 renderer. Task name, %, subtask tree with \u2713/\u25b6/\u25cb icons. Numbered resource access (1-9 keys) opens ResourceViewerModal (scrollable, Esc-dismiss). ResourceItem has optional Content property."
     },
     "activity_panel": {
       "status": "complete",
@@ -43,7 +43,7 @@
         "JOB-047",
         "JOB-048"
       ],
-      "notes": "Thread-safe ConcurrentQueue for workflow events. Auto-scroll on new entries. Progressive disclosure via IsExpanded/Details. Wired into TuiApplication render loop. DI via AddActivityPanelDataProvider(). Progressive disclosure: latest entry auto-expanded, previous collapsed, errors stay expanded. SelectedEntryIndex for keyboard navigation. ToolCall kind with ⚙ prefix. ▼/▶ expand indicators. > selection marker. Research kind with 📖 prefix and FullDocumentContent drill-into via ResourceViewerModal. AddPhaseTransition method for phase transition summaries with ◆ prefix. AddFileEdit method for diff display with +/- markers and FullDocumentContent drill-into."
+      "notes": "Thread-safe ConcurrentQueue for workflow events. Auto-scroll on new entries. Progressive disclosure via IsExpanded/Details. Wired into TuiApplication render loop. DI via AddActivityPanelDataProvider(). Progressive disclosure: latest entry auto-expanded, previous collapsed, errors stay expanded. SelectedEntryIndex for keyboard navigation. ToolCall kind with \u2699 prefix. \u25bc/\u25b6 expand indicators. > selection marker. Research kind with \ud83d\udcd6 prefix and FullDocumentContent drill-into via ResourceViewerModal. AddPhaseTransition method for phase transition summaries with \u25c6 prefix. AddFileEdit method for diff display with +/- markers and FullDocumentContent drill-into."
     },
     "prompt_area": {
       "status": "complete",
@@ -185,7 +185,7 @@
       "jobs": [
         "JOB-049"
       ],
-      "notes": "File picker modal with tree view. 📁/📂/📄 icons, ▶ selection, Up/Down nav, Enter expand/collapse dirs, Esc close."
+      "notes": "File picker modal with tree view. \ud83d\udcc1/\ud83d\udcc2/\ud83d\udcc4 icons, \u25b6 selection, Up/Down nav, Enter expand/collapse dirs, Esc close."
     },
     "module_selection": {
       "status": "complete",
@@ -194,7 +194,7 @@
       "jobs": [
         "JOB-051"
       ],
-      "notes": "Module selection modal with ▶ indicator, Up/Down nav, Enter select, Esc cancel."
+      "notes": "Module selection modal with \u25b6 indicator, Up/Down nav, Enter select, Esc cancel."
     },
     "confirmation_modal": {
       "status": "complete",
@@ -256,6 +256,14 @@
       "tests": "ActivityPanelComponentTests (6 highlighting tests) + ToolOutputComponentTests (3 diff highlighting tests)",
       "jobs": [
         "JOB-100"
+      ]
+    },
+    "user_prompt_queue": {
+      "status": "complete",
+      "implementation": "IUserPromptQueue (Core) + UserPromptQueue (Tui) + orchestrator drain logic",
+      "tests": "WorkflowOrchestratorTests (6 TUI-40 tests) + UserPromptQueueTests",
+      "jobs": [
+        "JOB-063"
       ]
     }
   },
