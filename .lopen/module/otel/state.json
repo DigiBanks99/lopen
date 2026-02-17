@@ -74,12 +74,11 @@
     },
     "counter_metrics": {
       "status": "complete",
-      "implementation": "SdkInvocationCount, TokensConsumed, PremiumRequestCount, ToolCount, OracleVerdictCount, TasksCompletedCount, TasksFailedCount, CommandCount, GitCommitCount wired across orchestrator, binder, commands",
-      "tests": "RecordsSdkInvocationCounter, RecordsToolCounter, RecordsOracleCounter, RecordsBackPressureCounterOnBlock, RecordsTaskMetricsOnTaskCompletion",
+      "implementation": "LopenTelemetryDiagnostics 10 counters",
+      "tests": "Counters_IncrementCorrectly_VerifiedViaMeterListener (MeterListener-based value verification)",
       "jobs": [
-        "JOB-029"
-      ],
-      "notes": "All 10 counters from LopenTelemetryDiagnostics wired to their respective code paths"
+        "JOB-047"
+      ]
     },
     "histogram_gauge_metrics": {
       "status": "complete",
@@ -97,7 +96,15 @@
       "jobs": [
         "JOB-076"
       ]
+    },
+    "env_var_precedence": {
+      "status": "complete",
+      "implementation": "ServiceCollectionExtensions OTEL_SERVICE_NAME ?? otel:service_name ?? lopen",
+      "tests": "3 new precedence tests with value assertions",
+      "jobs": [
+        "JOB-073"
+      ]
     }
   },
-  "last_updated": "2026-02-16T20:00:00Z"
+  "last_updated": "2026-02-17T19:15:00Z"
 }

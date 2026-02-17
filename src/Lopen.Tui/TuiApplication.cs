@@ -436,68 +436,78 @@ internal sealed class TuiApplication : ITuiApplication
 
     private void DrainKeyboardInput()
     {
-        while (Console.KeyAvailable)
+        if (Console.IsInputRedirected)
+            return;
+
+        try
         {
-            var keyInfo = Console.ReadKey(intercept: true);
-
-            // Landing page: any keypress dismisses it, then check for session
-            if (_modalState == TuiModalState.LandingPage)
+            while (Console.KeyAvailable)
             {
-                _modalState = TuiModalState.None;
-                _ = CheckForActiveSessionAsync(_stopCts?.Token ?? CancellationToken.None);
-                continue;
+                var keyInfo = Console.ReadKey(intercept: true);
+
+                // Landing page: any keypress dismisses it, then check for session
+                if (_modalState == TuiModalState.LandingPage)
+                {
+                    _modalState = TuiModalState.None;
+                    _ = CheckForActiveSessionAsync(_stopCts?.Token ?? CancellationToken.None);
+                    continue;
+                }
+
+                // Session resume modal: arrow keys navigate, enter confirms
+                if (_modalState == TuiModalState.SessionResume)
+                {
+                    HandleSessionResumeInput(keyInfo);
+                    continue;
+                }
+
+                // Resource viewer modal: Esc closes, Up/Down scrolls
+                if (_modalState == TuiModalState.ResourceViewer)
+                {
+                    HandleResourceViewerInput(keyInfo);
+                    continue;
+                }
+
+                // File picker modal: Esc closes, Up/Down navigates, Enter expands/collapses
+                if (_modalState == TuiModalState.FilePicker)
+                {
+                    HandleFilePickerInput(keyInfo);
+                    continue;
+                }
+
+                // Module selection modal: Up/Down navigates, Enter selects, Esc closes
+                if (_modalState == TuiModalState.ModuleSelection)
+                {
+                    HandleModuleSelectionInput(keyInfo);
+                    continue;
+                }
+
+                // Confirmation modal: Left/Right navigates, Enter selects, Esc cancels
+                if (_modalState == TuiModalState.Confirmation)
+                {
+                    HandleConfirmationInput(keyInfo);
+                    continue;
+                }
+
+                // Error modal: Left/Right navigates, Enter selects, Esc closes
+                if (_modalState == TuiModalState.ErrorModal)
+                {
+                    HandleErrorModalInput(keyInfo);
+                    continue;
+                }
+
+                var input = new KeyInput
+                {
+                    Key = keyInfo.Key,
+                    Modifiers = keyInfo.Modifiers,
+                    KeyChar = keyInfo.KeyChar
+                };
+                var action = _keyboardHandler.Handle(input, _focus);
+                ApplyAction(action, keyInfo);
             }
-
-            // Session resume modal: arrow keys navigate, enter confirms
-            if (_modalState == TuiModalState.SessionResume)
-            {
-                HandleSessionResumeInput(keyInfo);
-                continue;
-            }
-
-            // Resource viewer modal: Esc closes, Up/Down scrolls
-            if (_modalState == TuiModalState.ResourceViewer)
-            {
-                HandleResourceViewerInput(keyInfo);
-                continue;
-            }
-
-            // File picker modal: Esc closes, Up/Down navigates, Enter expands/collapses
-            if (_modalState == TuiModalState.FilePicker)
-            {
-                HandleFilePickerInput(keyInfo);
-                continue;
-            }
-
-            // Module selection modal: Up/Down navigates, Enter selects, Esc closes
-            if (_modalState == TuiModalState.ModuleSelection)
-            {
-                HandleModuleSelectionInput(keyInfo);
-                continue;
-            }
-
-            // Confirmation modal: Left/Right navigates, Enter selects, Esc cancels
-            if (_modalState == TuiModalState.Confirmation)
-            {
-                HandleConfirmationInput(keyInfo);
-                continue;
-            }
-
-            // Error modal: Left/Right navigates, Enter selects, Esc closes
-            if (_modalState == TuiModalState.ErrorModal)
-            {
-                HandleErrorModalInput(keyInfo);
-                continue;
-            }
-
-            var input = new KeyInput
-            {
-                Key = keyInfo.Key,
-                Modifiers = keyInfo.Modifiers,
-                KeyChar = keyInfo.KeyChar
-            };
-            var action = _keyboardHandler.Handle(input, _focus);
-            ApplyAction(action, keyInfo);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogDebug(ex, "Keyboard input is unavailable (console redirected)");
         }
     }
 

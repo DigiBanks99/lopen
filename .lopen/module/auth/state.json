@@ -21,7 +21,15 @@
         "JOB-002"
       ],
       "notes": "Calls IAuthService.ValidateAsync before workflow execution; gracefully skips when auth module not registered"
+    },
+    "no_credential_storage": {
+      "status": "complete",
+      "implementation": "CopilotAuthService delegates all storage to IGhCliAdapter/env vars",
+      "tests": "AuthNoCredentialStorageTests (17 tests: behavioral + reflection + source-scan)",
+      "jobs": [
+        "JOB-087"
+      ]
     }
   },
-  "last_updated": "2026-02-17T17:59:54Z"
+  "last_updated": "2026-02-17T19:15:00Z"
 }

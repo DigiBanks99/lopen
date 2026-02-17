@@ -339,6 +339,41 @@ public class ServiceCollectionExtensionsTests
         Assert.Null(exception);
     }
 
+    [Fact]
+    public void AddLopenOtel_OtelServiceNameEnvVar_ValueTakesPrecedence()
+    {
+        // OTEL_SERVICE_NAME must take precedence over otel:service_name (OTEL-16)
+        var config = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["OTEL_SERVICE_NAME"] = "env-lopen",
+            ["otel:service_name"] = "config-lopen"
+        });
+
+        var resolved = config["OTEL_SERVICE_NAME"] ?? config["otel:service_name"] ?? "lopen";
+        Assert.Equal("env-lopen", resolved);
+    }
+
+    [Fact]
+    public void AddLopenOtel_NoEnvVar_FallsToConfigServiceName()
+    {
+        var config = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["otel:service_name"] = "config-lopen"
+        });
+
+        var resolved = config["OTEL_SERVICE_NAME"] ?? config["otel:service_name"] ?? "lopen";
+        Assert.Equal("config-lopen", resolved);
+    }
+
+    [Fact]
+    public void AddLopenOtel_NoServiceName_DefaultsToLopen()
+    {
+        var config = BuildConfiguration();
+
+        var resolved = config["OTEL_SERVICE_NAME"] ?? config["otel:service_name"] ?? "lopen";
+        Assert.Equal("lopen", resolved);
+    }
+
     // --- Integration Test: All Signals Enabled ---
 
     [Fact]

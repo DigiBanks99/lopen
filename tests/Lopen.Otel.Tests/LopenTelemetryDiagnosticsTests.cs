@@ -238,6 +238,13 @@ public class LopenTelemetryDiagnosticsTests
     public void ActivitySource_StartActivity_ReturnsNull_WhenNoListener()
     {
         // Without an ActivityListener, StartActivity returns null (zero overhead)
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => false, // Ensure no listener is active
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.None
+        };
+        ActivitySource.AddActivityListener(listener);
+
         var activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.command");
         Assert.Null(activity);
     }
@@ -294,5 +301,48 @@ public class LopenTelemetryDiagnosticsTests
         Assert.NotNull(child);
         Assert.Equal(parent.TraceId, child.TraceId);
         Assert.Equal(parent.SpanId, child.ParentSpanId);
+    }
+
+    // --- MeterListener Acceptance Test (OTEL-08) ---
+
+    [Fact]
+    public void Counters_IncrementCorrectly_VerifiedViaMeterListener()
+    {
+        var measurements = new Dictionary<string, long>();
+        using var meterListener = new MeterListener();
+        meterListener.InstrumentPublished = (instrument, ml) =>
+        {
+            if (instrument.Meter.Name == "Lopen.Metrics" && instrument is Counter<long>)
+                ml.EnableMeasurementEvents(instrument);
+        };
+        meterListener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) =>
+        {
+            measurements[instrument.Name] = measurements.GetValueOrDefault(instrument.Name) + measurement;
+        });
+        meterListener.Start();
+
+        LopenTelemetryDiagnostics.CommandCount.Add(3);
+        LopenTelemetryDiagnostics.ToolCount.Add(5);
+        LopenTelemetryDiagnostics.SdkInvocationCount.Add(7);
+        LopenTelemetryDiagnostics.TokensConsumed.Add(1500);
+        LopenTelemetryDiagnostics.PremiumRequestCount.Add(2);
+        LopenTelemetryDiagnostics.OracleVerdictCount.Add(4);
+        LopenTelemetryDiagnostics.TasksCompletedCount.Add(10);
+        LopenTelemetryDiagnostics.TasksFailedCount.Add(1);
+        LopenTelemetryDiagnostics.BackPressureEventCount.Add(6);
+        LopenTelemetryDiagnostics.GitCommitCount.Add(8);
+
+        Assert.Equal(3, measurements["lopen.commands.count"]);
+        Assert.Equal(5, measurements["lopen.tools.count"]);
+        Assert.Equal(7, measurements["lopen.sdk.invocations.count"]);
+        Assert.Equal(1500, measurements["lopen.sdk.tokens.consumed"]);
+        Assert.Equal(2, measurements["lopen.sdk.premium_requests.count"]);
+        Assert.Equal(4, measurements["lopen.oracle.verdicts.count"]);
+        Assert.Equal(10, measurements["lopen.tasks.completed.count"]);
+        Assert.Equal(1, measurements["lopen.tasks.failed.count"]);
+        Assert.Equal(6, measurements["lopen.backpressure.events.count"]);
+        Assert.Equal(8, measurements["lopen.git.commits.count"]);
+
+        Assert.Equal(10, measurements.Count);
     }
 }

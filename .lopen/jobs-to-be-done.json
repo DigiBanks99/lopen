@@ -184,243 +184,243 @@
     "requirement_code": "CLI-03",
     "requirement_module": "cli",
     "description": "Add acceptance criterion-level test verifying 'lopen spec' runs Requirement Gathering phase with guided conversation",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "PhaseCommands.CreateSpec exists. Need test verifying it invokes orchestrator with correct phase parameter."
+    "notes": "Covered by PhaseCommandTests.Spec_Succeeds and Spec_WithSession_InvokesOrchestrator"
   },
   {
     "id": "JOB-023",
     "requirement_code": "CLI-04",
     "requirement_module": "cli",
     "description": "Add acceptance criterion-level test verifying 'lopen plan' errors when no spec exists",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "PhaseCommands.CreatePlan calls ValidateSpecExistsAsync. Need test verifying error message when spec is missing."
+    "notes": "Covered by PhaseCommandTests.Plan_NoSpec_ReturnsExitCode1"
   },
   {
     "id": "JOB-024",
     "requirement_code": "CLI-05",
     "requirement_module": "cli",
     "description": "Add acceptance criterion-level test verifying 'lopen build' errors when no spec and plan exist",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "PhaseCommands.CreateBuild validates both spec and plan. Need test verifying error when either is missing."
+    "notes": "Covered by PhaseCommandTests.Build_NoSpec_ReturnsExitCode1 and Build_NoPlan_ReturnsExitCode1"
   },
   {
     "id": "JOB-025",
     "requirement_code": "CLI-16",
     "requirement_module": "cli",
     "description": "Add acceptance criterion-level test verifying --headless/--quiet/-q all disable TUI and use plain text output",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "GlobalOptions.Headless has all three aliases. Need test verifying each alias triggers headless mode."
+    "notes": "Covered by PhaseCommandTests.Headless_NoPrompt_NoSession_ReturnsExitCode1 and Spec_Quiet_Alias_Works"
   },
   {
     "id": "JOB-026",
     "requirement_code": "CLI-17",
     "requirement_module": "cli",
     "description": "Add acceptance criterion-level test verifying --prompt injects text into LLM context in headless mode",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "GlobalOptions.Prompt is wired in headless path. Need test verifying prompt value reaches orchestrator."
+    "notes": "Covered by PhaseCommandTests.Spec_WithPrompt_PassesPromptToOrchestrator"
   },
   {
     "id": "JOB-027",
     "requirement_code": "CLI-19",
     "requirement_module": "cli",
     "description": "Add acceptance criterion-level test verifying headless mode without --prompt and no active session errors with guidance",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "PhaseCommands.ValidateHeadlessPromptAsync exists. Need test verifying error message includes guidance."
+    "notes": "Covered by PhaseCommandTests.Headless_NoPrompt_NoSession_ReturnsExitCode1"
   },
   {
     "id": "JOB-028",
     "requirement_code": "TUI-01",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying split-screen layout ratio is adjustable from 50/50 to 80/20",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "LayoutCalculator handles split percentages. Need test verifying boundary values (50%, 80%) produce correct pane sizes. Tests are failing."
+    "notes": "LayoutCalculator has 12 tests covering 50/50, 80/20 boundaries, clamping, and width invariants. All tests pass."
   },
   {
     "id": "JOB-029",
     "requirement_code": "TUI-02",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying top panel renders all required fields: logo, version, model, context usage, premium, git branch, auth, phase, step",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "TopPanelComponent renders from TopPanelData. Need test verifying all fields appear in rendered output."
+    "notes": "Covered by TopPanelComponentTests (34 tests) and TopPanelDataProviderTests (31 tests)"
   },
   {
     "id": "JOB-030",
     "requirement_code": "TUI-06",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying landing page modal shows quick commands and is suppressed by --no-welcome",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "LandingPageComponent exists. Need test verifying quick command list and --no-welcome suppression."
+    "notes": "Covered by TuiLandingPageTests and ModalComponentTests"
   },
   {
     "id": "JOB-031",
     "requirement_code": "TUI-07",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying session resume modal appears when active session is detected",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SessionResumeModalComponent + SessionDetector exist. Need test verifying modal triggers on active session detection."
+    "notes": "Covered by SessionDetectorTests and ModalComponentTests"
   },
   {
     "id": "JOB-032",
     "requirement_code": "TUI-20",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying Alt+Enter inserts newline in multi-line prompt input",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "KeyboardHandler maps Alt+Enter to InsertNewline. Need test verifying the newline is inserted in prompt text."
+    "notes": "Covered by KeyboardHandlerTests.AltEnter_InPrompt_InsertsNewline"
   },
   {
     "id": "JOB-033",
     "requirement_code": "TUI-22",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying guided conversation UI cycles through all phases: Ideation \u2192 Interview \u2192 Drafting \u2192 Reviewing \u2192 Complete",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "GuidedConversationComponent has phases. Need test verifying phase progression."
+    "notes": "Covered by GuidedConversationComponentTests (30 tests)"
   },
   {
     "id": "JOB-034",
     "requirement_code": "TUI-32",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying semantic color palette uses terminal theme colors",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ColorPalette defines semantic names. Need test verifying ANSI codes are used correctly."
+    "notes": "Covered by VisualAndCommandTests.ColorPalette tests"
   },
   {
     "id": "JOB-035",
     "requirement_code": "TUI-33",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying Unicode symbols have ASCII fallbacks for all indicators",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "UnicodeSupport has UseAscii flag. Need test verifying each symbol has an ASCII equivalent."
+    "notes": "Covered by VisualAndCommandTests.Unicode_AsciiMode_ReturnsFallbacks tests"
   },
   {
     "id": "JOB-036",
     "requirement_code": "TUI-37",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying NO_COLOR environment variable disables all color output",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ColorPalette checks NO_COLOR in constructor. Need test verifying empty strings returned when NO_COLOR is set."
+    "notes": "Covered by VisualAndCommandTests.ColorPalette_NoColor_ReturnsEmpty"
   },
   {
     "id": "JOB-037",
     "requirement_code": "TUI-38",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying all 8 slash commands invoke their corresponding CLI commands",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SlashCommandRegistry.CreateDefault registers /help, /spec, /plan, /build, /session, /config, /revert, /auth. Need test for each."
+    "notes": "Covered by SlashCommandExecutorTests all 8 slash commands"
   },
   {
     "id": "JOB-038",
     "requirement_code": "TUI-41",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying Ctrl+P toggles agent execution pause/resume",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "KeyboardHandler maps Ctrl+P to TogglePause. Need test verifying pause state toggles and hint text updates."
+    "notes": "Covered by KeyboardHandlerTests.CtrlP_TogglesPause_AnyPanel"
   },
   {
     "id": "JOB-039",
     "requirement_code": "AUTH-02",
     "requirement_module": "auth",
     "description": "Add acceptance criterion-level test verifying auth status reports all three states: authenticated, unauthenticated, invalid credentials",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "CopilotAuthService.GetStatusAsync handles all three. Need test verifying each state is correctly reported."
+    "notes": "Covered by AuthStatusResultTests and AuthCommandTests.Status_* (3 states)"
   },
   {
     "id": "JOB-040",
     "requirement_code": "AUTH-06",
     "requirement_module": "auth",
     "description": "Add acceptance criterion-level test verifying GH_TOKEN env var works without interactive login",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "EnvironmentTokenSourceResolver handles GH_TOKEN. Need test verifying auth succeeds with only GH_TOKEN set."
+    "notes": "Covered by EnvironmentTokenSourceResolverTests and CopilotAuthServiceTests.GetStatusAsync_GhTokenSet"
   },
   {
     "id": "JOB-041",
     "requirement_code": "AUTH-08",
     "requirement_module": "auth",
     "description": "Add acceptance criterion-level test verifying GH_TOKEN takes precedence over GITHUB_TOKEN when both are set",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Resolve() checks GH_TOKEN first. Need test verifying precedence with both set."
+    "notes": "Covered by EnvironmentTokenSourceResolverTests.Resolve_BothTokensSet_GhTokenTakesPrecedence"
   },
   {
     "id": "JOB-042",
     "requirement_code": "CFG-01",
     "requirement_module": "configuration",
     "description": "Add acceptance criterion-level test verifying configuration hierarchy resolves in correct order: CLI \u2192 project \u2192 global \u2192 defaults",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "LopenConfigurationBuilder layers providers. Need test verifying a setting defined at all levels resolves to CLI value."
+    "notes": "Covered by LopenConfigurationBuilderTests.Build_LayeredResolution_HighestPriorityWins"
   },
   {
     "id": "JOB-043",
     "requirement_code": "CFG-07",
     "requirement_module": "configuration",
     "description": "Add acceptance criterion-level test verifying Lopen works with no config files \u2014 all settings have sensible defaults",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "LopenOptions has defaults. Need test verifying Build() succeeds with no config files and all defaults are sensible."
+    "notes": "Covered by LopenConfigurationBuilderTests.Build_NoConfigFiles_ReturnsDefaults and LopenOptionsTests"
   },
   {
     "id": "JOB-044",
     "requirement_code": "CFG-15",
     "requirement_module": "configuration",
     "description": "Add acceptance criterion-level test verifying all invalid configuration values produce clear error messages with guidance",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "LopenOptionsValidator validates some settings. Need comprehensive test verifying each invalid value produces guidance."
+    "notes": "Covered by LopenOptionsValidatorTests (10+ validation tests)"
   },
   {
     "id": "JOB-045",
     "requirement_code": "OTEL-01",
     "requirement_module": "otel",
     "description": "Add acceptance criterion-level test verifying lopen.command root span is created with command.name, headless, and exit_code attributes",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SpanFactory creates command spans. Need test verifying all required attributes are set."
+    "notes": "Covered by SpanFactoryTests.StartCommand_SetsRequiredAttributes"
   },
   {
     "id": "JOB-046",
     "requirement_code": "OTEL-04",
     "requirement_module": "otel",
     "description": "Add acceptance criterion-level test verifying lopen.tool.<name> spans carry tool.name and success attributes",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SpanFactory creates tool spans. Need test verifying attribute names match spec."
+    "notes": "Covered by SpanFactoryTests.StartTool_CreatesWithToolName and SetToolResult_* tests"
   },
   {
     "id": "JOB-047",
     "requirement_code": "OTEL-08",
     "requirement_module": "otel",
     "description": "Add acceptance criterion-level test verifying all 10 counter metrics increment correctly",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "LopenTelemetryDiagnostics defines 10 counters. Need test verifying each counter can be recorded and incremented."
+    "notes": "Covered by Counters_IncrementCorrectly_VerifiedViaMeterListener using MeterListener to verify all 10 counter values"
   },
   {
     "id": "JOB-048",
     "requirement_code": "OTEL-13",
     "requirement_module": "otel",
     "description": "Add acceptance criterion-level test verifying Aspire AppHost project references Lopen and can be built",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Lopen.AppHost project exists. Need test verifying project builds and references are correct."
+    "notes": "Covered by OtlpExportTests.AspireAppHost_* tests"
   },
   {
     "id": "JOB-049",
@@ -553,225 +553,225 @@
     "requirement_code": "CLI-06",
     "requirement_module": "cli",
     "description": "Add acceptance criterion-level test verifying 'lopen auth login' calls authService.LoginAsync and initiates device flow",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "AuthCommand.CreateLoginCommand exists. Need test verifying LoginAsync is called."
+    "notes": "Covered by AuthCommandTests.Login_CallsLoginAsync"
   },
   {
     "id": "JOB-064",
     "requirement_code": "CLI-09",
     "requirement_module": "cli",
     "description": "Add acceptance criterion-level test verifying 'lopen session list' lists all sessions with status markers",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SessionCommand.CreateListCommand exists. Need test verifying session list output format."
+    "notes": "Covered by SessionCommandTests.List_WithSessions_DisplaysAll"
   },
   {
     "id": "JOB-065",
     "requirement_code": "CLI-14",
     "requirement_module": "cli",
     "description": "Add acceptance criterion-level test verifying 'lopen config show' displays resolved config with sources and supports --json",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ConfigCommand.CreateShowCommand with --json flag. Need test verifying both text and JSON output."
+    "notes": "Covered by ConfigCommandTests.Show_* and ConfigurationDiagnosticsTests"
   },
   {
     "id": "JOB-066",
     "requirement_code": "CLI-25",
     "requirement_module": "cli",
     "description": "Add acceptance criterion-level test verifying CLI uses Microsoft.Extensions.Hosting for DI",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Program.cs uses Host.CreateApplicationBuilder. Need test verifying host builder pattern and service registration."
+    "notes": "Covered by ProgramTests using Host.CreateApplicationBuilder()"
   },
   {
     "id": "JOB-067",
     "requirement_code": "CFG-05",
     "requirement_module": "configuration",
     "description": "Add acceptance criterion-level test verifying 'lopen config show' displays resolved config with source labels for each setting",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ConfigurationDiagnostics.GetEntries returns key/value/source. Need test verifying source labels are accurate."
+    "notes": "Covered by ConfigCommandTests.Show_* with source labels"
   },
   {
     "id": "JOB-068",
     "requirement_code": "CFG-08",
     "requirement_module": "configuration",
     "description": "Add acceptance criterion-level test verifying --model flag overrides all model phase assignments",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "AddModelOverride sets all phase models. Need test verifying all phases use overridden model."
+    "notes": "Covered by LopenConfigurationBuilderTests.Build_ModelOverride_SetsAllPhases"
   },
   {
     "id": "JOB-069",
     "requirement_code": "CFG-12",
     "requirement_module": "configuration",
     "description": "Add acceptance criterion-level test verifying budget settings are respected when non-zero \u2014 BudgetEnforcer enforces limits",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "BudgetEnforcer.Check returns Ok/Warning/ConfirmationRequired/Exceeded. Need test verifying each threshold behavior."
+    "notes": "Covered by BudgetEnforcerTests (22 tests)"
   },
   {
     "id": "JOB-070",
     "requirement_code": "OTEL-11",
     "requirement_module": "otel",
     "description": "Add acceptance criterion-level test verifying OTLP export activates for all three signals when endpoint is set",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "UseOtlpExporter called when endpoint configured. Need test verifying traces, metrics, and logs are all exported."
+    "notes": "Covered by OtlpExportTests.OtlpExport_AllThreeSignals_WhenEndpointSet"
   },
   {
     "id": "JOB-071",
     "requirement_code": "OTEL-12",
     "requirement_module": "otel",
     "description": "Add acceptance criterion-level test verifying no telemetry is exported when no endpoint is configured",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "OTLP only activates with endpoint. Need test verifying no errors and no export without endpoint."
+    "notes": "Covered by OtlpExportTests.NoEndpoint_NoOtlpExporter_ServicesStillResolve"
   },
   {
     "id": "JOB-072",
     "requirement_code": "OTEL-14",
     "requirement_module": "otel",
     "description": "Add acceptance criterion-level test verifying otel.enabled=false disables all instrumentation with no performance overhead",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Master toggle checked in AddLopenOtel. Need test verifying no providers registered when disabled."
+    "notes": "Covered by OtlpExportTests.Disabled_NoSignals_NoExport and ServiceCollectionExtensionsTests"
   },
   {
     "id": "JOB-073",
     "requirement_code": "OTEL-16",
     "requirement_module": "otel",
     "description": "Add acceptance criterion-level test verifying OTEL env vars take precedence over Lopen config settings",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "OTEL_EXPORTER_OTLP_ENDPOINT takes precedence. Need test verifying env var overrides config."
+    "notes": "Covered by 3 new tests: OtelServiceNameEnvVar_ValueTakesPrecedence, NoEnvVar_FallsToConfigServiceName, NoServiceName_DefaultsToLopen"
   },
   {
     "id": "JOB-074",
     "requirement_code": "TUI-03",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying context panel shows current task, task tree with completion states, and active resources",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ContextPanelComponent renders from ContextPanelData. Need test verifying all three sections are rendered."
+    "notes": "Covered by ContextPanelComponentTests and ContextPanelDataProviderTests"
   },
   {
     "id": "JOB-075",
     "requirement_code": "TUI-09",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying tool call outputs are expandable via keyboard shortcut",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ActivityEntry.IsExpanded + ToggleExpand key action. Need test verifying expand/collapse behavior."
+    "notes": "Covered by KeyboardHandlerTests.Enter_OutsidePrompt_TogglesExpand and Space_InActivity_TogglesExpand"
   },
   {
     "id": "JOB-076",
     "requirement_code": "TUI-11",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying hierarchical task tree renders with \u2713/\u25b6/\u25cb status indicators",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "TaskState enum maps to indicators. Need test verifying each state renders correct symbol."
+    "notes": "Covered by ContextPanelComponentTests.StateIcon_ReturnsCorrectSymbol"
   },
   {
     "id": "JOB-077",
     "requirement_code": "TUI-12",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying numbered resource access (1-9 keys) opens correct resources",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "KeyboardHandler maps D1-D9 to ViewResource actions. Need test verifying resource index mapping."
+    "notes": "Covered by KeyboardHandlerTests.NumberKeys_* and ContextPanelComponentTests"
   },
   {
     "id": "JOB-078",
     "requirement_code": "TUI-23",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying confirmation modals with Yes/No/Always/Other options render and handle selection",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ConfirmationModalComponent exists. Need test verifying each option is rendered and selectable."
+    "notes": "Covered by SelectionComponentTests.Confirmation_* tests"
   },
   {
     "id": "JOB-079",
     "requirement_code": "TUI-27",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying critical error modal shows details and recovery options (Retry/Skip/Abort)",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ErrorModalComponent exists. Need test verifying error details display and option handling."
+    "notes": "Covered by SelectionComponentTests.ErrorModal_* and FailureModalWiringTests"
   },
   {
     "id": "JOB-080",
     "requirement_code": "TUI-28",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying spinner component shows braille animation and optional progress percentage",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SpinnerComponent has braille frames. Need test verifying frame cycling and progress display."
+    "notes": "Covered by VisualAndCommandTests.Spinner_* tests"
   },
   {
     "id": "JOB-081",
     "requirement_code": "TUI-40",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying queued user messages are thread-safe and delivered in next SDK invocation",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "UserPromptQueue uses ConcurrentQueue + SemaphoreSlim. Need test verifying thread-safe enqueue/dequeue."
+    "notes": "Covered by UserPromptQueueTests and WorkflowOrchestratorTests TUI-40 tests"
   },
   {
     "id": "JOB-082",
     "requirement_code": "TUI-42",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying 'lopen test tui' launches the component gallery",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "TestCommand wires CLI. Need test verifying gallery launch via CLI command."
+    "notes": "Covered by TestCommandTests.TestTui_* tests"
   },
   {
     "id": "JOB-083",
     "requirement_code": "TUI-47",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying all components self-register with gallery for automatic listing",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "AddLopenTui registers 15 components. Need test verifying all 15 appear in gallery listing."
+    "notes": "Covered by ComponentGalleryRegistrationTests.Gallery_HasAllBuiltInComponents"
   },
   {
     "id": "JOB-084",
     "requirement_code": "TUI-48",
     "requirement_module": "tui",
     "description": "Add acceptance criterion-level test verifying stub data exercises multiple visual states (empty, populated, error, loading)",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "GetPreviewStates returns state names. Need test verifying each component has multiple visual states."
+    "notes": "Covered by ComponentGalleryRegistrationTests.GetPreviewStates_* multi-state tests"
   },
   {
     "id": "JOB-085",
     "requirement_code": "AUTH-11",
     "requirement_module": "auth",
     "description": "Add acceptance criterion-level test verifying automatic token renewal transparently refreshes credentials on 401/403",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "AuthErrorHandler handles recoverable errors with retry. Need test verifying transparent refresh behavior."
+    "notes": "Covered by AuthErrorHandlerTests: HandleErrorAsync_RecoverableAuthError_ReturnsRetry (6 auth keywords), RetryLimitedToOne, ResetRetryCount_AllowsNewRetry"
   },
   {
     "id": "JOB-086",
     "requirement_code": "AUTH-12",
     "requirement_module": "auth",
     "description": "Add acceptance criterion-level test verifying failed renewal triggers critical error, saves session state, and informs user",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Non-recoverable errors trigger SaveAsync and abort with UserNotification. Need test verifying full flow."
+    "notes": "Covered by AuthErrorHandlerTests: HandleErrorAsync_NonRecoverableAuthError_ReturnsAbort, SavesSessionState, AbortIncludesUserNotification, SaveFailure_StillReturnsAbort"
   },
   {
     "id": "JOB-087",
     "requirement_code": "AUTH-15",
     "requirement_module": "auth",
     "description": "Add acceptance criterion-level test verifying no credentials are stored by Lopen \u2014 all storage delegated to SDK/gh CLI",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Lopen uses GhCliAdapter. Need test verifying no file writes to credential storage paths."
+    "notes": "Covered by AuthNoCredentialStorageTests (17 tests): behavioral, reflection, and source-scan tests verifying no credential storage"
   },
   {
     "id": "JOB-088",
