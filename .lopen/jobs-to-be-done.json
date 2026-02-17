@@ -778,27 +778,27 @@
     "requirement_code": "CLI-03",
     "requirement_module": "cli",
     "description": "Write integration tests for lopen spec command executing Requirement Gathering phase",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Currently only tested that command exists and returns help. Need test that verifies actual workflow execution."
+    "notes": "9 new integration tests: orchestrator failure, interruption, prompt passthrough, null orchestrator. All 2013 tests pass."
   },
   {
     "id": "JOB-088",
     "requirement_code": "CLI-04",
     "requirement_module": "cli",
     "description": "Write integration tests for lopen plan command executing Planning phase",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Need test that verifies plan command triggers workflow steps 2-5."
+    "notes": "Covered by PhaseCommandIntegrationTests: Plan_WithPrompt, Plan_OrchestratorFailure. All 2013 tests pass."
   },
   {
     "id": "JOB-089",
     "requirement_code": "CLI-05",
     "requirement_module": "cli",
     "description": "Write integration tests for lopen build command executing Building phase",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Need test that verifies build command triggers workflow steps 6-7."
+    "notes": "Covered by PhaseCommandIntegrationTests: Build_WithPrompt, Build_OrchestratorFailure. All 2013 tests pass."
   },
   {
     "id": "JOB-090",
