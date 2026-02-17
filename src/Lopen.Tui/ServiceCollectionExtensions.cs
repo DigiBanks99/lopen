@@ -105,6 +105,27 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Registers <see cref="TuiOutputRenderer"/> as the <see cref="IOutputRenderer"/> for TUI mode,
+    /// replacing the default <see cref="HeadlessRenderer"/>. Call after registering activity panel
+    /// data provider and user prompt queue.
+    /// </summary>
+    public static IServiceCollection AddTuiOutputRenderer(this IServiceCollection services)
+    {
+        // Remove any existing IOutputRenderer registration (e.g. HeadlessRenderer)
+        var descriptor = services.FirstOrDefault(d =>
+            d.ServiceType == typeof(IOutputRenderer));
+        if (descriptor is not null)
+            services.Remove(descriptor);
+
+        services.AddSingleton<IOutputRenderer>(sp =>
+            new TuiOutputRenderer(
+                sp.GetRequiredService<IActivityPanelDataProvider>(),
+                sp.GetService<IUserPromptQueue>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<TuiOutputRenderer>>()));
+        return services;
+    }
+
+    /// <summary>
     /// Registers <see cref="SessionDetector"/> to detect active sessions for the resume modal.
     /// Requires ISessionManager to be registered.
     /// </summary>

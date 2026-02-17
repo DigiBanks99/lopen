@@ -31,9 +31,9 @@
     "requirement_code": "TUI-50",
     "requirement_module": "tui",
     "description": "Implement TuiOutputRenderer (IOutputRenderer) that bridges orchestrator output events to the TUI activity panel, replacing HeadlessRenderer when TUI mode is active",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "Only HeadlessRenderer exists. The TUI has no way to receive orchestrator output. Need a TuiOutputRenderer that writes to the activity panel data model."
+    "notes": "Implemented TuiOutputRenderer in Lopen.Tui. Bridges RenderProgress\u2192PhaseTransition, RenderError\u2192TaskFailure, RenderResult\u2192Action, Prompt\u2192UserPromptQueue. AddTuiOutputRenderer DI registration replaces HeadlessRenderer. 16 tests pass."
   },
   {
     "id": "JOB-005",
@@ -49,9 +49,9 @@
     "requirement_code": "TUI-50",
     "requirement_module": "tui",
     "description": "Add tests for TuiOutputRenderer verifying orchestrator events are translated to activity panel entries",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "New component needs tests."
+    "notes": "Covered by 16 tests in TuiOutputRendererTests: constructor guards, progress/error/result rendering, prompt queue integration, cancellation, failure tracking."
   },
   {
     "id": "JOB-007",
@@ -76,9 +76,9 @@
     "requirement_code": "CORE-25",
     "requirement_module": "core",
     "description": "Add tests for SDK tool registration \u2014 verify LopenToolDefinition instances are correctly converted to SDK tool registrations and handlers are invoked during session",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "New wiring needs test coverage."
+    "notes": "Covered by 11 tests in ToolConversionTests: null guard, empty list, null-handler filtering, name/description mapping, handler invocation, multiple tools, order preservation, AIFunction type checking, cancellation token forwarding."
   },
   {
     "id": "JOB-010",
