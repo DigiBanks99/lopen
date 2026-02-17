@@ -325,4 +325,51 @@ public class OtlpExportTests
         var tracerProvider = sp.GetService<TracerProvider>();
         Assert.Null(tracerProvider);
     }
+
+    // ==================== OTEL-17: Instrumentation Overhead < 5ms ====================
+
+    [Fact]
+    public void AddLopenOtel_Overhead_LessThan5ms()
+    {
+        // OTEL-17: OTEL instrumentation should add < 5ms to startup
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["otel:enabled"] = "true" })
+            .Build();
+
+        // Warm up JIT
+        var warmup = new ServiceCollection();
+        warmup.AddLopenOtel(config);
+        warmup.BuildServiceProvider().Dispose();
+
+        // Measure baseline (no OTEL)
+        var baselineConfig = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["otel:enabled"] = "false" })
+            .Build();
+
+        const int iterations = 50;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        for (int i = 0; i < iterations; i++)
+        {
+            var s = new ServiceCollection();
+            s.AddLopenOtel(baselineConfig);
+            s.BuildServiceProvider().Dispose();
+        }
+        sw.Stop();
+        var baselineMs = sw.Elapsed.TotalMilliseconds / iterations;
+
+        // Measure with OTEL enabled
+        sw.Restart();
+        for (int i = 0; i < iterations; i++)
+        {
+            var s = new ServiceCollection();
+            s.AddLopenOtel(config);
+            s.BuildServiceProvider().Dispose();
+        }
+        sw.Stop();
+        var otelMs = sw.Elapsed.TotalMilliseconds / iterations;
+
+        var overheadMs = otelMs - baselineMs;
+        Assert.True(overheadMs < 5.0,
+            $"OTEL overhead was {overheadMs:F2}ms (baseline: {baselineMs:F2}ms, OTEL: {otelMs:F2}ms) — exceeds 5ms limit");
+    }
 }

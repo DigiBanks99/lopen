@@ -4,6 +4,7 @@ using Lopen.Commands;
 using Lopen.Configuration;
 using Lopen.Core;
 using Lopen.Llm;
+using Lopen.Otel;
 using Lopen.Storage;
 using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,7 @@ builder.Services.AddLopenLlm();
 builder.Services.AddLopenTui();
 builder.Services.UseRealTui();
 builder.Services.AddTopPanelDataProvider();
+builder.Services.AddLopenOtel(builder.Configuration);
 
 using var host = builder.Build();
 
