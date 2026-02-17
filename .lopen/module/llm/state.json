@@ -63,7 +63,27 @@
       "tasks": {
         "remove-stub-llm-service": "complete"
       }
+    },
+    "auth_token_bridge": {
+      "status": "complete",
+      "spec_ref": "LLM-01",
+      "files": [
+        "AuthBridgeTokenProvider.cs",
+        "Program.cs"
+      ],
+      "tests": "AuthBridgeTokenProviderTests (4 tests) + ProgramTests DI_ResolvesGitHubTokenProvider_AsAuthBridge",
+      "notes": "Bridges ITokenSourceResolver (Auth) to IGitHubTokenProvider (LLM). Registered before AddLopenLlm() in composition root."
+    },
+    "session_state_saver_bridge": {
+      "status": "complete",
+      "spec_ref": "CORE-23",
+      "files": [
+        "SessionStateSaverBridge.cs",
+        "Program.cs"
+      ],
+      "tests": "SessionStateSaverBridgeTests (5 tests) + ProgramTests DI_ResolvesSessionStateSaver_AsBridge",
+      "notes": "Bridges ISessionManager (Storage) to ISessionStateSaver (LLM). Conditionally registered when projectRoot is non-null. AuthErrorHandler can now persist session state before aborting."
     }
   },
-  "last_updated": "2026-02-17T21:30:00Z"
+  "last_updated": "2026-02-17T22:45:00Z"
 }

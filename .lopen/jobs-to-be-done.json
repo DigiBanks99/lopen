@@ -931,7 +931,7 @@
     "requirement_code": "OTEL-01 through OTEL-17",
     "requirement_module": "otel",
     "description": "Create OtelAcceptanceCriteriaTests.cs with explicit requirement code traceability for all 17 OTEL requirements (OTEL-01 through OTEL-17). Add [Trait(\"Requirement\", \"OTEL-XX\")] annotations to map each test to its specification requirement code, ensuring 100% traceability coverage.",
-    "status": "complete",
+    "status": "done",
     "priority": 1,
     "notes": "Created OtelAcceptanceCriteriaTests.cs with 23 tests covering all 17 OTEL requirements (OTEL-01 through OTEL-17). Each test has requirement code comment and ACXX_ prefix."
   },
@@ -940,7 +940,7 @@
     "requirement_code": "OTEL-01",
     "requirement_module": "otel",
     "description": "Fix pre-existing test failure in LopenTelemetryDiagnosticsTests.ActivitySource_StartActivity_ReturnsNull_WhenNoListener \u2014 test assumes no ActivityListener is registered but other test classes in the same collection register global listeners that leak across test execution.",
-    "status": "complete",
+    "status": "done",
     "priority": 1,
     "notes": "Fixed pre-existing test failure by replacing fragile test that assumed no ActivityListeners with one using an isolated ActivitySource. Also added [Collection(\"ActivityListener\")] to OtlpExportTests and ServiceCollectionExtensionsTests to prevent parallel test interference."
   },
@@ -951,7 +951,7 @@
     "description": "Create ConfigurationAcceptanceCriteriaTests.cs with explicit requirement code traceability for all 16 CFG requirements (CFG-01 through CFG-16). Add AC prefix naming to map each test to its specification requirement code.",
     "status": "done",
     "priority": 1,
-    "notes": "Created ConfigurationAcceptanceCriteriaTests.cs with 46 tests covering all 16 CFG requirements (CFG-01 through CFG-16). All tests pass."
+    "notes": "AuthBridgeTokenProvider bridges ITokenSourceResolver to IGitHubTokenProvider. Registered in Program.cs before AddLopenLlm(). 4 unit tests + 2 DI tests pass."
   },
   {
     "id": "JOB-107",
@@ -960,6 +960,24 @@
     "description": "Create CliAcceptanceCriteriaTests.cs with explicit requirement code traceability for CLI requirements (CLI-01 through CLI-28). Add AC prefix naming to map each test to its specification requirement code.",
     "status": "done",
     "priority": 2,
-    "notes": "Created CliAcceptanceCriteriaTests.cs with 28 tests covering all 28 CLI requirements (CLI-01 through CLI-28). 25 pass, 3 skipped (CI-only: build/test/format)."
+    "notes": "SessionStateSaverBridge bridges ISessionManager to ISessionStateSaver. Conditionally registered when projectRoot is non-null. 5 unit tests + 1 DI test pass."
+  },
+  {
+    "id": "JOB-106",
+    "requirement_code": "LLM-01",
+    "requirement_module": "llm",
+    "description": "Bridge ITokenSourceResolver (Auth) to IGitHubTokenProvider (LLM) via composition root adapter \u2014 create AuthBridgeTokenProvider so CopilotClientProvider receives the authenticated GitHub token instead of null",
+    "status": "done",
+    "priority": 1,
+    "notes": "AuthBridgeTokenProvider bridges ITokenSourceResolver to IGitHubTokenProvider. Registered in Program.cs before AddLopenLlm(). 4 unit tests + 2 DI tests pass."
+  },
+  {
+    "id": "JOB-107",
+    "requirement_code": "CORE-23",
+    "requirement_module": "llm",
+    "description": "Bridge ISessionStateSaver (LLM) to IAutoSaveService (Storage) via composition root adapter \u2014 create SessionStateSaverBridge so AuthErrorHandler can persist session state before aborting on non-recoverable auth errors",
+    "status": "done",
+    "priority": 1,
+    "notes": "SessionStateSaverBridge bridges ISessionManager to ISessionStateSaver. Conditionally registered when projectRoot is non-null. 5 unit tests + 1 DI test pass."
   }
 ]
