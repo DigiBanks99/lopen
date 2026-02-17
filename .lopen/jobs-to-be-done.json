@@ -40,9 +40,9 @@
     "requirement_code": "TUI-51",
     "requirement_module": "tui",
     "description": "Register all TUI data providers in DI \u2014 IContextPanelDataProvider, IActivityPanelDataProvider, IUserPromptQueue, ISessionDetector \u2014 wired to live orchestrator/session data",
-    "status": "open",
+    "status": "done",
     "priority": 2,
-    "notes": "Program.cs only calls AddTopPanelDataProvider(). Other data providers are optional in TuiApplication constructor, so panels show empty data."
+    "notes": "Registered all TUI data providers in Program.cs: AddContextPanelDataProvider, AddActivityPanelDataProvider, AddUserPromptQueue, AddSessionDetector, AddTuiOutputRenderer. 4 new tests in ServiceCollectionExtensionsTests."
   },
   {
     "id": "JOB-006",

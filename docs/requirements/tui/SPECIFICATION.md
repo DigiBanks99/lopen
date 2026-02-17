@@ -748,7 +748,7 @@ Every TUI component must be designed so that it can be rendered with injected st
 - [ ] [TUI-48] Stub data exercises multiple visual states (empty, populated, error, loading)
 - [ ] [TUI-49] All components tested via the `lopen test tui` command and fully functional
 - [x] [TUI-50] A `TuiOutputRenderer` implementation of `IOutputRenderer` bridges orchestrator output events to the TUI activity panel, replacing the default `HeadlessRenderer` when TUI mode is active
-- [ ] [TUI-51] All TUI data providers (`IContextPanelDataProvider`, `IActivityPanelDataProvider`, `IUserPromptQueue`, `ISessionDetector`) are registered in DI and wired to live orchestrator/session data when TUI mode is active
+- [x] [TUI-51] All TUI data providers (`IContextPanelDataProvider`, `IActivityPanelDataProvider`, `IUserPromptQueue`, `ISessionDetector`) are registered in DI and wired to live orchestrator/session data when TUI mode is active
 - [x] [TUI-52] TUI `RunAsync` launches the `WorkflowOrchestrator` on a background thread and renders its progress in real time — the TUI is not a passive shell but actively drives and displays the workflow
 
 ---

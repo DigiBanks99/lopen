@@ -22,6 +22,11 @@ builder.Services.AddLopenLlm();
 builder.Services.AddLopenTui();
 builder.Services.UseRealTui();
 builder.Services.AddTopPanelDataProvider();
+builder.Services.AddContextPanelDataProvider();
+builder.Services.AddActivityPanelDataProvider();
+builder.Services.AddUserPromptQueue();
+builder.Services.AddSessionDetector();
+builder.Services.AddTuiOutputRenderer();
 builder.Services.AddLopenOtel(builder.Configuration);
 
 using var host = builder.Build();

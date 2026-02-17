@@ -293,7 +293,16 @@
         "JOB-007"
       ],
       "notes": "TUI-52: Background launch after modals dismissed. Completion/failure/interruption entries added to activity panel. SetOrchestratorModule for module name injection."
+    },
+    "di_wiring": {
+      "status": "complete",
+      "implementation": "All TUI data providers registered in Program.cs: AddContextPanelDataProvider, AddActivityPanelDataProvider, AddUserPromptQueue, AddSessionDetector, AddTuiOutputRenderer.",
+      "tests": "ServiceCollectionExtensionsTests (4 new tests)",
+      "jobs": [
+        "JOB-005"
+      ],
+      "notes": "TUI-51: All 4 required interfaces registered. TuiOutputRenderer replaces HeadlessRenderer in TUI mode."
     }
   },
-  "last_updated": "2026-02-17T04:20:00Z"
+  "last_updated": "2026-02-17T04:30:00Z"
 }

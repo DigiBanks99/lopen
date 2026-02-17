@@ -151,6 +151,64 @@ public class ServiceCollectionExtensionsTests
         Assert.Same(d1, d2);
     }
 
+    [Fact]
+    public void AddActivityPanelDataProvider_RegistersProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddActivityPanelDataProvider();
+
+        using var provider = services.BuildServiceProvider();
+        var activityProvider = provider.GetService<IActivityPanelDataProvider>();
+
+        Assert.NotNull(activityProvider);
+        Assert.IsType<ActivityPanelDataProvider>(activityProvider);
+    }
+
+    [Fact]
+    public void AddActivityPanelDataProvider_IsSingleton()
+    {
+        var services = new ServiceCollection();
+        services.AddActivityPanelDataProvider();
+
+        using var provider = services.BuildServiceProvider();
+        var p1 = provider.GetRequiredService<IActivityPanelDataProvider>();
+        var p2 = provider.GetRequiredService<IActivityPanelDataProvider>();
+
+        Assert.Same(p1, p2);
+    }
+
+    [Fact]
+    public void AddTuiOutputRenderer_RegistersOutputRenderer()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddActivityPanelDataProvider();
+        services.AddUserPromptQueue();
+        services.AddTuiOutputRenderer();
+
+        using var provider = services.BuildServiceProvider();
+        var renderer = provider.GetService<IOutputRenderer>();
+
+        Assert.NotNull(renderer);
+        Assert.IsType<TuiOutputRenderer>(renderer);
+    }
+
+    [Fact]
+    public void AddTuiOutputRenderer_ReplacesHeadlessRenderer()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IOutputRenderer>(new HeadlessRenderer());
+        services.AddActivityPanelDataProvider();
+        services.AddUserPromptQueue();
+        services.AddTuiOutputRenderer();
+
+        using var provider = services.BuildServiceProvider();
+        var renderer = provider.GetRequiredService<IOutputRenderer>();
+
+        Assert.IsType<TuiOutputRenderer>(renderer);
+    }
+
     private sealed class StubSessionManager : Lopen.Storage.ISessionManager
     {
         public Task<Lopen.Storage.SessionId?> GetLatestSessionIdAsync(CancellationToken ct = default) => Task.FromResult<Lopen.Storage.SessionId?>(null);
