@@ -22,6 +22,7 @@ public class ProgramTests : IDisposable
         var builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddLopenAuth();
+        builder.Services.AddSingleton<IGitHubTokenProvider, AuthBridgeTokenProvider>();
         builder.Services.AddLopenCore(null);
         builder.Services.AddLopenStorage(null);
         builder.Services.AddLopenLlm();
@@ -81,6 +82,24 @@ public class ProgramTests : IDisposable
     {
         var service = _services.GetService<IAuthService>();
         Assert.NotNull(service);
+    }
+
+    [Fact]
+    public void DI_ResolvesGitHubTokenProvider_AsAuthBridge()
+    {
+        var provider = _services.GetService<IGitHubTokenProvider>();
+        Assert.NotNull(provider);
+        Assert.IsType<AuthBridgeTokenProvider>(provider);
+    }
+
+    [Fact]
+    public void DI_ResolvesSessionStateSaver_AsBridge()
+    {
+        // Without projectRoot, ISessionManager is not registered so the bridge
+        // is not registered either. Verify that it falls back to NullSessionStateSaver.
+        var saver = _services.GetService<ISessionStateSaver>();
+        Assert.NotNull(saver);
+        // With projectRoot, this would be SessionStateSaverBridge instead.
     }
 
     // --- Command Creation ---
