@@ -16,8 +16,13 @@ var projectRoot = Lopen.ProjectRootDiscovery.FindProjectRoot(Directory.GetCurren
 
 builder.Services.AddLopenConfiguration();
 builder.Services.AddLopenAuth();
+builder.Services.AddSingleton<IGitHubTokenProvider, Lopen.AuthBridgeTokenProvider>();
 builder.Services.AddLopenCore(projectRoot);
 builder.Services.AddLopenStorage(projectRoot);
+if (projectRoot is not null)
+{
+    builder.Services.AddSingleton<ISessionStateSaver, Lopen.SessionStateSaverBridge>();
+}
 builder.Services.AddLopenLlm();
 builder.Services.AddLopenTui();
 builder.Services.UseRealTui();
