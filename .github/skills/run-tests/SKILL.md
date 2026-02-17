@@ -1,6 +1,6 @@
 ---
-name: dotnet-test-verbosity
-description: Run `dotnet test` with a predictable verbosity level so the LLM can read the output, spot the failing tests, and help fix them; use when diagnosing test failures or confirming a fix before a PR.
+name: run-tests
+description: Run the test suite effectively to verify validation.
 ---
 
 # Verbose dotnet test diagnostics
