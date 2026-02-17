@@ -101,6 +101,7 @@ public static class ServiceCollectionExtensions
                     budgetEnforcer,
                     planMgr,
                     pauseCtrl,
+                    sp.GetService<IUserPromptQueue>(),
                     sp.GetService<WorkflowOptions>());
             });
             services.AddSingleton<IPauseController, PauseController>();

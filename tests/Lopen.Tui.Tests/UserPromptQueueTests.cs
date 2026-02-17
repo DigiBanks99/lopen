@@ -1,3 +1,4 @@
+using Lopen.Core;
 using Lopen.Tui;
 
 namespace Lopen.Tui.Tests;

@@ -2273,4 +2273,121 @@ public class WorkflowOrchestratorTests
         // Should have rendered resume message
         Assert.Contains(_renderer.ResultMessages, m => m.Contains("Resumed"));
     }
+
+    // --- TUI-40: Queued User Messages Tests ---
+
+    private WorkflowOrchestrator CreateOrchestratorWithQueue(IUserPromptQueue queue) => new(
+        _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+        _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+        _driftService,
+        NullLogger<WorkflowOrchestrator>.Instance,
+        userPromptQueue: queue);
+
+    [Fact]
+    public async Task RunStepAsync_DrainsQueuedMessagesIntoContext()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var queue = new InMemoryUserPromptQueue();
+        queue.Enqueue("Please focus on the auth module");
+        var sut = CreateOrchestratorWithQueue(queue);
+
+        await sut.RunStepAsync("test-module");
+
+        Assert.NotNull(_promptBuilder.LastContextSections);
+        Assert.True(_promptBuilder.LastContextSections!.ContainsKey("queued_user_messages"));
+        Assert.Equal("Please focus on the auth module", _promptBuilder.LastContextSections["queued_user_messages"]);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_MultipleQueuedMessages_ConcatenatedWithNewline()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var queue = new InMemoryUserPromptQueue();
+        queue.Enqueue("First message");
+        queue.Enqueue("Second message");
+        queue.Enqueue("Third message");
+        var sut = CreateOrchestratorWithQueue(queue);
+
+        await sut.RunStepAsync("test-module");
+
+        Assert.NotNull(_promptBuilder.LastContextSections);
+        Assert.Equal("First message\nSecond message\nThird message",
+            _promptBuilder.LastContextSections!["queued_user_messages"]);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_EmptyQueue_NoQueuedMessagesKey()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var queue = new InMemoryUserPromptQueue();
+        var sut = CreateOrchestratorWithQueue(queue);
+
+        await sut.RunStepAsync("test-module");
+
+        Assert.Null(_promptBuilder.LastContextSections);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_QueueDrainedAfterInvocation()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var queue = new InMemoryUserPromptQueue();
+        queue.Enqueue("Message one");
+        queue.Enqueue("Message two");
+        var sut = CreateOrchestratorWithQueue(queue);
+
+        await sut.RunStepAsync("test-module");
+
+        Assert.Equal(0, queue.Count);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_NullQueue_WorksWithoutError()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var sut = CreateOrchestrator(); // No queue injected
+
+        await sut.RunStepAsync("test-module");
+
+        // Should complete without error; no queued_user_messages key
+        Assert.Null(_promptBuilder.LastContextSections);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_QueueAndUserPrompt_BothPresent()
+    {
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        var queue = new InMemoryUserPromptQueue();
+        queue.Enqueue("Queued message");
+        var sut = CreateOrchestratorWithQueue(queue);
+
+        await sut.RunStepAsync("test-module", userPrompt: "Direct prompt");
+
+        Assert.NotNull(_promptBuilder.LastContextSections);
+        Assert.Equal("Direct prompt", _promptBuilder.LastContextSections!["user_prompt"]);
+        Assert.Equal("Queued message", _promptBuilder.LastContextSections["queued_user_messages"]);
+    }
+
+    private sealed class InMemoryUserPromptQueue : IUserPromptQueue
+    {
+        private readonly Queue<string> _queue = new();
+
+        public void Enqueue(string prompt) => _queue.Enqueue(prompt);
+
+        public bool TryDequeue(out string prompt)
+        {
+            if (_queue.Count > 0)
+            {
+                prompt = _queue.Dequeue();
+                return true;
+            }
+            prompt = default!;
+            return false;
+        }
+
+        public Task<string> DequeueAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(_queue.Dequeue());
+
+        public int Count => _queue.Count;
+    }
 }

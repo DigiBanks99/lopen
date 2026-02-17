@@ -34,6 +34,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IBudgetEnforcer? _budgetEnforcer;
     private readonly IPlanManager? _planManager;
     private readonly IPauseController? _pauseController;
+    private readonly IUserPromptQueue? _userPromptQueue;
     private readonly WorkflowOptions? _workflowOptions;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
@@ -61,6 +62,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IBudgetEnforcer? budgetEnforcer = null,
         IPlanManager? planManager = null,
         IPauseController? pauseController = null,
+        IUserPromptQueue? userPromptQueue = null,
         WorkflowOptions? workflowOptions = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
@@ -82,6 +84,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _budgetEnforcer = budgetEnforcer;
         _planManager = planManager;
         _pauseController = pauseController;
+        _userPromptQueue = userPromptQueue;
         _workflowOptions = workflowOptions;
     }
 
@@ -424,8 +427,20 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         var tools = _toolRegistry.GetToolsForPhase(phase);
         var contextSections = _userPrompt is not null
             ? new Dictionary<string, string> { ["user_prompt"] = _userPrompt }
-            : null;
-        var systemPrompt = _promptBuilder.BuildSystemPrompt(phase, moduleName, null, null, contextSections);
+            : new Dictionary<string, string>();
+
+        // TUI-40: Drain queued user messages from the TUI prompt area
+        if (_userPromptQueue is not null)
+        {
+            var queued = new List<string>();
+            while (_userPromptQueue.TryDequeue(out var msg))
+                queued.Add(msg);
+            if (queued.Count > 0)
+                contextSections["queued_user_messages"] = string.Join("\n", queued);
+        }
+
+        var systemPrompt = _promptBuilder.BuildSystemPrompt(phase, moduleName, null, null,
+            contextSections.Count > 0 ? contextSections : null);
 
         // OTEL-03: SDK invocation span
         using var sdkActivity = SpanFactory.StartSdkInvocation(model.SelectedModel);

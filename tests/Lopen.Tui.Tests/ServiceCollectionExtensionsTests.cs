@@ -1,3 +1,4 @@
+using Lopen.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
