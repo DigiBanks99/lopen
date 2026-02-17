@@ -6,6 +6,7 @@ using OpenTelemetry.Trace;
 
 namespace Lopen.Otel.Tests;
 
+[Collection("ActivityListener")]
 public class ServiceCollectionExtensionsTests
 {
     private static IConfiguration BuildConfiguration(Dictionary<string, string?>? settings = null)

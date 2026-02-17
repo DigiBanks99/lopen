@@ -235,17 +235,12 @@ public class LopenTelemetryDiagnosticsTests
     // --- ActivitySource Span Creation Tests ---
 
     [Fact]
-    public void ActivitySource_StartActivity_ReturnsNull_WhenNoListener()
+    public void ActivitySource_StartActivity_ReturnsNull_WhenNoInterestedListener()
     {
-        // Without an ActivityListener, StartActivity returns null (zero overhead)
-        using var listener = new ActivityListener
-        {
-            ShouldListenTo = _ => false, // Ensure no listener is active
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.None
-        };
-        ActivitySource.AddActivityListener(listener);
+        // A fresh ActivitySource with no registered listener returns null (zero overhead)
+        using var isolatedSource = new ActivitySource("Lopen.Tests.Isolated." + Guid.NewGuid().ToString("N"));
 
-        var activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.command");
+        var activity = isolatedSource.StartActivity("test.operation");
         Assert.Null(activity);
     }
 

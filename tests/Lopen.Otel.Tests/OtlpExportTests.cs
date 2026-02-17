@@ -10,6 +10,7 @@ namespace Lopen.Otel.Tests;
 /// Tests for OTLP export behavior and Aspire Dashboard integration configuration.
 /// Covers JOB-100 acceptance criteria.
 /// </summary>
+[Collection("ActivityListener")]
 public class OtlpExportTests
 {
     [Fact]
