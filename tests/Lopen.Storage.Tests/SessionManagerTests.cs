@@ -431,4 +431,114 @@ public class SessionManagerTests
         public string? GetSymlinkTarget(string linkPath) => null;
         public DateTime GetLastWriteTimeUtc(string path) => DateTime.MinValue;
     }
+
+    // === STOR-14: Corrupted session detection ===
+
+    [Fact]
+    public async Task LoadSessionStateAsync_TruncatedJson_ThrowsStorageException()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+        var statePath = StoragePaths.GetSessionStatePath(_projectRoot, sessionId);
+        await _fileSystem.WriteAllTextAsync(statePath, "{\"SessionId\":", default);
+
+        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.LoadSessionStateAsync(sessionId));
+        Assert.IsType<System.Text.Json.JsonException>(ex.InnerException);
+    }
+
+    [Fact]
+    public async Task LoadSessionStateAsync_BinaryGarbage_ThrowsStorageException()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+        var statePath = StoragePaths.GetSessionStatePath(_projectRoot, sessionId);
+        await _fileSystem.WriteAllTextAsync(statePath, "\x00\x01\x02\xFF garbage", default);
+
+        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.LoadSessionStateAsync(sessionId));
+        Assert.IsType<System.Text.Json.JsonException>(ex.InnerException);
+    }
+
+    [Fact]
+    public async Task LoadSessionStateAsync_EmptyFile_ThrowsStorageException()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+        var statePath = StoragePaths.GetSessionStatePath(_projectRoot, sessionId);
+        await _fileSystem.WriteAllTextAsync(statePath, "", default);
+
+        await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.LoadSessionStateAsync(sessionId));
+    }
+
+    [Fact]
+    public async Task LoadSessionMetricsAsync_CorruptJson_ThrowsStorageException()
+    {
+        var sessionId = await _manager.CreateSessionAsync("auth");
+        var metricsPath = StoragePaths.GetSessionMetricsPath(_projectRoot, sessionId);
+        _fileSystem.CreateDirectory(Path.GetDirectoryName(metricsPath)!);
+        await _fileSystem.WriteAllTextAsync(metricsPath, "not json", default);
+
+        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.LoadSessionMetricsAsync(sessionId));
+        Assert.IsType<System.Text.Json.JsonException>(ex.InnerException);
+    }
+
+    [Fact]
+    public async Task CorruptSession_DetectAndQuarantine_FilesMovedToCorruptedDir()
+    {
+        var goodId = await _manager.CreateSessionAsync("auth");
+        var badId = await _manager.CreateSessionAsync("auth");
+
+        // Corrupt the bad session
+        var statePath = StoragePaths.GetSessionStatePath(_projectRoot, badId);
+        await _fileSystem.WriteAllTextAsync(statePath, "corrupt!", default);
+
+        // Detect corruption
+        await Assert.ThrowsAsync<StorageException>(() =>
+            _manager.LoadSessionStateAsync(badId));
+
+        // Quarantine it — files move to .lopen/corrupted/
+        await _manager.QuarantineCorruptedSessionAsync(badId);
+
+        // Verify files moved to corrupted dir
+        var corruptedDir = StoragePaths.GetCorruptedDirectory(_projectRoot);
+        Assert.True(_fileSystem.DirectoryExists(Path.Combine(corruptedDir, badId.ToString())));
+
+        // Good session still loads
+        var goodState = await _manager.LoadSessionStateAsync(goodId);
+        Assert.NotNull(goodState);
+    }
+
+    // === STOR-16: Disk-full / write-failure ===
+
+    [Fact]
+    public async Task CreateSessionAsync_IoError_ThrowsStorageException()
+    {
+        var failFs = new FailingWriteFileSystem();
+        var mgr = new SessionManager(failFs, _logger, _projectRoot);
+
+        await Assert.ThrowsAsync<StorageException>(() =>
+            mgr.CreateSessionAsync("auth"));
+    }
+
+    [Fact]
+    public async Task SaveSessionStateAsync_IoError_InnerExceptionIsIOException()
+    {
+        var failFs = new FailingWriteFileSystem();
+        var mgr = new SessionManager(failFs, _logger, _projectRoot);
+        var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 1);
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "p",
+            Step = "s",
+            Module = "m",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+            mgr.SaveSessionStateAsync(sessionId, state));
+        Assert.IsType<IOException>(ex.InnerException);
+        Assert.Contains("Disk full", ex.InnerException!.Message);
+    }
 }

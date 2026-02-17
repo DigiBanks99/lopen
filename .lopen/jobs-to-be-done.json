@@ -193,18 +193,18 @@
     "requirement_code": "STOR-14",
     "requirement_module": "storage",
     "description": "Add tests for corrupted session detection and quarantine \u2014 verify corrupt JSON state files are detected, warned, quarantined to .lopen/corrupted/, and excluded from resume options",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "Implementation exists (QuarantineCorruptedSessionAsync) but no tests verify corrupt JSON loading \u2192 detection \u2192 quarantine flow."
+    "notes": "5 new tests: truncated JSON, binary garbage, empty file, corrupt metrics, detect-quarantine flow."
   },
   {
     "id": "JOB-023",
     "requirement_code": "STOR-16",
     "requirement_module": "storage",
     "description": "Add tests for disk-full / write-failure behavior \u2014 verify that write failures trigger critical system error and pause workflow",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "Only generic FailingWriteFileSystem tests exist. No disk-full-specific detection or messaging tests."
+    "notes": "2 new tests: CreateSession under disk-full, SaveState IO error inner exception verification."
   },
   {
     "id": "JOB-024",
