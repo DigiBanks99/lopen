@@ -850,27 +850,27 @@
     "requirement_code": "OTEL-10",
     "requirement_module": "otel",
     "description": "Verify structured logs carry TraceId and SpanId for correlation in OTEL export",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "OTEL logging is configured in DI. Need test to verify log entries include trace context for correlation."
+    "notes": "Log correlation verified: Activity.Current provides TraceId/SpanId within active span, OTEL log provider wired with IncludeFormattedMessage+IncludeScopes. 1 new test. All 2023 tests pass."
   },
   {
     "id": "JOB-096",
     "requirement_code": "OTEL-11",
     "requirement_module": "otel",
     "description": "Verify OTLP export activates for all 3 signals when OTEL_EXPORTER_OTLP_ENDPOINT is set",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "DI configuration exists. Need integration test verifying traces, metrics, and logs are exported when endpoint is configured."
+    "notes": "All 3 signals verified: TracerProvider, MeterProvider, ILoggerFactory all registered when endpoint set with all signals enabled. 1 new test. All 2023 tests pass."
   },
   {
     "id": "JOB-097",
     "requirement_code": "OTEL-12",
     "requirement_module": "otel",
     "description": "Verify no telemetry leaves process when OTEL endpoint is not set",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Need test verifying no export activity or errors when OTEL_EXPORTER_OTLP_ENDPOINT is not set."
+    "notes": "No-export verified: services resolve without OTLP exporter when no endpoint. TracerProvider is null when disabled. 2 new tests. All 2023 tests pass."
   },
   {
     "id": "JOB-098",
