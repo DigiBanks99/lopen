@@ -157,27 +157,27 @@
     "requirement_code": "STOR-01",
     "requirement_module": "storage",
     "description": "Add acceptance criterion-level test verifying .lopen/ directory is created with correct subdirectories on first run",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "StorageInitializer.EnsureDirectoryStructure has tests. Verify all subdirectories (sessions, modules, cache, corrupted) are created."
+    "notes": "STOR-01 AC test in StorageAcceptanceCriteriaTests.cs (AC01_StorageInitializer_CreatesAllRequiredSubdirectories, AC01_StorageInitializer_IdempotentOnRepeatedCalls)"
   },
   {
     "id": "JOB-020",
     "requirement_code": "STOR-05",
     "requirement_module": "storage",
     "description": "Add acceptance criterion-level test verifying latest symlink points to most recent session directory",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SessionManager.SetLatestAsync creates symlink. Verify the symlink resolves to the correct session path."
+    "notes": "STOR-05 AC test in StorageAcceptanceCriteriaTests.cs (AC05_LatestSymlink_PointsToMostRecentSession, AC05_SetLatestAsync_UpdatesSymlink)"
   },
   {
     "id": "JOB-021",
     "requirement_code": "STOR-06",
     "requirement_module": "storage",
     "description": "Add acceptance criterion-level test verifying auto-save triggers on all defined events: step/task/phase/component completion, user pause",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "AutoSaveService exists with AutoSaveTrigger enum. Need a test per trigger type."
+    "notes": "STOR-06 AC test in StorageAcceptanceCriteriaTests.cs (AC06_AutoSave_TriggersOnAllDefinedEvents)"
   },
   {
     "id": "JOB-022",
@@ -526,27 +526,27 @@
     "requirement_code": "STOR-07",
     "requirement_module": "storage",
     "description": "Add acceptance criterion-level test verifying session resume loads from latest symlink and offers resume or start fresh options",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SessionDetector.DetectActiveSessionAsync and TUI modal exist. Need test verifying full resume flow."
+    "notes": "STOR-07 AC test in StorageAcceptanceCriteriaTests.cs (AC07_SessionResume_LoadsFromLatestSymlink)"
   },
   {
     "id": "JOB-061",
     "requirement_code": "STOR-10",
     "requirement_module": "storage",
     "description": "Add acceptance criterion-level test verifying plan checkboxes are updated programmatically by PlanManager, not by LLM",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "PlanManager.UpdateCheckboxAsync uses regex. Need test confirming no LLM involvement in checkbox updates."
+    "notes": "STOR-10 AC test in StorageAcceptanceCriteriaTests.cs (AC10_PlanCheckboxes_UpdatedProgrammatically, AC10_PlanCheckboxes_CanUncheckProgrammatically)"
   },
   {
     "id": "JOB-062",
     "requirement_code": "STOR-18",
     "requirement_module": "storage",
     "description": "Add acceptance criterion-level test verifying session pruning retains newest N sessions and deletes oldest",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "SessionManager.PruneSessionsAsync with retention count. Need test with multiple sessions verifying correct pruning."
+    "notes": "STOR-18 AC test in StorageAcceptanceCriteriaTests.cs (AC18_SessionPruning_RetainsNewestAndDeletesOldest, AC18_SessionPruning_FewerThanRetention_PrunesNothing)"
   },
   {
     "id": "JOB-063",

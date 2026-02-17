@@ -31,7 +31,21 @@
       "tasks": {
         "add-collision-prevention-tests": "complete"
       }
+    },
+    "acceptance_criteria_tests": {
+      "status": "complete",
+      "implementation": "StorageAcceptanceCriteriaTests (13 tests mapping STOR-01, STOR-02, STOR-04, STOR-05, STOR-06, STOR-07, STOR-10, STOR-14, STOR-18)",
+      "tests": "StorageAcceptanceCriteriaTests.cs",
+      "jobs": [
+        "JOB-019",
+        "JOB-020",
+        "JOB-021",
+        "JOB-060",
+        "JOB-061",
+        "JOB-062"
+      ],
+      "notes": "Explicit test mapping for STOR acceptance criteria per SPECIFICATION.md. Covers directory creation, symlink management, auto-save triggers, session resume, plan checkboxes, session pruning, session ID format, state persistence, and corruption detection."
     }
   },
-  "last_updated": "2026-02-17T18:38:00Z"
+  "last_updated": "2026-02-17T18:52:00Z"
 }
