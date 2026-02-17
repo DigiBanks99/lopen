@@ -163,9 +163,9 @@ public class ActivityPanelComponentTests
             Entries = [new ActivityEntry { Summary = "Build failed", Kind = ActivityEntryKind.Error }],
         };
 
-        var lines = _component.Render(data, new ScreenRect(0, 0, 40, 3));
+        var lines = _component.Render(data, new ScreenRect(0, 0, 80, 3));
 
-        Assert.Contains("⚠ Build failed", lines[0]);
+        Assert.Contains(lines, l => l.Contains("⚠") && l.Contains("Build failed"));
     }
 
     // ==================== CalculateTotalLines ====================
@@ -447,5 +447,74 @@ public class ActivityPanelComponentTests
 
         var lines = _component.Render(data, new ScreenRect(0, 0, 60, 10));
         Assert.Contains(lines, l => l.Contains("[Press Enter to view full document]"));
+    }
+
+    // ==================== Syntax Highlighting (JOB-100 / TUI-35) ====================
+
+    [Fact]
+    public void HighlightDetailLine_AddedLine_WrappedInGreen()
+    {
+        var palette = new ColorPalette(noColor: false);
+        var result = ActivityPanelComponent.HighlightDetailLine("+added line", palette);
+        Assert.StartsWith("\x1b[32m", result);
+        Assert.EndsWith("\x1b[0m", result);
+        Assert.Contains("+added line", result);
+    }
+
+    [Fact]
+    public void HighlightDetailLine_RemovedLine_WrappedInRed()
+    {
+        var palette = new ColorPalette(noColor: false);
+        var result = ActivityPanelComponent.HighlightDetailLine("-removed line", palette);
+        Assert.StartsWith("\x1b[31m", result);
+        Assert.EndsWith("\x1b[0m", result);
+    }
+
+    [Fact]
+    public void HighlightDetailLine_ContextLine_NoColor()
+    {
+        var palette = new ColorPalette(noColor: false);
+        var result = ActivityPanelComponent.HighlightDetailLine(" context line", palette);
+        Assert.DoesNotContain("\x1b[", result);
+    }
+
+    [Fact]
+    public void HighlightDetailLine_NoColor_NoAnsiCodes()
+    {
+        var palette = new ColorPalette(noColor: true);
+        var result = ActivityPanelComponent.HighlightDetailLine("+added", palette);
+        Assert.DoesNotContain("\x1b[", result);
+    }
+
+    [Fact]
+    public void Render_ErrorEntry_HighlightedInRed()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries = [new ActivityEntry { Summary = "Build failed", Kind = ActivityEntryKind.Error }]
+        };
+        var lines = _component.Render(data, new ScreenRect(0, 0, 80, 5));
+        Assert.Contains(lines, l => l.Contains("\x1b[31m") && l.Contains("Build failed"));
+    }
+
+    [Fact]
+    public void Render_DiffDetails_HighlightedCorrectly()
+    {
+        var data = new ActivityPanelData
+        {
+            Entries =
+            [
+                new ActivityEntry
+                {
+                    Summary = "Edit file.cs",
+                    Kind = ActivityEntryKind.FileEdit,
+                    Details = ["+new line", "-old line", " context"],
+                    IsExpanded = true,
+                },
+            ]
+        };
+        var lines = _component.Render(data, new ScreenRect(0, 0, 80, 10));
+        Assert.Contains(lines, l => l.Contains("\x1b[32m") && l.Contains("+new line"));
+        Assert.Contains(lines, l => l.Contains("\x1b[31m") && l.Contains("-old line"));
     }
 }

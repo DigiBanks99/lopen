@@ -187,4 +187,49 @@ public class ToolOutputComponentTests
         Findings = ["Use RS256 for production", "Token expiry should be 15 min"],
         HasFullDocument = true,
     };
+
+    // ==================== DiffViewer Syntax Highlighting (TUI-35) ====================
+
+    [Fact]
+    public void DiffViewer_AddedLines_HighlightedGreen()
+    {
+        var data = new DiffViewerData
+        {
+            FilePath = "test.cs",
+            LinesAdded = 1,
+            LinesRemoved = 0,
+            Hunks = [new DiffHunk { StartLine = 1, Lines = ["+new line"] }]
+        };
+        var lines = _diff.Render(data, new ScreenRect(0, 0, 80, 5));
+        Assert.Contains(lines, l => l.Contains("\x1b[32m") && l.Contains("+new line"));
+    }
+
+    [Fact]
+    public void DiffViewer_RemovedLines_HighlightedRed()
+    {
+        var data = new DiffViewerData
+        {
+            FilePath = "test.cs",
+            LinesAdded = 0,
+            LinesRemoved = 1,
+            Hunks = [new DiffHunk { StartLine = 1, Lines = ["-old line"] }]
+        };
+        var lines = _diff.Render(data, new ScreenRect(0, 0, 80, 5));
+        Assert.Contains(lines, l => l.Contains("\x1b[31m") && l.Contains("-old line"));
+    }
+
+    [Fact]
+    public void DiffViewer_Header_ShowsBoldPathAndColoredStats()
+    {
+        var data = new DiffViewerData
+        {
+            FilePath = "src/File.cs",
+            LinesAdded = 5,
+            LinesRemoved = 2,
+            Hunks = []
+        };
+        var lines = _diff.Render(data, new ScreenRect(0, 0, 80, 3));
+        // Header should contain bold file path and colored stats
+        Assert.Contains(lines, l => l.Contains("\x1b[1m") && l.Contains("src/File.cs"));
+    }
 }

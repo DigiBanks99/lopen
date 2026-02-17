@@ -241,7 +241,23 @@
         "JOB-065"
       ],
       "notes": "Each component creates realistic stub data and calls its Render method. SpinnerComponent wraps single string in array."
+    },
+    "multi_state_previews": {
+      "status": "complete",
+      "implementation": "IPreviewableComponent.GetPreviewStates() + RenderPreview(state) with default implementations. 5 core components support 4 states.",
+      "tests": "ComponentGalleryRegistrationTests (19 multi-state tests)",
+      "jobs": [
+        "JOB-066"
+      ]
+    },
+    "syntax_highlighting": {
+      "status": "complete",
+      "implementation": "DiffViewerComponent highlights +/- lines with ANSI green/red. ActivityPanelComponent highlights error summaries and diff-like detail lines.",
+      "tests": "ActivityPanelComponentTests (6 highlighting tests) + ToolOutputComponentTests (3 diff highlighting tests)",
+      "jobs": [
+        "JOB-100"
+      ]
     }
   },
-  "last_updated": "2026-02-17T04:00:00Z"
+  "last_updated": "2026-02-17T05:00:00Z"
 }

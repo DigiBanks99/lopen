@@ -17,6 +17,8 @@ public sealed class ActivityPanelComponent : IPreviewableComponent
         if (region.Width <= 0 || region.Height <= 0)
             return [];
 
+        var palette = new ColorPalette();
+
         // Build all visible lines from entries
         var allLines = new List<string>();
 
@@ -29,12 +31,17 @@ public sealed class ActivityPanelComponent : IPreviewableComponent
                 : " ";
             var selectionMarker = i == data.SelectedEntryIndex ? ">" : " ";
 
-            allLines.Add($"{selectionMarker}{expandIndicator}{prefix} {entry.Summary}");
+            // Color error entries
+            var summary = entry.Kind == ActivityEntryKind.Error
+                ? $"{palette.Error}{entry.Summary}{palette.Reset}"
+                : entry.Summary;
+
+            allLines.Add($"{selectionMarker}{expandIndicator}{prefix} {summary}");
 
             if (entry.IsExpanded && entry.Details.Count > 0)
             {
                 foreach (var detail in entry.Details)
-                    allLines.Add($"  {detail}");
+                    allLines.Add($"  {HighlightDetailLine(detail, palette)}");
 
                 if (entry.FullDocumentContent is not null)
                     allLines.Add("  [Press Enter to view full document]");
@@ -167,6 +174,17 @@ public sealed class ActivityPanelComponent : IPreviewableComponent
         ActivityEntryKind.Research => "📖",
         _ => "●",
     };
+
+    internal static string HighlightDetailLine(string detail, ColorPalette palette)
+    {
+        if (string.IsNullOrEmpty(detail)) return detail;
+        return detail[0] switch
+        {
+            '+' => $"{palette.Success}{detail}{palette.Reset}",
+            '-' => $"{palette.Error}{detail}{palette.Reset}",
+            _ => detail,
+        };
+    }
 
     private static string PadToWidth(string text, int width)
     {

@@ -73,7 +73,7 @@ public sealed class DiffViewerComponent : IPreviewableComponent
     public string Description => "Diff viewer with line numbers and add/remove markers";
 
     /// <summary>
-    /// Renders a diff view as an array of plain-text lines.
+    /// Renders a diff view with syntax-highlighted add/remove lines.
     /// </summary>
     public string[] Render(DiffViewerData data, ScreenRect region)
     {
@@ -81,9 +81,10 @@ public sealed class DiffViewerComponent : IPreviewableComponent
             return [];
 
         var lines = new List<string>();
+        var palette = new ColorPalette();
 
         // Header: file path + stats
-        lines.Add($"  {data.FilePath} (+{data.LinesAdded} -{data.LinesRemoved})");
+        lines.Add($"  {palette.Bold}{data.FilePath}{palette.Reset} ({palette.Success}+{data.LinesAdded}{palette.Reset} {palette.Error}-{data.LinesRemoved}{palette.Reset})");
 
         foreach (var hunk in data.Hunks)
         {
@@ -98,7 +99,14 @@ public sealed class DiffViewerComponent : IPreviewableComponent
                     _ => $"{lineNum,3}",
                 };
 
-                lines.Add($"  {numStr} │ {line}");
+                var coloredLine = prefix switch
+                {
+                    '+' => $"{palette.Success}{line}{palette.Reset}",
+                    '-' => $"{palette.Error}{line}{palette.Reset}",
+                    _ => line,
+                };
+
+                lines.Add($"  {numStr} │ {coloredLine}");
 
                 if (prefix != '+')
                     lineNum++;

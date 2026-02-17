@@ -100,6 +100,42 @@ public class VisualAndCommandTests
         Assert.Equal("", palette.Bold);
     }
 
+    // ==================== TUI-32: Semantic Color Palette Verification ====================
+
+    [Fact]
+    public void ColorPalette_AllProperties_ReturnAnsiCodes_WhenEnabled()
+    {
+        var palette = new ColorPalette(noColor: false);
+
+        Assert.Equal("\x1b[32m", palette.Success);  // green
+        Assert.Equal("\x1b[31m", palette.Error);     // red
+        Assert.Equal("\x1b[33m", palette.Warning);   // yellow
+        Assert.Equal("\x1b[36m", palette.Info);       // cyan
+        Assert.Equal("\x1b[90m", palette.Muted);     // dim
+        Assert.Equal("\x1b[35m", palette.Accent);    // magenta
+        Assert.Equal("\x1b[0m", palette.Reset);
+        Assert.Equal("\x1b[1m", palette.Bold);
+    }
+
+    [Fact]
+    public void ColorPalette_AllProperties_ReturnEmpty_WhenDisabled()
+    {
+        var palette = new ColorPalette(noColor: true);
+
+        Assert.Equal("", palette.Warning);
+        Assert.Equal("", palette.Info);
+        Assert.Equal("", palette.Muted);
+        Assert.Equal("", palette.Accent);
+    }
+
+    [Fact]
+    public void ColorPalette_AllSemanticColors_AreDistinct()
+    {
+        var palette = new ColorPalette(noColor: false);
+        var codes = new[] { palette.Success, palette.Error, palette.Warning, palette.Info, palette.Muted, palette.Accent };
+        Assert.Equal(codes.Length, codes.Distinct().Count());
+    }
+
     // ==================== UnicodeSupport ====================
 
     [Fact]
@@ -129,6 +165,95 @@ public class VisualAndCommandTests
 
         // Reset
         UnicodeSupport.UseAscii = false;
+    }
+
+    // ==================== TUI-33: Unicode ASCII Fallback Verification ====================
+
+    [Fact]
+    public void Unicode_AllBoxDrawing_ReturnUnicode()
+    {
+        UnicodeSupport.UseAscii = false;
+        Assert.Equal("┐", UnicodeSupport.TopRight);
+        Assert.Equal("└", UnicodeSupport.BottomLeft);
+        Assert.Equal("┘", UnicodeSupport.BottomRight);
+        Assert.Equal("├", UnicodeSupport.TeeRight);
+        Assert.Equal("┤", UnicodeSupport.TeeLeft);
+        Assert.Equal("┼", UnicodeSupport.Cross);
+    }
+
+    [Fact]
+    public void Unicode_AllStatusIcons_ReturnUnicode()
+    {
+        UnicodeSupport.UseAscii = false;
+        Assert.Equal("✗", UnicodeSupport.Cross_Icon);
+        Assert.Equal("●", UnicodeSupport.FilledCircle);
+        Assert.Equal("◆", UnicodeSupport.Diamond);
+        Assert.Equal("⚠", UnicodeSupport.Warning_Icon);
+    }
+
+    [Fact]
+    public void Unicode_AllBoxDrawing_ReturnAsciiFallbacks()
+    {
+        UnicodeSupport.UseAscii = true;
+        Assert.Equal("+", UnicodeSupport.TopRight);
+        Assert.Equal("+", UnicodeSupport.BottomLeft);
+        Assert.Equal("+", UnicodeSupport.BottomRight);
+        Assert.Equal("+", UnicodeSupport.TeeRight);
+        Assert.Equal("+", UnicodeSupport.TeeLeft);
+        Assert.Equal("+", UnicodeSupport.Cross);
+        UnicodeSupport.UseAscii = false;
+    }
+
+    [Fact]
+    public void Unicode_AllStatusIcons_ReturnAsciiFallbacks()
+    {
+        UnicodeSupport.UseAscii = true;
+        Assert.Equal("[!]", UnicodeSupport.Cross_Icon);
+        Assert.Equal("*", UnicodeSupport.FilledCircle);
+        Assert.Equal("<>", UnicodeSupport.Diamond);
+        Assert.Equal("!!", UnicodeSupport.Warning_Icon);
+        UnicodeSupport.UseAscii = false;
+    }
+
+    [Fact]
+    public void Unicode_AsciiFallbacks_ArePureAscii()
+    {
+        UnicodeSupport.UseAscii = true;
+        var all = new[] {
+            UnicodeSupport.TopLeft, UnicodeSupport.TopRight,
+            UnicodeSupport.BottomLeft, UnicodeSupport.BottomRight,
+            UnicodeSupport.Horizontal, UnicodeSupport.Vertical,
+            UnicodeSupport.TeeRight, UnicodeSupport.TeeLeft, UnicodeSupport.Cross,
+            UnicodeSupport.CheckMark, UnicodeSupport.Cross_Icon,
+            UnicodeSupport.Arrow, UnicodeSupport.Circle,
+            UnicodeSupport.FilledCircle, UnicodeSupport.Diamond,
+            UnicodeSupport.Warning_Icon
+        };
+        foreach (var s in all)
+        {
+            Assert.All(s.ToCharArray(), c => Assert.True(c <= 127, $"'{c}' (U+{(int)c:X4}) is not ASCII in '{s}'"));
+        }
+        UnicodeSupport.UseAscii = false;
+    }
+
+    [Fact]
+    public void Unicode_UnicodeValues_AreNonAscii()
+    {
+        UnicodeSupport.UseAscii = false;
+        var boxAndIcons = new[] {
+            UnicodeSupport.TopLeft, UnicodeSupport.TopRight,
+            UnicodeSupport.BottomLeft, UnicodeSupport.BottomRight,
+            UnicodeSupport.Horizontal, UnicodeSupport.Vertical,
+            UnicodeSupport.TeeRight, UnicodeSupport.TeeLeft, UnicodeSupport.Cross,
+            UnicodeSupport.CheckMark, UnicodeSupport.Cross_Icon,
+            UnicodeSupport.Arrow, UnicodeSupport.Circle,
+            UnicodeSupport.FilledCircle, UnicodeSupport.Diamond,
+            UnicodeSupport.Warning_Icon
+        };
+        foreach (var s in boxAndIcons)
+        {
+            Assert.Contains(s.ToCharArray(), c => c > 127);
+        }
     }
 
     // ==================== SlashCommandRegistry ====================
