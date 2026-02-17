@@ -11,6 +11,8 @@ sources:
   - https://github.com/github/copilot-sdk/blob/main/docs/hooks/error-handling.md
 ---
 
+> **Last validated: February 2026**
+
 # LLM Module Research
 
 ## 1. GitHub Copilot SDK for .NET
@@ -21,7 +23,7 @@ The **official GitHub Copilot SDK** includes a first-party .NET package in techn
 | --- | --- |
 | **NuGet Package** | `GitHub.Copilot.SDK` |
 | **Install** | `dotnet add package GitHub.Copilot.SDK` |
-| **Version** | `0.1.0` (technical preview) |
+| **Version** | `0.1.23` (technical preview) |
 | **Target Framework** | `net8.0` |
 | **AOT Compatible** | Yes (`IsAotCompatible = true`) |
 | **Source** | [`github/copilot-sdk/dotnet`](https://github.com/github/copilot-sdk/tree/main/dotnet) |
@@ -109,32 +111,7 @@ await done.Task;
 Console.WriteLine(responseContent);
 ```
 
-> **⚠️ Implementation note**: There is no `SendAndWaitAsync` convenience method in the official SDK API. Examples throughout this document use a `SendAndWaitAsync` pattern for brevity — implementers should build this as a wrapper:
->
-> ```csharp
-> public static async Task<AssistantMessageEvent?> SendAndWaitAsync(
->     this CopilotSession session, MessageOptions options,
->     TimeSpan? timeout = null)
-> {
->     var done = new TaskCompletionSource<AssistantMessageEvent?>();
->     AssistantMessageEvent? result = null;
->
->     using var sub = session.On(evt =>
->     {
->         if (evt is AssistantMessageEvent msg) result = msg;
->         else if (evt is SessionIdleEvent) done.TrySetResult(result);
->         else if (evt is SessionErrorEvent err) done.TrySetException(
->             new InvalidOperationException(err.Data.Message));
->     });
->
->     await session.SendAsync(options);
->     if (timeout.HasValue)
->         await done.Task.WaitAsync(timeout.Value);
->     else
->         await done.Task;
->     return done.Task.Result;
-> }
-> ```
+> **Note**: The SDK natively provides `SendAndWaitAsync` as a convenience method on `CopilotSession` since version `0.1.23`. Examples throughout this document use it directly.
 
 **Event-driven (streaming):**
 
@@ -552,7 +529,7 @@ var verifyTaskTool = AIFunctionFactory.Create(
 
 | Package | Version | Purpose |
 | --- | --- | --- |
-| `GitHub.Copilot.SDK` | `0.1.0` | Core Copilot integration — client, sessions, events, tools |
+| `GitHub.Copilot.SDK` | `0.1.23` | Core Copilot integration — client, sessions, events, tools |
 
 ### Transitive Dependencies (pulled in by the SDK)
 
@@ -733,7 +710,7 @@ The GitHub Copilot SDK is **exactly what the LLM specification calls for**. Key 
 2. **Process Model** — One `CopilotClient` spawns one CLI process. Multiple sessions share this process. Session creation/disposal is lightweight.
 3. **No Direct REST** — The SDK abstracts all HTTP/API communication. Lopen never constructs raw API requests.
 4. **Tool Execution Model** — When the LLM calls a Lopen-managed tool, the SDK invokes the handler in-process. The handler returns a result that the SDK sends back to the CLI. This is synchronous from the LLM's perspective.
-5. **Technical Preview Risk** — The SDK is `0.1.0` and in technical preview. API surface may change. Lopen should wrap SDK types behind internal interfaces for isolation.
+5. **Technical Preview Risk** — The SDK is `0.1.23` and in technical preview. API surface may change. Lopen should wrap SDK types behind internal interfaces for isolation.
 
 ### Open Questions
 

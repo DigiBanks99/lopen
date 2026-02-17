@@ -1,5 +1,7 @@
 # Research: Layered Configuration in .NET for CLI Tools
 
+> **Last validated:** February 2026
+>
 > **Date:** 2025-07-24
 > **Sources:** [Microsoft.Extensions.Configuration docs](https://learn.microsoft.com/en-us/dotnet/core/extensions/configuration), [NuGet (10.0.3)](https://www.nuget.org/packages/Microsoft.Extensions.Configuration.Json), [System.CommandLine](https://learn.microsoft.com/en-us/dotnet/standard/commandline/)
 
@@ -10,11 +12,13 @@
 `Microsoft.Extensions.Configuration` provides a provider-based system where multiple sources are composed into a single `IConfiguration` view. **Sources added later override earlier ones** for the same key — this "last wins" behavior is the foundation of Lopen's priority hierarchy.
 
 ```csharp
+// Lopen uses Host.CreateApplicationBuilder for full hosting, then layers
+// configuration via LopenConfigurationBuilder which internally uses:
 var config = new ConfigurationBuilder()
-    .AddJsonFile(globalConfigPath, optional: true)    // lowest priority
-    .AddJsonFile(projectConfigPath, optional: true)   // overrides global
-    .AddEnvironmentVariables(prefix: "LOPEN_")        // overrides JSON
-    .Add(new ParseResultSource(parseResult, optionMap)) // CLI flags win
+    .AddJsonFile(globalConfigPath, optional: true)      // lowest priority
+    .AddJsonFile(projectConfigPath, optional: true)     // overrides global
+    .AddEnvironmentVariables("LOPEN_")                  // overrides JSON
+    .AddInMemoryCollection(cliOverrides)                // CLI flags win
     .Build();
 ```
 
@@ -80,22 +84,22 @@ The JSON provider maps nested objects to `:` delimited keys automatically:
 
 ```json
 {
-  "models": {
-    "planning": "claude-opus-4.6",
-    "building": "claude-opus-4.6"
+  "Models": {
+    "Planning": "claude-opus-4.6",
+    "Building": "claude-opus-4.6"
   },
-  "budget": {
-    "token_budget_per_module": 50000,
-    "warning_threshold": 0.8
+  "Budget": {
+    "TokenBudgetPerModule": 50000,
+    "WarningThreshold": 0.8
   },
-  "git": {
-    "auto_commit": true,
-    "convention": "conventional"
+  "Git": {
+    "AutoCommit": true,
+    "Convention": "conventional"
   }
 }
 ```
 
-This produces keys like `models:planning`, `budget:token_budget_per_module`, `git:auto_commit`.
+This produces keys like `Models:Planning`, `Budget:TokenBudgetPerModule`, `Git:AutoCommit`.
 
 ### Important Behaviors
 
@@ -112,85 +116,81 @@ The `Microsoft.Extensions.Configuration.Binder` package maps configuration secti
 
 ### Defining Options Classes
 
+`LopenOptions` uses **nested option classes** to group related settings. Properties use PascalCase and bind via the default case-insensitive binder — no `[ConfigurationKeyName]` attributes are needed.
+
 ```csharp
-public class LopenOptions
+public sealed class LopenOptions
 {
     public ModelOptions Models { get; set; } = new();
     public BudgetOptions Budget { get; set; } = new();
     public OracleOptions Oracle { get; set; } = new();
+    public WorkflowOptions Workflow { get; set; } = new();
+    public SessionOptions Session { get; set; } = new();
     public GitOptions Git { get; set; } = new();
-
-    [ConfigurationKeyName("tool_discipline")]
     public ToolDisciplineOptions ToolDiscipline { get; set; } = new();
-    public bool Unattended { get; set; } = false;
-
-    [ConfigurationKeyName("max_iterations")]
-    public int MaxIterations { get; set; } = 100;
-
-    [ConfigurationKeyName("failure_threshold")]
-    public int FailureThreshold { get; set; } = 3;
-
-    [ConfigurationKeyName("auto_resume")]
-    public bool AutoResume { get; set; } = true;
-
-    [ConfigurationKeyName("session_retention")]
-    public int SessionRetention { get; set; } = 10;
-
-    [ConfigurationKeyName("save_iteration_history")]
-    public bool SaveIterationHistory { get; set; } = false;
-
-    [ConfigurationKeyName("show_token_usage")]
-    public bool ShowTokenUsage { get; set; } = true;
-
-    [ConfigurationKeyName("show_premium_count")]
-    public bool ShowPremiumCount { get; set; } = true;
+    public DisplayOptions Display { get; set; } = new();
 }
 
-public class ModelOptions
+public sealed class ModelOptions
 {
-    [ConfigurationKeyName("requirement_gathering")]
     public string RequirementGathering { get; set; } = "claude-opus-4.6";
     public string Planning { get; set; } = "claude-opus-4.6";
     public string Building { get; set; } = "claude-opus-4.6";
     public string Research { get; set; } = "claude-opus-4.6";
+
+    // Per-phase fallback chains for runtime model unavailability (LLM-11).
+    public List<string> RequirementGatheringFallbacks { get; set; } = [];
+    public List<string> PlanningFallbacks { get; set; } = [];
+    public List<string> BuildingFallbacks { get; set; } = [];
+    public List<string> ResearchFallbacks { get; set; } = [];
+
+    public string GlobalFallback { get; set; } = "claude-sonnet-4";
 }
 
-public class BudgetOptions
+public sealed class BudgetOptions
 {
-    [ConfigurationKeyName("token_budget_per_module")]
-    public int TokenBudgetPerModule { get; set; } = 0;
-
-    [ConfigurationKeyName("premium_request_budget")]
-    public int PremiumRequestBudget { get; set; } = 0;
-
-    [ConfigurationKeyName("warning_threshold")]
+    public int TokenBudgetPerModule { get; set; }
+    public int PremiumRequestBudget { get; set; }
     public double WarningThreshold { get; set; } = 0.8;
-
-    [ConfigurationKeyName("confirmation_threshold")]
     public double ConfirmationThreshold { get; set; } = 0.9;
 }
 
-public class OracleOptions
+public sealed class OracleOptions
 {
     public string Model { get; set; } = "gpt-5-mini";
 }
 
-public class GitOptions
+public sealed class WorkflowOptions
+{
+    public bool Unattended { get; set; }
+    public int MaxIterations { get; set; } = 100;
+    public int FailureThreshold { get; set; } = 3;
+}
+
+public sealed class SessionOptions
+{
+    public bool AutoResume { get; set; } = true;
+    public int SessionRetention { get; set; } = 10;
+    public bool SaveIterationHistory { get; set; }
+}
+
+public sealed class GitOptions
 {
     public bool Enabled { get; set; } = true;
-
-    [ConfigurationKeyName("auto_commit")]
     public bool AutoCommit { get; set; } = true;
     public string Convention { get; set; } = "conventional";
 }
 
-public class ToolDisciplineOptions
+public sealed class ToolDisciplineOptions
 {
-    [ConfigurationKeyName("max_file_reads")]
     public int MaxFileReads { get; set; } = 3;
-
-    [ConfigurationKeyName("max_command_retries")]
     public int MaxCommandRetries { get; set; } = 3;
+}
+
+public sealed class DisplayOptions
+{
+    public bool ShowTokenUsage { get; set; } = true;
+    public bool ShowPremiumCount { get; set; } = true;
 }
 ```
 
@@ -209,28 +209,22 @@ config.Bind(options);
 
 ### JSON Property Name Mapping
 
-The configuration binder uses **case-insensitive matching** but does **not** strip underscores. This means snake_case JSON keys like `token_budget_per_module` will **not** automatically bind to PascalCase C# properties like `TokenBudgetPerModule` — the `OrdinalIgnoreCase` comparison fails because `_` ≠ `B`.
+The configuration binder uses **case-insensitive matching**. Lopen avoids the snake_case binding problem entirely by using **PascalCase keys in JSON configuration files** that match the C# property names directly. No `[ConfigurationKeyName]` attributes are needed.
 
-**Solution:** Use `[ConfigurationKeyName]` to explicitly map snake_case JSON keys to PascalCase properties:
-
-```csharp
-public class BudgetOptions
+```json
 {
-    [ConfigurationKeyName("token_budget_per_module")]
-    public int TokenBudgetPerModule { get; set; } = 0;
-
-    [ConfigurationKeyName("premium_request_budget")]
-    public int PremiumRequestBudget { get; set; } = 0;
-
-    [ConfigurationKeyName("warning_threshold")]
-    public double WarningThreshold { get; set; } = 0.8;
-
-    [ConfigurationKeyName("confirmation_threshold")]
-    public double ConfirmationThreshold { get; set; } = 0.9;
+  "Models": {
+    "Planning": "claude-opus-4.6",
+    "Building": "claude-opus-4.6"
+  },
+  "Budget": {
+    "TokenBudgetPerModule": 50000,
+    "WarningThreshold": 0.8
+  }
 }
 ```
 
-Apply `[ConfigurationKeyName("snake_case_name")]` to every property whose JSON key uses snake_case. Properties that are single words (e.g., `Model`, `Enabled`) don't need the attribute since case-insensitive matching handles those. The attribute is in the `Microsoft.Extensions.Configuration` namespace and requires no extra packages.
+This approach keeps the options classes clean and relies solely on the default binder behavior.
 
 ### Source Generator Alternative
 
@@ -252,162 +246,94 @@ This replaces reflection-based binding with compile-time generated code — impo
 
 `System.CommandLine` and `Microsoft.Extensions.Configuration.CommandLine` are **separate, incompatible systems**. There is no built-in bridge. The `CommandLine` configuration provider is a simple key-value parser, not the full argument parser that System.CommandLine provides.
 
-### Solution: Custom IConfigurationProvider
+### Solution: In-Memory Collection Overrides
 
-A custom provider reads parsed CLI values from `System.CommandLine`'s `ParseResult` and injects them into the configuration pipeline as the highest-priority source:
+Rather than a custom `IConfigurationProvider`, Lopen uses `AddInMemoryCollection` with a dictionary of overrides. The `LopenConfigurationBuilder` exposes typed helper methods that translate CLI flags into configuration keys:
 
 ```csharp
-public class ParseResultConfigurationSource : IConfigurationSource
+public sealed class LopenConfigurationBuilder
 {
-    private readonly ParseResult _parseResult;
-    private readonly Dictionary<string, Option> _optionMap;
+    private readonly Dictionary<string, string?> _overrides = new();
 
-    public ParseResultConfigurationSource(
-        ParseResult parseResult,
-        Dictionary<string, Option> optionMap)
+    public LopenConfigurationBuilder AddOverride(string key, string value)
     {
-        _parseResult = parseResult;
-        _optionMap = optionMap;
+        _overrides[key] = value;
+        return this;
     }
 
-    public IConfigurationProvider Build(IConfigurationBuilder builder)
-        => new ParseResultConfigurationProvider(_parseResult, _optionMap);
-}
-
-public class ParseResultConfigurationProvider : ConfigurationProvider
-{
-    private readonly ParseResult _parseResult;
-    private readonly Dictionary<string, Option> _optionMap;
-
-    public ParseResultConfigurationProvider(
-        ParseResult parseResult,
-        Dictionary<string, Option> optionMap)
+    public LopenConfigurationBuilder AddModelOverride(string model)
     {
-        _parseResult = parseResult;
-        _optionMap = optionMap;
+        _overrides["Models:RequirementGathering"] = model;
+        _overrides["Models:Planning"] = model;
+        _overrides["Models:Building"] = model;
+        _overrides["Models:Research"] = model;
+        return this;
     }
 
-    public override void Load()
+    public LopenConfigurationBuilder AddUnattendedOverride(bool unattended = true)
     {
-        foreach (var (configKey, option) in _optionMap)
-        {
-            // Only set if the user explicitly provided the flag
-            var result = _parseResult.FindResultFor(option);
-            if (result is not null && !result.IsImplicit)
-            {
-                var value = _parseResult.GetValueForOption(option);
-                if (value is not null)
-                    Data[configKey] = value.ToString()!;
-            }
-        }
+        _overrides["Workflow:Unattended"] = unattended.ToString();
+        return this;
+    }
+
+    public LopenConfigurationBuilder AddResumeOverride(bool autoResume)
+    {
+        _overrides["Session:AutoResume"] = autoResume.ToString();
+        return this;
+    }
+
+    public LopenConfigurationBuilder AddMaxIterationsOverride(int maxIterations)
+    {
+        _overrides["Workflow:MaxIterations"] = maxIterations.ToString();
+        return this;
+    }
+
+    public (LopenOptions Options, IConfigurationRoot Configuration) Build()
+    {
+        var configBuilder = new ConfigurationBuilder();
+
+        // Layer 1: Global configuration
+        if (_globalConfigPath is not null && File.Exists(_globalConfigPath))
+            configBuilder.AddJsonFile(_globalConfigPath, optional: true, reloadOnChange: false);
+
+        // Layer 2: Project configuration
+        if (_projectConfigPath is not null && File.Exists(_projectConfigPath))
+            configBuilder.AddJsonFile(_projectConfigPath, optional: true, reloadOnChange: false);
+
+        // Layer 3: Environment variables (prefixed with LOPEN_)
+        configBuilder.AddEnvironmentVariables("LOPEN_");
+
+        // Layer 4: CLI flag overrides (highest priority)
+        if (_overrides.Count > 0)
+            configBuilder.AddInMemoryCollection(_overrides);
+
+        var configRoot = configBuilder.Build();
+        var options = new LopenOptions();
+        configRoot.Bind(options);
+
+        // Validate and throw on errors
+        var errors = LopenOptionsValidator.Validate(options);
+        if (errors.Count > 0)
+            throw new InvalidOperationException(
+                "Configuration validation failed:\n" + string.Join("\n", errors.Select(e => $"  - {e}")));
+
+        return (options, configRoot);
     }
 }
 ```
 
-### Extension Method for Clean Registration
+### How CLI Flags Reach the Builder
 
-```csharp
-public static class ConfigurationBuilderExtensions
-{
-    public static IConfigurationBuilder AddParsedCommandLine(
-        this IConfigurationBuilder builder,
-        ParseResult parseResult,
-        Dictionary<string, Option> optionMap)
-    {
-        builder.Add(new ParseResultConfigurationSource(parseResult, optionMap));
-        return builder;
-    }
-}
-```
-
-### Wiring It Together
-
-```csharp
-var modelOption = new Option<string>("--model", "Override all model assignments");
-var unattendedOption = new Option<bool>("--unattended", "Suppress intervention prompts");
-var maxIterationsOption = new Option<int>("--max-iterations", "Maximum loop iterations");
-var resumeOption = new Option<string?>("--resume", "Resume a specific session by ID");
-var noResumeOption = new Option<bool>("--no-resume", "Disable auto-resume for this invocation");
-
-// Map CLI flags to configuration keys
-var optionMap = new Dictionary<string, Option>
-{
-    ["models:requirement_gathering"] = modelOption,
-    ["models:planning"] = modelOption,
-    ["models:building"] = modelOption,
-    ["models:research"] = modelOption,
-    ["unattended"] = unattendedOption,
-    ["max_iterations"] = maxIterationsOption,
-};
-
-var rootCommand = new RootCommand("lopen")
-{
-    modelOption, unattendedOption, maxIterationsOption, resumeOption, noResumeOption
-};
-rootCommand.SetHandler(async (InvocationContext ctx) =>
-{
-    var config = new ConfigurationBuilder()
-        .AddJsonFile(globalConfigPath, optional: true)
-        .AddJsonFile(projectConfigPath, optional: true)
-        .AddParsedCommandLine(ctx.ParseResult, optionMap) // highest priority
-        .Build();
-
-    var options = new LopenOptions();
-    config.Bind(options);
-
-    // options now reflects the full merged configuration
-});
-```
-
-### Critical: `IsImplicit` Check
-
-The `result.IsImplicit` check is essential. Without it, System.CommandLine's default values for options would override values from config files. Only **explicitly provided** CLI flags should participate as overrides.
+The System.CommandLine handler inspects `ParseResult` and calls the appropriate `Add*Override()` methods **only when the user explicitly provided the flag**. This avoids System.CommandLine's default values overriding config file values — the equivalent of the `IsImplicit` check, but done in the handler rather than a custom provider.
 
 ### Handling `--resume` and `--no-resume`
 
-The `--resume <id>` and `--no-resume` flags from the specification require special handling outside the configuration provider because they carry **behavioral semantics** beyond a simple key override:
+The `--resume <id>` and `--no-resume` flags require special handling because they carry **behavioral semantics** beyond a simple key override:
 
-- `--resume <id>` — sets `auto_resume` to `true` **and** specifies a target session ID. The session ID is not a configuration setting; it's a command argument consumed by the session-resume workflow.
-- `--no-resume` — sets `auto_resume` to `false` for this invocation.
+- `--resume <id>` — sets `Session:AutoResume` to `true` **and** specifies a target session ID. The session ID is not a configuration setting; it's a command argument consumed by the session-resume workflow.
+- `--no-resume` — sets `Session:AutoResume` to `false` for this invocation.
 
-These two flags are **mutually exclusive**. Handle them in the command handler after configuration is built:
-
-```csharp
-rootCommand.SetHandler(async (InvocationContext ctx) =>
-{
-    var config = BuildConfiguration(ctx.ParseResult);
-    var options = new LopenOptions();
-    config.Bind(options);
-
-    // Override auto_resume based on --resume / --no-resume
-    var resumeResult = ctx.ParseResult.FindResultFor(resumeOption);
-    var noResumeResult = ctx.ParseResult.FindResultFor(noResumeOption);
-
-    string? resumeSessionId = null;
-    if (resumeResult is not null && !resumeResult.IsImplicit)
-    {
-        options.AutoResume = true;
-        resumeSessionId = ctx.ParseResult.GetValueForOption(resumeOption);
-    }
-    else if (noResumeResult is not null && !noResumeResult.IsImplicit)
-    {
-        options.AutoResume = false;
-    }
-});
-```
-
-Use `AddValidator` on the root command to enforce mutual exclusivity:
-
-```csharp
-rootCommand.AddValidator(result =>
-{
-    if (result.FindResultFor(resumeOption) is not null
-        && result.FindResultFor(noResumeOption) is not null)
-    {
-        result.ErrorMessage = "Cannot use --resume and --no-resume together.";
-    }
-});
-```
+These two flags are **mutually exclusive**. The handler calls `AddResumeOverride(true)` or `AddResumeOverride(false)` accordingly.
 
 ---
 
@@ -444,11 +370,11 @@ public class BudgetOptionsValidator : IValidateOptions<BudgetOptions>
 
         if (options.WarningThreshold >= options.ConfirmationThreshold)
             failures.Add(
-                "budget.warning_threshold must be less than budget.confirmation_threshold.");
+                "Budget:WarningThreshold must be less than Budget:ConfirmationThreshold.");
 
         if (options.ConfirmationThreshold > 1.0 || options.ConfirmationThreshold < 0.0)
             failures.Add(
-                "budget.confirmation_threshold must be between 0.0 and 1.0.");
+                "Budget:ConfirmationThreshold must be between 0.0 and 1.0.");
 
         return failures.Count > 0
             ? ValidateOptionsResult.Fail(failures)
@@ -501,14 +427,14 @@ public static class LopenOptionsValidator
     {
         var errors = new List<string>();
 
-        if (options.MaxIterations < 1)
-            errors.Add("max_iterations must be at least 1.");
+        if (options.Workflow.MaxIterations < 1)
+            errors.Add("Workflow:MaxIterations must be at least 1.");
 
-        if (options.FailureThreshold < 1)
-            errors.Add("failure_threshold must be at least 1.");
+        if (options.Workflow.FailureThreshold < 1)
+            errors.Add("Workflow:FailureThreshold must be at least 1.");
 
         if (options.Budget.WarningThreshold >= options.Budget.ConfirmationThreshold)
-            errors.Add("budget.warning_threshold must be less than budget.confirmation_threshold.");
+            errors.Add("Budget:WarningThreshold must be less than Budget:ConfirmationThreshold.");
 
         return (errors.Count == 0, errors);
     }
@@ -553,7 +479,7 @@ All packages are at version **10.0.3** (current stable, compatible with .NET 10)
 </ItemGroup>
 ```
 
-> **Note:** Do **not** use `Microsoft.Extensions.Configuration.CommandLine` — its simple parser conflicts with System.CommandLine. Use the custom `ParseResultConfigurationProvider` from Section 4 instead.
+> **Note:** Do **not** use `Microsoft.Extensions.Configuration.CommandLine` — its simple parser conflicts with System.CommandLine. Use `AddInMemoryCollection` with typed helper methods on `LopenConfigurationBuilder` (see Section 4) instead.
 
 ---
 
@@ -565,61 +491,73 @@ All packages are at version **10.0.3** (current stable, compatible with .NET 10)
 Lopen.Configuration/
 ├── LopenOptions.cs              # Root options class with nested types
 ├── LopenConfigurationBuilder.cs # Builds IConfiguration with layered sources
-├── ParseResultConfigurationProvider.cs  # Bridges System.CommandLine → IConfiguration
 ├── LopenOptionsValidator.cs     # Validates merged configuration
+├── ServiceCollectionExtensions.cs # DI registration
 └── ConfigurationDiagnostics.cs  # Implements "lopen config show"
 ```
 
 ### Build Order
 
-1. **Discover config file paths** — walk up directories for `.lopen/config.json`, resolve `~/.config/lopen/config.json`
-2. **Build `IConfiguration`** — layer: defaults → global JSON → project JSON → CLI flags
-3. **Bind to `LopenOptions`** — `config.Bind(options)` populates the strongly-typed tree
-4. **Validate** — run validators, fail fast with aggregated error messages
-5. **Inject** — pass `LopenOptions` (or `IOptions<LopenOptions>`) to consuming modules
+1. **Create application host** — `Host.CreateApplicationBuilder(args)` provides the hosting infrastructure
+2. **Register configuration services** — `builder.Services.AddLopenConfiguration()` wires up `LopenConfigurationBuilder`
+3. **Discover config file paths** — walk up directories for `.lopen/config.json`, resolve `~/.config/lopen/config.json`
+4. **Build `IConfiguration`** — layer: defaults → global JSON → project JSON → env vars → CLI overrides (via `AddInMemoryCollection`)
+5. **Bind to `LopenOptions`** — `config.Bind(options)` populates the strongly-typed tree of nested option classes
+6. **Validate** — run validators, fail fast with aggregated error messages
+7. **Inject** — pass `LopenOptions` (or individual nested options) to consuming modules as singletons
 
 ### Complete Wiring Example
 
+The application entry point uses `Host.CreateApplicationBuilder`:
+
 ```csharp
-public static class LopenConfigurationBuilder
+// Program.cs
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddLopenConfiguration();
+// ... register other services
+var app = builder.Build();
+```
+
+`LopenConfigurationBuilder` handles the layered resolution internally:
+
+```csharp
+public sealed class LopenConfigurationBuilder
 {
-    public static LopenOptions Build(ParseResult? parseResult = null)
+    private readonly string? _globalConfigPath;
+    private readonly string? _projectConfigPath;
+    private readonly Dictionary<string, string?> _overrides = new();
+
+    public (LopenOptions Options, IConfigurationRoot Configuration) Build()
     {
-        var globalPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".config", "lopen", "config.json");
+        var configBuilder = new ConfigurationBuilder();
 
-        var projectPath = FindProjectConfig(Directory.GetCurrentDirectory());
+        // Layer 1: Global configuration
+        if (_globalConfigPath is not null && File.Exists(_globalConfigPath))
+            configBuilder.AddJsonFile(_globalConfigPath, optional: true, reloadOnChange: false);
 
-        var builder = new ConfigurationBuilder();
+        // Layer 2: Project configuration
+        if (_projectConfigPath is not null && File.Exists(_projectConfigPath))
+            configBuilder.AddJsonFile(_projectConfigPath, optional: true, reloadOnChange: false);
 
-        // Layer 4: Built-in defaults (via class property initializers — no source needed)
-        // Layer 3: Global config
-        builder.AddJsonFile(globalPath, optional: true, reloadOnChange: false);
+        // Layer 3: Environment variables
+        configBuilder.AddEnvironmentVariables("LOPEN_");
 
-        // Layer 2: Project config
-        if (projectPath is not null)
-            builder.AddJsonFile(projectPath, optional: true, reloadOnChange: false);
+        // Layer 4: CLI flag overrides (highest priority)
+        if (_overrides.Count > 0)
+            configBuilder.AddInMemoryCollection(_overrides);
 
-        // Layer 1: CLI flags (highest priority)
-        if (parseResult is not null)
-            builder.AddParsedCommandLine(parseResult, CliOptionMappings.Map);
-
-        var config = builder.Build();
+        var configRoot = configBuilder.Build();
 
         var options = new LopenOptions();
-        config.Bind(options);
+        configRoot.Bind(options);
 
         // Validate
-        var (isValid, errors) = LopenOptionsValidator.Validate(options);
-        if (!isValid)
-        {
-            foreach (var error in errors)
-                Console.Error.WriteLine($"  ✗ {error}");
-            throw new InvalidOperationException("Invalid configuration.");
-        }
+        var errors = LopenOptionsValidator.Validate(options);
+        if (errors.Count > 0)
+            throw new InvalidOperationException(
+                "Configuration validation failed:\n" + string.Join("\n", errors.Select(e => $"  - {e}")));
 
-        return options;
+        return (options, configRoot);
     }
 }
 ```
@@ -684,31 +622,36 @@ if (jsonOutput)
 
 ### Key Takeaways
 
-1. **`ConfigurationBuilder` directly implements Lopen's hierarchy** — add sources in order (global → project → CLI) and last wins. No custom merging logic needed.
+1. **`ConfigurationBuilder` directly implements Lopen's hierarchy** — add sources in order (global → project → env vars → CLI) and last wins. No custom merging logic needed.
 
-2. **No host required** — `ConfigurationBuilder` works standalone without `Host.CreateApplicationBuilder()`. Lopen is a CLI tool, not a hosted service, so the raw builder is the right choice.
+2. **Full hosting via `Host.CreateApplicationBuilder`** — Lopen uses the standard .NET hosting model, with `AddLopenConfiguration()` registering configuration services into DI. The `LopenConfigurationBuilder` uses a raw `ConfigurationBuilder` internally for the layered resolution.
 
-3. **Custom `ParseResultConfigurationProvider` is necessary** — System.CommandLine and M.E.Configuration.CommandLine are incompatible. The custom provider (Section 4) bridges the gap cleanly, using `IsImplicit` to avoid default-value conflicts.
+3. **`AddInMemoryCollection` for CLI overrides** — rather than a custom `IConfigurationProvider`, CLI flag overrides are collected into a `Dictionary<string, string?>` and added as the highest-priority source via `AddInMemoryCollection`. The `LopenConfigurationBuilder` exposes typed helpers (`AddModelOverride`, `AddUnattendedOverride`, etc.) that populate this dictionary.
 
-4. **`--model` maps to multiple keys** — a single `--model` flag sets all four phase model keys. The option map handles this by mapping one `Option` to multiple configuration keys.
+4. **`--model` maps to multiple keys** — a single `--model` flag sets all four phase model keys. `AddModelOverride()` handles this by writing four entries to the overrides dictionary.
 
-5. **Snake_case JSON requires `[ConfigurationKeyName]`** — the binder's case-insensitive comparison does **not** strip underscores. Properties with snake_case JSON keys (e.g., `token_budget_per_module`) must use `[ConfigurationKeyName("token_budget_per_module")]` to bind correctly. Single-word properties (e.g., `Model`, `Enabled`) work without it.
+5. **PascalCase binding — no `[ConfigurationKeyName]` needed** — JSON config files use PascalCase keys matching C# property names, so the default case-insensitive binder works without explicit key-name attributes.
 
-6. **Fail-fast validation** — CLI tools must validate at startup. Use `LopenOptionsValidator` with aggregated error messages so users see all problems at once.
+6. **Nested option classes** — `LopenOptions` uses nested classes (`WorkflowOptions`, `SessionOptions`, `DisplayOptions`, `ModelOptions`, `BudgetOptions`, etc.) rather than flat properties. This groups related settings and maps naturally to the `:` hierarchy (e.g., `Workflow:MaxIterations`).
 
-7. **`lopen config show` is achievable** — `IConfigurationRoot.Providers` exposes the source of each value for diagnostic display.
+7. **Fail-fast validation** — CLI tools must validate at startup. Use `LopenOptionsValidator` with aggregated error messages so users see all problems at once.
 
-8. **Environment variables are optional** — the spec doesn't require `LOPEN_*` env vars, but the infrastructure supports adding them later with zero code changes (just add `.AddEnvironmentVariables("LOPEN_")` to the builder chain).
+8. **`lopen config show` is achievable** — `IConfigurationRoot.Providers` exposes the source of each value for diagnostic display.
 
-9. **AOT compatibility** — if Lopen targets Native AOT, enable the configuration binding source generator (`EnableConfigurationBindingGenerator`) to avoid reflection.
+9. **Environment variables are supported** — `AddEnvironmentVariables("LOPEN_")` is included in the configuration chain, sitting between JSON files and CLI overrides in priority.
 
-### Decisions to Make During Implementation
+10. **AOT compatibility** — if Lopen targets Native AOT, enable the configuration binding source generator (`EnableConfigurationBindingGenerator`) to avoid reflection.
 
-| Decision | Options | Recommendation |
+### Decisions Made During Implementation
+
+| Decision | Options Considered | Outcome |
 |---|---|---|
-| DI vs manual | Full `IOptions<T>` with DI vs manual `Bind()` | Start with manual `Bind()`, add DI later if needed |
-| Validation | Data Annotations vs manual validator | Manual validator — simpler for a CLI tool, no DI required |
-| Env var support | Include `LOPEN_*` env vars now or later | Later — spec doesn't require it; easy to add |
+| DI vs manual | Full `IOptions<T>` with DI vs manual `Bind()` | `Host.CreateApplicationBuilder` with DI; nested options registered as singletons |
+| CLI override mechanism | Custom `IConfigurationProvider` vs `AddInMemoryCollection` | `AddInMemoryCollection` — simpler, no custom provider needed |
+| Property naming | Snake_case JSON + `[ConfigurationKeyName]` vs PascalCase JSON | PascalCase JSON — matches C# properties, no attributes needed |
+| Options structure | Flat properties on root vs nested classes | Nested classes — `WorkflowOptions`, `SessionOptions`, `DisplayOptions`, etc. |
+| Validation | Data Annotations vs manual validator | Manual validator — simpler for a CLI tool |
+| Env var support | Include `LOPEN_*` env vars now or later | Included — `AddEnvironmentVariables("LOPEN_")` in the chain |
 | Config file format | JSON only vs also YAML/TOML | JSON only — spec mandates `config.json` |
 | AOT | Reflection binder vs source generator | Source generator if targeting AOT; reflection otherwise |
 

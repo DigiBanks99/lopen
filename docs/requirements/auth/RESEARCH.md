@@ -432,3 +432,170 @@ var session = await client.CreateSessionAsync(new SessionConfig
 
 - **~~Exact CLI auth commands~~**: There is no `copilot auth login` subcommand. Auth uses the `/login` slash command within the interactive TUI. (Source: [Copilot CLI install docs](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli#authenticating-with-copilot-cli))
 - **~~PAT auth method~~**: Confirmed: set `GH_TOKEN` or `GITHUB_TOKEN` with a fine-grained PAT that has "Copilot Requests" permission. (Source: same docs)
+
+---
+
+## AUTH-10: Pre-flight Auth Check Wiring
+
+### Current State Analysis
+
+`IAuthService.ValidateAsync()` is fully implemented in `CopilotAuthService` (lines 120–137 of `CopilotAuthService.cs`). It calls `GetStatusAsync()`, returns on `Authenticated`, and throws `AuthenticationException` for `InvalidCredentials` or `NotAuthenticated` states. Error messages follow the what/why/how-to-fix pattern via `AuthErrorMessages`.
+
+**The problem: `ValidateAsync` is never called.** No consumer in the entire codebase invokes it — not the `WorkflowOrchestrator`, not `RootCommandHandler`, not `PhaseCommands`, and not any middleware or pipeline. This means a user with missing or invalid credentials will only discover the failure when the first LLM call fails deep inside the workflow loop, producing a confusing error instead of a clear upfront message.
+
+#### Key files involved
+
+| File | Role |
+|---|---|
+| `src/Lopen.Auth/IAuthService.cs` | Interface defining `ValidateAsync` |
+| `src/Lopen.Auth/CopilotAuthService.cs` | Production implementation (singleton) |
+| `src/Lopen/Commands/RootCommandHandler.cs` | Root `lopen` command — launches TUI or headless workflow |
+| `src/Lopen/Commands/PhaseCommands.cs` | `spec`, `plan`, `build` subcommands — each calls `orchestrator.RunAsync()` |
+| `src/Lopen.Core/Workflow/WorkflowOrchestrator.cs` | Orchestration loop — `RunAsync()` entry point |
+| `src/Lopen.Auth/ServiceCollectionExtensions.cs` | DI: `AddSingleton<IAuthService, CopilotAuthService>()` |
+
+#### What already works
+
+- `IAuthService` is registered as a singleton via `AddLopenAuth()` in `ServiceCollectionExtensions`
+- `ValidateAsync` correctly delegates to `GetStatusAsync()` and throws `AuthenticationException` with actionable messages
+- `FakeAuthService` in tests already tracks `ValidateCalled` and supports configurable exceptions
+- `AuthenticationException` is caught by the generic `catch (Exception ex)` in all command handlers (writes `ex.Message` to stderr, returns `ExitCodes.Failure`)
+
+### Recommended Approach
+
+#### Option A: Inject into `PhaseCommands` as a shared helper (Recommended)
+
+Add a `ValidateAuthAsync` helper in `PhaseCommands` following the exact pattern of `ValidateSpecExistsAsync` and `ValidatePlanExistsAsync`:
+
+```csharp
+// In PhaseCommands.cs
+internal static async Task<string?> ValidateAuthAsync(
+    IServiceProvider services, CancellationToken cancellationToken)
+{
+    var authService = services.GetService<IAuthService>();
+    if (authService is null)
+        return null; // Auth module not registered; skip check
+
+    try
+    {
+        await authService.ValidateAsync(cancellationToken);
+        return null; // Auth valid
+    }
+    catch (AuthenticationException ex)
+    {
+        return ex.Message;
+    }
+}
+```
+
+Then call it early in each command handler (spec, plan, build) and in `RootCommandHandler.RunHeadlessAsync`:
+
+```csharp
+// At the top of each phase command action, after headless validation:
+var authError = await ValidateAuthAsync(services, cancellationToken);
+if (authError is not null)
+{
+    await stderr.WriteLineAsync(authError);
+    return ExitCodes.AuthFailure; // New exit code, or ExitCodes.Failure
+}
+```
+
+**Why this approach:**
+
+1. **Follows existing patterns** — identical to `ValidateSpecExistsAsync` / `ValidatePlanExistsAsync` / `ValidateHeadlessPromptAsync`
+2. **Fails fast** — blocks before any session resolution, module scanning, or orchestrator creation
+3. **Graceful degradation** — `GetService<IAuthService>()` returns null if auth module isn't registered (e.g., test environments without auth)
+4. **Clear error messages** — `AuthErrorMessages` already has actionable what/why/fix text
+5. **No orchestrator changes** — keeps `WorkflowOrchestrator` focused on workflow logic
+
+#### Option B: Inject into `WorkflowOrchestrator.RunAsync` (Alternative)
+
+Add `IAuthService?` as an optional constructor parameter and call `ValidateAsync` at the top of `RunAsync`, before git branch setup:
+
+```csharp
+// In WorkflowOrchestrator constructor (add optional parameter):
+IAuthService? authService = null
+
+// At the top of RunAsync, after argument validation:
+if (_authService is not null)
+{
+    await _authService.ValidateAsync(cancellationToken);
+    // Throws AuthenticationException on failure — caught by command handler
+}
+```
+
+**Why this is less ideal:**
+
+- Adds a cross-cutting concern (auth) to the workflow layer, which currently depends only on `Lopen.Core` abstractions
+- Would require adding a project reference from `Lopen.Core` to `Lopen.Auth` (or defining `IAuthService` in Core)
+- `AuthenticationException` would propagate up to command handlers anyway, so the error handling is less explicit
+- The orchestrator has 11 required + 10 optional constructor parameters already; adding more increases complexity
+
+#### Option C: Inject into `RootCommandHandler` only (Insufficient)
+
+Only adding the check to `RootCommandHandler` would miss the `spec`, `plan`, and `build` subcommands which each independently call the orchestrator.
+
+### Recommended Injection Points (Option A)
+
+Call `ValidateAuthAsync` at these exact locations:
+
+1. **`PhaseCommands.CreateSpec`** — after `ValidateHeadlessPromptAsync` (line 29), before `ResolveSessionAsync` (line 32)
+2. **`PhaseCommands.CreatePlan`** — after `ValidateHeadlessPromptAsync` (line 97), before `ResolveSessionAsync` (line 100)
+3. **`PhaseCommands.CreateBuild`** — after `ValidateHeadlessPromptAsync` (line 172), before `ResolveSessionAsync` (line 175)
+4. **`RootCommandHandler.Configure`** (headless branch) — after `ValidateHeadlessPromptAsync` (line 40), before `RunHeadlessAsync` (line 48)
+5. **`RootCommandHandler.Configure`** (interactive branch) — before `ResolveSessionAsync` (line 52), so the TUI never launches without valid auth
+
+### Code Patterns to Follow
+
+#### Validation helper pattern (from `PhaseCommands`)
+
+All existing validators follow this contract:
+- Return `string?` — `null` means valid, non-null is an error message
+- Use `services.GetService<T>()` (nullable) not `GetRequiredService<T>()`
+- Caller writes error to stderr and returns exit code
+
+#### Exception-to-message conversion
+
+`ValidateAsync` throws `AuthenticationException`. The helper catches it and returns `ex.Message`, which contains the what/why/fix text from `AuthErrorMessages`. This matches how `AuthCommand` handles auth errors.
+
+#### Exit code consideration
+
+Currently `ExitCodes` has `Success`, `Failure`, and `UserInterventionRequired`. Consider adding `AuthFailure = 4` (or similar) for machine-readable exit codes in headless/CI mode. If not, reuse `ExitCodes.Failure`.
+
+#### DI wiring
+
+No additional DI changes needed. `IAuthService` is already registered as a singleton in `AddLopenAuth()`. The `Lopen` CLI project already references `Lopen.Auth` (it hosts `AuthCommand`).
+
+### Test Strategy
+
+#### Unit Tests for `ValidateAuthAsync` helper (in `Lopen.Cli.Tests`)
+
+| Test | Description |
+|---|---|
+| `ValidateAuthAsync_ReturnsNull_WhenAuthServiceNotRegistered` | `GetService<IAuthService>()` returns null → skip check |
+| `ValidateAuthAsync_ReturnsNull_WhenAuthenticated` | `FakeAuthService` with default status → returns null |
+| `ValidateAuthAsync_ReturnsErrorMessage_WhenNotAuthenticated` | `FakeAuthService` throws `AuthenticationException` → returns message |
+| `ValidateAuthAsync_ReturnsErrorMessage_WhenInvalidCredentials` | `FakeAuthService` throws with `InvalidCredentials` message → returns message |
+
+#### Integration Tests for Phase Commands (in `Lopen.Cli.Tests`)
+
+| Test | Description |
+|---|---|
+| `Spec_ReturnsFailure_WhenAuthFails` | Wire `FakeAuthService` that throws → spec command returns `ExitCodes.Failure` and writes error to stderr |
+| `Plan_ReturnsFailure_WhenAuthFails` | Same for plan |
+| `Build_ReturnsFailure_WhenAuthFails` | Same for build |
+| `Spec_Succeeds_WhenAuthValid` | `FakeAuthService` with valid status → command proceeds normally |
+| `Headless_ReturnsFailure_WhenAuthFails` | Root command in headless mode with failing auth → returns failure |
+| `Interactive_ReturnsFailure_WhenAuthFails` | Root command in interactive mode with failing auth → returns failure before TUI launches |
+
+#### Existing test infrastructure to leverage
+
+- `FakeAuthService` already has `ValidateCalled` tracking and exception injection
+- `FakeWorkflowOrchestrator` exists for verifying the orchestrator is never called when auth fails
+- `PhaseCommandTests` and `RootCommandTests` have established patterns for exit code assertions
+- All tests use xUnit with hand-rolled fakes (no mocking framework)
+
+#### What NOT to test
+
+- Do not add auth tests to `WorkflowOrchestratorTests` — the orchestrator should remain unaware of auth (Option A)
+- Do not test `CopilotAuthService.ValidateAsync` further — it's already tested in `Lopen.Auth.Tests`

@@ -1065,3 +1065,197 @@ public void GetModuleTopicResearchPath_ReturnsExpectedPath()
 ### Relevance to Lopen
 
 Adding research document paths to `StoragePaths` creates a consistent API for the workflow orchestrator and document management code to resolve spec/research file locations. This is essential for features like specification drift detection (`SpecificationDriftService`), module scanning (`ModuleScanner`), and context extraction — all of which need to locate `docs/requirements/{module}/` files. The paths are project-root-relative, matching the existing convention.
+
+## 15. Per-Iteration Metric Breakdowns (STOR-03)
+
+> **Date:** 2025-07-24
+> **Requirement:** STOR-03 — Session metrics (`metrics.json`) persists per-iteration and cumulative token counts and premium request counts
+
+### Current State Analysis
+
+`SessionMetrics` (`src/Lopen.Storage/SessionMetrics.cs`) is a sealed record with only cumulative fields:
+
+```csharp
+public sealed record SessionMetrics
+{
+    public required string SessionId { get; init; }
+    public long CumulativeInputTokens { get; init; }
+    public long CumulativeOutputTokens { get; init; }
+    public int PremiumRequestCount { get; init; }
+    public int IterationCount { get; init; }
+    public required DateTimeOffset UpdatedAt { get; init; }
+}
+```
+
+The in-memory layer already tracks per-iteration data — `InMemoryTokenTracker._iterations` stores a `List<TokenUsage>` where each `RecordUsage()` call appends an entry. `GetSessionMetrics()` exposes this via `SessionTokenMetrics.PerIterationTokens`. However, the mapping in `WorkflowOrchestrator.AutoSaveAsync()` (lines 626–639) **discards the per-iteration list** and copies only cumulative values to the persistence record.
+
+On session resume, `RestoreMetrics()` rehydrates cumulative counters only — the `_iterations` list starts empty. This means per-iteration history from prior runs is permanently lost.
+
+### Gap Summary
+
+| Layer | Per-Iteration Data | Status |
+|---|---|---|
+| `InMemoryTokenTracker._iterations` | `List<TokenUsage>` in memory | ✅ Tracked |
+| `SessionTokenMetrics.PerIterationTokens` | `IReadOnlyList<TokenUsage>` | ✅ Exposed |
+| `WorkflowOrchestrator.AutoSaveAsync` | Mapping to `SessionMetrics` | ❌ Discards per-iteration |
+| `SessionMetrics` record | No per-iteration property | ❌ Missing |
+| `metrics.json` on disk | No per-iteration array | ❌ Missing |
+| `RestoreMetrics()` | Only restores cumulative | ❌ Does not restore iterations |
+
+### Recommended Schema
+
+Add an `Iterations` property to `SessionMetrics` containing an array of `IterationMetric` records:
+
+```csharp
+/// <summary>
+/// Token usage for a single iteration, persisted as part of metrics.json.
+/// </summary>
+public sealed record IterationMetric(
+    int InputTokens,
+    int OutputTokens,
+    int TotalTokens,
+    int ContextWindowSize,
+    bool IsPremiumRequest);
+
+public sealed record SessionMetrics
+{
+    public required string SessionId { get; init; }
+    public long CumulativeInputTokens { get; init; }
+    public long CumulativeOutputTokens { get; init; }
+    public int PremiumRequestCount { get; init; }
+    public int IterationCount { get; init; }
+    public IReadOnlyList<IterationMetric> Iterations { get; init; } = [];
+    public required DateTimeOffset UpdatedAt { get; init; }
+}
+```
+
+The resulting `metrics.json` structure:
+
+```json
+{
+  "SessionId": "abc-123",
+  "CumulativeInputTokens": 15000,
+  "CumulativeOutputTokens": 3500,
+  "PremiumRequestCount": 2,
+  "IterationCount": 3,
+  "Iterations": [
+    { "InputTokens": 4000, "OutputTokens": 1000, "TotalTokens": 5000, "ContextWindowSize": 128000, "IsPremiumRequest": false },
+    { "InputTokens": 5000, "OutputTokens": 1200, "TotalTokens": 6200, "ContextWindowSize": 128000, "IsPremiumRequest": true },
+    { "InputTokens": 6000, "OutputTokens": 1300, "TotalTokens": 7300, "ContextWindowSize": 128000, "IsPremiumRequest": true }
+  ],
+  "UpdatedAt": "2025-07-24T12:00:00+00:00"
+}
+```
+
+#### Why a separate `IterationMetric` record (not reusing `TokenUsage`)
+
+`TokenUsage` lives in `Lopen.Llm` and is a positional record tied to SDK invocation semantics. `IterationMetric` lives in `Lopen.Storage` and is a persistence concern. This keeps the storage layer independent of LLM internals and allows the persistence schema to evolve separately (e.g., adding a `Timestamp` field later without touching the LLM layer).
+
+### Migration Strategy for Existing `metrics.json` Files
+
+Existing files lack the `Iterations` property. `System.Text.Json` handles this gracefully:
+
+1. **Deserialization** — When `Iterations` is absent from JSON, the `init` default `[]` applies. No special migration code needed.
+2. **Re-serialization** — On next auto-save, the file is rewritten with the full schema including `Iterations` (containing only iterations from the current run, not historical ones). This is acceptable because cumulative counters still reflect all-time totals.
+3. **No version field needed** — The schema is purely additive. Old files deserialize correctly with the new code. New files are ignored by old code (unknown properties are skipped by default `System.Text.Json` options).
+
+This is a zero-migration approach — no offline migration scripts, no version checks, no quarantine needed.
+
+### Impact on `InMemoryTokenTracker` and `AutoSaveService`
+
+#### `InMemoryTokenTracker` Changes
+
+1. **`RestoreMetrics`** — Add a parameter to accept prior iterations so resumed sessions include historical per-iteration data:
+
+```csharp
+public void RestoreMetrics(
+    int cumulativeInput,
+    int cumulativeOutput,
+    int premiumCount,
+    IReadOnlyList<IterationMetric>? priorIterations = null)
+{
+    lock (_lock)
+    {
+        _cumulativeInput = cumulativeInput;
+        _cumulativeOutput = cumulativeOutput;
+        _premiumCount = premiumCount;
+        if (priorIterations is not null)
+        {
+            foreach (var m in priorIterations)
+            {
+                _iterations.Add(new TokenUsage(
+                    m.InputTokens, m.OutputTokens, m.TotalTokens,
+                    m.ContextWindowSize, m.IsPremiumRequest));
+            }
+        }
+    }
+}
+```
+
+The optional parameter with default `null` maintains backward compatibility with the `ITokenTracker` interface. Alternatively, add an overload or a separate `RestoreIterations` method to avoid changing the existing signature.
+
+#### `WorkflowOrchestrator.AutoSaveAsync` Changes
+
+Map `PerIterationTokens` to `IterationMetric` list when building `SessionMetrics`:
+
+```csharp
+var tokenMetrics = _tokenTracker.GetSessionMetrics();
+metrics = new SessionMetrics
+{
+    SessionId = _sessionId.ToString(),
+    CumulativeInputTokens = tokenMetrics.CumulativeInputTokens,
+    CumulativeOutputTokens = tokenMetrics.CumulativeOutputTokens,
+    PremiumRequestCount = tokenMetrics.PremiumRequestCount,
+    IterationCount = _iterationCount,
+    Iterations = tokenMetrics.PerIterationTokens
+        .Select(t => new IterationMetric(
+            t.InputTokens, t.OutputTokens, t.TotalTokens,
+            t.ContextWindowSize, t.IsPremiumRequest))
+        .ToList(),
+    UpdatedAt = DateTimeOffset.UtcNow,
+};
+```
+
+#### Session Resume Changes
+
+Pass saved iterations to `RestoreMetrics`:
+
+```csharp
+var savedMetrics = await _sessionManager.LoadSessionMetricsAsync(latestId, cancellationToken);
+if (savedMetrics is not null)
+{
+    _tokenTracker.RestoreMetrics(
+        (int)savedMetrics.CumulativeInputTokens,
+        (int)savedMetrics.CumulativeOutputTokens,
+        savedMetrics.PremiumRequestCount,
+        savedMetrics.Iterations);
+}
+```
+
+#### `AutoSaveService` Changes
+
+No changes needed — `AutoSaveService.SaveAsync` passes `SessionMetrics` through to `ISessionManager.SaveSessionMetricsAsync` without inspecting its contents. The existing atomic write (write-to-tmp, rename) handles the larger payload transparently.
+
+### Test Strategy
+
+#### Unit Tests
+
+1. **`IterationMetric` serialization round-trip** — Serialize a `SessionMetrics` with 3 `IterationMetric` entries to JSON and deserialize back; assert all fields match.
+
+2. **Backward-compatible deserialization** — Deserialize a `metrics.json` string without `Iterations`; assert `Iterations` is empty list (not null).
+
+3. **`InMemoryTokenTracker.RestoreMetrics` with iterations** — Call `RestoreMetrics` with prior iterations, then `RecordUsage` for a new iteration; assert `GetSessionMetrics().PerIterationTokens` contains both restored and new entries, and cumulative counters are correct.
+
+4. **`WorkflowOrchestrator.AutoSaveAsync` persists iterations** — Mock `ITokenTracker` to return 2 `TokenUsage` entries in `PerIterationTokens`; capture the `SessionMetrics` passed to `AutoSaveService.SaveAsync`; assert `Iterations` has 2 `IterationMetric` entries with correct values.
+
+5. **Session resume restores iterations** — Set up a `metrics.json` with 2 `IterationMetric` entries; resume session; assert `ITokenTracker.GetSessionMetrics().PerIterationTokens` contains the 2 restored entries.
+
+#### Integration Tests
+
+6. **Full save/resume cycle** — Run 2 iterations → auto-save → reload → run 1 more iteration → verify `metrics.json` contains 3 `IterationMetric` entries with correct cumulative totals.
+
+7. **Legacy file compatibility** — Place an old-format `metrics.json` (no `Iterations` key) on disk; load it; assert no errors and `Iterations` is empty.
+
+#### Property to Validate
+
+After every auto-save: `sum(Iterations[*].InputTokens) == CumulativeInputTokens` and `sum(Iterations[*].OutputTokens) == CumulativeOutputTokens`. This invariant should be asserted in tests and could optionally be validated at save time via a debug assertion.

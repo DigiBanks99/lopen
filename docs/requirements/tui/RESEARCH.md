@@ -2164,6 +2164,176 @@ Option 1 is preferred because `TuiApplication` already takes 14 constructor para
 
 ---
 
+## 20. TUI-26: Repeated Failure Confirmation Modal
+
+### Current State
+
+Three components exist independently but are **completely unwired**:
+
+1. **`ActivityPanelDataProvider.ConsecutiveFailureCount`** — Thread-safe counter (`volatile int` + `Interlocked`) that increments on `ActivityEntryKind.Error` entries and resets on non-error entries. Exposed via `IActivityPanelDataProvider.ConsecutiveFailureCount`. **Never read** by `TuiApplication` or any render-loop code.
+
+2. **`ErrorModalComponent`** — Renders a modal with `Title`, `Message`, and `RecoveryOptions` (defaults: `["Retry", "Skip", "Abort"]`). Located in `SelectionComponents.cs`. The selected option is highlighted with `[>...<]` syntax. **Never triggered** from production code — only from a single unit test.
+
+3. **`FailureHandler`** (Core layer) — Maintains per-task failure counts with a configurable threshold (default 3 via `WorkflowOptions.FailureThreshold`). When threshold is reached, returns `FailureAction.PromptUser`. Currently prompts via `IOutputRenderer.PromptAsync()` → text-based y/N prompt through `IUserPromptQueue`, **not** through `ErrorModalComponent`.
+
+**Key gaps identified:**
+
+- `TuiApplication.RefreshActivityPanelData()` only calls `GetCurrentData()` — no threshold check.
+- `OpenErrorModal(ErrorModalData)` is `internal` and has **zero production call sites**.
+- `HandleErrorModalInput` dismisses the modal on Enter/Escape but **discards the selected option** — no callback, event, or `TaskCompletionSource` is fired. The user's choice (Retry/Skip/Abort) is lost.
+- No mechanism bridges `ConsecutiveFailureCount` reaching a threshold to showing the modal.
+
+### Recommended Approach
+
+#### Where to Check Threshold
+
+The threshold check should be injected into `RefreshActivityPanelData()` in `TuiApplication.cs`. This method runs every frame (30 FPS) and already reads from `_activityPanelDataProvider`. The check is a simple integer comparison with negligible cost.
+
+```csharp
+private void RefreshActivityPanelData()
+{
+    if (_activityPanelDataProvider is not null)
+    {
+        _activityData = _activityPanelDataProvider.GetCurrentData();
+
+        // TUI-26: Auto-show error modal on repeated failures
+        if (_modalState == TuiModalState.None
+            && _activityPanelDataProvider.ConsecutiveFailureCount >= _failureThreshold
+            && !_failureModalShownForCurrentStreak)
+        {
+            var count = _activityPanelDataProvider.ConsecutiveFailureCount;
+            OpenErrorModal(new ErrorModalData
+            {
+                Title = "Repeated Failures Detected",
+                Message = $"The last {count} operations failed consecutively.",
+                RecoveryOptions = ["Retry", "Skip", "Abort"]
+            });
+            _failureModalShownForCurrentStreak = true;
+        }
+
+        // Reset the shown flag when failures clear
+        if (_activityPanelDataProvider.ConsecutiveFailureCount == 0)
+            _failureModalShownForCurrentStreak = false;
+    }
+}
+```
+
+**Guard conditions** prevent re-triggering:
+- `_modalState == TuiModalState.None` — don't interrupt another modal.
+- `_failureModalShownForCurrentStreak` — show at most once per failure streak. Resets when `ConsecutiveFailureCount` returns to 0 (i.e., a non-error entry arrives).
+
+#### How to Trigger the Modal
+
+`OpenErrorModal` already exists and correctly sets `_modalState = TuiModalState.ErrorModal`. No changes needed to the open/render path.
+
+#### How to Act on the User's Choice
+
+`HandleErrorModalInput` must be extended to propagate the selected recovery action. The recommended pattern is an `Action<int>?` callback on `ErrorModalData`, consistent with the existing fire-and-forget modal architecture:
+
+```csharp
+// In ErrorModalData (SelectionData.cs):
+public Action<int>? OnSelected { get; init; }
+
+// In HandleErrorModalInput, Enter case:
+case ConsoleKey.Enter:
+    var selectedIndex = _errorModalData.SelectedIndex;
+    _modalState = TuiModalState.None;
+    _errorModalData.OnSelected?.Invoke(selectedIndex);
+    break;
+```
+
+The callback wired from `RefreshActivityPanelData` would map the selected index to an action:
+
+| Index | Option | Action |
+|-------|--------|--------|
+| 0     | Retry  | No-op — orchestrator continues its next iteration naturally |
+| 1     | Skip   | Post a skip command via `IUserPromptQueue` or set a skip flag on the orchestrator |
+| 2     | Abort  | Cancel the orchestrator's `CancellationTokenSource` to trigger graceful shutdown |
+
+For the initial implementation, Retry (dismiss and continue) is sufficient. Skip and Abort can be wired incrementally as the orchestrator's command interface matures.
+
+### Configurable Threshold Strategy
+
+The failure threshold should be configurable and should reuse the existing `WorkflowOptions.FailureThreshold` (default 3) rather than introducing a separate TUI-specific threshold. Rationale:
+
+1. **Single source of truth** — `WorkflowOptions.FailureThreshold` already governs when `FailureHandler` escalates to `PromptUser`. The TUI modal should trigger at the same boundary.
+2. **Already validated** — `LopenOptionsValidator` ensures `FailureThreshold > 0`.
+3. **Already wired via DI** — `WorkflowOptions` is resolved from `IServiceProvider` in `ServiceCollectionExtensions.cs`.
+
+**Implementation:** Inject the threshold into `TuiApplication` at construction time:
+
+```csharp
+// In TuiApplication constructor or factory:
+private readonly int _failureThreshold;
+
+// Resolved from DI:
+var workflowOptions = serviceProvider.GetService<WorkflowOptions>();
+_failureThreshold = workflowOptions?.FailureThreshold ?? 3;
+```
+
+If a future requirement demands a TUI-specific threshold (e.g., showing the modal after 5 failures while `FailureHandler` escalates after 3), a `TuiOptions.FailureModalThreshold` can be added following the same pattern as `WorkflowOptions`. The proposed `TuiOptions` class in Section 18 (TUI-51) already exists as a design placeholder and could host this.
+
+### Interaction with FailureHandler's PromptUser Flow
+
+Currently, when `FailureHandler` returns `FailureAction.PromptUser`, the `WorkflowOrchestrator` calls `IOutputRenderer.PromptAsync()`, which blocks on `IUserPromptQueue`. This is a **text-based prompt** that coexists awkwardly with the TUI modal.
+
+**Recommended approach for TUI-26:**
+
+- The TUI modal should **replace** the text-based prompt for TUI mode. When the modal is shown and the user selects an option, the result should be fed into `IUserPromptQueue` as the response to the pending `PromptAsync` call.
+- This avoids two competing prompts (modal + text prompt) for the same failure event.
+- The `_failureModalShownForCurrentStreak` guard ensures the modal doesn't re-trigger while the orchestrator is already waiting on the prompt queue.
+
+### New Fields Required in TuiApplication
+
+```csharp
+private readonly int _failureThreshold;          // From WorkflowOptions
+private bool _failureModalShownForCurrentStreak;  // Guard against re-triggering
+```
+
+### Test Strategy
+
+#### Unit Tests (TuiApplicationTests.cs)
+
+1. **Threshold triggers modal** — Set up `ActivityPanelDataProvider`, add N error entries where N ≥ threshold, call `RefreshActivityPanelData()`, assert `_modalState == TuiModalState.ErrorModal`.
+
+2. **Below threshold does not trigger** — Add N-1 error entries, refresh, assert `_modalState == TuiModalState.None`.
+
+3. **Non-error entry resets streak** — Add N error entries (modal shown), then add a non-error entry, dismiss modal, add N more errors — assert modal is shown again (streak was reset).
+
+4. **Modal shown only once per streak** — Add N error entries (modal shown), dismiss modal, add 1 more error entry without a non-error reset — assert modal is NOT shown again.
+
+5. **Modal not shown over another modal** — Set `_modalState = TuiModalState.Confirmation`, add N error entries, refresh — assert `_modalState` remains `Confirmation` (not overwritten).
+
+6. **Enter propagates selected option** — Open error modal, simulate Right arrow (select "Skip"), simulate Enter, assert callback was invoked with index 1.
+
+7. **Escape dismisses without callback** — Open error modal, simulate Escape, assert callback was NOT invoked, assert `_modalState == None`.
+
+#### Integration Tests
+
+8. **End-to-end flow** — Orchestrator encounters repeated failures → `AddTaskFailure` is called N times → `ConsecutiveFailureCount` reaches threshold → modal appears → user selects Retry → orchestrator continues.
+
+9. **Configurable threshold** — Set `WorkflowOptions.FailureThreshold = 5`, verify modal only appears after 5 consecutive failures.
+
+#### ErrorModalComponent Tests (SelectionComponentTests.cs)
+
+10. **Render displays all options** — Verify `Render()` output contains "Retry", "Skip", "Abort".
+
+11. **Selected option highlighting** — Verify selected index renders with `[>...<]` syntax.
+
+12. **Custom recovery options** — Provide custom `RecoveryOptions`, verify they render correctly.
+
+### Implementation Checklist
+
+- [ ] Add `_failureThreshold` and `_failureModalShownForCurrentStreak` fields to `TuiApplication`
+- [ ] Inject `WorkflowOptions.FailureThreshold` into `TuiApplication` via DI
+- [ ] Extend `RefreshActivityPanelData()` with threshold check and modal trigger
+- [ ] Add `Action<int>? OnSelected` callback to `ErrorModalData`
+- [ ] Update `HandleErrorModalInput` Enter case to invoke `OnSelected`
+- [ ] Wire `OnSelected` callback to feed response into `IUserPromptQueue` (replacing text prompt in TUI mode)
+- [ ] Add unit tests for threshold triggering, streak reset, guard conditions
+- [ ] Add unit tests for modal input handling with callback
+- [ ] Add integration test for end-to-end failure → modal → recovery flow
+
 ## References
 
 - [Spectre.Tui GitHub](https://github.com/spectreconsole/spectre.tui)

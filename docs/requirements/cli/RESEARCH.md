@@ -1346,3 +1346,92 @@ When `--headless` is active, the TUI is never launched, so `--no-welcome` is irr
 - **Unit test `TuiOptions`:** Verify default is `ShowLandingPage = true`.
 - **Unit test `RootCommandHandler`:** Mock `ITuiApplication`, parse `--no-welcome`, verify `TuiOptions.ShowLandingPage` is `false` before `RunAsync` is called.
 - **Unit test `TuiApplication`:** Verify that when `TuiOptions.ShowLandingPage` is `false`, `_modalState` is not set to `LandingPage` on startup. This is already partially covered by existing tests that construct `TuiApplication` with `showLandingPage: false`.
+
+## 12. CLI-21: `--version` Flag Implementation
+
+### Current State
+
+The CLI uses `System.CommandLine` (`2.0.0-beta5.25306.1`) with a `RootCommand` defined in `src/Lopen/Program.cs`. The `--help` flag works automatically (System.CommandLine provides it by default on all commands), but `--version` is **not configured**. Running `lopen --version` currently produces an error.
+
+Key observations:
+
+| Area | Current State |
+| --- | --- |
+| `RootCommand` setup | `new RootCommand("Lopen — AI-powered software engineering workflow")` in `Program.cs:34` — no `VersionOption` added |
+| Version in `.csproj` | **None** — no `<Version>`, `<AssemblyVersion>`, or `<InformationalVersion>` in any `.csproj` or `Directory.Build.props` |
+| Runtime version usage | `TopPanelDataProvider.cs` reads `AssemblyInformationalVersionAttribute` from the entry assembly, falls back to `"0.0.0"` |
+| CI/CD injection | Version is presumably injected at build time via `/p:Version=...` (not yet confirmed) |
+
+### Recommended Approach: `VersionOption`
+
+System.CommandLine provides a built-in `VersionOption` class specifically for this purpose. When added to a command, it:
+
+1. Registers a `--version` option (short-circuits normal command handling)
+2. Writes the assembly's `InformationalVersion` to stdout, then exits
+3. Validates that `--version` cannot be combined with other arguments
+
+#### Implementation
+
+Add a single line in `Program.cs` after creating the `RootCommand`:
+
+```csharp
+var rootCommand = new RootCommand("Lopen — AI-powered software engineering workflow");
+rootCommand.Options.Add(new VersionOption());  // <-- add this
+GlobalOptions.AddTo(rootCommand);
+```
+
+This is the minimal change. `VersionOption` automatically reads `AssemblyInformationalVersionAttribute` from the entry assembly — the same attribute that `TopPanelDataProvider` already reads. No custom version-fetching logic is needed.
+
+#### Version String Source
+
+`VersionOption` reads the version from `AssemblyInformationalVersionAttribute` on the entry assembly. The .NET SDK populates this attribute from (in priority order):
+
+1. `<InformationalVersion>` MSBuild property
+2. `<Version>` MSBuild property (defaults to `1.0.0` if not set)
+3. CI injection via `/p:Version=x.y.z` at build time
+
+**Recommendation:** Add a `<Version>` property to `Directory.Build.props` to centralize the version for all projects:
+
+```xml
+<PropertyGroup>
+  <Version>0.1.0</Version>
+</PropertyGroup>
+```
+
+This ensures:
+- `lopen --version` outputs a meaningful version (e.g., `0.1.0`)
+- The TUI's `TopPanelDataProvider` version display is consistent (it reads the same attribute)
+- CI can override with `/p:Version=1.2.3` or `/p:InformationalVersion=1.2.3+sha.abc123`
+
+Without this, `lopen --version` will output `1.0.0` (the SDK default), which is technically correct but not informative.
+
+### Behavior
+
+Expected behavior after implementation:
+
+```
+$ lopen --version
+0.1.0
+
+$ lopen --version --headless
+error: --version option cannot be combined with other arguments.
+
+$ lopen --help
+Description:
+  Lopen — AI-powered software engineering workflow
+
+Usage:
+  lopen [options] [command]
+
+Options:
+  --version       Show version information
+  --headless, -q  ...
+  ...
+```
+
+### Testing Strategy
+
+- **Unit test: `--version` flag is registered.** Parse `--version` via `CommandLineConfiguration.Parse()` and verify the parse result contains the `VersionOption` with no errors.
+- **Integration test: `--version` outputs version string.** Invoke the CLI with `--version` and verify stdout contains a version string matching the expected format (e.g., semver pattern `\d+\.\d+\.\d+`).
+- **Unit test: `--version` cannot combine with other args.** Parse `--version --headless` and verify a parse error is produced.
+- **Consistency test:** Verify that the version string from `--version` matches the version displayed by `TopPanelDataProvider` in the TUI (both read `AssemblyInformationalVersionAttribute`).
