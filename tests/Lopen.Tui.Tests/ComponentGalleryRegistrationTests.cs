@@ -58,6 +58,7 @@ public class ComponentGalleryRegistrationTests
         Assert.Contains("ConfirmationModal", names);
         Assert.Contains("ErrorModal", names);
         Assert.Contains("Spinner", names);
+        Assert.Contains("GuidedConversation", names);
     }
 
     [Fact]

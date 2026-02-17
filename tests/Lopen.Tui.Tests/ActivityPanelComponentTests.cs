@@ -137,6 +137,7 @@ public class ActivityPanelComponentTests
     [InlineData(ActivityEntryKind.TestResult, "✓")]
     [InlineData(ActivityEntryKind.PhaseTransition, "◆")]
     [InlineData(ActivityEntryKind.Error, "⚠")]
+    [InlineData(ActivityEntryKind.Conversation, "💬")]
     public void KindPrefix_ReturnsCorrectSymbol(ActivityEntryKind kind, string expected)
     {
         Assert.Equal(expected, ActivityPanelComponent.KindPrefix(kind));
