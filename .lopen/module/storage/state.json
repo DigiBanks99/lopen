@@ -51,8 +51,16 @@
       "spec_ref": "STOR-03,08,09,11,12,13,15,16,17,19,20,21",
       "tests": "StorageAcceptanceCriteriaTests (14 new tests for AC03, AC08, AC09, AC11-AC13, AC15-AC17, AC19-AC21)",
       "notes": "All 21 STOR requirements now have explicit acceptance criteria tests with traceability."
+    },
+    "gitignore_management": {
+      "status": "complete",
+      "spec_ref": "STOR-22",
+      "implementation": "StorageInitializer.EnsureGitignoreEntryAsync",
+      "tests": "StorageInitializerTests (7 gitignore tests) + StorageAcceptanceCriteriaTests (3 AC22 tests)",
+      "jobs": ["JOB-101"],
+      "notes": "Adds .lopen/ to existing .gitignore. Idempotent. Does not create .gitignore if missing. Handles trailing newlines and whitespace."
     }
   },
-  "last_updated": "2026-02-17T20:55:00Z",
+  "last_updated": "2026-02-17T21:30:00Z",
   "status": "complete"
 }

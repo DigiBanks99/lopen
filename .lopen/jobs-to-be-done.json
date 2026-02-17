@@ -898,5 +898,14 @@
     "status": "done",
     "priority": 1,
     "notes": "Added 14 acceptance criteria tests covering AC03, AC08, AC09, AC11-AC13, AC15-AC17x2, AC19, AC20, AC21x2. All 2369 tests pass. Storage module now has full acceptance test traceability for all 21 STOR requirements."
+  },
+  {
+    "id": "JOB-101",
+    "requirement_code": "STOR-22",
+    "requirement_module": "storage",
+    "description": "Implement .gitignore auto-management in StorageInitializer \u2014 EnsureGitignoreEntryAsync adds .lopen/ to existing .gitignore on storage initialization, skips if no .gitignore exists",
+    "status": "done",
+    "priority": 2,
+    "notes": "EnsureGitignoreEntryAsync added to StorageInitializer. 7 unit tests + 3 acceptance criteria tests. Only modifies existing .gitignore, does not create one."
   }
 ]

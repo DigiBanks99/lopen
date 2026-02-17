@@ -66,4 +66,94 @@ public class StorageInitializerTests
         Assert.Throws<ArgumentException>(() =>
             new StorageInitializer(new InMemoryFileSystem(), NullLogger<StorageInitializer>.Instance, ""));
     }
+
+    [Fact]
+    public async Task EnsureGitignoreEntry_AddsLopenEntry_WhenGitignoreExists()
+    {
+        var fs = new InMemoryFileSystem();
+        await fs.WriteAllTextAsync("/project/.gitignore", "node_modules/\n");
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+
+        var content = await fs.ReadAllTextAsync("/project/.gitignore");
+        Assert.Contains(".lopen/", content);
+    }
+
+    [Fact]
+    public async Task EnsureGitignoreEntry_Idempotent_DoesNotDuplicate()
+    {
+        var fs = new InMemoryFileSystem();
+        await fs.WriteAllTextAsync("/project/.gitignore", "node_modules/\n.lopen/\n");
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+
+        var content = await fs.ReadAllTextAsync("/project/.gitignore");
+        var count = content.Split(".lopen/").Length - 1;
+        Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public async Task EnsureGitignoreEntry_SkipsWhenNoGitignore()
+    {
+        var fs = new InMemoryFileSystem();
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync(); // Should not throw
+
+        Assert.False(fs.FileExists("/project/.gitignore"));
+    }
+
+    [Fact]
+    public async Task EnsureGitignoreEntry_AppendsNewline_WhenFileDoesNotEndWithNewline()
+    {
+        var fs = new InMemoryFileSystem();
+        await fs.WriteAllTextAsync("/project/.gitignore", "node_modules/");
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+
+        var content = await fs.ReadAllTextAsync("/project/.gitignore");
+        Assert.Equal("node_modules/\n.lopen/\n", content);
+    }
+
+    [Fact]
+    public async Task EnsureGitignoreEntry_RecognizesEntryWithoutTrailingSlash()
+    {
+        var fs = new InMemoryFileSystem();
+        await fs.WriteAllTextAsync("/project/.gitignore", ".lopen\n");
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+
+        var content = await fs.ReadAllTextAsync("/project/.gitignore");
+        Assert.Equal(".lopen\n", content); // Should not add duplicate
+    }
+
+    [Fact]
+    public async Task EnsureGitignoreEntry_HandlesEmptyGitignore()
+    {
+        var fs = new InMemoryFileSystem();
+        await fs.WriteAllTextAsync("/project/.gitignore", "");
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+
+        var content = await fs.ReadAllTextAsync("/project/.gitignore");
+        Assert.Equal(".lopen/\n", content);
+    }
+
+    [Fact]
+    public async Task EnsureGitignoreEntry_IgnoresWhitespaceAroundEntry()
+    {
+        var fs = new InMemoryFileSystem();
+        await fs.WriteAllTextAsync("/project/.gitignore", "  .lopen/  \n");
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+
+        var content = await fs.ReadAllTextAsync("/project/.gitignore");
+        Assert.Equal("  .lopen/  \n", content); // Should not add duplicate
+    }
 }

@@ -706,4 +706,45 @@ public class StorageAcceptanceCriteriaTests
         public string? GetSymlinkTarget(string linkPath) => null;
         public DateTime GetLastWriteTimeUtc(string path) => DateTime.MinValue;
     }
+
+    // STOR-22: .lopen/ is automatically added to an existing .gitignore
+
+    [Fact]
+    public async Task AC22_EnsureGitignoreEntry_AddsEntryToExistingGitignore()
+    {
+        var fs = new InMemoryFileSystem();
+        await fs.WriteAllTextAsync("/project/.gitignore", "bin/\nobj/\n");
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+
+        var content = await fs.ReadAllTextAsync("/project/.gitignore");
+        Assert.Contains(".lopen/", content);
+    }
+
+    [Fact]
+    public async Task AC22_EnsureGitignoreEntry_DoesNotCreateGitignore()
+    {
+        var fs = new InMemoryFileSystem();
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+
+        Assert.False(fs.FileExists("/project/.gitignore"));
+    }
+
+    [Fact]
+    public async Task AC22_EnsureGitignoreEntry_IdempotentOnRepeatedCalls()
+    {
+        var fs = new InMemoryFileSystem();
+        await fs.WriteAllTextAsync("/project/.gitignore", "bin/\n");
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+        await initializer.EnsureGitignoreEntryAsync();
+
+        var content = await fs.ReadAllTextAsync("/project/.gitignore");
+        var count = content.Split(".lopen/").Length - 1;
+        Assert.Equal(1, count);
+    }
 }

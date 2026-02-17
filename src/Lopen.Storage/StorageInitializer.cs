@@ -48,4 +48,47 @@ public sealed class StorageInitializer
 
         _logger.LogInformation("Storage directory structure ensured at {Root}", StoragePaths.GetRoot(_projectRoot));
     }
+
+    /// <summary>
+    /// Ensures the .lopen/ entry exists in the project's .gitignore file.
+    /// Only modifies an existing .gitignore — does not create one if missing.
+    /// Idempotent — safe to call multiple times.
+    /// </summary>
+    public async Task EnsureGitignoreEntryAsync(CancellationToken cancellationToken = default)
+    {
+        var gitignorePath = Path.Combine(_projectRoot, ".gitignore");
+
+        if (!_fileSystem.FileExists(gitignorePath))
+        {
+            _logger.LogDebug("No .gitignore found at {Path}, skipping", gitignorePath);
+            return;
+        }
+
+        var content = await _fileSystem.ReadAllTextAsync(gitignorePath, cancellationToken);
+
+        if (HasLopenEntry(content))
+        {
+            _logger.LogDebug(".lopen/ already in .gitignore");
+            return;
+        }
+
+        var newContent = content.Length > 0 && !content.EndsWith('\n')
+            ? content + "\n.lopen/\n"
+            : content + ".lopen/\n";
+
+        await _fileSystem.WriteAllTextAsync(gitignorePath, newContent, cancellationToken);
+        _logger.LogInformation("Added .lopen/ to .gitignore");
+    }
+
+    private static bool HasLopenEntry(string content)
+    {
+        using var reader = new StringReader(content);
+        while (reader.ReadLine() is { } line)
+        {
+            var trimmed = line.Trim();
+            if (trimmed is ".lopen/" or ".lopen")
+                return true;
+        }
+        return false;
+    }
 }
