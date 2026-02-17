@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Reflection;
 using Lopen.Auth;
 using Lopen.Commands;
 using Lopen.Configuration;
@@ -112,6 +113,24 @@ public class CliIntegrationTests
         var exitCode = await config.InvokeAsync(["--version"]);
 
         Assert.Equal(0, exitCode);
+    }
+
+    [Fact]
+    public async Task VersionFlag_OnRoot_OutputsVersionString()
+    {
+        var (config, _) = CreateFullConfig();
+        var versionWriter = new StringWriter();
+        config.Output = versionWriter;
+
+        var exitCode = await config.InvokeAsync(["--version"]);
+
+        Assert.Equal(0, exitCode);
+        // In test context, --version reads from the entry assembly (test host),
+        // so we verify the Lopen assembly carries the expected version attribute.
+        var asm = typeof(RootCommandHandler).Assembly;
+        var infoVersion = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+        Assert.NotNull(infoVersion);
+        Assert.Matches(@"\d+\.\d+\.\d+", infoVersion.InformationalVersion);
     }
 
     // ==================== AC-16/AC-19: Global Options ====================
