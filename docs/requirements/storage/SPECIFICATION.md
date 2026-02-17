@@ -206,9 +206,9 @@ This specification defines **where and how Lopen stores its state**. It does not
 - [ ] [STOR-11] Section cache (`.lopen/cache/sections/`) is keyed by file path + section header + modification timestamp
 - [ ] [STOR-12] Section cache is invalidated when the source file changes
 - [ ] [STOR-13] Assessment cache is short-lived and invalidated on any file change in the assessed scope
-- [ ] [STOR-14] Corrupted session state is detected, warned, and the session is excluded from resume options
+- [x] [STOR-14] Corrupted session state is detected, warned, and the session is excluded from resume options
 - [ ] [STOR-15] Corrupted files are moved to `.lopen/corrupted/` for manual inspection
-- [ ] [STOR-16] Disk full / write failure is treated as a critical system error and pauses the workflow
+- [x] [STOR-16] Disk full / write failure is treated as a critical system error and pauses the workflow
 - [ ] [STOR-17] Corrupted cache entries are silently invalidated and regenerated
 - [ ] [STOR-18] Completed sessions are retained up to the configured `session_retention` limit, then pruned
 - [ ] [STOR-19] Individual sessions can be deleted via `DeleteSessionAsync`, removing the session directory and all files

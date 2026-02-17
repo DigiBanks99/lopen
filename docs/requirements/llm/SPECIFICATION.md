@@ -228,9 +228,9 @@ This specification defines **how Lopen integrates with the LLM backend**. It doe
 - [ ] [LLM-08] `update_task_status(complete)` is rejected unless preceded by a passing `verify_*_completion` call in the same invocation
 - [ ] [LLM-09] Tool registration varies by workflow step (e.g., `log_research` only available during research phases)
 - [ ] [LLM-10] Per-phase model selection works — each phase can use a different configured model
-- [ ] [LLM-11] Model fallback activates when a configured model is unavailable (logs warning, falls back to next available)
+- [x] [LLM-11] Model fallback activates when a configured model is unavailable (logs warning, falls back to next available)
 - [ ] [LLM-12] Token usage metrics (context window usage, premium request count, session totals) are read from SDK response metadata and recorded
-- [ ] [LLM-13] Token metrics are surfaced to the TUI and persisted in session state
+- [x] [LLM-13] Token metrics are surfaced to the TUI and persisted in session state
 - [ ] [LLM-14] Context window budget is respected — lower-priority sections truncated or summarized when context would exceed budget
 
 ---
