@@ -465,30 +465,30 @@ This specification defines the **core workflow and orchestration behavior** of L
 
 ## Acceptance Criteria
 
-- [ ] [CORE-01] Lopen scans `docs/requirements/` and correctly identifies all module specifications
+- [x] [CORE-01] Lopen scans `docs/requirements/` and correctly identifies all module specifications
 - [x] [CORE-02] The 7-step workflow executes in order: Draft Spec → Dependencies → Components → Select → Tasks → Iterate → Repeat
-- [ ] [CORE-03] Re-entrant assessment correctly determines the current workflow step from actual codebase state, not stale session data
-- [ ] [CORE-04] Specification drift detection identifies when spec sections change between iterations and flags the drift to the user
-- [ ] [CORE-05] The Requirement Gathering → Planning phase transition requires explicit user confirmation (human gate)
-- [ ] [CORE-06] Planning → Building transition proceeds automatically when plan is structurally complete
-- [ ] [CORE-07] Building → Complete transition proceeds automatically when all acceptance criteria pass verification
-- [ ] [CORE-08] Task hierarchy supports Module → Component → Task → Subtask levels
-- [ ] [CORE-09] Task state transitions follow: Pending → In Progress → Complete/Failed
-- [ ] [CORE-10] Task completion requires passing oracle verification (`verify_task_completion`) before `update_task_status(complete)` is accepted
-- [ ] [CORE-11] Back-pressure Category 1 (Resource Limits): warns at configured warning threshold, pauses at confirmation threshold
-- [ ] [CORE-12] Back-pressure Category 2 (Progress Integrity): churn detection escalates after configured failure threshold
-- [ ] [CORE-13] Back-pressure Category 2: false completion claims rejected when required tool calls were not made
-- [ ] [CORE-14] Back-pressure Category 3 (Quality Gates): acceptance criteria enforced at module and component completion
-- [ ] [CORE-15] Back-pressure Category 4 (Tool Discipline): corrective instructions injected when wasteful tool patterns detected
-- [ ] [CORE-16] Git auto-commit creates a commit after each task completion when `git.auto_commit` is enabled
-- [ ] [CORE-17] Branch per module creates working branches (e.g., `lopen/auth`) for each module
-- [ ] [CORE-18] `lopen revert` rolls back to the last task-completion commit and updates session state
-- [ ] [CORE-19] Document management extracts relevant sections (not full documents) for LLM context
-- [ ] [CORE-20] Programmatic updates (task checkboxes, status tracking) happen without LLM invocation
-- [ ] [CORE-21] Single task failures display inline and the LLM self-corrects
+- [x] [CORE-03] Re-entrant assessment correctly determines the current workflow step from actual codebase state, not stale session data
+- [x] [CORE-04] Specification drift detection identifies when spec sections change between iterations and flags the drift to the user
+- [x] [CORE-05] The Requirement Gathering → Planning phase transition requires explicit user confirmation (human gate)
+- [x] [CORE-06] Planning → Building transition proceeds automatically when plan is structurally complete
+- [x] [CORE-07] Building → Complete transition proceeds automatically when all acceptance criteria pass verification
+- [x] [CORE-08] Task hierarchy supports Module → Component → Task → Subtask levels
+- [x] [CORE-09] Task state transitions follow: Pending → In Progress → Complete/Failed
+- [x] [CORE-10] Task completion requires passing oracle verification (`verify_task_completion`) before `update_task_status(complete)` is accepted
+- [x] [CORE-11] Back-pressure Category 1 (Resource Limits): warns at configured warning threshold, pauses at confirmation threshold
+- [x] [CORE-12] Back-pressure Category 2 (Progress Integrity): churn detection escalates after configured failure threshold
+- [x] [CORE-13] Back-pressure Category 2: false completion claims rejected when required tool calls were not made
+- [x] [CORE-14] Back-pressure Category 3 (Quality Gates): acceptance criteria enforced at module and component completion
+- [x] [CORE-15] Back-pressure Category 4 (Tool Discipline): corrective instructions injected when wasteful tool patterns detected
+- [x] [CORE-16] Git auto-commit creates a commit after each task completion when `git.auto_commit` is enabled
+- [x] [CORE-17] Branch per module creates working branches (e.g., `lopen/auth`) for each module
+- [x] [CORE-18] `lopen revert` rolls back to the last task-completion commit and updates session state
+- [x] [CORE-19] Document management extracts relevant sections (not full documents) for LLM context
+- [x] [CORE-20] Programmatic updates (task checkboxes, status tracking) happen without LLM invocation
+- [x] [CORE-21] Single task failures display inline and the LLM self-corrects
 - [x] [CORE-22] Repeated task failures (at threshold) prompt user intervention
 - [x] [CORE-23] Critical system errors block execution and require user action
-- [ ] [CORE-24] Module selection lists modules with current state and allows user to choose
+- [x] [CORE-24] Module selection lists modules with current state and allows user to choose
 - [x] [CORE-25] Lopen-managed tool definitions are registered with the Copilot SDK session so the SDK can invoke tool handlers during `SendAndWaitAsync` — tools with bound `Handler` delegates are converted to SDK-native tool registrations before each invocation
 
 ---
