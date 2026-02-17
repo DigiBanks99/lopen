@@ -1602,6 +1602,182 @@ public class WorkflowOrchestratorTests
         Assert.Equal(_llmService.Invocations.Count, _promptBuilder.BuildCount);
     }
 
+    // --- CORE-02: End-to-End Workflow Pipeline Integration Tests ---
+
+    [Fact]
+    public async Task EndToEnd_SpecPlanBuild_ExecutesAllPhases()
+    {
+        // Integration test: run the orchestrator through all three phases (spec → plan → build)
+        // using fresh stubs for each run to track phase-specific LLM invocations.
+
+        // Phase 1: RequirementGathering — DraftSpecification invokes LLM when spec not yet approved
+        _engine.CurrentStep = WorkflowStep.DraftSpecification;
+        _phaseController.SpecApproved = false;
+        var sut = CreateOrchestrator();
+
+        var specResult = await sut.RunAsync("test-module");
+
+        Assert.True(specResult.WasInterrupted, "Spec phase should interrupt for user confirmation");
+        Assert.Contains(WorkflowPhase.RequirementGathering, _promptBuilder.PhasesInvoked);
+        Assert.Contains(WorkflowPhase.RequirementGathering, _toolRegistry.PhasesRequested);
+        Assert.Contains(WorkflowPhase.RequirementGathering, _modelSelector.PhasesRequested);
+
+        // Phase 2: Planning — DetermineDependencies through BreakIntoTasks
+        _promptBuilder.PhasesInvoked.Clear();
+        _toolRegistry.PhasesRequested.Clear();
+        _modelSelector.PhasesRequested.Clear();
+        _llmService.InvokeCount = 0;
+
+        _engine.CurrentStep = WorkflowStep.DetermineDependencies;
+        _engine.StepsBeforeComplete = 1;
+        _engine.FiredTriggers.Clear();
+        sut = CreateOrchestrator();
+
+        var planResult = await sut.RunAsync("test-module");
+
+        Assert.True(planResult.IsComplete);
+        Assert.Contains(WorkflowPhase.Planning, _promptBuilder.PhasesInvoked);
+        Assert.Contains(WorkflowPhase.Planning, _toolRegistry.PhasesRequested);
+        Assert.Contains(WorkflowPhase.Planning, _modelSelector.PhasesRequested);
+        Assert.True(_llmService.InvokeCount > 0, "LLM should be invoked during planning phase");
+
+        // Phase 3: Building — IterateThroughTasks
+        _promptBuilder.PhasesInvoked.Clear();
+        _toolRegistry.PhasesRequested.Clear();
+        _modelSelector.PhasesRequested.Clear();
+        _llmService.InvokeCount = 0;
+
+        _engine.IsComplete = false;
+        _engine.CurrentStep = WorkflowStep.IterateThroughTasks;
+        _engine.StepsBeforeComplete = 2; // Accounts for accumulated fire count from Phase 2
+        _engine.FiredTriggers.Clear();
+        sut = CreateOrchestrator();
+
+        var buildResult = await sut.RunAsync("test-module");
+
+        Assert.True(buildResult.IsComplete);
+        Assert.Contains(WorkflowPhase.Building, _promptBuilder.PhasesInvoked);
+        Assert.Contains(WorkflowPhase.Building, _toolRegistry.PhasesRequested);
+        Assert.Contains(WorkflowPhase.Building, _modelSelector.PhasesRequested);
+        Assert.True(_llmService.InvokeCount > 0, "LLM should be invoked during building phase");
+    }
+
+    [Fact]
+    public async Task EndToEnd_PhaseTransition_UpdatesEngineState()
+    {
+        // Integration test using the REAL WorkflowEngine (Stateless state machine)
+        // to verify state transitions across the full spec → plan → build pipeline.
+        var assessor = new StubStateAssessor();
+        var realEngine = new WorkflowEngine(assessor, NullLogger<WorkflowEngine>.Instance);
+        await realEngine.InitializeAsync("test-module");
+
+        // Start: DraftSpecification (RequirementGathering phase)
+        Assert.Equal(WorkflowStep.DraftSpecification, realEngine.CurrentStep);
+        Assert.Equal(WorkflowPhase.RequirementGathering, realEngine.CurrentPhase);
+
+        // Transition to Planning: SpecApproved → DetermineDependencies
+        Assert.True(realEngine.Fire(WorkflowTrigger.SpecApproved));
+        Assert.Equal(WorkflowStep.DetermineDependencies, realEngine.CurrentStep);
+        Assert.Equal(WorkflowPhase.Planning, realEngine.CurrentPhase);
+
+        // Continue through Planning steps
+        Assert.True(realEngine.Fire(WorkflowTrigger.DependenciesDetermined));
+        Assert.Equal(WorkflowStep.IdentifyComponents, realEngine.CurrentStep);
+        Assert.Equal(WorkflowPhase.Planning, realEngine.CurrentPhase);
+
+        Assert.True(realEngine.Fire(WorkflowTrigger.ComponentsIdentified));
+        Assert.Equal(WorkflowStep.SelectNextComponent, realEngine.CurrentStep);
+        Assert.Equal(WorkflowPhase.Planning, realEngine.CurrentPhase);
+
+        Assert.True(realEngine.Fire(WorkflowTrigger.ComponentSelected));
+        Assert.Equal(WorkflowStep.BreakIntoTasks, realEngine.CurrentStep);
+        Assert.Equal(WorkflowPhase.Planning, realEngine.CurrentPhase);
+
+        // Transition to Building: TasksBrokenDown → IterateThroughTasks
+        Assert.True(realEngine.Fire(WorkflowTrigger.TasksBrokenDown));
+        Assert.Equal(WorkflowStep.IterateThroughTasks, realEngine.CurrentStep);
+        Assert.Equal(WorkflowPhase.Building, realEngine.CurrentPhase);
+
+        // Task iteration re-entry (stays in Building)
+        Assert.True(realEngine.Fire(WorkflowTrigger.TaskIterationComplete));
+        Assert.Equal(WorkflowStep.IterateThroughTasks, realEngine.CurrentStep);
+        Assert.Equal(WorkflowPhase.Building, realEngine.CurrentPhase);
+
+        // Component complete → Repeat
+        Assert.True(realEngine.Fire(WorkflowTrigger.ComponentComplete));
+        Assert.Equal(WorkflowStep.Repeat, realEngine.CurrentStep);
+        Assert.Equal(WorkflowPhase.Building, realEngine.CurrentPhase);
+
+        // Loop back → SelectNextComponent (still Planning-mapped but in the build loop)
+        Assert.True(realEngine.Fire(WorkflowTrigger.Assess));
+        Assert.Equal(WorkflowStep.SelectNextComponent, realEngine.CurrentStep);
+
+        // Verify engine is not marked complete until ModuleComplete fires
+        Assert.False(realEngine.IsComplete);
+    }
+
+    [Fact]
+    public async Task EndToEnd_TaskCompletion_TriggersVerification()
+    {
+        // Integration test: simulate the full task completion flow.
+        // Phase A: IterateThroughTasks — LLM returns tool calls (simulating update_task_status).
+        // Phase B: Repeat — no more components → fires ModuleComplete.
+        // Verifies the orchestrator drives through task iteration into verification.
+
+        var promptBuilder = new StubPromptBuilder();
+        var toolRegistry = new StubToolRegistry();
+
+        // LLM returns output with tool calls (simulating update_task_status)
+        var llmService = new StubLlmService
+        {
+            Result = new LlmInvocationResult(
+                "Task completed: implemented feature X",
+                new TokenUsage(200, 100, 300, 8000, false),
+                3,  // ToolCallsMade — simulates tool calls including update_task_status
+                true)
+        };
+
+        // Phase A: Run one iteration at IterateThroughTasks
+        var engine = new StubWorkflowEngine
+        {
+            CurrentStep = WorkflowStep.IterateThroughTasks,
+            StepsBeforeComplete = 1
+        };
+        var phaseController = new StubPhaseTransitionController { SpecApproved = true };
+
+        var sut = new WorkflowOrchestrator(
+            engine, _assessor, llmService, promptBuilder, toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance);
+
+        var iterResult = await sut.RunAsync("test-module");
+
+        Assert.True(iterResult.IsComplete);
+        Assert.True(llmService.InvokeCount >= 1, "LLM should be invoked for task iteration");
+        Assert.Contains(WorkflowPhase.Building, promptBuilder.PhasesInvoked);
+        Assert.Contains(WorkflowTrigger.TaskIterationComplete, engine.FiredTriggers);
+
+        // Phase B: Repeat step checks for remaining components → triggers ModuleComplete
+        _assessor.HasMoreComponents = false;
+        var repeatEngine = new StubWorkflowEngine
+        {
+            CurrentStep = WorkflowStep.Repeat,
+            StepsBeforeComplete = 1
+        };
+        llmService.InvokeCount = 0;
+
+        sut = new WorkflowOrchestrator(
+            repeatEngine, _assessor, llmService, promptBuilder, toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance);
+
+        var repeatResult = await sut.RunAsync("test-module");
+
+        Assert.True(repeatResult.IsComplete);
+        // When no more components, the Repeat step fires ModuleComplete
+        Assert.Contains(WorkflowTrigger.ModuleComplete, repeatEngine.FiredTriggers);
+    }
+
     private sealed class StubWorkflowEngine : IWorkflowEngine
     {
         public WorkflowStep CurrentStep { get; set; } = WorkflowStep.DraftSpecification;
@@ -1663,7 +1839,7 @@ public class WorkflowOrchestratorTests
 
     private sealed class StubLlmService : ILlmService
     {
-        public int InvokeCount { get; private set; }
+        public int InvokeCount { get; set; }
         public bool ThrowOnInvoke { get; set; }
         public int FailUntilInvokeCount { get; set; }
         public LlmInvocationResult? Result { get; set; }
@@ -1689,23 +1865,27 @@ public class WorkflowOrchestratorTests
     {
         public int BuildCount { get; private set; }
         public IReadOnlyDictionary<string, string>? LastContextSections { get; private set; }
+        public List<WorkflowPhase> PhasesInvoked { get; } = [];
 
         public string BuildSystemPrompt(WorkflowPhase phase, string module, string? component, string? task,
             IReadOnlyDictionary<string, string>? contextSections = null)
         {
             BuildCount++;
             LastContextSections = contextSections;
-            return "Test prompt";
+            PhasesInvoked.Add(phase);
+            return $"Test prompt for {phase}";
         }
     }
 
     private sealed class StubToolRegistry : IToolRegistry
     {
         public int GetToolsCount { get; private set; }
+        public List<WorkflowPhase> PhasesRequested { get; } = [];
 
         public IReadOnlyList<LopenToolDefinition> GetToolsForPhase(WorkflowPhase phase)
         {
             GetToolsCount++;
+            PhasesRequested.Add(phase);
             return [];
         }
 
@@ -1717,10 +1897,12 @@ public class WorkflowOrchestratorTests
     private sealed class StubModelSelector : IModelSelector
     {
         public int SelectCount { get; private set; }
+        public List<WorkflowPhase> PhasesRequested { get; } = [];
 
         public ModelFallbackResult SelectModel(WorkflowPhase phase)
         {
             SelectCount++;
+            PhasesRequested.Add(phase);
             return new ModelFallbackResult("gpt-4", false);
         }
     }
