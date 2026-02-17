@@ -12,10 +12,12 @@ using Microsoft.Extensions.Hosting;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+var projectRoot = Lopen.ProjectRootDiscovery.FindProjectRoot(Directory.GetCurrentDirectory());
+
 builder.Services.AddLopenConfiguration();
 builder.Services.AddLopenAuth();
-builder.Services.AddLopenCore();
-builder.Services.AddLopenStorage();
+builder.Services.AddLopenCore(projectRoot);
+builder.Services.AddLopenStorage(projectRoot);
 builder.Services.AddLopenLlm();
 builder.Services.AddLopenTui();
 builder.Services.UseRealTui();
