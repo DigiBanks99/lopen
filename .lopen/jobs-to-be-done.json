@@ -715,9 +715,9 @@
     "requirement_code": "STOR-20",
     "requirement_module": "storage",
     "description": "Wire research document storage at docs/requirements/{module}/RESEARCH-{topic}.md from LLM log_research tool",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "The log_research tool handler (JOB-003) should persist research to the file system at the specified path."
+    "notes": "HandleLogResearch now sanitizes topics and updates RESEARCH.md index with links to all RESEARCH-*.md files. 8 new tests (4 sanitization + 4 index). All 1998 tests pass."
   },
   {
     "id": "JOB-081",

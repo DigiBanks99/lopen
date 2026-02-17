@@ -758,6 +758,88 @@ public class ToolHandlerBinderTests
         Assert.False(result);
     }
 
+    // --- SanitizeTopicSlug tests ---
+
+    [Fact]
+    public void SanitizeTopicSlug_RemovesSpecialChars()
+    {
+        Assert.Equal("hello-world", ToolHandlerBinder.SanitizeTopicSlug("hello world!"));
+    }
+
+    [Fact]
+    public void SanitizeTopicSlug_CollapsesMultipleHyphens()
+    {
+        Assert.Equal("foo-bar", ToolHandlerBinder.SanitizeTopicSlug("foo--bar"));
+    }
+
+    [Fact]
+    public void SanitizeTopicSlug_TrimsHyphens()
+    {
+        Assert.Equal("test", ToolHandlerBinder.SanitizeTopicSlug("-test-"));
+    }
+
+    [Fact]
+    public void SanitizeTopicSlug_PreservesValidChars()
+    {
+        Assert.Equal("auth-jwt_v2", ToolHandlerBinder.SanitizeTopicSlug("auth-jwt_v2"));
+    }
+
+    // --- ResearchIndex tests ---
+
+    [Fact]
+    public async Task HandleLogResearch_SanitizesTopic_InFilename()
+    {
+        var binder = CreateBinder();
+
+        var result = await binder.HandleLogResearch(
+            """{"module":"core","topic":"my research topic","content":"# Content"}""", CancellationToken.None);
+
+        Assert.Contains("success", result);
+        Assert.True(_fileSystem.Files.ContainsKey("/test/project/docs/requirements/core/RESEARCH-my-research-topic.md"));
+    }
+
+    [Fact]
+    public async Task HandleLogResearch_CreatesResearchIndex()
+    {
+        var binder = CreateBinder();
+
+        await binder.HandleLogResearch(
+            """{"module":"core","topic":"api","content":"# API findings"}""", CancellationToken.None);
+
+        var indexPath = "/test/project/docs/requirements/core/RESEARCH.md";
+        Assert.True(_fileSystem.Files.ContainsKey(indexPath));
+        var index = _fileSystem.Files[indexPath];
+        Assert.Contains("Research Index", index);
+        Assert.Contains("[api](RESEARCH-api.md)", index);
+    }
+
+    [Fact]
+    public async Task HandleLogResearch_IndexContainsAllFiles()
+    {
+        var binder = CreateBinder();
+
+        await binder.HandleLogResearch(
+            """{"module":"core","topic":"api","content":"# API"}""", CancellationToken.None);
+        await binder.HandleLogResearch(
+            """{"module":"core","topic":"auth","content":"# Auth"}""", CancellationToken.None);
+
+        var indexPath = "/test/project/docs/requirements/core/RESEARCH.md";
+        var index = _fileSystem.Files[indexPath];
+        Assert.Contains("[api](RESEARCH-api.md)", index);
+        Assert.Contains("[auth](RESEARCH-auth.md)", index);
+    }
+
+    [Fact]
+    public async Task UpdateResearchIndex_EmptyDirectory_NoIndexCreated()
+    {
+        var binder = CreateBinder();
+        var emptyDir = "/test/project/docs/requirements/empty";
+
+        await binder.UpdateResearchIndexAsync(emptyDir, CancellationToken.None);
+
+        Assert.False(_fileSystem.Files.ContainsKey(Path.Combine(emptyDir, "RESEARCH.md")));
+    }
+
     // --- Stubs ---
 
     private sealed class RegisteredOnlyToolRegistry : IToolRegistry
@@ -822,7 +904,14 @@ public class ToolHandlerBinderTests
             Files[path] = content;
             return Task.CompletedTask;
         }
-        public IEnumerable<string> GetFiles(string path, string searchPattern = "*") => [];
+        public IEnumerable<string> GetFiles(string path, string searchPattern = "*")
+        {
+            var regex = "^" + System.Text.RegularExpressions.Regex.Escape(searchPattern).Replace("\\*", ".*") + "$";
+            return Files.Keys
+                .Where(f => f.StartsWith(path, StringComparison.OrdinalIgnoreCase))
+                .Where(f => System.Text.RegularExpressions.Regex.IsMatch(
+                    System.IO.Path.GetFileName(f), regex, System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+        }
         public IEnumerable<string> GetDirectories(string path) => [];
         public void MoveFile(string source, string dest) { }
         public void DeleteFile(string path) => Files.Remove(path);

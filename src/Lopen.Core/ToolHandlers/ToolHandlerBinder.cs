@@ -273,14 +273,51 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
         if (string.IsNullOrWhiteSpace(content))
             return JsonResult("error", "content is required");
 
+        // Sanitize topic for use in filename
+        var sanitizedTopic = SanitizeTopicSlug(topic);
+
         var researchDir = Path.Combine(_projectRoot, "docs", "requirements", module);
         _fileSystem.CreateDirectory(researchDir);
 
-        var filePath = Path.Combine(researchDir, $"RESEARCH-{topic}.md");
+        var filePath = Path.Combine(researchDir, $"RESEARCH-{sanitizedTopic}.md");
         await _fileSystem.WriteAllTextAsync(filePath, content, ct);
 
+        // Update the RESEARCH.md index
+        await UpdateResearchIndexAsync(researchDir, ct);
+
         _logger.LogInformation("Research logged to {Path}", filePath);
-        return JsonResult("success", $"Research saved to RESEARCH-{topic}.md");
+        return JsonResult("success", $"Research saved to RESEARCH-{sanitizedTopic}.md");
+    }
+
+    internal static string SanitizeTopicSlug(string topic)
+    {
+        // Replace spaces and special chars with hyphens, collapse multiples, trim
+        var slug = System.Text.RegularExpressions.Regex.Replace(topic.Trim(), @"[^a-zA-Z0-9\-_]", "-");
+        slug = System.Text.RegularExpressions.Regex.Replace(slug, @"-{2,}", "-");
+        return slug.Trim('-');
+    }
+
+    internal async Task UpdateResearchIndexAsync(string researchDir, CancellationToken ct)
+    {
+        var files = _fileSystem.GetFiles(researchDir, "RESEARCH-*.md")
+            .Select(Path.GetFileName)
+            .Where(f => f is not null)
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (files.Count == 0) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("# Research Index");
+        sb.AppendLine();
+        foreach (var file in files)
+        {
+            var topicName = file!.Replace("RESEARCH-", "").Replace(".md", "");
+            sb.AppendLine($"- [{topicName}]({file})");
+        }
+
+        var indexPath = Path.Combine(researchDir, "RESEARCH.md");
+        await _fileSystem.WriteAllTextAsync(indexPath, sb.ToString(), ct);
     }
 
     internal Task<string> HandleReportProgress(string parameters, CancellationToken ct)
