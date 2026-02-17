@@ -89,6 +89,10 @@ internal sealed class TuiApplication : ITuiApplication
 
     public bool IsRunning => _running;
 
+    internal TuiModalState CurrentModalState => _modalState;
+    internal ErrorModalData CurrentErrorModalData => _errorModalData;
+    internal void DismissModal() => _modalState = TuiModalState.None;
+
     // Allow test injection of the terminal factory
     internal Func<ITerminal>? TerminalFactory { get; set; }
 
