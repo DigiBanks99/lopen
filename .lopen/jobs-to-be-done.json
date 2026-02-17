@@ -4,18 +4,18 @@
     "requirement_code": "AUTH-10",
     "requirement_module": "auth",
     "description": "Wire IAuthService.ValidateAsync into workflow orchestrator pre-flight \u2014 call ValidateAsync before starting any workflow phase so missing/invalid credentials block execution",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "ValidateAsync exists in CopilotAuthService but grep shows it is not called in WorkflowOrchestrator, RootCommandHandler, or PhaseCommands. The mechanism exists but is not wired into the pre-flight path."
+    "notes": "ValidateAsync exists in CopilotAuthService but grep shows it is not called in WorkflowOrchestrator, RootCommandHandler, or PhaseCommands. The mechanism exists but is not wired into the pre-flight path. [COMPLETED: ValidateAuthAsync wired into PhaseCommands and RootCommandHandler with tests]"
   },
   {
     "id": "JOB-002",
     "requirement_code": "AUTH-10",
     "requirement_module": "auth",
     "description": "Add integration tests verifying pre-flight auth check blocks workflow when credentials are missing or invalid",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "Unit tests exist for ValidateAsync itself (throws for NotAuthenticated/InvalidCredentials) but no test verifies the orchestrator calls it before starting work."
+    "notes": "Unit tests exist for ValidateAsync itself (throws for NotAuthenticated/InvalidCredentials) but no test verifies the orchestrator calls it before starting work. [COMPLETED: ValidateAuthAsync wired into PhaseCommands and RootCommandHandler with tests]"
   },
   {
     "id": "JOB-003",

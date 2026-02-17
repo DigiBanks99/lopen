@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Lopen.Auth;
 using Lopen.Core.Workflow;
 using Lopen.Otel;
 using Lopen.Storage;
@@ -28,6 +29,13 @@ public static class PhaseCommands
                 var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
                 if (headlessError is not null)
                     return headlessError.Value;
+
+                var authError = await ValidateAuthAsync(services, cancellationToken);
+                if (authError is not null)
+                {
+                    await stderr.WriteLineAsync(authError);
+                    return ExitCodes.Failure;
+                }
 
                 var (sessionId, resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
                 if (resolveError is not null)
@@ -96,6 +104,13 @@ public static class PhaseCommands
                 var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
                 if (headlessError is not null)
                     return headlessError.Value;
+
+                var authError = await ValidateAuthAsync(services, cancellationToken);
+                if (authError is not null)
+                {
+                    await stderr.WriteLineAsync(authError);
+                    return ExitCodes.Failure;
+                }
 
                 var (sessionId, resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
                 if (resolveError is not null)
@@ -172,6 +187,13 @@ public static class PhaseCommands
                 if (headlessError is not null)
                     return headlessError.Value;
 
+                var authError = await ValidateAuthAsync(services, cancellationToken);
+                if (authError is not null)
+                {
+                    await stderr.WriteLineAsync(authError);
+                    return ExitCodes.Failure;
+                }
+
                 var (sessionId, resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
                 if (resolveError is not null)
                 {
@@ -235,6 +257,29 @@ public static class PhaseCommands
         });
 
         return build;
+    }
+
+    /// <summary>
+    /// Validates that authentication credentials are present and valid.
+    /// Returns an error message if validation fails, null if valid.
+    /// Skips the check gracefully if the auth module is not registered.
+    /// </summary>
+    internal static async Task<string?> ValidateAuthAsync(
+        IServiceProvider services, CancellationToken cancellationToken)
+    {
+        var authService = services.GetService<IAuthService>();
+        if (authService is null)
+            return null;
+
+        try
+        {
+            await authService.ValidateAsync(cancellationToken);
+            return null;
+        }
+        catch (AuthenticationException ex)
+        {
+            return ex.Message;
+        }
     }
 
     /// <summary>

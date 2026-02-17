@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Lopen.Auth;
 using Lopen.Cli.Tests.Fakes;
 using Lopen.Commands;
 using Lopen.Core.Workflow;
@@ -410,5 +411,94 @@ public class PhaseCommandTests
 
         Assert.Equal(0, exitCode);
         Assert.Null(_fakeOrchestrator.LastPrompt);
+    }
+
+    // ==================== AUTH PRE-FLIGHT TESTS (AUTH-10) ====================
+
+    private (CommandLineConfiguration config, StringWriter output, StringWriter error, FakeAuthService auth) CreateConfigWithAuth(
+        FakeAuthService? authService = null)
+    {
+        var auth = authService ?? new FakeAuthService();
+        var services = new ServiceCollection();
+        services.AddSingleton<ISessionManager>(_fakeSessionManager);
+        services.AddSingleton<IModuleScanner>(_fakeModuleScanner);
+        services.AddSingleton<IPlanManager>(_fakePlanManager);
+        services.AddSingleton<IWorkflowOrchestrator>(_fakeOrchestrator);
+        services.AddSingleton<IAuthService>(auth);
+        var provider = services.BuildServiceProvider();
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+
+        var root = new RootCommand("test");
+        GlobalOptions.AddTo(root);
+        root.Add(PhaseCommands.CreateSpec(provider, output, error));
+        root.Add(PhaseCommands.CreatePlan(provider, output, error));
+        root.Add(PhaseCommands.CreateBuild(provider, output, error));
+
+        var config = new CommandLineConfiguration(root);
+        return (config, output, error, auth);
+    }
+
+    [Theory]
+    [InlineData("spec")]
+    [InlineData("plan")]
+    [InlineData("build")]
+    public async Task Command_AuthFails_ReturnsExitCode1(string command)
+    {
+        var auth = new FakeAuthService
+        {
+            ValidateException = new AuthenticationException("Not authenticated. Run 'lopen auth login' or set GH_TOKEN.")
+        };
+        var (config, _, error, _) = CreateConfigWithAuth(auth);
+
+        var exitCode = await config.InvokeAsync([command]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Not authenticated", error.ToString());
+        Assert.True(auth.ValidateCalled);
+    }
+
+    [Theory]
+    [InlineData("spec")]
+    [InlineData("plan")]
+    [InlineData("build")]
+    public async Task Command_AuthSucceeds_CallsValidate(string command)
+    {
+        var (config, _, error, auth) = CreateConfigWithAuth();
+
+        await config.InvokeAsync([command]);
+
+        Assert.True(auth.ValidateCalled);
+        // Auth check passes; subsequent errors (no session, no spec) are expected for plan/build
+        Assert.DoesNotContain("Not authenticated", error.ToString());
+    }
+
+    [Fact]
+    public async Task Spec_NoAuthService_SkipsAuthCheck()
+    {
+        // Default CreateConfig() does not register IAuthService
+        var (config, output, error) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["spec"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Empty(error.ToString());
+    }
+
+    [Fact]
+    public async Task Command_AuthFails_OrchestratorNotCalled()
+    {
+        var auth = new FakeAuthService
+        {
+            ValidateException = new AuthenticationException("Invalid credentials.")
+        };
+        _fakeSessionManager.AddSession(Session1, ActiveState);
+        _fakeSessionManager.SetLatestSessionId(Session1);
+        var (config, _, _, _) = CreateConfigWithAuth(auth);
+
+        await config.InvokeAsync(["spec"]);
+
+        Assert.Null(_fakeOrchestrator.LastModule);
     }
 }

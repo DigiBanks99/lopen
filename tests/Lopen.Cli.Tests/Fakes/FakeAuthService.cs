@@ -17,6 +17,7 @@ internal sealed class FakeAuthService : IAuthService
     public Exception? LoginException { get; set; }
     public Exception? LogoutException { get; set; }
     public Exception? StatusException { get; set; }
+    public Exception? ValidateException { get; set; }
 
     public Task LoginAsync(CancellationToken cancellationToken = default)
     {
@@ -45,6 +46,8 @@ internal sealed class FakeAuthService : IAuthService
     public Task ValidateAsync(CancellationToken cancellationToken = default)
     {
         ValidateCalled = true;
+        if (ValidateException is not null)
+            throw ValidateException;
         return Task.CompletedTask;
     }
 }

@@ -330,7 +330,96 @@ public class RootCommandTests
         Assert.Equal("fix the bug", tui.InitialPrompt);
     }
 
+    // ==================== AUTH PRE-FLIGHT TESTS (AUTH-10) ====================
+
+    private static (CommandLineConfiguration config, StringWriter output, StringWriter error, FakeTuiApplication tui) CreateConfigWithAuth(
+        IAuthService authService, ISessionManager? sessionManager = null, IWorkflowOrchestrator? orchestrator = null)
+    {
+        var builder = Host.CreateApplicationBuilder([]);
+        builder.Services.AddLopenConfiguration();
+        builder.Services.AddLopenAuth();
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage();
+        builder.Services.AddLopenLlm();
+
+        // Override the real auth service with the provided one
+        builder.Services.AddSingleton(authService);
+
+        var fakeTui = new FakeTuiApplication();
+        builder.Services.AddSingleton<ITuiApplication>(fakeTui);
+
+        if (sessionManager is not null)
+            builder.Services.AddSingleton(sessionManager);
+
+        if (orchestrator is not null)
+            builder.Services.AddSingleton(orchestrator);
+
+        var host = builder.Build();
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+
+        var rootCommand = new RootCommand("Lopen — test");
+        GlobalOptions.AddTo(rootCommand);
+        RootCommandHandler.Configure(host.Services, output, error)(rootCommand);
+
+        return (new CommandLineConfiguration(rootCommand), output, error, fakeTui);
+    }
+
+    [Fact]
+    public async Task RootCommand_Interactive_AuthFails_ReturnsFailure()
+    {
+        var authService = new FailingAuthService("Not authenticated. Run 'lopen auth login' or set GH_TOKEN.");
+        var (config, _, error, tui) = CreateConfigWithAuth(authService);
+
+        var exitCode = await config.InvokeAsync([]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Not authenticated", error.ToString());
+        Assert.False(tui.RunWasCalled, "TUI should not launch when auth fails");
+    }
+
+    [Fact]
+    public async Task RootCommand_Headless_AuthFails_ReturnsFailure()
+    {
+        var authService = new FailingAuthService("Invalid credentials.");
+        var sessionManager = new FakeSessionManager();
+        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
+        {
+            SessionId = "testmod-20260101-001",
+            Module = "testmod",
+            Phase = "building",
+            Step = "6",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await sessionManager.SetLatestAsync(sessionId);
+
+        var (config, _, error, tui) = CreateConfigWithAuth(authService, sessionManager);
+
+        var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Invalid credentials", error.ToString());
+        Assert.False(tui.RunWasCalled);
+    }
+
     // ==================== Test Fakes ====================
+
+    private sealed class FailingAuthService : IAuthService
+    {
+        private readonly string _errorMessage;
+
+        public FailingAuthService(string errorMessage) => _errorMessage = errorMessage;
+
+        public Task LoginAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task LogoutAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<AuthStatusResult> GetStatusAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(new AuthStatusResult(AuthState.NotAuthenticated, AuthCredentialSource.None));
+        public Task ValidateAsync(CancellationToken cancellationToken = default)
+            => throw new AuthenticationException(_errorMessage);
+    }
 
     private sealed class FakeTuiApplication : ITuiApplication
     {

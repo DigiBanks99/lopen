@@ -155,7 +155,7 @@ All auth errors must include:
 - [x] [AUTH-07] Authentication via `GITHUB_TOKEN` environment variable works when `GH_TOKEN` is not set
 - [x] [AUTH-08] `GH_TOKEN` takes precedence over `GITHUB_TOKEN` when both are set
 - [x] [AUTH-09] Environment variables take precedence over SDK-stored credentials
-- [ ] [AUTH-10] Pre-flight auth check blocks workflow start when credentials are missing or invalid
+- [x] [AUTH-10] Pre-flight auth check blocks workflow start when credentials are missing or invalid
 - [x] [AUTH-11] Automatic token renewal transparently refreshes expired credentials during active sessions
 - [x] [AUTH-12] Failed automatic renewal (revoked token) triggers a critical error, saves session state, and informs the user
 - [x] [AUTH-13] All auth error messages include what failed, why, and how to fix

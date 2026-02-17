@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Lopen.Auth;
 using Lopen.Core.Workflow;
 using Lopen.Otel;
 using Lopen.Storage;
@@ -45,10 +46,26 @@ public static class RootCommandHandler
                             return headlessError.Value;
                         }
 
+                        var authError = await PhaseCommands.ValidateAuthAsync(services, cancellationToken);
+                        if (authError is not null)
+                        {
+                            await stderr.WriteLineAsync(authError);
+                            SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
+                            return ExitCodes.Failure;
+                        }
+
                         exitCode = await RunHeadlessAsync(services, parseResult, stdout, stderr, cancellationToken);
                     }
                     else
                     {
+                        var authError = await PhaseCommands.ValidateAuthAsync(services, cancellationToken);
+                        if (authError is not null)
+                        {
+                            await stderr.WriteLineAsync(authError);
+                            SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
+                            return ExitCodes.Failure;
+                        }
+
                         var (sessionId, resolveError) = await PhaseCommands.ResolveSessionAsync(
                             services, parseResult, cancellationToken);
                         if (resolveError is not null)

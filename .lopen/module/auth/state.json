@@ -11,7 +11,17 @@
         "JOB-018"
       ],
       "notes": "Token renewal via SDK retry mechanism; failed renewal saves state and aborts"
+    },
+    "pre_flight_auth_check": {
+      "status": "complete",
+      "implementation": "ValidateAuthAsync helper in PhaseCommands; wired into spec/plan/build commands and RootCommandHandler (headless + interactive)",
+      "tests": "PhaseCommandTests (AUTH-10: 6 tests), RootCommandTests (AUTH-10: 2 tests)",
+      "jobs": [
+        "JOB-001",
+        "JOB-002"
+      ],
+      "notes": "Calls IAuthService.ValidateAsync before workflow execution; gracefully skips when auth module not registered"
     }
   },
-  "last_updated": "2026-02-16T03:58:37Z"
+  "last_updated": "2026-02-17T17:59:54Z"
 }
