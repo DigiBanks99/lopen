@@ -161,4 +161,80 @@ public sealed class DefaultToolRegistryTests
 
         Assert.DoesNotContain(tools, t => t.Name == "read_plan");
     }
+
+    [Fact]
+    public void GetToolsForPhase_Building_IncludesReadPlan()
+    {
+        var tools = _registry.GetToolsForPhase(WorkflowPhase.Building);
+
+        Assert.Contains(tools, t => t.Name == "read_plan");
+    }
+
+    [Fact]
+    public void GetToolsForPhase_RequirementGathering_ExcludesReadPlan()
+    {
+        var tools = _registry.GetToolsForPhase(WorkflowPhase.RequirementGathering);
+
+        Assert.DoesNotContain(tools, t => t.Name == "read_plan");
+    }
+
+    [Theory]
+    [InlineData(WorkflowPhase.RequirementGathering)]
+    [InlineData(WorkflowPhase.Planning)]
+    [InlineData(WorkflowPhase.Building)]
+    [InlineData(WorkflowPhase.Research)]
+    public void GetToolsForPhase_AllPhases_IncludeReportProgress(WorkflowPhase phase)
+    {
+        var tools = _registry.GetToolsForPhase(phase);
+
+        Assert.Contains(tools, t => t.Name == "report_progress");
+    }
+
+    [Theory]
+    [InlineData(WorkflowPhase.RequirementGathering)]
+    [InlineData(WorkflowPhase.Planning)]
+    [InlineData(WorkflowPhase.Building)]
+    [InlineData(WorkflowPhase.Research)]
+    public void GetToolsForPhase_AllPhases_IncludeGetCurrentContext(WorkflowPhase phase)
+    {
+        var tools = _registry.GetToolsForPhase(phase);
+
+        Assert.Contains(tools, t => t.Name == "get_current_context");
+    }
+
+    [Theory]
+    [InlineData(WorkflowPhase.RequirementGathering)]
+    [InlineData(WorkflowPhase.Planning)]
+    [InlineData(WorkflowPhase.Building)]
+    [InlineData(WorkflowPhase.Research)]
+    public void GetToolsForPhase_AllPhases_IncludeReadResearch(WorkflowPhase phase)
+    {
+        var tools = _registry.GetToolsForPhase(phase);
+
+        Assert.Contains(tools, t => t.Name == "read_research");
+    }
+
+    [Fact]
+    public void GetToolsForPhase_RequirementGathering_ExcludesUpdateTaskStatus()
+    {
+        var tools = _registry.GetToolsForPhase(WorkflowPhase.RequirementGathering);
+
+        Assert.DoesNotContain(tools, t => t.Name == "update_task_status");
+    }
+
+    [Fact]
+    public void GetToolsForPhase_Research_ExcludesUpdateTaskStatus()
+    {
+        var tools = _registry.GetToolsForPhase(WorkflowPhase.Research);
+
+        Assert.DoesNotContain(tools, t => t.Name == "update_task_status");
+    }
+
+    [Fact]
+    public void GetToolsForPhase_Planning_ExcludesLogResearch()
+    {
+        var tools = _registry.GetToolsForPhase(WorkflowPhase.Planning);
+
+        Assert.DoesNotContain(tools, t => t.Name == "log_research");
+    }
 }

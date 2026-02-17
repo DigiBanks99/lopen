@@ -51,6 +51,18 @@
       ],
       "tests": "InMemoryTokenTrackerTests (12 total, 4 new for restore/round-trip)",
       "notes": "RestoreMetrics on resume ensures cumulative values monotonically increase across sessions."
+    },
+    "tool-per-phase": {
+      "status": "complete",
+      "tasks": {
+        "add-comprehensive-per-phase-tests": "complete"
+      }
+    },
+    "stub-cleanup": {
+      "status": "complete",
+      "tasks": {
+        "remove-stub-llm-service": "complete"
+      }
     }
   },
   "last_updated": "2026-02-17T05:20:00Z"

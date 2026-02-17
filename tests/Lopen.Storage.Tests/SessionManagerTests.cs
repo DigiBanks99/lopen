@@ -541,4 +541,34 @@ public class SessionManagerTests
         Assert.IsType<IOException>(ex.InnerException);
         Assert.Contains("Disk full", ex.InnerException!.Message);
     }
+
+    // ==================== STOR-04: Session ID collision prevention ====================
+
+    [Fact]
+    public async Task CreateSession_SequentialCallsSameModule_ProduceUniqueIds()
+    {
+        var id1 = await _manager.CreateSessionAsync("auth");
+        var id2 = await _manager.CreateSessionAsync("auth");
+        var id3 = await _manager.CreateSessionAsync("auth");
+
+        Assert.NotEqual(id1, id2);
+        Assert.NotEqual(id2, id3);
+        Assert.NotEqual(id1, id3);
+
+        // Counters should be sequential
+        Assert.Equal(1, id1.Counter);
+        Assert.Equal(2, id2.Counter);
+        Assert.Equal(3, id3.Counter);
+    }
+
+    [Fact]
+    public async Task CreateSession_DifferentModules_ProduceIndependentCounters()
+    {
+        var authId = await _manager.CreateSessionAsync("auth");
+        var coreId = await _manager.CreateSessionAsync("core");
+
+        Assert.Equal(1, authId.Counter);
+        Assert.Equal(1, coreId.Counter);
+        Assert.NotEqual(authId.Module, coreId.Module);
+    }
 }

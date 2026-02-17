@@ -3,6 +3,7 @@ using Lopen.Auth;
 using Lopen.Commands;
 using Lopen.Configuration;
 using Lopen.Core;
+using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Storage;
 using Lopen.Tui;
@@ -18,7 +19,7 @@ namespace Lopen.Cli.Tests.Commands;
 public class RootCommandTests
 {
     private static (CommandLineConfiguration config, StringWriter output, StringWriter error, FakeTuiApplication tui) CreateConfig(
-        ISessionManager? sessionManager = null)
+        ISessionManager? sessionManager = null, IWorkflowOrchestrator? orchestrator = null)
     {
         var builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
@@ -32,6 +33,9 @@ public class RootCommandTests
 
         if (sessionManager is not null)
             builder.Services.AddSingleton(sessionManager);
+
+        if (orchestrator is not null)
+            builder.Services.AddSingleton(orchestrator);
 
         var host = builder.Build();
 
@@ -182,6 +186,61 @@ public class RootCommandTests
         Assert.True(tui.RunWasCalled);
     }
 
+    // ==================== CLI-02: Headless success / interrupted ====================
+
+    [Fact]
+    public async Task RootCommand_Headless_WithOrchestrator_Completed_ReturnsSuccess()
+    {
+        var sessionManager = new FakeSessionManager();
+        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
+        {
+            SessionId = "testmod-20260101-001",
+            Module = "testmod",
+            Phase = "building",
+            Step = "6",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await sessionManager.SetLatestAsync(sessionId);
+
+        var orchestrator = new FakeOrchestrator(OrchestrationResult.Completed(5, WorkflowStep.Repeat));
+        var (config, output, error, tui) = CreateConfig(sessionManager, orchestrator);
+
+        var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.False(tui.RunWasCalled, "TUI should not launch in headless mode");
+        Assert.Contains("Running headless workflow for module: testmod", output.ToString());
+        Assert.Contains("completed after 5 iterations", output.ToString());
+    }
+
+    [Fact]
+    public async Task RootCommand_Headless_Interrupted_ReturnsExitCode2()
+    {
+        var sessionManager = new FakeSessionManager();
+        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
+        {
+            SessionId = "testmod-20260101-001",
+            Module = "testmod",
+            Phase = "building",
+            Step = "6",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await sessionManager.SetLatestAsync(sessionId);
+
+        var orchestrator = new FakeOrchestrator(OrchestrationResult.Interrupted(3, WorkflowStep.IterateThroughTasks, "Human gate required"));
+        var (config, output, error, tui) = CreateConfig(sessionManager, orchestrator);
+
+        var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it"]);
+
+        Assert.Equal(2, exitCode);
+        Assert.False(tui.RunWasCalled);
+        Assert.Contains("Human gate required", error.ToString());
+    }
+
     // ==================== Error handling ====================
 
     [Fact]
@@ -307,6 +366,19 @@ public class RootCommandTests
         public Task StopAsync() => Task.CompletedTask;
 
         public void SuppressLandingPage() { }
+    }
+
+    private sealed class FakeOrchestrator : IWorkflowOrchestrator
+    {
+        private readonly OrchestrationResult _result;
+
+        public FakeOrchestrator(OrchestrationResult result) => _result = result;
+
+        public Task<OrchestrationResult> RunAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
+            => Task.FromResult(_result);
+
+        public Task<StepResult> RunStepAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
+            => Task.FromResult(StepResult.Completed("test"));
     }
 
     private sealed class FakeSessionManager : ISessionManager

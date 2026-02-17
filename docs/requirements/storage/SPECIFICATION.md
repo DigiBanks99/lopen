@@ -212,7 +212,7 @@ This specification defines **where and how Lopen stores its state**. It does not
 - [ ] [STOR-17] Corrupted cache entries are silently invalidated and regenerated
 - [ ] [STOR-18] Completed sessions are retained up to the configured `session_retention` limit, then pruned
 - [ ] [STOR-19] Individual sessions can be deleted via `DeleteSessionAsync`, removing the session directory and all files
-- [ ] [STOR-20] Research documents are stored at `docs/requirements/{module}/RESEARCH-{topic}.md` (in source, not `.lopen/`)
+- [x] [STOR-20] Research documents are stored at `docs/requirements/{module}/RESEARCH-{topic}.md` (in source, not `.lopen/`)
 - [ ] [STOR-21] Storage format is compact JSON by default, with on-demand prettification via `lopen session show --format`
 
 ---

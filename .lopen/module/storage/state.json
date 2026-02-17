@@ -12,6 +12,19 @@
       "spec_ref": "STOR-16",
       "tests": "SessionManagerTests (2 disk-full tests + 2 existing)",
       "notes": "Create, save state, save metrics all throw StorageException with IOException inner on disk-full."
+    },
+    "research-paths": {
+      "status": "complete",
+      "tasks": {
+        "add-storage-paths-helpers": "complete",
+        "add-tests": "complete"
+      }
+    },
+    "session-collision": {
+      "status": "complete",
+      "tasks": {
+        "add-collision-prevention-tests": "complete"
+      }
     }
   },
   "last_updated": "2026-02-17T06:00:00Z"

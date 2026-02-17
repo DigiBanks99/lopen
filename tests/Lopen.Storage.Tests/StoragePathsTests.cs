@@ -122,4 +122,47 @@ public class StoragePathsTests
 
         Assert.Equal(Path.Combine(ProjectRoot, ".lopen", "config.json"), result);
     }
+
+    // ==================== STOR-20: Research document paths ====================
+
+    [Fact]
+    public void GetRequirementsDirectory_ReturnsDocsRequirementsPath()
+    {
+        var result = StoragePaths.GetRequirementsDirectory(ProjectRoot);
+
+        Assert.Equal(Path.Combine(ProjectRoot, "docs", "requirements"), result);
+    }
+
+    [Fact]
+    public void GetModuleRequirementsDirectory_IncludesModuleName()
+    {
+        var result = StoragePaths.GetModuleRequirementsDirectory(ProjectRoot, "auth");
+
+        Assert.Equal(Path.Combine(ProjectRoot, "docs", "requirements", "auth"), result);
+    }
+
+    [Fact]
+    public void GetResearchDocumentPath_ReturnsCorrectPath()
+    {
+        var result = StoragePaths.GetResearchDocumentPath(ProjectRoot, "auth", "oauth-flow");
+
+        Assert.Equal(Path.Combine(ProjectRoot, "docs", "requirements", "auth", "RESEARCH-oauth-flow.md"), result);
+    }
+
+    [Fact]
+    public void GetResearchIndexPath_ReturnsResearchMdPath()
+    {
+        var result = StoragePaths.GetResearchIndexPath(ProjectRoot, "auth");
+
+        Assert.Equal(Path.Combine(ProjectRoot, "docs", "requirements", "auth", "RESEARCH.md"), result);
+    }
+
+    [Fact]
+    public void GetResearchDocumentPath_InSourceNotLopen()
+    {
+        var result = StoragePaths.GetResearchDocumentPath(ProjectRoot, "core", "state-machine");
+
+        Assert.DoesNotContain(".lopen", result);
+        Assert.Contains("docs", result);
+    }
 }

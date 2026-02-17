@@ -63,4 +63,20 @@ public static class StoragePaths
     /// <summary>Returns the project-level config.json path.</summary>
     public static string GetConfigPath(string projectRoot) =>
         Path.Combine(GetRoot(projectRoot), "config.json");
+
+    /// <summary>Returns the docs/requirements directory path.</summary>
+    public static string GetRequirementsDirectory(string projectRoot) =>
+        Path.Combine(projectRoot, "docs", "requirements");
+
+    /// <summary>Returns the docs/requirements/{module}/ directory path.</summary>
+    public static string GetModuleRequirementsDirectory(string projectRoot, string moduleName) =>
+        Path.Combine(GetRequirementsDirectory(projectRoot), moduleName);
+
+    /// <summary>Returns the path to a research document: docs/requirements/{module}/RESEARCH-{topic}.md</summary>
+    public static string GetResearchDocumentPath(string projectRoot, string moduleName, string topic) =>
+        Path.Combine(GetModuleRequirementsDirectory(projectRoot, moduleName), $"RESEARCH-{topic}.md");
+
+    /// <summary>Returns the path to the research index: docs/requirements/{module}/RESEARCH.md</summary>
+    public static string GetResearchIndexPath(string projectRoot, string moduleName) =>
+        Path.Combine(GetModuleRequirementsDirectory(projectRoot, moduleName), "RESEARCH.md");
 }

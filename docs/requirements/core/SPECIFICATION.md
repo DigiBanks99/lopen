@@ -466,7 +466,7 @@ This specification defines the **core workflow and orchestration behavior** of L
 ## Acceptance Criteria
 
 - [ ] [CORE-01] Lopen scans `docs/requirements/` and correctly identifies all module specifications
-- [ ] [CORE-02] The 7-step workflow executes in order: Draft Spec → Dependencies → Components → Select → Tasks → Iterate → Repeat
+- [x] [CORE-02] The 7-step workflow executes in order: Draft Spec → Dependencies → Components → Select → Tasks → Iterate → Repeat
 - [ ] [CORE-03] Re-entrant assessment correctly determines the current workflow step from actual codebase state, not stale session data
 - [ ] [CORE-04] Specification drift detection identifies when spec sections change between iterations and flags the drift to the user
 - [ ] [CORE-05] The Requirement Gathering → Planning phase transition requires explicit user confirmation (human gate)
