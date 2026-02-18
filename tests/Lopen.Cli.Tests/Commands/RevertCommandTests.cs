@@ -145,4 +145,29 @@ public class RevertCommandTests
         Assert.Equal(1, exitCode);
         Assert.Contains("Session state not found", error.ToString());
     }
+
+    // ==================== NO SERVICE REGISTERED TESTS ====================
+
+    private (CommandLineConfiguration config, StringWriter output, StringWriter error) CreateConfigWithoutServices()
+    {
+        var services = new ServiceCollection();
+        var provider = services.BuildServiceProvider();
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var root = new RootCommand("test");
+        root.Add(RevertCommand.Create(provider, output, error));
+        var config = new CommandLineConfiguration(root);
+        return (config, output, error);
+    }
+
+    [Fact]
+    public async Task Revert_NoServiceRegistered_ReturnsFailureWithMessage()
+    {
+        var (config, _, error) = CreateConfigWithoutServices();
+
+        var exitCode = await config.InvokeAsync(["revert"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("No project found", error.ToString());
+    }
 }

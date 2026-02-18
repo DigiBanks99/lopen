@@ -394,4 +394,73 @@ public class SessionCommandTests
 
         Assert.Contains("**Status**: Complete", result);
     }
+
+    // ==================== NO SERVICE REGISTERED TESTS ====================
+
+    private (CommandLineConfiguration config, StringWriter output, StringWriter error) CreateConfigWithoutServices()
+    {
+        var services = new ServiceCollection();
+        var provider = services.BuildServiceProvider();
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var root = new RootCommand("test");
+        root.Add(SessionCommand.Create(provider, output, error));
+        var config = new CommandLineConfiguration(root);
+        return (config, output, error);
+    }
+
+    [Fact]
+    public async Task List_NoServiceRegistered_ReturnsFailureWithMessage()
+    {
+        var (config, _, error) = CreateConfigWithoutServices();
+
+        var exitCode = await config.InvokeAsync(["session", "list"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("No project found", error.ToString());
+    }
+
+    [Fact]
+    public async Task Show_NoServiceRegistered_ReturnsFailureWithMessage()
+    {
+        var (config, _, error) = CreateConfigWithoutServices();
+
+        var exitCode = await config.InvokeAsync(["session", "show"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("No project found", error.ToString());
+    }
+
+    [Fact]
+    public async Task Resume_NoServiceRegistered_ReturnsFailureWithMessage()
+    {
+        var (config, _, error) = CreateConfigWithoutServices();
+
+        var exitCode = await config.InvokeAsync(["session", "resume"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("No project found", error.ToString());
+    }
+
+    [Fact]
+    public async Task Delete_NoServiceRegistered_ReturnsFailureWithMessage()
+    {
+        var (config, _, error) = CreateConfigWithoutServices();
+
+        var exitCode = await config.InvokeAsync(["session", "delete", "test-id"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("No project found", error.ToString());
+    }
+
+    [Fact]
+    public async Task Prune_NoServiceRegistered_ReturnsFailureWithMessage()
+    {
+        var (config, _, error) = CreateConfigWithoutServices();
+
+        var exitCode = await config.InvokeAsync(["session", "prune"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("No project found", error.ToString());
+    }
 }
