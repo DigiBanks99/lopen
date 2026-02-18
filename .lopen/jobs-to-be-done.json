@@ -328,9 +328,9 @@
     "requirement_code": "CORE-09",
     "requirement_module": "core",
     "description": "Add tests verifying task state transitions are enforced — Pending→InProgress→Complete/Failed only valid transitions",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "CORE-09 specifies valid state transitions. Need tests proving invalid transitions (e.g., Pending→Complete) are rejected."
+    "notes": "Added 4 missing invalid transition tests to WorkNodeTests (Complete→Failed, Complete→Pending, Failed→Complete, InProgress→Pending) and 6 additional SubtaskNode transition tests in TaskHierarchyTests (3 valid + 3 invalid). Full matrix: 4 valid + 7 invalid transitions now tested for both WorkNode and SubtaskNode."
   },
   {
     "id": "JOB-043",

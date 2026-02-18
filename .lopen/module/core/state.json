@@ -303,7 +303,16 @@
         "JOB-043"
       ],
       "notes": "Full pipeline integration: real ToolHandlerBinder + TaskStatusGate + VerificationTracker + OracleVerifier with FakeLlmService. Proves CORE-10 enforcement across tool call → oracle dispatch → verdict → accept/reject update_task_status."
+    },
+    "task_state_transitions": {
+      "status": "complete",
+      "implementation": "WorkNode<TChild>.ValidateTransition + SubtaskNode.TransitionTo enforce valid transitions",
+      "tests": "WorkNodeTests (18 tests) + TaskHierarchyTests (17 tests) — full valid/invalid transition matrix for WorkNode and SubtaskNode",
+      "jobs": [
+        "JOB-042"
+      ],
+      "notes": "CORE-09: All 4 valid transitions (Pending→InProgress, InProgress→Complete, InProgress→Failed, Failed→InProgress) and all 7 invalid transitions tested for both WorkNode and SubtaskNode."
     }
   },
-  "last_updated": "2026-02-18T07:52:00Z"
+  "last_updated": "2026-02-18T08:09:00Z"
 }
