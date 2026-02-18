@@ -164,126 +164,126 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         {
             try
             {
-            // Wait if paused by user (TUI-41: Ctrl+P pause gate)
-            if (_pauseController is not null && _pauseController.IsPaused)
-            {
-                _logger.LogInformation("Execution paused — waiting for resume");
-                await _renderer.RenderResultAsync("Paused — press Ctrl+P to resume");
-                await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
-                await _pauseController.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
-                _logger.LogInformation("Execution resumed");
-                await _renderer.RenderResultAsync("Resumed");
-            }
-
-            var stepResult = await RunStepAsync(moduleName, cancellationToken: cancellationToken);
-
-            if (!stepResult.Success)
-            {
-                _logger.LogWarning("Step {Step} failed: {Summary}", _engine.CurrentStep, stepResult.Summary);
-                await _renderer.RenderErrorAsync(stepResult.Summary ?? "Step failed");
-                await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
-
-                // CORE-21: Consult failure handler for self-correction vs interruption
-                if (_failureHandler is not null)
+                // Wait if paused by user (TUI-41: Ctrl+P pause gate)
+                if (_pauseController is not null && _pauseController.IsPaused)
                 {
-                    var taskId = _engine.CurrentStep.ToString();
+                    _logger.LogInformation("Execution paused — waiting for resume");
+                    await _renderer.RenderResultAsync("Paused — press Ctrl+P to resume");
+                    await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
+                    await _pauseController.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
+                    _logger.LogInformation("Execution resumed");
+                    await _renderer.RenderResultAsync("Resumed");
+                }
 
-                    // CORE-23: Critical system errors bypass normal failure tracking and block immediately
-                    if (stepResult.IsCriticalError)
+                var stepResult = await RunStepAsync(moduleName, cancellationToken: cancellationToken);
+
+                if (!stepResult.Success)
+                {
+                    _logger.LogWarning("Step {Step} failed: {Summary}", _engine.CurrentStep, stepResult.Summary);
+                    await _renderer.RenderErrorAsync(stepResult.Summary ?? "Step failed");
+                    await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
+
+                    // CORE-21: Consult failure handler for self-correction vs interruption
+                    if (_failureHandler is not null)
                     {
-                        var criticalClassification = _failureHandler.RecordCriticalError(
-                            stepResult.Summary ?? "Critical system error");
-                        _logger.LogCritical(
-                            "Critical system error — blocking execution: {Message}",
-                            criticalClassification.Message);
-                        await _renderer.RenderErrorAsync(
-                            $"CRITICAL ERROR — execution blocked: {criticalClassification.Message}");
-                        await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
-                        return OrchestrationResult.CriticalError(_iterationCount, _engine.CurrentStep,
-                            criticalClassification.Message);
-                    }
+                        var taskId = _engine.CurrentStep.ToString();
 
-                    var classification = _failureHandler.RecordFailure(taskId, stepResult.Summary ?? "Step failed");
-
-                    if (classification.Action == FailureAction.SelfCorrect)
-                    {
-                        _logger.LogInformation(
-                            "Self-correcting: {Message} (attempt {Count})",
-                            classification.Message, classification.ConsecutiveFailures);
-                        continue; // Let the LLM retry on next iteration
-                    }
-
-                    // CORE-22: Prompt user for intervention on repeated failures
-                    if (classification.Action == FailureAction.PromptUser)
-                    {
-                        if (_workflowOptions?.Unattended == true)
+                        // CORE-23: Critical system errors bypass normal failure tracking and block immediately
+                        if (stepResult.IsCriticalError)
                         {
-                            _logger.LogWarning(
-                                "Unattended mode — suppressing intervention prompt, continuing: {Message}",
-                                classification.Message);
-                            continue;
+                            var criticalClassification = _failureHandler.RecordCriticalError(
+                                stepResult.Summary ?? "Critical system error");
+                            _logger.LogCritical(
+                                "Critical system error — blocking execution: {Message}",
+                                criticalClassification.Message);
+                            await _renderer.RenderErrorAsync(
+                                $"CRITICAL ERROR — execution blocked: {criticalClassification.Message}");
+                            await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
+                            return OrchestrationResult.CriticalError(_iterationCount, _engine.CurrentStep,
+                                criticalClassification.Message);
                         }
 
-                        var promptMessage = $"Task '{taskId}' has failed {classification.ConsecutiveFailures} consecutive times. Continue? [y/N]";
-                        var response = await _renderer.PromptAsync(promptMessage, cancellationToken);
+                        var classification = _failureHandler.RecordFailure(taskId, stepResult.Summary ?? "Step failed");
 
-                        if (response is not null &&
-                            response.Trim().Equals("y", StringComparison.OrdinalIgnoreCase) ||
-                            response?.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase) == true)
+                        if (classification.Action == FailureAction.SelfCorrect)
                         {
                             _logger.LogInformation(
-                                "User confirmed continuation after repeated failure: {TaskId}",
-                                taskId);
-                            _failureHandler.ResetFailureCount(taskId);
-                            continue;
+                                "Self-correcting: {Message} (attempt {Count})",
+                                classification.Message, classification.ConsecutiveFailures);
+                            continue; // Let the LLM retry on next iteration
                         }
 
-                        _logger.LogWarning(
-                            "User declined continuation after repeated failure: {TaskId}",
-                            taskId);
+                        // CORE-22: Prompt user for intervention on repeated failures
+                        if (classification.Action == FailureAction.PromptUser)
+                        {
+                            if (_workflowOptions?.Unattended == true)
+                            {
+                                _logger.LogWarning(
+                                    "Unattended mode — suppressing intervention prompt, continuing: {Message}",
+                                    classification.Message);
+                                continue;
+                            }
+
+                            var promptMessage = $"Task '{taskId}' has failed {classification.ConsecutiveFailures} consecutive times. Continue? [y/N]";
+                            var response = await _renderer.PromptAsync(promptMessage, cancellationToken);
+
+                            if (response is not null &&
+                                response.Trim().Equals("y", StringComparison.OrdinalIgnoreCase) ||
+                                response?.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase) == true)
+                            {
+                                _logger.LogInformation(
+                                    "User confirmed continuation after repeated failure: {TaskId}",
+                                    taskId);
+                                _failureHandler.ResetFailureCount(taskId);
+                                continue;
+                            }
+
+                            _logger.LogWarning(
+                                "User declined continuation after repeated failure: {TaskId}",
+                                taskId);
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "Failure escalated: {Action} — {Message}",
+                                classification.Action, classification.Message);
+                        }
                     }
-                    else
+
+                    return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
+                        stepResult.Summary ?? "Step failed");
+                }
+
+                // Reset failure count on success when handler is present
+                _failureHandler?.ResetFailureCount(_engine.CurrentStep.ToString());
+
+                // Auto-save after each successful step (STOR-06)
+                await AutoSaveAsync(AutoSaveTrigger.StepCompletion, moduleName, cancellationToken);
+
+                if (stepResult.RequiresUserConfirmation)
+                {
+                    _logger.LogInformation("User confirmation required at step {Step}", _engine.CurrentStep);
+                    await _renderer.RenderResultAsync(stepResult.Summary ?? "Awaiting user confirmation");
+                    await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
+                    return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
+                        "User confirmation required");
+                }
+
+                if (stepResult.NextTrigger.HasValue)
+                {
+                    var previousPhase = _engine.CurrentPhase;
+                    var fired = _engine.Fire(stepResult.NextTrigger.Value);
+                    if (!fired)
                     {
-                        _logger.LogWarning(
-                            "Failure escalated: {Action} — {Message}",
-                            classification.Action, classification.Message);
+                        _logger.LogWarning("Cannot fire trigger {Trigger} from step {Step}",
+                            stepResult.NextTrigger.Value, _engine.CurrentStep);
+                    }
+                    else if (_engine.CurrentPhase != previousPhase)
+                    {
+                        // Phase transition occurred — save state
+                        await AutoSaveAsync(AutoSaveTrigger.PhaseTransition, moduleName, cancellationToken);
                     }
                 }
-
-                return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
-                    stepResult.Summary ?? "Step failed");
-            }
-
-            // Reset failure count on success when handler is present
-            _failureHandler?.ResetFailureCount(_engine.CurrentStep.ToString());
-
-            // Auto-save after each successful step (STOR-06)
-            await AutoSaveAsync(AutoSaveTrigger.StepCompletion, moduleName, cancellationToken);
-
-            if (stepResult.RequiresUserConfirmation)
-            {
-                _logger.LogInformation("User confirmation required at step {Step}", _engine.CurrentStep);
-                await _renderer.RenderResultAsync(stepResult.Summary ?? "Awaiting user confirmation");
-                await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
-                return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
-                    "User confirmation required");
-            }
-
-            if (stepResult.NextTrigger.HasValue)
-            {
-                var previousPhase = _engine.CurrentPhase;
-                var fired = _engine.Fire(stepResult.NextTrigger.Value);
-                if (!fired)
-                {
-                    _logger.LogWarning("Cannot fire trigger {Trigger} from step {Step}",
-                        stepResult.NextTrigger.Value, _engine.CurrentStep);
-                }
-                else if (_engine.CurrentPhase != previousPhase)
-                {
-                    // Phase transition occurred — save state
-                    await AutoSaveAsync(AutoSaveTrigger.PhaseTransition, moduleName, cancellationToken);
-                }
-            }
             }
             catch (StorageException ex) when (ex.IsCritical)
             {
