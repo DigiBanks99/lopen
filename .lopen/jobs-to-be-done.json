@@ -1151,5 +1151,47 @@
     "status": "done",
     "priority": 3,
     "notes": "Already implemented. TuiApplication.TryLaunchOrchestrator uses Task.Run. 8 tests in TuiOrchestratorBridgeTests."
+  },
+  {
+    "id": "JOB-126",
+    "requirement_code": "CORE-25",
+    "requirement_module": "core",
+    "description": "Wire ToolHandlerBinder.BindAll() into production startup so tools are available to LLM at runtime \u2014 currently tools register with null handlers and BindAll() is only called in tests",
+    "status": "done",
+    "priority": 1,
+    "notes": "Fixed: IToolHandlerBinder added as optional dependency to WorkflowOrchestrator. BindAll() called after InitializeAsync in RunAsync. DI wired with try/catch for optional resolution. Tests: ToolBindingIntegrationTests + ServiceCollectionExtensionsTests.",
+    "tasks": [
+      {
+        "id": "JOB-126-T1",
+        "description": "Call BindAll() in production code path (WorkflowOrchestrator or DI setup)",
+        "status": "done"
+      },
+      {
+        "id": "JOB-126-T2",
+        "description": "Add integration test verifying tools flow from registry through binder to AI functions",
+        "status": "done"
+      }
+    ]
+  },
+  {
+    "id": "JOB-127",
+    "requirement_code": "CORE-18",
+    "requirement_module": "core",
+    "description": "Register ResourceLimitGuardrail and ChurnDetectionGuardrail in DI \u2014 classes exist but are dead code, not registered in ServiceCollectionExtensions",
+    "status": "done",
+    "priority": 2,
+    "notes": "Fixed: ResourceLimitGuardrail registered (conditional on ITokenTracker + budget > 0, falls back to PassThroughGuardrail). ChurnDetectionGuardrail registered with configurable threshold. Tests: PassThroughGuardrailTests + ServiceCollectionExtensionsTests.",
+    "tasks": [
+      {
+        "id": "JOB-127-T1",
+        "description": "Register both guardrails in Core ServiceCollectionExtensions",
+        "status": "done"
+      },
+      {
+        "id": "JOB-127-T2",
+        "description": "Add tests verifying guardrails are resolved from DI and participate in pipeline",
+        "status": "done"
+      }
+    ]
   }
 ]

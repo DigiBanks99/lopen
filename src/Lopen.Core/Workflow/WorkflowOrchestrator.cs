@@ -3,6 +3,7 @@ using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
+using Lopen.Core.ToolHandlers;
 using Lopen.Llm;
 using Lopen.Otel;
 using Lopen.Storage;
@@ -35,6 +36,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IPlanManager? _planManager;
     private readonly IPauseController? _pauseController;
     private readonly IUserPromptQueue? _userPromptQueue;
+    private readonly IToolHandlerBinder? _toolHandlerBinder;
     private readonly WorkflowOptions? _workflowOptions;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
@@ -63,6 +65,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IPlanManager? planManager = null,
         IPauseController? pauseController = null,
         IUserPromptQueue? userPromptQueue = null,
+        IToolHandlerBinder? toolHandlerBinder = null,
         WorkflowOptions? workflowOptions = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
@@ -85,6 +88,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _planManager = planManager;
         _pauseController = pauseController;
         _userPromptQueue = userPromptQueue;
+        _toolHandlerBinder = toolHandlerBinder;
         _workflowOptions = workflowOptions;
     }
 
@@ -149,6 +153,10 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
 
         await _engine.InitializeAsync(moduleName, cancellationToken);
+
+        // Bind tool handlers to registry so LLM can invoke them (CORE-25)
+        _toolHandlerBinder?.BindAll(_toolRegistry);
+
         _logger.LogInformation("Starting orchestration for module {Module} at step {Step}",
             moduleName, _engine.CurrentStep);
 

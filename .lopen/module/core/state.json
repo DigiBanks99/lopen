@@ -237,7 +237,25 @@
         "JOB-074"
       ],
       "notes": "DI registered in AddLopenCore(). Headless mode gracefully returns null (PromptAsync returns null). Interactive mode prompts user with numbered list."
+    },
+    "tool_handler_binding": {
+      "status": "complete",
+      "implementation": "IToolHandlerBinder wired into WorkflowOrchestrator.RunAsync \u2014 BindAll called after engine init",
+      "tests": "ToolBindingIntegrationTests (1 test) + ServiceCollectionExtensionsTests (1 DI test)",
+      "jobs": [
+        "JOB-126"
+      ],
+      "notes": "Fixed CORE-25: BindAll() was only called in tests, never in production. Now called after InitializeAsync before LLM loop."
+    },
+    "guardrail_di_registration": {
+      "status": "complete",
+      "implementation": "ResourceLimitGuardrail + ChurnDetectionGuardrail + PassThroughGuardrail registered in DI",
+      "tests": "PassThroughGuardrailTests (3 tests) + ServiceCollectionExtensionsTests (3 DI tests)",
+      "jobs": [
+        "JOB-127"
+      ],
+      "notes": "Fixed CORE-11/12: ResourceLimitGuardrail conditional on ITokenTracker + BudgetOptions.PremiumRequestBudget > 0 (falls back to PassThroughGuardrail). ChurnDetectionGuardrail uses WorkflowOptions.FailureThreshold."
     }
   },
-  "last_updated": "2026-02-17T21:30:00Z"
+  "last_updated": "2026-02-18T00:00:00Z"
 }

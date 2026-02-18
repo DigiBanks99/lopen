@@ -89,6 +89,11 @@ public static class ServiceCollectionExtensions
                 { pauseCtrl = sp.GetService<IPauseController>(); }
                 catch { /* Pause controller optional */ }
 
+                IToolHandlerBinder? toolBinder = null;
+                try
+                { toolBinder = sp.GetService<IToolHandlerBinder>(); }
+                catch { /* Tool handler binder optional */ }
+
                 return new WorkflowOrchestrator(
                     sp.GetRequiredService<IWorkflowEngine>(),
                     sp.GetRequiredService<IStateAssessor>(),
@@ -110,6 +115,7 @@ public static class ServiceCollectionExtensions
                     planMgr,
                     pauseCtrl,
                     sp.GetService<IUserPromptQueue>(),
+                    toolBinder,
                     sp.GetService<WorkflowOptions>());
             });
             services.AddSingleton<IPauseController, PauseController>();
@@ -180,6 +186,32 @@ public static class ServiceCollectionExtensions
                     ctx.TaskName is not null &&
                     tracker.IsVerified(Lopen.Llm.VerificationScope.Task, ctx.TaskName));
         });
+
+        // Register ResourceLimitGuardrail (CORE-11) when token tracker and budget are available
+        services.AddSingleton<IGuardrail>(sp =>
+        {
+            var tokenTracker = sp.GetService<Lopen.Llm.ITokenTracker>();
+            var budgetOptions = sp.GetService<BudgetOptions>();
+            var budget = budgetOptions?.PremiumRequestBudget ?? 0;
+            if (tokenTracker is not null && budget > 0)
+            {
+                return new ResourceLimitGuardrail(
+                    tokenTracker,
+                    sp.GetRequiredService<ILogger<ResourceLimitGuardrail>>(),
+                    budget);
+            }
+            // Return a pass-through guardrail when budget is not configured
+            return new PassThroughGuardrail(order: 100);
+        });
+
+        // Register ChurnDetectionGuardrail (CORE-12)
+        services.AddSingleton<IGuardrail>(sp =>
+        {
+            var workflowOptions = sp.GetService<WorkflowOptions>();
+            var threshold = workflowOptions?.FailureThreshold ?? 3;
+            return new ChurnDetectionGuardrail(threshold);
+        });
+
         services.AddSingleton<IGuardrailPipeline, GuardrailPipeline>();
 
         // Default to headless renderer; CLI overrides with TUI renderer when appropriate
