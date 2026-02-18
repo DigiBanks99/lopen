@@ -13,7 +13,7 @@ This document describes the known modules (requirements) for Lopen.
 | LLM           | `docs/requirements/llm`           | Copilot SDK integration, model selection, tool strategy (14 reqs)  | Complete     |
 | Storage       | `docs/requirements/storage`       | Session persistence, `.lopen/` structure, document formats (22 reqs) | Complete     |
 | Configuration | `docs/requirements/configuration` | Settings hierarchy, CLI flags, model assignments, defaults (16 reqs) | Complete     |
-| CLI           | `docs/requirements/cli`           | Command structure, global flags, headless mode, prompt injection (28 reqs) | Complete     |
+| CLI           | `docs/requirements/cli`           | Command structure, global flags, headless mode, prompt injection (28 reqs) | In Progress (27/28 — CLI-28 E2E pending) |
 | Auth          | `docs/requirements/auth`          | GitHub Copilot authentication and credential management (15 reqs)  | Complete     |
 | TUI           | `docs/requirements/tui`           | Terminal UI layout, progressive disclosure, visual design (52 reqs) | Complete     |
 | OTEL          | `docs/requirements/otel`          | OpenTelemetry observability, tracing, metrics, Aspire Dashboard (17 reqs) | Complete     |

@@ -1,21 +1,12 @@
 [
   {
-    "id": "JOB-001",
-    "requirement_code": "OTEL-13",
-    "requirement_module": "otel",
-    "description": "Fix OTEL test failures — rename AppHost.cs to Program.cs so Aspire AppHost tests can find the expected file",
-    "status": "done",
-    "priority": 1,
-    "notes": "Tests expected Program.cs but file was AppHost.cs. Renamed file to fix 3 failing tests (AspireAppHost_ProjectFile_Exists, AspireAppHost_Program_ReferencesLopen, AC13_AspireAppHost_ProjectExists). All tests now pass."
-  },
-  {
     "id": "JOB-002",
     "requirement_code": "CLI-28",
     "requirement_module": "cli",
-    "description": "Mark CLI-28 as complete — FizzBuzz workflow integration tests exist and pass, validating spec→plan→build pipeline",
+    "description": "Implement true E2E integration test for CLI-28 — run the lopen executable (or real DI host with stubbed LLM) to create a fizz-buzz application validating the full spec→plan→build pipeline",
     "status": "open",
-    "priority": 2,
-    "notes": "CLI-28 is the only unchecked requirement. FizzBuzzWorkflowTests.cs has 10 tests covering all phases. Tests use fake services (not real E2E), but this matches the other acceptance criteria pattern. The checkbox should be checked once the team confirms unit-level validation is sufficient, or a true E2E test should be added."
+    "priority": 1,
+    "notes": "See docs/requirements/cli/RESEARCH.md 'E2E Integration Testing (CLI-28)' section for implementation approach. Recommended: Option C (in-process DI with ScriptedLlmService) for CI, with optional Option A (real SDK) as nightly test."
   },
   {
     "id": "JOB-003",
@@ -25,24 +16,6 @@
     "status": "open",
     "priority": 3,
     "notes": "ServiceDefaults project is Aspire boilerplate that was superseded by custom Lopen.Otel. AddServiceDefaults() is never invoked. The project reference adds unnecessary build weight. Either remove the reference and project, or integrate the health check/service discovery features if needed."
-  },
-  {
-    "id": "JOB-004",
-    "requirement_code": "AUTH-10",
-    "requirement_module": "auth",
-    "description": "Update auth RESEARCH.md to reflect actual gh CLI-based implementation instead of Copilot CLI/SDK approach",
-    "status": "done",
-    "priority": 3,
-    "notes": "Updated RESEARCH.md to document actual gh CLI-based auth via IGhCliAdapter/GhCliAdapter. Replaced Copilot CLI device flow and CopilotClient references with actual implementation patterns."
-  },
-  {
-    "id": "JOB-005",
-    "requirement_code": "STOR-21",
-    "requirement_module": "storage",
-    "description": "Update storage RESEARCH.md to reflect actual JsonSerializerOptions-based serialization instead of source-generated JsonSerializerContext",
-    "status": "done",
-    "priority": 3,
-    "notes": "Updated RESEARCH.md to document actual JsonSerializerOptions-based serialization with CompactJsonOptions/JsonOptions. Removed AOT source-generator references."
   },
   {
     "id": "JOB-006",
@@ -150,7 +123,7 @@
     "description": "Add integration test for AutoSave lifecycle — AutoSaveTrigger → AutoSaveService → SessionManager flow",
     "status": "open",
     "priority": 4,
-save→persist pipeline."
+    "notes": "AutoSaveTrigger fires → AutoSaveService debounces → SessionManager.SaveAsync persists. No test exercises the full save→persist pipeline."
   },
   {
     "id": "JOB-018",
@@ -268,24 +241,6 @@ save→persist pipeline."
     "status": "open",
     "priority": 6,
     "notes": "LLM research has unresolved flag about AssistantUsageEvent needing verification. Should confirm if this was resolved."
-  },
-  {
-    "id": "JOB-031",
-    "requirement_code": "CORE-11",
-    "requirement_module": "core",
-    "description": "Add test verifying PassThroughGuardrail behavior — placeholder guardrail should always pass and have no side effects",
-    "status": "open",
-    "priority": 6,
-    "notes": "PassThroughGuardrail.cs is a guardrail that always passes when prerequisites are not configured. Should have a test verifying this behavior."
-  },
-  {
-    "id": "JOB-032",
-    "requirement_code": "TUI-52",
-    "requirement_module": "tui",
-    "description": "Add test verifying StubTuiApplication has no side effects in headless mode",
-    "status": "open",
-    "priority": 6,
-    "notes": "StubTuiApplication.cs is used in headless/testing mode. Should verify all methods are truly no-ops."
   },
   {
     "id": "JOB-033",
@@ -531,33 +486,6 @@ save→persist pipeline."
     "notes": "STOR-07 requires resume flow with user choice. Verify the choice presentation and handling is tested."
   },
   {
-    "id": "JOB-060",
-    "requirement_code": "OTEL-14",
-    "requirement_module": "otel",
-    "description": "Add performance benchmark test verifying OTEL instrumentation adds < 5ms overhead",
-    "status": "open",
-    "priority": 5,
-    "notes": "OTEL-17 requires < 5ms overhead. A performance test should measure actual overhead with instrumentation on vs off."
-  },
-  {
-    "id": "JOB-061",
-    "requirement_code": "OTEL-12",
-    "requirement_module": "otel",
-    "description": "Add test verifying no telemetry export errors when OTEL_EXPORTER_OTLP_ENDPOINT is not set",
-    "status": "open",
-    "priority": 5,
-    "notes": "OTEL-12 requires graceful behavior when no endpoint configured. Verify no export errors occur."
-  },
-  {
-    "id": "JOB-062",
-    "requirement_code": "OTEL-15",
-    "requirement_module": "otel",
-    "description": "Add test verifying individual signal toggles independently control trace/metric/log exports",
-    "status": "open",
-    "priority": 5,
-    "notes": "OTEL-15 requires independent per-signal toggles. Verify each toggle independently enables/disables its signal."
-  },
-  {
     "id": "JOB-063",
     "requirement_code": "TUI-15",
     "requirement_module": "tui",
@@ -583,15 +511,6 @@ save→persist pipeline."
     "status": "open",
     "priority": 6,
     "notes": "TUI-35 requires syntax highlighting in code blocks. Verify language detection and rendering are tested."
-  },
-  {
-    "id": "JOB-066",
-    "requirement_code": "TUI-37",
-    "requirement_module": "tui",
-    "description": "Add test verifying NO_COLOR environment variable disables all color output",
-    "status": "open",
-    "priority": 6,
-    "notes": "TUI-37 requires NO_COLOR to be respected. Verify the env var detection and color suppression are tested."
   },
   {
     "id": "JOB-067",
@@ -774,42 +693,6 @@ save→persist pipeline."
     "notes": "STOR-20 requires research docs in source tree, not .lopen/. Verify storage path is correct."
   },
   {
-    "id": "JOB-087",
-    "requirement_code": "STOR-22",
-    "requirement_module": "storage",
-    "description": "Add test verifying .lopen/ is added to existing .gitignore but no .gitignore is created if none exists",
-    "status": "open",
-    "priority": 6,
-    "notes": "STOR-22 requires conditional .gitignore modification. Verify both paths: existing .gitignore updated, missing .gitignore left alone."
-  },
-  {
-    "id": "JOB-088",
-    "requirement_code": "OTEL-08",
-    "requirement_module": "otel",
-    "description": "Add test verifying all 10 counter metrics increment correctly across their respective operations",
-    "status": "open",
-    "priority": 5,
-    "notes": "OTEL-08 lists 10 specific counters. Verify each counter increments during its corresponding operation."
-  },
-  {
-    "id": "JOB-089",
-    "requirement_code": "OTEL-09",
-    "requirement_module": "otel",
-    "description": "Add test verifying all 5 histogram metrics record correct durations",
-    "status": "open",
-    "priority": 5,
-    "notes": "OTEL-09 lists 5 specific histograms. Verify each histogram records duration during its corresponding operation."
-  },
-  {
-    "id": "JOB-090",
-    "requirement_code": "OTEL-10",
-    "requirement_module": "otel",
-    "description": "Add test verifying ILogger structured logs carry TraceId and SpanId from active spans",
-    "status": "open",
-    "priority": 5,
-    "notes": "OTEL-10 requires log correlation. Verify log entries include trace context when Activity is active."
-  },
-  {
     "id": "JOB-091",
     "requirement_code": "TUI-01",
     "requirement_module": "tui",
@@ -898,5 +781,32 @@ save→persist pipeline."
     "status": "open",
     "priority": 5,
     "notes": "CORE-05 requires human gate. Verify the confirmation prompt blocks automatic transition."
+  },
+  {
+    "id": "JOB-101",
+    "requirement_code": "TUI-38",
+    "requirement_module": "tui",
+    "description": "Wire TUI slash command domain handlers — register handlers via SlashCommandExecutor.RegisterHandler() for /spec, /plan, /build, /session, /config, /revert, /auth that invoke corresponding workflow/service actions",
+    "status": "open",
+    "priority": 3,
+    "notes": "Framework complete (parsing, dispatch, handler registration). Only /help has a handler. Other 7 commands fall through to generic success message. Per TUI-38, these should invoke the same logic as the corresponding lopen <command>."
+  },
+  {
+    "id": "JOB-102",
+    "requirement_code": "TUI-38",
+    "requirement_module": "tui",
+    "description": "Add integration tests verifying TUI slash command handlers invoke real workflow services — /spec triggers orchestrator spec phase, /plan triggers plan phase, /build triggers build phase, /session calls ISessionManager, /auth checks auth status",
+    "status": "open",
+    "priority": 4,
+    "notes": "Depends on JOB-101. Current SlashCommandExecutorTests verify parsing/framework only. New tests should use TuiApplication test infrastructure with stub orchestrator to verify domain-side effects."
+  },
+  {
+    "id": "JOB-103",
+    "requirement_code": "CLI-28",
+    "requirement_module": "cli",
+    "description": "Update CLI RESEARCH.md to accurately reflect current implementation — fix outdated sections on file structure, --quiet alias, IWorkflowOrchestrator pattern, TestCommand, and add --no-welcome documentation",
+    "status": "open",
+    "priority": 5,
+    "notes": "RESEARCH.md recommends patterns that diverge from implementation: separate command files vs PhaseCommands.cs, --quiet as separate option vs alias, engine-level loop vs IWorkflowOrchestrator.RunAsync, TestTuiCommand vs TestCommand."
   }
 ]
