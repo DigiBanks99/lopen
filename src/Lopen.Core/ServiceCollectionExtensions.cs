@@ -120,6 +120,11 @@ public static class ServiceCollectionExtensions
             });
             services.AddSingleton<IPauseController, PauseController>();
             services.AddSingleton<ISpecificationDriftService, SpecificationDriftService>();
+            services.AddSingleton<IResourceTracker>(sp =>
+                new ResourceTracker(
+                    sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
+                    projectRoot,
+                    sp.GetRequiredService<ILogger<ResourceTracker>>()));
             services.AddSingleton<IToolHandlerBinder>(sp =>
             {
                 Git.IGitWorkflowService? gitSvc = null;

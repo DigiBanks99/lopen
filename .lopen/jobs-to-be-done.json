@@ -1615,5 +1615,14 @@
     "status": "done",
     "priority": 2,
     "notes": "Added 8 new tests: 5 SyntaxHighlighter string/comment highlighting tests (TUI-35), 2 ComponentGallery tests for distinct state output (TUI-48) and border consistency (TUI-36), plus fixed PromptAreaComponent error state to be distinct from empty. Total TUI tests: 784."
+  },
+  {
+    "id": "JOB-170",
+    "requirement_code": "TUI-03,TUI-12,CORE-19",
+    "requirement_module": "core,tui",
+    "description": "Wire active resource tracking into ContextPanelDataProvider. Create IResourceTracker in Core to discover relevant documents (SPECIFICATION.md, RESEARCH.md, plan.md) for the active module, and populate ContextPanelData.Resources so the TUI context panel displays them. Currently Resources is always empty.",
+    "status": "done",
+    "priority": 1,
+    "notes": "Implemented IResourceTracker in Core (discovers SPECIFICATION.md, RESEARCH.md, RESEARCH-*.md, plan.md). Wired into ContextPanelDataProvider to populate Resources. Added 11 ResourceTracker tests and 5 ContextPanelDataProvider resource integration tests. All 2619 tests pass."
   }
 ]
