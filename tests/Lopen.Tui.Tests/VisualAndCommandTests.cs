@@ -212,6 +212,7 @@ public class VisualAndCommandTests
         UnicodeSupport.UseAscii = false;
     }
 
+    // ==================== TUI-34: Box-Drawing Characters ====================
     // ==================== TUI-33: Unicode ASCII Fallback Verification ====================
 
     [Fact]

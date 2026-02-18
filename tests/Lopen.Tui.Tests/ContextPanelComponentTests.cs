@@ -3,7 +3,7 @@ using Lopen.Tui;
 namespace Lopen.Tui.Tests;
 
 /// <summary>
-/// Tests for ContextPanelComponent rendering.
+/// Tests for ContextPanelComponent rendering (TUI-03, TUI-10, TUI-11, TUI-31).
 /// Covers AC: context panel shows current task, task tree with completion states, active resources.
 /// </summary>
 public class ContextPanelComponentTests
@@ -74,6 +74,8 @@ public class ContextPanelComponentTests
     {
         Assert.False(string.IsNullOrWhiteSpace(_component.Description));
     }
+
+    // ==================== TUI-03: Context Panel (Task, Tree, Resources) ====================
 
     // ==================== Full render ====================
 
@@ -214,6 +216,8 @@ public class ContextPanelComponentTests
         Assert.Contains("▶ Current Task", lines[0]);
     }
 
+    // ==================== TUI-11: Hierarchical Task Tree with Status Indicators (✓/▶/○) ====================
+
     // ==================== StateIcon ====================
 
     [Theory]
@@ -270,6 +274,9 @@ public class ContextPanelComponentTests
         Assert.Contains(lines, l => l.Contains("[9] doc9.md"));
         Assert.DoesNotContain(lines, l => l.TrimEnd().Contains("[10]"));
     }
+
+    // ==================== TUI-10: Real-Time Task Progress Updates ====================
+    // ==================== TUI-31: Real-Time Progress Percentages ====================
 
     // ==================== Progress Bar (JOB-044) ====================
 

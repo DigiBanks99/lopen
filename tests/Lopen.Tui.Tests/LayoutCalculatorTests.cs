@@ -2,8 +2,14 @@ using Lopen.Tui;
 
 namespace Lopen.Tui.Tests;
 
+/// <summary>
+/// Tests for LayoutCalculator split-screen layout (TUI-01).
+/// Covers AC: split-screen layout with activity (left) and context (right) panes.
+/// </summary>
 public class LayoutCalculatorTests
 {
+    // ==================== TUI-01: Split-Screen Layout ====================
+
     [Fact]
     public void Calculate_Default_ReturnsCorrectRegions()
     {

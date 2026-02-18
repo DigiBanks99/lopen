@@ -2,8 +2,14 @@ using Lopen.Tui;
 
 namespace Lopen.Tui.Tests;
 
+/// <summary>
+/// Tests for GuidedConversationComponent rendering (TUI-22).
+/// Covers AC: guided conversation UI for requirement gathering.
+/// </summary>
 public class GuidedConversationComponentTests
 {
+    // ==================== TUI-22: Guided Conversation UI for Requirement Gathering ====================
+
     private readonly GuidedConversationComponent _sut = new();
     private readonly ScreenRect _region = new(0, 0, 60, 20);
 

@@ -4,11 +4,14 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Lopen.Tui.Tests;
 
 /// <summary>
-/// Tests for ComponentGallery self-registration and GalleryListComponent.
+/// Tests for ComponentGallery self-registration and GalleryListComponent
+/// (TUI-43, TUI-46, TUI-47).
 /// Covers JOB-097 acceptance criteria.
 /// </summary>
 public class ComponentGalleryRegistrationTests
 {
+    // ==================== TUI-47: Components Self-Register with Gallery ====================
+
     // ==================== Self-Registration ====================
 
     [Fact]
@@ -100,6 +103,8 @@ public class ComponentGalleryRegistrationTests
         Assert.NotNull(gallery.GetByName("toppanel"));
     }
 
+    // ==================== TUI-43: Gallery Lists All TUI Components with Selection Navigation ====================
+
     // ==================== GalleryListComponent ====================
 
     private readonly GalleryListComponent _list = new();
@@ -189,6 +194,8 @@ public class ComponentGalleryRegistrationTests
         Assert.Equal("TopPanel", data.Items[0].Name);
         Assert.Equal("Spinner", data.Items[1].Name);
     }
+
+    // ==================== TUI-46: Components Accept Injected Data with No Live Dependencies ====================
 
     // ==================== IPreviewableComponent ====================
 

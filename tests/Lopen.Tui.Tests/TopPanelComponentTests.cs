@@ -3,7 +3,7 @@ using Lopen.Tui;
 namespace Lopen.Tui.Tests;
 
 /// <summary>
-/// Tests for TopPanelComponent rendering.
+/// Tests for TopPanelComponent rendering (TUI-02, TUI-17, TUI-29, TUI-30).
 /// Covers AC: top panel displays logo, version, model, context usage,
 /// premium requests, git branch, auth status, phase, and step.
 /// </summary>
@@ -40,6 +40,8 @@ public class TopPanelComponentTests
     {
         Assert.False(string.IsNullOrWhiteSpace(_component.Description));
     }
+
+    // ==================== TUI-02: Top Panel Display ====================
 
     // ==================== Render with logo ====================
 
@@ -165,6 +167,8 @@ public class TopPanelComponentTests
         Assert.DoesNotContain("🟢", lines[0]);
     }
 
+    // ==================== TUI-30: Premium Request Counter (🔥 Indicator) ====================
+
     // ==================== No premium requests ====================
 
     [Fact]
@@ -211,6 +215,8 @@ public class TopPanelComponentTests
         Assert.Empty(lines);
     }
 
+    // ==================== TUI-29: Context Window Usage ====================
+
     // ==================== FormatTokens ====================
 
     [Theory]
@@ -226,6 +232,8 @@ public class TopPanelComponentTests
     {
         Assert.Equal(expected, TopPanelComponent.FormatTokens(tokens));
     }
+
+    // ==================== TUI-17: Phase/Step Visualization (●/○ Progress Indicator) ====================
 
     // ==================== BuildStepIndicator ====================
 

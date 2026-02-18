@@ -3,7 +3,7 @@ using Lopen.Tui;
 namespace Lopen.Tui.Tests;
 
 /// <summary>
-/// Tests for ActivityPanelComponent rendering.
+/// Tests for ActivityPanelComponent rendering (TUI-08, TUI-09, TUI-24).
 /// Covers AC: main activity area with scrolling, progressive disclosure, expand/collapse.
 /// </summary>
 public class ActivityPanelComponentTests
@@ -17,6 +17,8 @@ public class ActivityPanelComponentTests
     {
         Assert.Equal("ActivityPanel", _component.Name);
     }
+
+    // ==================== TUI-08: Current Action Expanded, Previous Collapsed ====================
 
     // ==================== Progressive disclosure ====================
 
@@ -273,6 +275,9 @@ public class ActivityPanelComponentTests
         Assert.Contains("⚙", lines[0]);
         Assert.Contains("read_file", lines[0]);
     }
+
+    // ==================== TUI-09: Tool Call Outputs Expandable ====================
+    // ==================== TUI-24: Expandable Sections via Click or Keyboard Shortcut ====================
 
     // ==================== Expand/Collapse Indicators ====================
 
