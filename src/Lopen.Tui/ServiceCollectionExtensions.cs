@@ -76,11 +76,17 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registers <see cref="ContextPanelDataProvider"/> to supply live data to the context panel.
     /// Requires IPlanManager and IWorkflowEngine to be registered.
+    /// Optionally uses IResourceTracker when available to populate active resources.
     /// Call after all module registrations.
     /// </summary>
     public static IServiceCollection AddContextPanelDataProvider(this IServiceCollection services)
     {
-        services.AddSingleton<IContextPanelDataProvider, ContextPanelDataProvider>();
+        services.AddSingleton<IContextPanelDataProvider>(sp =>
+            new ContextPanelDataProvider(
+                sp.GetRequiredService<Lopen.Storage.IPlanManager>(),
+                sp.GetRequiredService<Lopen.Core.Workflow.IWorkflowEngine>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ContextPanelDataProvider>>(),
+                sp.GetService<Lopen.Core.Documents.IResourceTracker>()));
         return services;
     }
 

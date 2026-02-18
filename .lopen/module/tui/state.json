@@ -177,7 +177,7 @@
       "jobs": [
         "JOB-012"
       ],
-      "notes": "Level 0=components, Level 1=tasks, Level 2+=subtasks. First incomplete item at each level marked InProgress. Resources placeholder (empty list) until IDocumentManager is implemented."
+      "notes": "Level 0=components, Level 1=tasks, Level 2+=subtasks. First incomplete item at each level marked InProgress. Resources populated from IResourceTracker (discovers SPECIFICATION.md, RESEARCH.md, RESEARCH-*.md, plan.md). JOB-170."
     },
     "file_picker": {
       "status": "complete",

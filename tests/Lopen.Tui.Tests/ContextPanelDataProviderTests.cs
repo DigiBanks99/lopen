@@ -1,3 +1,4 @@
+using Lopen.Core.Documents;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Storage;
@@ -553,6 +554,113 @@ public sealed class ContextPanelDataProviderTests
         Assert.False(app.IsRunning);
     }
 
+    // --- Resources with ResourceTracker ---
+
+    [Fact]
+    public async Task GetCurrentData_WithResourceTracker_IncludesResources()
+    {
+        var resourceTracker = new FakeResourceTracker();
+        resourceTracker.Resources["auth"] = new List<TrackedResource>
+        {
+            new("SPECIFICATION.md", "/proj/docs/requirements/auth/SPECIFICATION.md", "spec content"),
+            new("plan.md", "/proj/.lopen/modules/auth/plan.md", "plan content"),
+        };
+
+        var provider = new ContextPanelDataProvider(
+            _planManager, _workflowEngine,
+            NullLogger<ContextPanelDataProvider>.Instance,
+            resourceTracker);
+
+        provider.SetActiveModule("auth");
+        await provider.RefreshAsync();
+        var data = provider.GetCurrentData();
+
+        Assert.Equal(2, data.Resources.Count);
+        Assert.Contains(data.Resources, r => r.Label == "SPECIFICATION.md");
+        Assert.Contains(data.Resources, r => r.Label == "plan.md");
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WithResourceTracker_PopulatesResources()
+    {
+        var resourceTracker = new FakeResourceTracker();
+        resourceTracker.Resources["auth"] = new List<TrackedResource>
+        {
+            new("RESEARCH.md", "/proj/docs/requirements/auth/RESEARCH.md", "research"),
+        };
+
+        var provider = new ContextPanelDataProvider(
+            _planManager, _workflowEngine,
+            NullLogger<ContextPanelDataProvider>.Instance,
+            resourceTracker);
+
+        provider.SetActiveModule("auth");
+        await provider.RefreshAsync();
+        var data = provider.GetCurrentData();
+
+        Assert.Single(data.Resources);
+        Assert.Equal("RESEARCH.md", data.Resources[0].Label);
+        Assert.Equal("research", data.Resources[0].Content);
+        Assert.Equal(1, resourceTracker.CallCount);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WithNullResourceTracker_ResourcesEmpty()
+    {
+        var provider = CreateProvider(); // no resource tracker
+        provider.SetActiveModule("auth");
+        await provider.RefreshAsync();
+        var data = provider.GetCurrentData();
+
+        Assert.Empty(data.Resources);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_ResourceTrackerThrows_KeepsPreviousResources()
+    {
+        var resourceTracker = new FakeResourceTracker();
+        resourceTracker.Resources["auth"] = new List<TrackedResource>
+        {
+            new("SPECIFICATION.md", "/path", "content"),
+        };
+
+        var provider = new ContextPanelDataProvider(
+            _planManager, _workflowEngine,
+            NullLogger<ContextPanelDataProvider>.Instance,
+            resourceTracker);
+
+        provider.SetActiveModule("auth");
+        await provider.RefreshAsync();
+        var data1 = provider.GetCurrentData();
+        Assert.Single(data1.Resources);
+
+        // Now make tracker throw
+        resourceTracker.ShouldThrow = true;
+        await provider.RefreshAsync();
+        var data2 = provider.GetCurrentData();
+
+        // Previous resources should be kept
+        Assert.Single(data2.Resources);
+        Assert.Equal("SPECIFICATION.md", data2.Resources[0].Label);
+    }
+
+    [Fact]
+    public void AddContextPanelDataProvider_WithResourceTracker_ResolvesCorrectly()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IPlanManager, FakePlanManager>();
+        services.AddSingleton<IWorkflowEngine, FakeWorkflowEngine>();
+        services.AddSingleton<IResourceTracker, FakeResourceTracker>();
+        services.AddContextPanelDataProvider();
+
+        using var sp = services.BuildServiceProvider();
+        var dataProvider = sp.GetService<IContextPanelDataProvider>();
+
+        Assert.NotNull(dataProvider);
+        Assert.IsType<ContextPanelDataProvider>(dataProvider);
+    }
+
     // --- Fakes ---
 
     private sealed class FakePlanManager : IPlanManager
@@ -598,5 +706,23 @@ public sealed class ContextPanelDataProviderTests
         public ContextPanelData GetCurrentData() => new();
         public Task RefreshAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public void SetActiveModule(string moduleName) { }
+    }
+
+    private sealed class FakeResourceTracker : IResourceTracker
+    {
+        public Dictionary<string, IReadOnlyList<TrackedResource>> Resources { get; } = new();
+        public bool ShouldThrow { get; set; }
+        public int CallCount { get; private set; }
+
+        public Task<IReadOnlyList<TrackedResource>> GetActiveResourcesAsync(
+            string moduleName, CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            if (ShouldThrow)
+                throw new InvalidOperationException("resource tracking failed");
+            if (Resources.TryGetValue(moduleName, out var resources))
+                return Task.FromResult(resources);
+            return Task.FromResult<IReadOnlyList<TrackedResource>>([]);
+        }
     }
 }

@@ -1,3 +1,4 @@
+using Lopen.Core.Documents;
 using Lopen.Core.Workflow;
 using Lopen.Storage;
 using Microsoft.Extensions.Logging;
@@ -12,19 +13,23 @@ internal sealed class ContextPanelDataProvider : IContextPanelDataProvider
 {
     private readonly IPlanManager _planManager;
     private readonly IWorkflowEngine _workflowEngine;
+    private readonly IResourceTracker? _resourceTracker;
     private readonly ILogger<ContextPanelDataProvider> _logger;
 
     private volatile string? _activeModule;
     private volatile IReadOnlyList<PlanTask>? _cachedTasks;
+    private volatile IReadOnlyList<ResourceItem>? _cachedResources;
 
     public ContextPanelDataProvider(
         IPlanManager planManager,
         IWorkflowEngine workflowEngine,
-        ILogger<ContextPanelDataProvider> logger)
+        ILogger<ContextPanelDataProvider> logger,
+        IResourceTracker? resourceTracker = null)
     {
         _planManager = planManager ?? throw new ArgumentNullException(nameof(planManager));
         _workflowEngine = workflowEngine ?? throw new ArgumentNullException(nameof(workflowEngine));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _resourceTracker = resourceTracker;
     }
 
     public void SetActiveModule(string moduleName)
@@ -32,17 +37,20 @@ internal sealed class ContextPanelDataProvider : IContextPanelDataProvider
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
         _activeModule = moduleName;
         _cachedTasks = null; // invalidate cache on module change
+        _cachedResources = null;
     }
 
     public ContextPanelData GetCurrentData()
     {
         var tasks = _cachedTasks;
         var module = _activeModule;
+        var resources = _cachedResources ?? [];
 
         if (tasks is null || tasks.Count == 0 || module is null)
-            return new ContextPanelData();
+            return new ContextPanelData { Resources = resources };
 
-        return BuildContextData(module, tasks);
+        var data = BuildContextData(module, tasks);
+        return data with { Resources = resources };
     }
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
@@ -58,7 +66,21 @@ internal sealed class ContextPanelDataProvider : IContextPanelDataProvider
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogDebug(ex, "Failed to refresh plan tasks for module {Module}", module);
-            // Keep stale cache on failure
+        }
+
+        if (_resourceTracker is not null)
+        {
+            try
+            {
+                var tracked = await _resourceTracker.GetActiveResourcesAsync(module, cancellationToken).ConfigureAwait(false);
+                _cachedResources = tracked
+                    .Select(r => new ResourceItem(r.Label, r.Content))
+                    .ToList();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogDebug(ex, "Failed to refresh resources for module {Module}", module);
+            }
         }
     }
 
