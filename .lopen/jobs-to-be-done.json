@@ -85,9 +85,9 @@
     "requirement_code": "LLM-05",
     "requirement_module": "llm",
     "description": "Add integration test for ToolBindingIntegration — expand beyond single binding test to cover behavioral verification of each tool handler",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "ToolBindingIntegrationTests.cs has only 1 test verifying binding exists. Need behavioral tests for individual tool handlers in integration context."
+    "notes": "Added 7 behavioral integration tests in ToolBindingIntegrationTests verifying each tool handler is functional when invoked through the registry after BindAll()"
   },
   {
     "id": "JOB-014",
@@ -364,9 +364,9 @@
     "requirement_code": "CFG-01",
     "requirement_module": "configuration",
     "description": "Add integration test for full configuration hierarchy resolution — CLI→env→project→global→defaults",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "CFG-01 specifies the priority chain. Unit tests exist per layer but no single test exercises all 5 layers together."
+    "notes": "Full hierarchy test already exists in ConfigurationAcceptanceCriteriaTests.AC01 and AC16, plus LopenConfigurationBuilderTests.Build_FullLayerPrecedence"
   },
   {
     "id": "JOB-047",
@@ -544,9 +544,9 @@
     "requirement_code": "LLM-08",
     "requirement_module": "llm",
     "description": "Add test verifying update_task_status(complete) rejected without prior passing verify_*_completion",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "LLM-08 requires oracle gating. ToolHandlerBinderTests has some tests. Verify the full rejection path is tested."
+    "notes": "TaskStatusGate tested at unit (12 tests) and integration (10 tests in OracleVerificationIntegrationTests)"
   },
   {
     "id": "JOB-071",
@@ -616,9 +616,9 @@
     "requirement_code": "CLI-20",
     "requirement_module": "cli",
     "description": "Add test verifying exit code 2 is returned when user intervention required in headless+unattended mode",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "CLI-20 requires exit code 2 for intervention needed. Verify this specific scenario is tested."
+    "notes": "Exit code 2 tested at unit, integration, and E2E levels: CliAcceptanceCriteriaTests.AC20, RootCommandTests.RootCommand_Headless_Interrupted_ReturnsExitCode2, FizzBuzzE2ETests"
   },
   {
     "id": "JOB-079",
@@ -751,9 +751,9 @@
     "requirement_code": "CLI-15",
     "requirement_module": "cli",
     "description": "Add test for 'lopen revert' rolling back to last task-completion commit and updating session state",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "CLI-15 requires revert functionality. Verify git rollback and session state update."
+    "notes": "Revert tested comprehensively: CliAcceptanceCriteriaTests.AC15, 8 RevertCommandTests, 11 RevertServiceTests"
   },
   {
     "id": "JOB-098",

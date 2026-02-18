@@ -241,11 +241,12 @@
     "tool_handler_binding": {
       "status": "complete",
       "implementation": "IToolHandlerBinder wired into WorkflowOrchestrator.RunAsync — BindAll called after engine init",
-      "tests": "ToolBindingIntegrationTests (1 test) + ServiceCollectionExtensionsTests (1 DI test)",
+      "tests": "ToolBindingIntegrationTests (8 tests: 1 structural binding + 7 behavioral verification) + ServiceCollectionExtensionsTests (1 DI test)",
       "jobs": [
-        "JOB-126"
+        "JOB-126",
+        "JOB-013"
       ],
-      "notes": "Fixed CORE-25: BindAll() was only called in tests, never in production. Now called after InitializeAsync before LLM loop."
+      "notes": "JOB-013: Added 7 behavioral integration tests proving each tool handler is functional when invoked through registry after BindAll(). Tests cover read_spec, read_research, read_plan, update_task_status, get_current_context, log_research, report_progress."
     },
     "guardrail_di_registration": {
       "status": "complete",
