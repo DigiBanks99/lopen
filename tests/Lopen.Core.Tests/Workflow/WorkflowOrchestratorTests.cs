@@ -3,6 +3,7 @@ using System.Diagnostics.Metrics;
 using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
+using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -2383,6 +2384,48 @@ public class WorkflowOrchestratorTests
         Assert.NotNull(_promptBuilder.LastContextSections);
         Assert.Equal("Direct prompt", _promptBuilder.LastContextSections!["user_prompt"]);
         Assert.Equal("Queued message", _promptBuilder.LastContextSections["queued_user_messages"]);
+    }
+
+    // --- CORE-25 / JOB-126: ToolHandlerBinder.BindAll wiring ---
+
+    [Fact]
+    public async Task RunAsync_WithToolHandlerBinder_CallsBindAll()
+    {
+        _engine.IsComplete = true;
+        var binder = new StubToolHandlerBinder();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            toolHandlerBinder: binder);
+
+        await sut.RunAsync("test-module");
+
+        Assert.True(binder.BindAllCalled);
+        Assert.Same(_toolRegistry, binder.BoundRegistry);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithoutToolHandlerBinder_CompletesWithoutError()
+    {
+        _engine.IsComplete = true;
+        var sut = CreateOrchestrator(); // No binder injected
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete);
+    }
+
+    private sealed class StubToolHandlerBinder : IToolHandlerBinder
+    {
+        public bool BindAllCalled { get; private set; }
+        public IToolRegistry? BoundRegistry { get; private set; }
+
+        public void BindAll(IToolRegistry registry)
+        {
+            BindAllCalled = true;
+            BoundRegistry = registry;
+        }
     }
 
     private sealed class InMemoryUserPromptQueue : IUserPromptQueue

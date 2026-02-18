@@ -1193,5 +1193,23 @@
         "status": "done"
       }
     ]
+  },
+  {
+    "id": "JOB-128",
+    "requirement_code": "CORE-25",
+    "requirement_module": "core",
+    "description": "Add test verifying WorkflowOrchestrator calls ToolHandlerBinder.BindAll() during RunAsync initialization \u2014 ensures tools are bound before orchestration loop starts",
+    "status": "done",
+    "priority": 1,
+    "notes": "Added RunAsync_WithToolHandlerBinder_CallsBindAll and RunAsync_WithoutToolHandlerBinder_CompletesWithoutError tests in WorkflowOrchestratorTests.cs with StubToolHandlerBinder. Verified BindAll is called with correct registry."
+  },
+  {
+    "id": "JOB-129",
+    "requirement_code": "CLI-01",
+    "requirement_module": "cli",
+    "description": "Extend Host_BuildsSuccessfully_WithAllModules integration test to resolve critical service interfaces from DI container \u2014 catches wiring regressions",
+    "status": "done",
+    "priority": 1,
+    "notes": "Added Host_ResolvesCoreCrossModuleServices test in CliIntegrationTests.cs. Resolves LopenOptions, IBudgetEnforcer, IGuardrailPipeline, IPhaseTransitionController, ILlmService, IToolRegistry, IModelSelector, IPromptBuilder, ITokenTracker, IFileSystem, IAuthService."
   }
 ]

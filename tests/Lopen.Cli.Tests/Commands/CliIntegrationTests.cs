@@ -66,6 +66,41 @@ public class CliIntegrationTests
         Assert.NotNull(host.Services);
     }
 
+    [Fact]
+    public void Host_ResolvesCoreCrossModuleServices()
+    {
+        var builder = Host.CreateApplicationBuilder([]);
+        builder.Services.AddLopenConfiguration();
+        builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
+        builder.Services.AddLopenCore();
+        builder.Services.AddLopenStorage();
+        builder.Services.AddLopenLlm();
+        builder.Services.AddLopenTui();
+
+        using var host = builder.Build();
+
+        // Configuration services
+        Assert.NotNull(host.Services.GetRequiredService<Lopen.Configuration.LopenOptions>());
+        Assert.NotNull(host.Services.GetRequiredService<Lopen.Configuration.IBudgetEnforcer>());
+
+        // Core services
+        Assert.NotNull(host.Services.GetRequiredService<Lopen.Core.BackPressure.IGuardrailPipeline>());
+        Assert.NotNull(host.Services.GetRequiredService<Lopen.Core.Workflow.IPhaseTransitionController>());
+
+        // LLM services
+        Assert.NotNull(host.Services.GetRequiredService<Lopen.Llm.ILlmService>());
+        Assert.NotNull(host.Services.GetRequiredService<Lopen.Llm.IToolRegistry>());
+        Assert.NotNull(host.Services.GetRequiredService<Lopen.Llm.IModelSelector>());
+        Assert.NotNull(host.Services.GetRequiredService<Lopen.Llm.IPromptBuilder>());
+        Assert.NotNull(host.Services.GetRequiredService<Lopen.Llm.ITokenTracker>());
+
+        // Storage services
+        Assert.NotNull(host.Services.GetRequiredService<Lopen.Storage.IFileSystem>());
+
+        // Auth
+        Assert.NotNull(host.Services.GetRequiredService<IAuthService>());
+    }
+
     // ==================== AC-1: Root Command ====================
 
     [Fact]

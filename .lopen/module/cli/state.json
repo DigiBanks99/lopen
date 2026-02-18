@@ -136,6 +136,15 @@
         "JOB-107"
       ],
       "notes": "Explicit AC traceability for all 28 CLI requirements mapped to focused test methods"
+    },
+    "di_service_resolution": {
+      "status": "complete",
+      "implementation": "Host_ResolvesCoreCrossModuleServices integration test",
+      "tests": "CliIntegrationTests.Host_ResolvesCoreCrossModuleServices",
+      "jobs": [
+        "JOB-129"
+      ],
+      "notes": "Verifies 11 critical cross-module services resolve from DI container"
     }
   },
   "last_updated": "2026-02-17T20:07:00Z"

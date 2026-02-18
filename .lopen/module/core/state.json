@@ -255,6 +255,16 @@
         "JOB-127"
       ],
       "notes": "Fixed CORE-11/12: ResourceLimitGuardrail conditional on ITokenTracker + BudgetOptions.PremiumRequestBudget > 0 (falls back to PassThroughGuardrail). ChurnDetectionGuardrail uses WorkflowOptions.FailureThreshold."
+    },
+    "tool_handler_binder_wiring": {
+      "status": "complete",
+      "implementation": "WorkflowOrchestrator.RunAsync calls ToolHandlerBinder.BindAll()",
+      "tests": "WorkflowOrchestratorTests (RunAsync_WithToolHandlerBinder_CallsBindAll, RunAsync_WithoutToolHandlerBinder_CompletesWithoutError)",
+      "jobs": [
+        "JOB-126",
+        "JOB-128"
+      ],
+      "notes": "BindAll called at line 158, null-conditional for optional injection"
     }
   },
   "last_updated": "2026-02-18T00:00:00Z"
