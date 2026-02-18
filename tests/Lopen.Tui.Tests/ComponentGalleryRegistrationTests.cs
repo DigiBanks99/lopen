@@ -75,6 +75,21 @@ public class ComponentGalleryRegistrationTests
     }
 
     [Fact]
+    public void Gallery_DiRegisteredComponents_AreSameSingletonInstances()
+    {
+        var services = new ServiceCollection();
+        services.AddLopenTui();
+        var sp = services.BuildServiceProvider();
+        var gallery = sp.GetRequiredService<IComponentGallery>();
+
+        Assert.Same(sp.GetRequiredService<TopPanelComponent>(), gallery.GetByName("TopPanel"));
+        Assert.Same(sp.GetRequiredService<ContextPanelComponent>(), gallery.GetByName("ContextPanel"));
+        Assert.Same(sp.GetRequiredService<ActivityPanelComponent>(), gallery.GetByName("ActivityPanel"));
+        Assert.Same(sp.GetRequiredService<PromptAreaComponent>(), gallery.GetByName("PromptArea"));
+        Assert.Same(sp.GetRequiredService<GuidedConversationComponent>(), gallery.GetByName("GuidedConversation"));
+    }
+
+    [Fact]
     public void Gallery_GetByName_CaseInsensitive()
     {
         var services = new ServiceCollection();
