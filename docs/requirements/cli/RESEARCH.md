@@ -1435,3 +1435,132 @@ Options:
 - **Integration test: `--version` outputs version string.** Invoke the CLI with `--version` and verify stdout contains a version string matching the expected format (e.g., semver pattern `\d+\.\d+\.\d+`).
 - **Unit test: `--version` cannot combine with other args.** Parse `--version --headless` and verify a parse error is produced.
 - **Consistency test:** Verify that the version string from `--version` matches the version displayed by `TopPanelDataProvider` in the TUI (both read `AssemblyInformationalVersionAttribute`).
+
+## E2E Integration Testing (CLI-28)
+
+CLI-28 requires: _"Run lopen executable to create a fizz-buzz application with tests in order to validate the full integration."_ This section evaluates approaches for an E2E integration test that exercises the full spec → plan → build workflow.
+
+### Current State
+
+`FizzBuzzWorkflowTests.cs` already validates the fizz-buzz workflow through all three phases using a `TrackingOrchestrator` — a hand-rolled fake that records calls and returns canned `OrchestrationResult.Completed` results. This proves the CLI command wiring, argument passing, and phase sequencing work correctly. What it does **not** prove is that the real `ILlmService` → Copilot SDK → LLM round-trip produces working code.
+
+### Approach Options
+
+#### Option A: True E2E with Real SDK
+
+Launch the compiled `lopen` binary as a child process, pointed at a real Copilot backend.
+
+| Pros | Cons |
+|------|------|
+| Validates the entire stack including auth, SDK, and LLM output | Requires a valid GitHub Copilot token in CI |
+| Catches real integration failures | Non-deterministic — LLM output varies between runs |
+| Tests the actual published binary | Slow (multiple LLM round-trips, 30–120 s per phase) |
+| | Costs real API quota per run |
+
+**Feasibility:** Possible but impractical as a standard CI gate. Best reserved for a nightly or manual workflow.
+
+#### Option B: Process-Level Test with Mock SDK
+
+Build and publish the `lopen` binary, then launch it as a child process with environment variables or a config flag that swaps the `ILlmService` for a deterministic fake at startup.
+
+| Pros | Cons |
+|------|------|
+| Tests the real binary, argument parsing, and DI wiring | Requires a "test mode" hook in production code |
+| Deterministic and fast | Process-level stdout/stderr assertions are brittle |
+| No auth or API quota needed | Must maintain a separate test seam (`--test-mode` or env var) |
+
+**Feasibility:** Viable but adds coupling between test infrastructure and production startup.
+
+#### Option C: Integration Test with Real DI Container + Stubbed LLM (Recommended)
+
+Use the full `Host.CreateApplicationBuilder()` pipeline (as `CliIntegrationTests.cs` already does) but replace `ILlmService` with a `ScriptedLlmService` that returns pre-recorded responses. Run phases in-process against a real temp directory.
+
+| Pros | Cons |
+|------|------|
+| Exercises real DI, command routing, orchestrator, file I/O, and storage | Does not test the actual binary entrypoint or Copilot SDK |
+| Deterministic and fast (< 2 s) | LLM response drift — real SDK output may diverge from scripted |
+| No auth, no quota, no network | |
+| Already proven pattern (`CliIntegrationTests`) | |
+
+### Recommended Pattern
+
+**Option C** is the practical choice for CI. It validates everything except the LLM network call, which is the one component that is inherently non-deterministic. Option A can complement it as an optional nightly job.
+
+### Implementation Sketch
+
+```csharp
+public sealed class FizzBuzzE2ETests : IDisposable
+{
+    private readonly string _workDir;
+
+    public FizzBuzzE2ETests()
+    {
+        _workDir = Path.Combine(Path.GetTempPath(), $"lopen-e2e-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_workDir);
+    }
+
+    [Fact]
+    public async Task FullWorkflow_ProducesSpecPlanAndCode()
+    {
+        // Arrange — build host with real DI but stubbed LLM
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddLopenConfiguration();
+        builder.Services.AddLopenCore(_workDir);
+        builder.Services.AddLopenStorage(_workDir);
+        builder.Services.AddLopenLlm();
+        builder.Services.AddSingleton<IAuthService, FakeAuthService>();
+        // Replace LLM with scripted responses
+        builder.Services.AddSingleton<ILlmService>(new ScriptedLlmService(
+            specResponse:  LoadFixture("fizzbuzz-spec.md"),
+            planResponse:  LoadFixture("fizzbuzz-plan.md"),
+            buildResponse: LoadFixture("fizzbuzz-build.json")
+        ));
+
+        var (config, stdout, _) = BuildCliConfig(builder, "--headless");
+
+        // Act — run spec → plan → build
+        var specResult = await config.InvokeAsync("spec --prompt \"fizz-buzz app\" --headless");
+        var planResult = await config.InvokeAsync("plan --headless");
+        var buildResult = await config.InvokeAsync("build --headless");
+
+        // Assert
+        Assert.Equal(0, specResult);
+        Assert.Equal(0, planResult);
+        Assert.Equal(0, buildResult);
+        Assert.True(File.Exists(Path.Combine(_workDir, ".lopen", "spec.md")));
+        Assert.True(File.Exists(Path.Combine(_workDir, ".lopen", "plan.md")));
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_workDir))
+            Directory.Delete(_workDir, recursive: true);
+    }
+
+    private static string LoadFixture(string name)
+        => File.ReadAllText(Path.Combine("Fixtures", "FizzBuzz", name));
+}
+```
+
+**`ScriptedLlmService`** — a fake `ILlmService` that returns a pre-recorded `LlmInvocationResult` per call, cycling through the scripted responses in order. This replaces the real Copilot SDK call while exercising all other layers.
+
+### CI Considerations
+
+| Concern | Solution |
+|---------|----------|
+| **Option C in CI** | Runs without credentials. Add to the standard `dotnet test` step — no special config needed. |
+| **Option A (nightly)** | Create a separate workflow (`e2e-nightly.yml`) triggered on `schedule` or `workflow_dispatch`. Store a Copilot-capable PAT as a repository secret (`COPILOT_TOKEN`). |
+| **Conditional execution** | Gate Option A tests with `[Trait("Category", "E2E")]` and filter: `dotnet test --filter Category!=E2E` for normal CI, `dotnet test --filter Category=E2E` for nightly. |
+| **Token rotation** | Use a GitHub App installation token or fine-grained PAT with Copilot scope. Rotate on a schedule. |
+| **Timeout** | Set `xunit.runner.json` `"methodTimeout"` or use `CancellationTokenSource` with a 180 s deadline for Option A tests. |
+
+### Test Fixture Design
+
+1. **Temp directory per test** — `Path.Combine(Path.GetTempPath(), $"lopen-e2e-{Guid.NewGuid():N}")`. Created in constructor, deleted in `Dispose()`. Avoids cross-test interference.
+2. **Golden fixtures** — store expected LLM responses in `tests/Lopen.Cli.Tests/Fixtures/FizzBuzz/` as plain text files (`fizzbuzz-spec.md`, `fizzbuzz-plan.md`, `fizzbuzz-build.json`). Easy to update when the prompt contract changes.
+3. **Assertion patterns:**
+   - Exit code is `0` for each phase.
+   - Expected files exist on disk (`.lopen/spec.md`, `.lopen/plan.md`, source files).
+   - Stdout contains expected progress messages (e.g., `"Spec complete"`) when in headless mode.
+   - No error output on stderr.
+4. **Cleanup safety** — wrap `Directory.Delete` in a try/catch in `Dispose()` to avoid test-runner crashes on Windows file locks. Alternatively, use `IAsyncLifetime.DisposeAsync()` for async cleanup.
