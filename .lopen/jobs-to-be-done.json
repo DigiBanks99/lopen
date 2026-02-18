@@ -1,1628 +1,902 @@
 [
   {
     "id": "JOB-001",
-    "requirement_code": "AUTH-10",
-    "requirement_module": "auth",
-    "description": "Wire IAuthService.ValidateAsync into workflow orchestrator pre-flight \u2014 call ValidateAsync before starting any workflow phase so missing/invalid credentials block execution",
+    "requirement_code": "OTEL-13",
+    "requirement_module": "otel",
+    "description": "Fix OTEL test failures — rename AppHost.cs to Program.cs so Aspire AppHost tests can find the expected file",
     "status": "done",
     "priority": 1,
-    "notes": "ValidateAsync exists in CopilotAuthService but grep shows it is not called in WorkflowOrchestrator, RootCommandHandler, or PhaseCommands. The mechanism exists but is not wired into the pre-flight path. [COMPLETED: ValidateAuthAsync wired into PhaseCommands and RootCommandHandler with tests]"
+    "notes": "Tests expected Program.cs but file was AppHost.cs. Renamed file to fix 3 failing tests (AspireAppHost_ProjectFile_Exists, AspireAppHost_Program_ReferencesLopen, AC13_AspireAppHost_ProjectExists). All tests now pass."
   },
   {
     "id": "JOB-002",
-    "requirement_code": "AUTH-10",
-    "requirement_module": "auth",
-    "description": "Add integration tests verifying pre-flight auth check blocks workflow when credentials are missing or invalid",
-    "status": "done",
-    "priority": 1,
-    "notes": "Unit tests exist for ValidateAsync itself (throws for NotAuthenticated/InvalidCredentials) but no test verifies the orchestrator calls it before starting work. [COMPLETED: ValidateAuthAsync wired into PhaseCommands and RootCommandHandler with tests]"
+    "requirement_code": "CLI-28",
+    "requirement_module": "cli",
+    "description": "Mark CLI-28 as complete — FizzBuzz workflow integration tests exist and pass, validating spec→plan→build pipeline",
+    "status": "open",
+    "priority": 2,
+    "notes": "CLI-28 is the only unchecked requirement. FizzBuzzWorkflowTests.cs has 10 tests covering all phases. Tests use fake services (not real E2E), but this matches the other acceptance criteria pattern. The checkbox should be checked once the team confirms unit-level validation is sufficient, or a true E2E test should be added."
   },
   {
     "id": "JOB-003",
-    "requirement_code": "CLI-21",
-    "requirement_module": "cli",
-    "description": "Add --version flag to the root CLI command \u2014 configure System.CommandLine VersionOption with assembly version",
-    "status": "done",
-    "priority": 1,
-    "notes": "--help works automatically via System.CommandLine but no VersionOption is configured on the root command. Need to add UseVersionOption() or equivalent. Already implemented via System.CommandLine built-in VersionOption. Two tests verify it works."
+    "requirement_code": "OTEL-13",
+    "requirement_module": "otel",
+    "description": "Remove or integrate unused Lopen.ServiceDefaults project — it is referenced by Lopen.csproj but AddServiceDefaults() is never called",
+    "status": "open",
+    "priority": 3,
+    "notes": "ServiceDefaults project is Aspire boilerplate that was superseded by custom Lopen.Otel. AddServiceDefaults() is never invoked. The project reference adds unnecessary build weight. Either remove the reference and project, or integrate the health check/service discovery features if needed."
   },
   {
     "id": "JOB-004",
-    "requirement_code": "CLI-21",
-    "requirement_module": "cli",
-    "description": "Add test verifying --version flag outputs version string and exits with code 0",
+    "requirement_code": "AUTH-10",
+    "requirement_module": "auth",
+    "description": "Update auth RESEARCH.md to reflect actual gh CLI-based implementation instead of Copilot CLI/SDK approach",
     "status": "done",
-    "priority": 1,
-    "notes": "No test exists for --version flag behavior. Already implemented via System.CommandLine built-in VersionOption. Two tests verify it works."
+    "priority": 3,
+    "notes": "Updated RESEARCH.md to document actual gh CLI-based auth via IGhCliAdapter/GhCliAdapter. Replaced Copilot CLI device flow and CopilotClient references with actual implementation patterns."
+  },
+  {
+    "id": "JOB-005",
+    "requirement_code": "STOR-21",
+    "requirement_module": "storage",
+    "description": "Update storage RESEARCH.md to reflect actual JsonSerializerOptions-based serialization instead of source-generated JsonSerializerContext",
+    "status": "done",
+    "priority": 3,
+    "notes": "Updated RESEARCH.md to document actual JsonSerializerOptions-based serialization with CompactJsonOptions/JsonOptions. Removed AOT source-generator references."
   },
   {
     "id": "JOB-006",
-    "requirement_code": "TUI-26",
-    "requirement_module": "tui",
-    "description": "Wire ConsecutiveFailureCount from ActivityPanelDataProvider to trigger a repeated failure confirmation modal in TuiApplication when threshold is reached",
-    "status": "done",
-    "priority": 2,
-    "notes": "ConsecutiveFailureCount checked in RefreshActivityPanelData against failureThreshold. Error modal shown once per streak with OnSelected callback that enqueues intervention to IUserPromptQueue."
+    "requirement_code": "STOR-11",
+    "requirement_module": "storage",
+    "description": "Add logging to silent IOException catch blocks in SectionCache.cs cache cleanup (line 172-175)",
+    "status": "open",
+    "priority": 4,
+    "notes": "IOException during file deletion is silently swallowed with no logging. Should at least log at Debug level for diagnostics. Best-effort cleanup should still be observable."
   },
   {
     "id": "JOB-007",
-    "requirement_code": "TUI-26",
-    "requirement_module": "tui",
-    "description": "Add tests verifying repeated failure confirmation modal is triggered when consecutive failure count exceeds threshold",
-    "status": "done",
-    "priority": 2,
-    "notes": "15 tests in FailureModalWiringTests.cs: threshold boundaries, per-streak guard, streak reset, existing modal protection, custom threshold, null safety, callback roundtrip, Enter/Escape key paths, all 3 intervention options."
+    "requirement_code": "STOR-13",
+    "requirement_module": "storage",
+    "description": "Add logging to silent IOException catch block in AssessmentCache.cs cache cleanup (line 142-145)",
+    "status": "open",
+    "priority": 4,
+    "notes": "Same pattern as SectionCache — IOException silently swallowed during cleanup. Should log at Debug level."
   },
   {
     "id": "JOB-008",
-    "requirement_code": "STOR-03",
-    "requirement_module": "storage",
-    "description": "Add per-iteration metric breakdowns to SessionMetrics \u2014 store an array of per-iteration token/premium counts alongside cumulative totals",
-    "status": "done",
-    "priority": 2,
-    "notes": "Added IterationMetric record to Lopen.Storage. Added Iterations property (IReadOnlyList<IterationMetric>) to SessionMetrics with [] default for backward compatibility. Updated AutoSaveAsync to map PerIterationTokens to IterationMetric list. Updated RestoreMetrics to accept optional priorIterations. Updated resume path to pass saved iterations."
+    "requirement_code": "CFG-07",
+    "requirement_module": "configuration",
+    "description": "Make GhCliAdapter process timeout configurable instead of hardcoded 30 seconds",
+    "status": "open",
+    "priority": 5,
+    "notes": "GhCliAdapter.cs line 13 has TimeSpan.FromSeconds(30) hardcoded. Should be configurable via LopenOptions or a dedicated auth config section."
   },
   {
     "id": "JOB-009",
-    "requirement_code": "STOR-03",
-    "requirement_module": "storage",
-    "description": "Add tests verifying per-iteration metrics are persisted and loadable from metrics.json",
-    "status": "done",
-    "priority": 2,
-    "notes": "Added 3 storage tests: round-trip with iterations, backward compat (empty list default), cumulative-matches-iteration-sums. Added 4 LLM tests: restore with prior iterations, restore+record appends, null iterations preserves existing, full save/restore cycle."
+    "requirement_code": "CFG-07",
+    "requirement_module": "configuration",
+    "description": "Make CopilotLlmService LLM request timeout configurable instead of hardcoded 10 minutes",
+    "status": "open",
+    "priority": 5,
+    "notes": "CopilotLlmService.cs line 12 has TimeSpan.FromMinutes(10) hardcoded. Should be configurable via LopenOptions model settings."
   },
   {
     "id": "JOB-010",
-    "requirement_code": "CORE-01",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying ModuleScanner correctly identifies all module specs in docs/requirements/ directory structure",
-    "status": "done",
-    "priority": 3,
-    "notes": "ModuleScanner is implemented and has basic tests. Need a test that mirrors the CORE-01 acceptance criterion exactly \u2014 scanning a realistic docs/requirements/ layout with multiple modules. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "CFG-07",
+    "requirement_module": "configuration",
+    "description": "Make TuiApplication provider refresh interval configurable instead of hardcoded 1 second",
+    "status": "open",
+    "priority": 6,
+    "notes": "TuiApplication.cs line 88 has TimeSpan.FromSeconds(1) hardcoded. Should be configurable via TUI settings."
   },
   {
     "id": "JOB-011",
-    "requirement_code": "CORE-03",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test for re-entrant assessment \u2014 verify current step is derived from codebase state (checkbox counts, spec existence), not stale session data",
-    "status": "done",
-    "priority": 3,
-    "notes": "CodebaseStateAssessor has tests but need one that specifically verifies session data is overridden by actual file state. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "CLI-22",
+    "requirement_module": "cli",
+    "description": "Enable the 3 CI-only skipped CLI acceptance tests for local execution or add alternative local tests",
+    "status": "open",
+    "priority": 5,
+    "notes": "CliAcceptanceCriteriaTests.cs lines 488, 497, 506 have Skip='CI-only build verification' for AC22, AC23, AC24. These verify dotnet build/test/format work but are skipped locally."
   },
   {
     "id": "JOB-012",
-    "requirement_code": "CORE-04",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test for spec drift detection \u2014 verify changed sections between iterations are flagged",
-    "status": "done",
-    "priority": 3,
-    "notes": "DriftDetector and SpecificationDriftService have tests. Verify a test exists that covers the full flow: hash \u2192 change file \u2192 re-hash \u2192 detect drift. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "TUI-38",
+    "requirement_module": "tui",
+    "description": "Add dedicated unit tests for SlashCommandRegistry — Register(), GetAll(), CreateDefault() methods",
+    "status": "open",
+    "priority": 4,
+    "notes": "SlashCommandRegistry has no dedicated test file. Only indirectly tested via SlashCommandExecutorTests. Needs direct unit tests for registry behavior."
   },
   {
     "id": "JOB-013",
-    "requirement_code": "CORE-16",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test for git auto-commit \u2014 verify a commit is created after task completion when git.auto_commit is enabled",
-    "status": "done",
-    "priority": 3,
-    "notes": "GitWorkflowService has tests but verify the full flow: complete task \u2192 auto-commit with formatted message. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "LLM-05",
+    "requirement_module": "llm",
+    "description": "Add integration test for ToolBindingIntegration — expand beyond single binding test to cover behavioral verification of each tool handler",
+    "status": "open",
+    "priority": 4,
+    "notes": "ToolBindingIntegrationTests.cs has only 1 test verifying binding exists. Need behavioral tests for individual tool handlers in integration context."
   },
   {
     "id": "JOB-014",
     "requirement_code": "CORE-17",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test for branch-per-module \u2014 verify lopen/<moduleName> branch is created",
-    "status": "done",
-    "priority": 3,
-    "notes": "GitWorkflowService.EnsureModuleBranchAsync has tests. Verify branch naming convention is tested. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "description": "Add more integration tests for GitWorkflowIntegration — only 3 tests for critical git workflow service",
+    "status": "open",
+    "priority": 4,
+    "notes": "GitWorkflowIntegrationTests.cs has only 3 tests. Should cover more scenarios: branch creation, auto-commit, revert, error handling."
   },
   {
     "id": "JOB-015",
-    "requirement_code": "LLM-02",
-    "requirement_module": "llm",
-    "description": "Add acceptance criterion-level test verifying each SDK invocation creates a fresh session with no conversation history carried forward",
-    "status": "done",
-    "priority": 3,
-    "notes": "CopilotLlmService creates new SessionConfig per InvokeAsync call. Need a test verifying no state leaks between invocations. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "CORE-02",
+    "requirement_module": "core",
+    "description": "Add WorkflowTrigger enum coverage tests — only 2 tests for multiple enum values",
+    "status": "open",
+    "priority": 6,
+    "notes": "WorkflowTriggerTests.cs has only 2 tests. WorkflowTrigger enum likely has multiple values that should each be validated."
   },
   {
     "id": "JOB-016",
-    "requirement_code": "LLM-03",
-    "requirement_module": "llm",
-    "description": "Add acceptance criterion-level test verifying system prompt includes all 6 required sections: role, workflow state, instructions, context, tools, constraints",
-    "status": "done",
+    "requirement_code": "CORE-02",
+    "requirement_module": "core",
+    "description": "Add integration test for WorkflowOrchestrator + RetryingLlmService + guardrail pipeline end-to-end",
+    "status": "open",
     "priority": 3,
-    "notes": "DefaultPromptBuilder has tests. Verify a test checks all 6 sections are present in output. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "notes": "WorkflowOrchestratorTests (106 tests) and RetryingLlmServiceTests (13 tests) test in isolation. No integration test exercises the retry + guardrail + tool-execution pipeline together."
   },
   {
     "id": "JOB-017",
-    "requirement_code": "LLM-05",
-    "requirement_module": "llm",
-    "description": "Add acceptance criterion-level test verifying all 10 Lopen-managed tools are registered and their handlers can be invoked",
-    "status": "done",
-    "priority": 3,
-    "notes": "DefaultToolRegistry registers 10 tools. Need a test that verifies all 10 are present and each handler is bound. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "STOR-06",
+    "requirement_module": "storage",
+    "description": "Add integration test for AutoSave lifecycle — AutoSaveTrigger → AutoSaveService → SessionManager flow",
+    "status": "open",
+    "priority": 4,
+save→persist pipeline."
   },
   {
     "id": "JOB-018",
-    "requirement_code": "LLM-09",
-    "requirement_module": "llm",
-    "description": "Add acceptance criterion-level test verifying tool registration varies by workflow step \u2014 e.g., log_research only in research phases",
-    "status": "done",
-    "priority": 3,
-    "notes": "GetToolsForPhase filters by AvailableInPhases. Need a test that verifies each phase returns the correct subset of tools. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "STOR-06",
+    "requirement_module": "storage",
+    "description": "Add unit tests for AutoSaveTrigger — no test file exists for this critical persistence trigger",
+    "status": "open",
+    "priority": 4,
+    "notes": "AutoSaveTrigger.cs has no corresponding test file. It determines when auto-save fires, which is critical for data persistence."
   },
   {
     "id": "JOB-019",
-    "requirement_code": "STOR-01",
+    "requirement_code": "STOR-02",
     "requirement_module": "storage",
-    "description": "Add acceptance criterion-level test verifying .lopen/ directory is created with correct subdirectories on first run",
-    "status": "done",
-    "priority": 3,
-    "notes": "STOR-01 AC test in StorageAcceptanceCriteriaTests.cs (AC01_StorageInitializer_CreatesAllRequiredSubdirectories, AC01_StorageInitializer_IdempotentOnRepeatedCalls)"
+    "description": "Add unit tests for SessionState model — no test class exists for core session state model",
+    "status": "open",
+    "priority": 5,
+    "notes": "SessionState.cs is the core state model used across the system but has no dedicated test class. Should test serialization, defaults, and state transitions."
   },
   {
     "id": "JOB-020",
-    "requirement_code": "STOR-05",
+    "requirement_code": "STOR-03",
     "requirement_module": "storage",
-    "description": "Add acceptance criterion-level test verifying latest symlink points to most recent session directory",
-    "status": "done",
-    "priority": 3,
-    "notes": "STOR-05 AC test in StorageAcceptanceCriteriaTests.cs (AC05_LatestSymlink_PointsToMostRecentSession, AC05_SetLatestAsync_UpdatesSymlink)"
+    "description": "Add unit tests for SessionMetrics model — no test class exists for metrics model",
+    "status": "open",
+    "priority": 5,
+    "notes": "SessionMetrics.cs is the metrics model passed to SaveSessionMetricsAsync() but has no dedicated test class."
   },
   {
     "id": "JOB-021",
-    "requirement_code": "STOR-06",
-    "requirement_module": "storage",
-    "description": "Add acceptance criterion-level test verifying auto-save triggers on all defined events: step/task/phase/component completion, user pause",
-    "status": "done",
-    "priority": 3,
-    "notes": "STOR-06 AC test in StorageAcceptanceCriteriaTests.cs (AC06_AutoSave_TriggersOnAllDefinedEvents)"
+    "requirement_code": "CORE-21",
+    "requirement_module": "core",
+    "description": "Add unit tests for FailureClassification — no test class exists for classification enum/type",
+    "status": "open",
+    "priority": 6,
+    "notes": "FailureClassification.cs is used by FailureHandler but has no direct validation tests."
   },
   {
     "id": "JOB-022",
-    "requirement_code": "CLI-03",
-    "requirement_module": "cli",
-    "description": "Add acceptance criterion-level test verifying 'lopen spec' runs Requirement Gathering phase with guided conversation",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by PhaseCommandTests.Spec_Succeeds and Spec_WithSession_InvokesOrchestrator"
+    "requirement_code": "CORE-02",
+    "requirement_module": "core",
+    "description": "Add unit tests for OrchestrationResult — no test class for critical workflow return type",
+    "status": "open",
+    "priority": 5,
+    "notes": "OrchestrationResult.cs is the return type of WorkflowOrchestrator.RunAsync() but has no dedicated tests."
   },
   {
     "id": "JOB-023",
-    "requirement_code": "CLI-04",
-    "requirement_module": "cli",
-    "description": "Add acceptance criterion-level test verifying 'lopen plan' errors when no spec exists",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by PhaseCommandTests.Plan_NoSpec_ReturnsExitCode1"
+    "requirement_code": "CORE-02",
+    "requirement_module": "core",
+    "description": "Add unit tests for StepResult — no test class for step execution return type",
+    "status": "open",
+    "priority": 5,
+    "notes": "StepResult.cs is the return type of WorkflowOrchestrator.RunStepAsync() but has no dedicated tests."
   },
   {
     "id": "JOB-024",
-    "requirement_code": "CLI-05",
-    "requirement_module": "cli",
-    "description": "Add acceptance criterion-level test verifying 'lopen build' errors when no spec and plan exist",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by PhaseCommandTests.Build_NoSpec_ReturnsExitCode1 and Build_NoPlan_ReturnsExitCode1"
+    "requirement_code": "CORE-18",
+    "requirement_module": "core",
+    "description": "Add unit tests for RevertResult — no test class for revert operation return type",
+    "status": "open",
+    "priority": 6,
+    "notes": "RevertResult.cs is used by RevertService but has no dedicated test class."
   },
   {
     "id": "JOB-025",
-    "requirement_code": "CLI-16",
+    "requirement_code": "CLI-02",
     "requirement_module": "cli",
-    "description": "Add acceptance criterion-level test verifying --headless/--quiet/-q all disable TUI and use plain text output",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by PhaseCommandTests.Headless_NoPrompt_NoSession_ReturnsExitCode1 and Spec_Quiet_Alias_Works"
+    "description": "Document the RetryingLlmService decorator pattern in LLM RESEARCH.md",
+    "status": "open",
+    "priority": 5,
+    "notes": "RetryingLlmService wraps CopilotLlmService with retry and model fallback logic. This pattern is not documented in the LLM research."
   },
   {
     "id": "JOB-026",
-    "requirement_code": "CLI-17",
-    "requirement_module": "cli",
-    "description": "Add acceptance criterion-level test verifying --prompt injects text into LLM context in headless mode",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by PhaseCommandTests.Spec_WithPrompt_PassesPromptToOrchestrator"
+    "requirement_code": "LLM-14",
+    "requirement_module": "llm",
+    "description": "Document ContextBudgetManager in LLM RESEARCH.md — context window management approach not researched",
+    "status": "open",
+    "priority": 5,
+    "notes": "ContextBudgetManager in Lopen.Llm handles context window budgeting but the approach is not covered in LLM research."
   },
   {
     "id": "JOB-027",
-    "requirement_code": "CLI-19",
-    "requirement_module": "cli",
-    "description": "Add acceptance criterion-level test verifying headless mode without --prompt and no active session errors with guidance",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by PhaseCommandTests.Headless_NoPrompt_NoSession_ReturnsExitCode1"
+    "requirement_code": "STOR-06",
+    "requirement_module": "storage",
+    "description": "Document AutoSaveService/AutoSaveTrigger architecture in Storage RESEARCH.md",
+    "status": "open",
+    "priority": 5,
+    "notes": "AutoSaveService and AutoSaveTrigger implement the auto-save pipeline but are not covered in storage research."
   },
   {
     "id": "JOB-028",
-    "requirement_code": "TUI-01",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying split-screen layout ratio is adjustable from 50/50 to 80/20",
-    "status": "done",
-    "priority": 1,
-    "notes": "LayoutCalculator has 12 tests covering 50/50, 80/20 boundaries, clamping, and width invariants. All tests pass."
+    "requirement_code": "CLI-25",
+    "requirement_module": "cli",
+    "description": "Document AuthBridgeTokenProvider and SessionStateSaverBridge cross-module wiring patterns",
+    "status": "open",
+    "priority": 6,
+    "notes": "Bridge pattern in CLI project for cross-module wiring is not documented in any research file."
   },
   {
     "id": "JOB-029",
-    "requirement_code": "TUI-02",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying top panel renders all required fields: logo, version, model, context usage, premium, git branch, auth, phase, step",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by TopPanelComponentTests (34 tests) and TopPanelDataProviderTests (31 tests)"
+    "requirement_code": "CLI-03",
+    "requirement_module": "cli",
+    "description": "Update CLI RESEARCH.md project structure section to show actual consolidated PhaseCommands.cs pattern",
+    "status": "open",
+    "priority": 6,
+    "notes": "Research shows separate command files per subcommand (SpecCommand.cs, PlanCommand.cs). Actual implementation consolidates into PhaseCommands.cs."
   },
   {
     "id": "JOB-030",
-    "requirement_code": "TUI-06",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying landing page modal shows quick commands and is suppressed by --no-welcome",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by TuiLandingPageTests and ModalComponentTests"
+    "requirement_code": "LLM-12",
+    "requirement_module": "llm",
+    "description": "Verify and document AssistantUsageEvent resolution in LLM RESEARCH.md",
+    "status": "open",
+    "priority": 6,
+    "notes": "LLM research has unresolved flag about AssistantUsageEvent needing verification. Should confirm if this was resolved."
   },
   {
     "id": "JOB-031",
-    "requirement_code": "TUI-07",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying session resume modal appears when active session is detected",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by SessionDetectorTests and ModalComponentTests"
+    "requirement_code": "CORE-11",
+    "requirement_module": "core",
+    "description": "Add test verifying PassThroughGuardrail behavior — placeholder guardrail should always pass and have no side effects",
+    "status": "open",
+    "priority": 6,
+    "notes": "PassThroughGuardrail.cs is a guardrail that always passes when prerequisites are not configured. Should have a test verifying this behavior."
   },
   {
     "id": "JOB-032",
-    "requirement_code": "TUI-20",
+    "requirement_code": "TUI-52",
     "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying Alt+Enter inserts newline in multi-line prompt input",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by KeyboardHandlerTests.AltEnter_InPrompt_InsertsNewline"
+    "description": "Add test verifying StubTuiApplication has no side effects in headless mode",
+    "status": "open",
+    "priority": 6,
+    "notes": "StubTuiApplication.cs is used in headless/testing mode. Should verify all methods are truly no-ops."
   },
   {
     "id": "JOB-033",
-    "requirement_code": "TUI-22",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying guided conversation UI cycles through all phases: Ideation \u2192 Interview \u2192 Drafting \u2192 Reviewing \u2192 Complete",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by GuidedConversationComponentTests (30 tests)"
+    "requirement_code": "LLM-02",
+    "requirement_module": "llm",
+    "description": "Add test for NullSessionStateSaver verifying no state is persisted",
+    "status": "open",
+    "priority": 7,
+    "notes": "NullSessionStateSaverTests.cs has only 1 test. Should verify no state leaks across invocations."
   },
   {
     "id": "JOB-034",
-    "requirement_code": "TUI-32",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying semantic color palette uses terminal theme colors",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by VisualAndCommandTests.ColorPalette tests"
+    "requirement_code": "LLM-01",
+    "requirement_module": "llm",
+    "description": "Add tests for NullGitHubTokenProvider edge cases — verify null return and no side effects",
+    "status": "open",
+    "priority": 7,
+    "notes": "NullGitHubTokenProviderTests.cs has only 1 test. Should test that it correctly defers to SDK credential chain."
   },
   {
     "id": "JOB-035",
-    "requirement_code": "TUI-33",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying Unicode symbols have ASCII fallbacks for all indicators",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by VisualAndCommandTests.Unicode_AsciiMode_ReturnsFallbacks tests"
+    "requirement_code": "CORE-19",
+    "requirement_module": "core",
+    "description": "Add tests for ExtractedSection model — used in document extraction but has no dedicated tests",
+    "status": "open",
+    "priority": 7,
+    "notes": "ExtractedSection.cs is used as return type in document extraction but only appears as stubs in other tests."
   },
   {
     "id": "JOB-036",
-    "requirement_code": "TUI-37",
+    "requirement_code": "TUI-50",
     "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying NO_COLOR environment variable disables all color output",
-    "status": "done",
+    "description": "Fix NotImplementedException in TuiOrchestratorBridgeTests.cs line 223",
+    "status": "open",
     "priority": 3,
-    "notes": "Covered by VisualAndCommandTests.ColorPalette_NoColor_ReturnsEmpty"
+    "notes": "Test file has throw new NotImplementedException() at line 223. This indicates incomplete test coverage for TuiOrchestratorBridge."
   },
   {
     "id": "JOB-037",
-    "requirement_code": "TUI-38",
+    "requirement_code": "TUI-04",
     "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying all 8 slash commands invoke their corresponding CLI commands",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by SlashCommandExecutorTests all 8 slash commands"
+    "description": "Add error logging for TUI data provider refresh failures instead of Debug-level suppression",
+    "status": "open",
+    "priority": 5,
+    "notes": "ContextPanelDataProvider.cs and TopPanelDataProvider.cs catch non-cancellation exceptions and log at Debug level only. Failures to refresh plan tasks, resources, git branch, and auth status are silently absorbed. Should at least log at Warning for unexpected failures."
   },
   {
     "id": "JOB-038",
-    "requirement_code": "TUI-41",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying Ctrl+P toggles agent execution pause/resume",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by KeyboardHandlerTests.CtrlP_TogglesPause_AnyPanel"
+    "requirement_code": "STOR-11",
+    "requirement_module": "storage",
+    "description": "Add error logging for SectionCache write failures instead of Warning-level suppression with no propagation",
+    "status": "open",
+    "priority": 6,
+    "notes": "SectionCache.cs line 111-114 catches IOException on cache write, logs warning but callers won't know the write failed. Consider if callers need notification."
   },
   {
     "id": "JOB-039",
-    "requirement_code": "AUTH-02",
-    "requirement_module": "auth",
-    "description": "Add acceptance criterion-level test verifying auth status reports all three states: authenticated, unauthenticated, invalid credentials",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by AuthStatusResultTests and AuthCommandTests.Status_* (3 states)"
+    "requirement_code": "STOR-13",
+    "requirement_module": "storage",
+    "description": "Add error logging for AssessmentCache write failures — same pattern as SectionCache",
+    "status": "open",
+    "priority": 6,
+    "notes": "AssessmentCache.cs line 88-91 catches IOException on cache write, logs warning but swallows. Same pattern as SectionCache."
   },
   {
     "id": "JOB-040",
-    "requirement_code": "AUTH-06",
-    "requirement_module": "auth",
-    "description": "Add acceptance criterion-level test verifying GH_TOKEN env var works without interactive login",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by EnvironmentTokenSourceResolverTests and CopilotAuthServiceTests.GetStatusAsync_GhTokenSet"
+    "requirement_code": "OTEL-13",
+    "requirement_module": "otel",
+    "description": "Add test project for Lopen.AppHost — no tests exist for the Aspire application host composition root",
+    "status": "open",
+    "priority": 5,
+    "notes": "AppHost is the Aspire composition root. No test project validates its DI configuration or project references."
   },
   {
     "id": "JOB-041",
-    "requirement_code": "AUTH-08",
-    "requirement_module": "auth",
-    "description": "Add acceptance criterion-level test verifying GH_TOKEN takes precedence over GITHUB_TOKEN when both are set",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by EnvironmentTokenSourceResolverTests.Resolve_BothTokensSet_GhTokenTakesPrecedence"
+    "requirement_code": "OTEL-11",
+    "requirement_module": "otel",
+    "description": "Add test project for Lopen.ServiceDefaults — no tests exist for service defaults extensions",
+    "status": "open",
+    "priority": 6,
+    "notes": "ServiceDefaults Extensions.cs has no tests. If kept, should have tests. If removed (JOB-003), this becomes moot."
   },
   {
     "id": "JOB-042",
-    "requirement_code": "CFG-01",
-    "requirement_module": "configuration",
-    "description": "Add acceptance criterion-level test verifying configuration hierarchy resolves in correct order: CLI \u2192 project \u2192 global \u2192 defaults",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by LopenConfigurationBuilderTests.Build_LayeredResolution_HighestPriorityWins"
+    "requirement_code": "CORE-09",
+    "requirement_module": "core",
+    "description": "Add tests verifying task state transitions are enforced — Pending→InProgress→Complete/Failed only valid transitions",
+    "status": "open",
+    "priority": 4,
+    "notes": "CORE-09 specifies valid state transitions. Need tests proving invalid transitions (e.g., Pending→Complete) are rejected."
   },
   {
     "id": "JOB-043",
-    "requirement_code": "CFG-07",
-    "requirement_module": "configuration",
-    "description": "Add acceptance criterion-level test verifying Lopen works with no config files \u2014 all settings have sensible defaults",
-    "status": "done",
+    "requirement_code": "CORE-10",
+    "requirement_module": "core",
+    "description": "Add integration test proving oracle verification blocks premature task completion across the full pipeline",
+    "status": "open",
     "priority": 3,
-    "notes": "Covered by LopenConfigurationBuilderTests.Build_NoConfigFiles_ReturnsDefaults and LopenOptionsTests"
+    "notes": "Unit tests exist for oracle verification in isolation. Need an integration test proving the full pipeline: tool call → oracle dispatch → verdict → accept/reject update_task_status."
   },
   {
     "id": "JOB-044",
-    "requirement_code": "CFG-15",
-    "requirement_module": "configuration",
-    "description": "Add acceptance criterion-level test verifying all invalid configuration values produce clear error messages with guidance",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by LopenOptionsValidatorTests (10+ validation tests)"
+    "requirement_code": "AUTH-11",
+    "requirement_module": "auth",
+    "description": "Add integration test for automatic token renewal during active sessions",
+    "status": "open",
+    "priority": 4,
+    "notes": "AUTH-11 requires transparent token renewal. Unit tests exist but no integration test simulates renewal during an active workflow session."
   },
   {
     "id": "JOB-045",
-    "requirement_code": "OTEL-01",
-    "requirement_module": "otel",
-    "description": "Add acceptance criterion-level test verifying lopen.command root span is created with command.name, headless, and exit_code attributes",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by SpanFactoryTests.StartCommand_SetsRequiredAttributes"
+    "requirement_code": "AUTH-12",
+    "requirement_module": "auth",
+    "description": "Add integration test for failed token renewal — verify session state is saved and user is informed",
+    "status": "open",
+    "priority": 4,
+    "notes": "AUTH-12 requires session save on revoked token. Need integration test proving the full error handling chain."
   },
   {
     "id": "JOB-046",
-    "requirement_code": "OTEL-04",
-    "requirement_module": "otel",
-    "description": "Add acceptance criterion-level test verifying lopen.tool.<name> spans carry tool.name and success attributes",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by SpanFactoryTests.StartTool_CreatesWithToolName and SetToolResult_* tests"
+    "requirement_code": "CFG-01",
+    "requirement_module": "configuration",
+    "description": "Add integration test for full configuration hierarchy resolution — CLI→env→project→global→defaults",
+    "status": "open",
+    "priority": 4,
+    "notes": "CFG-01 specifies the priority chain. Unit tests exist per layer but no single test exercises all 5 layers together."
   },
   {
     "id": "JOB-047",
-    "requirement_code": "OTEL-08",
-    "requirement_module": "otel",
-    "description": "Add acceptance criterion-level test verifying all 10 counter metrics increment correctly",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by Counters_IncrementCorrectly_VerifiedViaMeterListener using MeterListener to verify all 10 counter values"
+    "requirement_code": "CFG-16",
+    "requirement_module": "configuration",
+    "description": "Add integration test for LOPEN_ environment variable override behavior",
+    "status": "open",
+    "priority": 5,
+    "notes": "CFG-16 specifies LOPEN_-prefixed env vars override file config. Need test proving this in the full resolution chain."
   },
   {
     "id": "JOB-048",
-    "requirement_code": "OTEL-13",
-    "requirement_module": "otel",
-    "description": "Add acceptance criterion-level test verifying Aspire AppHost project references Lopen and can be built",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by OtlpExportTests.AspireAppHost_* tests"
+    "requirement_code": "TUI-07",
+    "requirement_module": "tui",
+    "description": "Add test for session resume modal — verify it correctly displays when previous active session detected",
+    "status": "open",
+    "priority": 5,
+    "notes": "TUI-07 requires session resume modal on startup when active session exists. Verify test coverage is complete."
   },
   {
     "id": "JOB-049",
-    "requirement_code": "CORE-05",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying Requirement Gathering \u2192 Planning requires explicit user confirmation (human gate)",
-    "status": "done",
-    "priority": 3,
-    "notes": "PhaseTransitionController requires ApproveSpecification(). Need test verifying transition is blocked until approval. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "TUI-40",
+    "requirement_module": "tui",
+    "description": "Add test for queued user messages — verify messages are delivered as context in next SDK invocation",
+    "status": "open",
+    "priority": 5,
+    "notes": "TUI-40 requires queued messages be passed to SDK. Verify the queue→context injection pipeline is tested."
   },
   {
     "id": "JOB-050",
-    "requirement_code": "CORE-06",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying Planning \u2192 Building auto-proceeds when plan is structurally complete",
-    "status": "done",
-    "priority": 3,
-    "notes": "CanAutoTransitionToBuilding checks hasComponentsIdentified && hasTasksBreakdown. Need test verifying auto-transition. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "TUI-41",
+    "requirement_module": "tui",
+    "description": "Add test for Ctrl+P pause — verify agent execution pauses and resumes correctly",
+    "status": "open",
+    "priority": 5,
+    "notes": "TUI-41 requires Ctrl+P to pause agent. Verify pause/resume state management is tested."
   },
   {
     "id": "JOB-051",
-    "requirement_code": "CORE-07",
+    "requirement_code": "CORE-04",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying Building \u2192 Complete auto-proceeds when all acceptance criteria pass",
-    "status": "done",
-    "priority": 3,
-    "notes": "CanAutoTransitionToComplete checks allComponentsBuilt && allAcceptanceCriteriaPassed. Need test. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "description": "Add test for spec drift detection across multiple iterations — verify cumulative drift tracking",
+    "status": "open",
+    "priority": 5,
+    "notes": "CORE-04 drift detection is tested for single changes. Need test for cumulative drift across multiple iterations."
   },
   {
     "id": "JOB-052",
-    "requirement_code": "CORE-10",
+    "requirement_code": "CORE-12",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying task completion requires passing oracle verification before update_task_status(complete) is accepted",
-    "status": "done",
-    "priority": 3,
-    "notes": "TaskStatusGate + OracleVerifier enforce this. Need end-to-end test showing rejection without verification and acceptance with it. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "description": "Add test for churn detection escalation — verify threshold-based escalation chain",
+    "status": "open",
+    "priority": 5,
+    "notes": "CORE-12 requires churn detection escalation after configured failure threshold. Verify escalation chain is fully tested."
   },
   {
     "id": "JOB-053",
-    "requirement_code": "CORE-11",
+    "requirement_code": "CORE-13",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test for back-pressure Cat 1 \u2014 verify warning at warning threshold and pause at confirmation threshold",
-    "status": "done",
-    "priority": 3,
-    "notes": "ResourceLimitGuardrail warns at 80%, blocks at 90%. Need test with both thresholds. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "description": "Add test for false completion claim rejection — verify required tool calls must be made",
+    "status": "open",
+    "priority": 5,
+    "notes": "CORE-13 requires false completion claims be rejected when required tool calls were not made. Verify this is tested end-to-end."
   },
   {
     "id": "JOB-054",
-    "requirement_code": "CORE-19",
+    "requirement_code": "CORE-15",
     "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying document management extracts relevant sections, not full documents, for LLM context",
-    "status": "done",
-    "priority": 3,
-    "notes": "SectionExtractor.ExtractRelevantSections filters by header list. Need test showing only relevant sections are included. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "description": "Add test for tool discipline corrective injection — verify corrective instructions are injected on wasteful patterns",
+    "status": "open",
+    "priority": 5,
+    "notes": "CORE-15 requires corrective instructions when wasteful tool patterns detected. Verify this is tested."
   },
   {
     "id": "JOB-055",
-    "requirement_code": "CORE-20",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying programmatic updates (checkboxes, status) happen without LLM invocation",
-    "status": "done",
-    "priority": 3,
-    "notes": "MarkdownUpdater uses pure regex. Need test confirming no ILlmService dependency or call is made. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "LLM-11",
+    "requirement_module": "llm",
+    "description": "Add integration test for model fallback chain — verify warning logged and fallback activated",
+    "status": "open",
+    "priority": 4,
+    "notes": "LLM-11 requires fallback when model unavailable. RetryingLlmServiceTests test in isolation. Need integration test with real DI container."
   },
   {
     "id": "JOB-056",
-    "requirement_code": "CORE-21",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying single task failures display inline and LLM self-corrects (below threshold returns SelfCorrect action)",
-    "status": "done",
-    "priority": 3,
-    "notes": "FailureHandler returns SelfCorrect for single failures. Need test verifying inline message and action type. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "STOR-14",
+    "requirement_module": "storage",
+    "description": "Add test verifying corrupted session is excluded from resume options in session list",
+    "status": "open",
+    "priority": 5,
+    "notes": "STOR-14 requires corrupted sessions be warned about and excluded from resume. Verify session list filtering is tested."
   },
   {
     "id": "JOB-057",
-    "requirement_code": "LLM-06",
-    "requirement_module": "llm",
-    "description": "Add acceptance criterion-level test verifying oracle verification tools dispatch sub-agent and return pass/fail verdicts with gap descriptions",
-    "status": "done",
-    "priority": 3,
-    "notes": "OracleVerifier dispatches InvokeAsync and parses JSON response. Need test verifying pass/fail/gaps extraction. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "STOR-15",
+    "requirement_module": "storage",
+    "description": "Add test verifying corrupted files are moved to .lopen/corrupted/ directory",
+    "status": "open",
+    "priority": 5,
+    "notes": "STOR-15 requires corrupted files be quarantined. Verify the move-to-corrupted path is tested."
   },
   {
     "id": "JOB-058",
-    "requirement_code": "LLM-08",
-    "requirement_module": "llm",
-    "description": "Add acceptance criterion-level test verifying update_task_status(complete) is rejected unless preceded by passing verify call in same invocation",
-    "status": "done",
-    "priority": 3,
-    "notes": "TaskStatusGate checks VerificationTracker. Need test showing rejection without verify and acceptance with it. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "STOR-18",
+    "requirement_module": "storage",
+    "description": "Add test verifying session pruning respects configured retention limit",
+    "status": "open",
+    "priority": 5,
+    "notes": "STOR-18 requires sessions be pruned beyond retention limit. Verify pruning logic is tested with various retention values."
   },
   {
     "id": "JOB-059",
-    "requirement_code": "LLM-14",
-    "requirement_module": "llm",
-    "description": "Add acceptance criterion-level test verifying context window budget truncates lower-priority sections when budget exceeded",
-    "status": "done",
-    "priority": 3,
-    "notes": "ContextBudgetManager.FitToBudget truncates and omits. Need test with sections exceeding budget showing truncation behavior. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "STOR-07",
+    "requirement_module": "storage",
+    "description": "Add test verifying session resume offers 'resume or start fresh' choice",
+    "status": "open",
+    "priority": 5,
+    "notes": "STOR-07 requires resume flow with user choice. Verify the choice presentation and handling is tested."
   },
   {
     "id": "JOB-060",
-    "requirement_code": "STOR-07",
-    "requirement_module": "storage",
-    "description": "Add acceptance criterion-level test verifying session resume loads from latest symlink and offers resume or start fresh options",
-    "status": "done",
-    "priority": 3,
-    "notes": "STOR-07 AC test in StorageAcceptanceCriteriaTests.cs (AC07_SessionResume_LoadsFromLatestSymlink)"
+    "requirement_code": "OTEL-14",
+    "requirement_module": "otel",
+    "description": "Add performance benchmark test verifying OTEL instrumentation adds < 5ms overhead",
+    "status": "open",
+    "priority": 5,
+    "notes": "OTEL-17 requires < 5ms overhead. A performance test should measure actual overhead with instrumentation on vs off."
   },
   {
     "id": "JOB-061",
-    "requirement_code": "STOR-10",
-    "requirement_module": "storage",
-    "description": "Add acceptance criterion-level test verifying plan checkboxes are updated programmatically by PlanManager, not by LLM",
-    "status": "done",
-    "priority": 3,
-    "notes": "STOR-10 AC test in StorageAcceptanceCriteriaTests.cs (AC10_PlanCheckboxes_UpdatedProgrammatically, AC10_PlanCheckboxes_CanUncheckProgrammatically)"
+    "requirement_code": "OTEL-12",
+    "requirement_module": "otel",
+    "description": "Add test verifying no telemetry export errors when OTEL_EXPORTER_OTLP_ENDPOINT is not set",
+    "status": "open",
+    "priority": 5,
+    "notes": "OTEL-12 requires graceful behavior when no endpoint configured. Verify no export errors occur."
   },
   {
     "id": "JOB-062",
-    "requirement_code": "STOR-18",
-    "requirement_module": "storage",
-    "description": "Add acceptance criterion-level test verifying session pruning retains newest N sessions and deletes oldest",
-    "status": "done",
-    "priority": 3,
-    "notes": "STOR-18 AC test in StorageAcceptanceCriteriaTests.cs (AC18_SessionPruning_RetainsNewestAndDeletesOldest, AC18_SessionPruning_FewerThanRetention_PrunesNothing)"
+    "requirement_code": "OTEL-15",
+    "requirement_module": "otel",
+    "description": "Add test verifying individual signal toggles independently control trace/metric/log exports",
+    "status": "open",
+    "priority": 5,
+    "notes": "OTEL-15 requires independent per-signal toggles. Verify each toggle independently enables/disables its signal."
   },
   {
     "id": "JOB-063",
-    "requirement_code": "CLI-06",
-    "requirement_module": "cli",
-    "description": "Add acceptance criterion-level test verifying 'lopen auth login' calls authService.LoginAsync and initiates device flow",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by AuthCommandTests.Login_CallsLoginAsync"
+    "requirement_code": "TUI-15",
+    "requirement_module": "tui",
+    "description": "Add test for diff viewer with syntax highlighting — verify correct rendering of code diffs",
+    "status": "open",
+    "priority": 6,
+    "notes": "TUI-15 requires diff viewer with syntax highlighting and line numbers. Verify rendering is tested."
   },
   {
     "id": "JOB-064",
-    "requirement_code": "CLI-09",
-    "requirement_module": "cli",
-    "description": "Add acceptance criterion-level test verifying 'lopen session list' lists all sessions with status markers",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by SessionCommandTests.List_WithSessions_DisplaysAll"
+    "requirement_code": "TUI-16",
+    "requirement_module": "tui",
+    "description": "Add test for file picker tree view — verify navigation and selection work correctly",
+    "status": "open",
+    "priority": 6,
+    "notes": "TUI-16 requires file picker with tree view navigation. Verify the component is tested."
   },
   {
     "id": "JOB-065",
-    "requirement_code": "CLI-14",
-    "requirement_module": "cli",
-    "description": "Add acceptance criterion-level test verifying 'lopen config show' displays resolved config with sources and supports --json",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by ConfigCommandTests.Show_* and ConfigurationDiagnosticsTests"
+    "requirement_code": "TUI-35",
+    "requirement_module": "tui",
+    "description": "Add test for syntax highlighting in code blocks — verify language detection and color output",
+    "status": "open",
+    "priority": 6,
+    "notes": "TUI-35 requires syntax highlighting in code blocks. Verify language detection and rendering are tested."
   },
   {
     "id": "JOB-066",
-    "requirement_code": "CLI-25",
-    "requirement_module": "cli",
-    "description": "Add acceptance criterion-level test verifying CLI uses Microsoft.Extensions.Hosting for DI",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by ProgramTests using Host.CreateApplicationBuilder()"
+    "requirement_code": "TUI-37",
+    "requirement_module": "tui",
+    "description": "Add test verifying NO_COLOR environment variable disables all color output",
+    "status": "open",
+    "priority": 6,
+    "notes": "TUI-37 requires NO_COLOR to be respected. Verify the env var detection and color suppression are tested."
   },
   {
     "id": "JOB-067",
-    "requirement_code": "CFG-05",
-    "requirement_module": "configuration",
-    "description": "Add acceptance criterion-level test verifying 'lopen config show' displays resolved config with source labels for each setting",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by ConfigCommandTests.Show_* with source labels"
+    "requirement_code": "CORE-24",
+    "requirement_module": "core",
+    "description": "Add test for module selection listing — verify all modules listed with current state and user choice accepted",
+    "status": "open",
+    "priority": 5,
+    "notes": "CORE-24 requires module listing with state. Verify ModuleSelectionService is tested for this flow."
   },
   {
     "id": "JOB-068",
-    "requirement_code": "CFG-08",
-    "requirement_module": "configuration",
-    "description": "Add acceptance criterion-level test verifying --model flag overrides all model phase assignments",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by LopenConfigurationBuilderTests.Build_ModelOverride_SetsAllPhases"
+    "requirement_code": "CORE-25",
+    "requirement_module": "core",
+    "description": "Add test for SDK tool registration with bound handler delegates",
+    "status": "open",
+    "priority": 5,
+    "notes": "CORE-25 requires Lopen-managed tools to be registered with SDK as native tool registrations. Verify the conversion and registration are tested."
   },
   {
     "id": "JOB-069",
-    "requirement_code": "CFG-12",
-    "requirement_module": "configuration",
-    "description": "Add acceptance criterion-level test verifying budget settings are respected when non-zero \u2014 BudgetEnforcer enforces limits",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by BudgetEnforcerTests (22 tests)"
+    "requirement_code": "LLM-04",
+    "requirement_module": "llm",
+    "description": "Add test verifying context window contains only section-level extractions, not full documents",
+    "status": "open",
+    "priority": 5,
+    "notes": "LLM-04 requires section-level extraction. Verify the extraction and context building are tested."
   },
   {
     "id": "JOB-070",
-    "requirement_code": "OTEL-11",
-    "requirement_module": "otel",
-    "description": "Add acceptance criterion-level test verifying OTLP export activates for all three signals when endpoint is set",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by OtlpExportTests.OtlpExport_AllThreeSignals_WhenEndpointSet"
+    "requirement_code": "LLM-08",
+    "requirement_module": "llm",
+    "description": "Add test verifying update_task_status(complete) rejected without prior passing verify_*_completion",
+    "status": "open",
+    "priority": 4,
+    "notes": "LLM-08 requires oracle gating. ToolHandlerBinderTests has some tests. Verify the full rejection path is tested."
   },
   {
     "id": "JOB-071",
-    "requirement_code": "OTEL-12",
-    "requirement_module": "otel",
-    "description": "Add acceptance criterion-level test verifying no telemetry is exported when no endpoint is configured",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by OtlpExportTests.NoEndpoint_NoOtlpExporter_ServicesStillResolve"
+    "requirement_code": "LLM-10",
+    "requirement_module": "llm",
+    "description": "Add test verifying per-phase model selection uses different configured models per phase",
+    "status": "open",
+    "priority": 5,
+    "notes": "LLM-10 requires per-phase model selection. Verify DefaultModelSelector tests cover all phases."
   },
   {
     "id": "JOB-072",
-    "requirement_code": "OTEL-14",
-    "requirement_module": "otel",
-    "description": "Add acceptance criterion-level test verifying otel.enabled=false disables all instrumentation with no performance overhead",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by OtlpExportTests.Disabled_NoSignals_NoExport and ServiceCollectionExtensionsTests"
+    "requirement_code": "CFG-05",
+    "requirement_module": "configuration",
+    "description": "Add test verifying 'lopen config show' indicates source for each setting",
+    "status": "open",
+    "priority": 5,
+    "notes": "CFG-05 requires source indication per setting. Verify the display format shows where each setting comes from."
   },
   {
     "id": "JOB-073",
-    "requirement_code": "OTEL-16",
-    "requirement_module": "otel",
-    "description": "Add acceptance criterion-level test verifying OTEL env vars take precedence over Lopen config settings",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by 3 new tests: OtelServiceNameEnvVar_ValueTakesPrecedence, NoEnvVar_FallsToConfigServiceName, NoServiceName_DefaultsToLopen"
+    "requirement_code": "CFG-15",
+    "requirement_module": "configuration",
+    "description": "Add test for invalid configuration error messages — verify they include what failed, why, and how to fix",
+    "status": "open",
+    "priority": 5,
+    "notes": "CFG-15 requires clear error messages with guidance. Verify LopenOptionsValidator produces actionable messages."
   },
   {
     "id": "JOB-074",
-    "requirement_code": "TUI-03",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying context panel shows current task, task tree with completion states, and active resources",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by ContextPanelComponentTests and ContextPanelDataProviderTests"
+    "requirement_code": "AUTH-13",
+    "requirement_module": "auth",
+    "description": "Add test verifying all auth error messages include what failed, why, and how to fix",
+    "status": "open",
+    "priority": 5,
+    "notes": "AUTH-13 requires actionable error messages. Verify error messages across all auth failure paths."
   },
   {
     "id": "JOB-075",
-    "requirement_code": "TUI-09",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying tool call outputs are expandable via keyboard shortcut",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by KeyboardHandlerTests.Enter_OutsidePrompt_TogglesExpand and Space_InActivity_TogglesExpand"
+    "requirement_code": "AUTH-14",
+    "requirement_module": "auth",
+    "description": "Add test verifying invalid PAT errors include Copilot Requests permission guidance",
+    "status": "open",
+    "priority": 5,
+    "notes": "AUTH-14 requires specific PAT permission guidance. Verify the error message content."
   },
   {
     "id": "JOB-076",
-    "requirement_code": "TUI-11",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying hierarchical task tree renders with \u2713/\u25b6/\u25cb status indicators",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by ContextPanelComponentTests.StateIcon_ReturnsCorrectSymbol"
+    "requirement_code": "CLI-17",
+    "requirement_module": "cli",
+    "description": "Add test verifying --prompt injects user instructions into LLM context for all phase commands",
+    "status": "open",
+    "priority": 5,
+    "notes": "CLI-17 requires prompt injection into LLM context. Verify all phase commands pass prompt to orchestrator."
   },
   {
     "id": "JOB-077",
-    "requirement_code": "TUI-12",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying numbered resource access (1-9 keys) opens correct resources",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by KeyboardHandlerTests.NumberKeys_* and ContextPanelComponentTests"
+    "requirement_code": "CLI-18",
+    "requirement_module": "cli",
+    "description": "Add test verifying --prompt in TUI mode populates input field for user review before sending",
+    "status": "open",
+    "priority": 5,
+    "notes": "CLI-18 requires TUI input field pre-population. Verify the TUI receives and displays the prompt."
   },
   {
     "id": "JOB-078",
-    "requirement_code": "TUI-23",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying confirmation modals with Yes/No/Always/Other options render and handle selection",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by SelectionComponentTests.Confirmation_* tests"
+    "requirement_code": "CLI-20",
+    "requirement_module": "cli",
+    "description": "Add test verifying exit code 2 is returned when user intervention required in headless+unattended mode",
+    "status": "open",
+    "priority": 4,
+    "notes": "CLI-20 requires exit code 2 for intervention needed. Verify this specific scenario is tested."
   },
   {
     "id": "JOB-079",
-    "requirement_code": "TUI-27",
+    "requirement_code": "TUI-33",
     "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying critical error modal shows details and recovery options (Retry/Skip/Abort)",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by SelectionComponentTests.ErrorModal_* and FailureModalWiringTests"
+    "description": "Add test for Unicode symbols with ASCII fallbacks — verify fallback when terminal doesn't support Unicode",
+    "status": "open",
+    "priority": 6,
+    "notes": "TUI-33 requires ASCII fallbacks for all Unicode indicators. Verify fallback detection and rendering."
   },
   {
     "id": "JOB-080",
-    "requirement_code": "TUI-28",
+    "requirement_code": "TUI-12",
     "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying spinner component shows braille animation and optional progress percentage",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by VisualAndCommandTests.Spinner_* tests"
+    "description": "Add test for numbered resource access — verify 1-9 key presses show active resources",
+    "status": "open",
+    "priority": 6,
+    "notes": "TUI-12 requires numbered resource access via key presses. Verify the keyboard handling and resource display."
   },
   {
     "id": "JOB-081",
-    "requirement_code": "TUI-40",
+    "requirement_code": "TUI-20",
     "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying queued user messages are thread-safe and delivered in next SDK invocation",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by UserPromptQueueTests and WorkflowOrchestratorTests TUI-40 tests"
+    "description": "Add test for multi-line prompt input with Alt+Enter — verify newline insertion",
+    "status": "open",
+    "priority": 6,
+    "notes": "TUI-20 requires Alt+Enter for multi-line input. Verify the key binding and text insertion."
   },
   {
     "id": "JOB-082",
-    "requirement_code": "TUI-42",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying 'lopen test tui' launches the component gallery",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by TestCommandTests.TestTui_* tests"
+    "requirement_code": "CORE-08",
+    "requirement_module": "core",
+    "description": "Add test verifying full task hierarchy: Module→Component→Task→Subtask with correct parent-child relationships",
+    "status": "open",
+    "priority": 5,
+    "notes": "CORE-08 requires 4-level hierarchy. Verify WorkNode composite pattern handles all levels correctly."
   },
   {
     "id": "JOB-083",
-    "requirement_code": "TUI-47",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying all components self-register with gallery for automatic listing",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by ComponentGalleryRegistrationTests.Gallery_HasAllBuiltInComponents"
+    "requirement_code": "CORE-20",
+    "requirement_module": "core",
+    "description": "Add test verifying programmatic task checkbox updates happen without LLM invocation",
+    "status": "open",
+    "priority": 5,
+    "notes": "CORE-20 requires programmatic updates bypass LLM. Verify PlanManager checkbox updates don't trigger SDK calls."
   },
   {
     "id": "JOB-084",
-    "requirement_code": "TUI-48",
-    "requirement_module": "tui",
-    "description": "Add acceptance criterion-level test verifying stub data exercises multiple visual states (empty, populated, error, loading)",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by ComponentGalleryRegistrationTests.GetPreviewStates_* multi-state tests"
+    "requirement_code": "STOR-09",
+    "requirement_module": "storage",
+    "description": "Add test verifying plan stored at .lopen/modules/{module}/plan.md with checkbox task hierarchy format",
+    "status": "open",
+    "priority": 5,
+    "notes": "STOR-09 requires specific plan storage path and format. Verify file is created at correct path with checkbox markdown."
   },
   {
     "id": "JOB-085",
-    "requirement_code": "AUTH-11",
-    "requirement_module": "auth",
-    "description": "Add acceptance criterion-level test verifying automatic token renewal transparently refreshes credentials on 401/403",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by AuthErrorHandlerTests: HandleErrorAsync_RecoverableAuthError_ReturnsRetry (6 auth keywords), RetryLimitedToOne, ResetRetryCount_AllowsNewRetry"
+    "requirement_code": "STOR-10",
+    "requirement_module": "storage",
+    "description": "Add test verifying plan checkboxes are updated only programmatically, never by LLM content",
+    "status": "open",
+    "priority": 5,
+    "notes": "STOR-10 requires programmatic-only checkbox updates. Verify LLM-generated content doesn't modify checkbox state."
   },
   {
     "id": "JOB-086",
-    "requirement_code": "AUTH-12",
-    "requirement_module": "auth",
-    "description": "Add acceptance criterion-level test verifying failed renewal triggers critical error, saves session state, and informs user",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by AuthErrorHandlerTests: HandleErrorAsync_NonRecoverableAuthError_ReturnsAbort, SavesSessionState, AbortIncludesUserNotification, SaveFailure_StillReturnsAbort"
+    "requirement_code": "STOR-20",
+    "requirement_module": "storage",
+    "description": "Add test verifying research documents stored at docs/requirements/{module}/RESEARCH-{topic}.md in source tree",
+    "status": "open",
+    "priority": 6,
+    "notes": "STOR-20 requires research docs in source tree, not .lopen/. Verify storage path is correct."
   },
   {
     "id": "JOB-087",
-    "requirement_code": "AUTH-15",
-    "requirement_module": "auth",
-    "description": "Add acceptance criterion-level test verifying no credentials are stored by Lopen \u2014 all storage delegated to SDK/gh CLI",
-    "status": "done",
-    "priority": 3,
-    "notes": "Covered by AuthNoCredentialStorageTests (17 tests): behavioral, reflection, and source-scan tests verifying no credential storage"
+    "requirement_code": "STOR-22",
+    "requirement_module": "storage",
+    "description": "Add test verifying .lopen/ is added to existing .gitignore but no .gitignore is created if none exists",
+    "status": "open",
+    "priority": 6,
+    "notes": "STOR-22 requires conditional .gitignore modification. Verify both paths: existing .gitignore updated, missing .gitignore left alone."
   },
   {
     "id": "JOB-088",
-    "requirement_code": "CORE-08",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying full task hierarchy: Module \u2192 Component \u2192 Task \u2192 Subtask with composite pattern",
-    "status": "done",
-    "priority": 3,
-    "notes": "WorkNode hierarchy exists. Need test constructing full 4-level hierarchy and verifying traversal. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "OTEL-08",
+    "requirement_module": "otel",
+    "description": "Add test verifying all 10 counter metrics increment correctly across their respective operations",
+    "status": "open",
+    "priority": 5,
+    "notes": "OTEL-08 lists 10 specific counters. Verify each counter increments during its corresponding operation."
   },
   {
     "id": "JOB-089",
-    "requirement_code": "CORE-09",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying task state transitions: Pending \u2192 InProgress \u2192 Complete/Failed with retry path",
-    "status": "done",
-    "priority": 3,
-    "notes": "WorkNodeState + ValidateTransition exist. Need test verifying all valid transitions and rejection of invalid ones. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "OTEL-09",
+    "requirement_module": "otel",
+    "description": "Add test verifying all 5 histogram metrics record correct durations",
+    "status": "open",
+    "priority": 5,
+    "notes": "OTEL-09 lists 5 specific histograms. Verify each histogram records duration during its corresponding operation."
   },
   {
     "id": "JOB-090",
-    "requirement_code": "CORE-12",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying back-pressure Cat 2 churn detection escalates after failure threshold",
-    "status": "done",
-    "priority": 3,
-    "notes": "ChurnDetectionGuardrail blocks at threshold. Need test verifying escalation behavior. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "OTEL-10",
+    "requirement_module": "otel",
+    "description": "Add test verifying ILogger structured logs carry TraceId and SpanId from active spans",
+    "status": "open",
+    "priority": 5,
+    "notes": "OTEL-10 requires log correlation. Verify log entries include trace context when Activity is active."
   },
   {
     "id": "JOB-091",
-    "requirement_code": "CORE-13",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying back-pressure Cat 2 false completion claims are rejected when required tools not called",
-    "status": "done",
-    "priority": 3,
-    "notes": "QualityGateGuardrail blocks without verification. Need test verifying rejection message. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "TUI-01",
+    "requirement_module": "tui",
+    "description": "Add test for split-screen layout ratio adjustment — verify 50/50 to 80/20 range works",
+    "status": "open",
+    "priority": 6,
+    "notes": "TUI-01 requires adjustable layout ratio. LayoutCalculator has 12 tests. Verify ratio edge cases are covered."
   },
   {
     "id": "JOB-092",
-    "requirement_code": "CORE-14",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying back-pressure Cat 3 acceptance criteria enforced at module/component completion",
-    "status": "done",
-    "priority": 3,
-    "notes": "QualityGateGuardrail enforces at completion boundaries. Need test verifying enforcement. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "TUI-14",
+    "requirement_module": "tui",
+    "description": "Add test for phase transition summaries — verify summaries shown in activity area",
+    "status": "open",
+    "priority": 6,
+    "notes": "TUI-14 requires phase transition summaries. Verify the rendering of transition information."
   },
   {
     "id": "JOB-093",
-    "requirement_code": "CORE-15",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying back-pressure Cat 4 tool discipline corrective instructions on wasteful patterns",
-    "status": "done",
-    "priority": 3,
-    "notes": "ToolDisciplineGuardrail detects re-reads, retries, excessive calls. Need test verifying corrective messages. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "TUI-19",
+    "requirement_module": "tui",
+    "description": "Add test for component selection UI with tree view — verify navigation and selection",
+    "status": "open",
+    "priority": 6,
+    "notes": "TUI-19 requires component selection with tree view. Verify the component is tested."
   },
   {
     "id": "JOB-094",
-    "requirement_code": "CORE-18",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying lopen revert rolls back to last task-completion commit and updates session state",
-    "status": "done",
-    "priority": 3,
-    "notes": "RevertService performs git reset. Need test verifying rollback and session state update. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
+    "requirement_code": "CLI-09",
+    "requirement_module": "cli",
+    "description": "Add test for 'lopen session list' displaying both active and completed sessions",
+    "status": "open",
+    "priority": 5,
+    "notes": "CLI-09 requires session listing. Verify the list includes both active and completed sessions with correct formatting."
   },
   {
     "id": "JOB-095",
-    "requirement_code": "CORE-24",
-    "requirement_module": "core",
-    "description": "Add acceptance criterion-level test verifying module selection lists modules with \u25cb/\u25d0/\u25cf states and allows user choice",
-    "status": "done",
-    "priority": 3,
-    "notes": "ModuleSelectionService formats list with status symbols. Need test verifying format and selection. Verified: covered by existing acceptance criteria tests in CoreAcceptanceCriteriaTests.cs or LlmAcceptanceCriteriaTests.cs."
-  },
-  {
-    "id": "JOB-096",
-    "requirement_code": "CLI-28",
+    "requirement_code": "CLI-10",
     "requirement_module": "cli",
-    "description": "Use the CLI to build a small fizz-buzz application with tests to verify the workflow works",
-    "status": "done",
+    "description": "Add test for 'lopen session show' with --format flag displaying session details",
+    "status": "open",
     "priority": 5,
-    "notes": "Implemented as FizzBuzzWorkflowTests.cs with 10 integration tests covering: spec/plan/build phase invocation with fizz-buzz prompt, prerequisite enforcement (plan needs spec, build needs spec+plan), full sequential workflow (spec\u2192plan\u2192build), headless mode with prompt injection, and prompt passthrough verification."
+    "notes": "CLI-10 requires session detail display with format option. Verify different format outputs."
   },
   {
     "id": "JOB-096",
-    "requirement_code": "CFG-08",
+    "requirement_code": "CLI-13",
     "requirement_module": "cli",
-    "description": "Add --model CLI flag that overrides all model phase assignments for the invocation",
-    "status": "done",
-    "priority": 1,
-    "notes": "Added --model option to GlobalOptions, wired ApplyConfigOverrides in RootCommandHandler and PhaseCommands. Overrides ModelOptions.RequirementGathering/Planning/Building/Research. Tests: GlobalOptionsTests (parse, recursive), RootCommandTests (override verification, default preservation)."
+    "description": "Add test for 'lopen session prune' removing sessions beyond retention limit",
+    "status": "open",
+    "priority": 5,
+    "notes": "CLI-13 requires session pruning. Verify sessions are removed and user is notified of count."
   },
   {
     "id": "JOB-097",
-    "requirement_code": "CFG-09",
+    "requirement_code": "CLI-15",
     "requirement_module": "cli",
-    "description": "Add --unattended CLI flag that overrides the unattended workflow setting",
-    "status": "done",
-    "priority": 1,
-    "notes": "Added --unattended option to GlobalOptions, wired into ApplyConfigOverrides. Sets WorkflowOptions.Unattended=true. Tests: GlobalOptionsTests (parse, recursive), RootCommandTests (override verification)."
+    "description": "Add test for 'lopen revert' rolling back to last task-completion commit and updating session state",
+    "status": "open",
+    "priority": 4,
+    "notes": "CLI-15 requires revert functionality. Verify git rollback and session state update."
   },
   {
     "id": "JOB-098",
-    "requirement_code": "CFG-11",
-    "requirement_module": "cli",
-    "description": "Add --max-iterations CLI flag that overrides the max_iterations workflow setting",
-    "status": "done",
-    "priority": 1,
-    "notes": "Added --max-iterations option to GlobalOptions, wired into ApplyConfigOverrides. Sets WorkflowOptions.MaxIterations. Tests: GlobalOptionsTests (parse, recursive), RootCommandTests (override verification, default preservation)."
+    "requirement_code": "CORE-06",
+    "requirement_module": "core",
+    "description": "Add test verifying Planning→Building auto-transition when plan is structurally complete",
+    "status": "open",
+    "priority": 5,
+    "notes": "CORE-06 requires automatic transition. Verify the trigger condition and state machine transition."
   },
   {
     "id": "JOB-099",
-    "requirement_code": "AUTH-01..15",
-    "requirement_module": "auth",
-    "description": "Create AuthAcceptanceCriteriaTests.cs with explicit AUTH-XX requirement code traceability for all 15 auth acceptance criteria",
-    "status": "done",
-    "priority": 1,
-    "notes": "Created AuthAcceptanceCriteriaTests.cs with 31 tests covering AUTH-01 through AUTH-15. All tests pass. Cross-module references: AUTH-10 integration in PhaseCommandTests, AUTH-11/12 in AuthErrorHandlerTests."
+    "requirement_code": "CORE-07",
+    "requirement_module": "core",
+    "description": "Add test verifying Building→Complete auto-transition when all acceptance criteria pass",
+    "status": "open",
+    "priority": 5,
+    "notes": "CORE-07 requires automatic transition. Verify the trigger condition and state machine transition."
   },
   {
     "id": "JOB-100",
-    "requirement_code": "STOR-03,08,09,11,12,13,15,16,17,19,20,21",
-    "requirement_module": "storage",
-    "description": "Add explicit acceptance criteria tests for 12 STOR requirements missing traceability in StorageAcceptanceCriteriaTests.cs (AC03, AC08, AC09, AC11-AC13, AC15-AC17, AC19-AC21)",
-    "status": "done",
-    "priority": 1,
-    "notes": "Added 14 acceptance criteria tests covering AC03, AC08, AC09, AC11-AC13, AC15-AC17x2, AC19, AC20, AC21x2. All 2369 tests pass. Storage module now has full acceptance test traceability for all 21 STOR requirements."
-  },
-  {
-    "id": "JOB-101",
-    "requirement_code": "STOR-22",
-    "requirement_module": "storage",
-    "description": "Implement .gitignore auto-management in StorageInitializer \u2014 EnsureGitignoreEntryAsync adds .lopen/ to existing .gitignore on storage initialization, skips if no .gitignore exists",
-    "status": "done",
-    "priority": 2,
-    "notes": "EnsureGitignoreEntryAsync added to StorageInitializer. 7 unit tests + 3 acceptance criteria tests. Only modifies existing .gitignore, does not create one."
-  },
-  {
-    "id": "JOB-102",
-    "requirement_code": "CFG-16",
-    "requirement_module": "configuration",
-    "description": "Document LOPEN_-prefixed environment variable overrides in Configuration SPECIFICATION.md and add acceptance criterion CFG-16",
-    "status": "done",
-    "priority": 2,
-    "notes": "Added Environment Variables section to SPECIFICATION.md with naming convention table, updated hierarchy to 5 layers, added CFG-16 acceptance criterion."
-  },
-  {
-    "id": "JOB-103",
-    "requirement_code": "CFG-16",
-    "requirement_module": "configuration",
-    "description": "Add tests verifying LOPEN_-prefixed environment variables override file-based config and are overridden by CLI flags",
-    "status": "done",
-    "priority": 2,
-    "notes": "Added 5 tests in LopenConfigurationBuilderTests.cs: env var overrides project config, CLI overrides env var, env var overrides global config, nested key binding, and full 4-layer precedence test. All 81 configuration tests pass."
-  },
-  {
-    "id": "JOB-104",
-    "requirement_code": "OTEL-01 through OTEL-17",
-    "requirement_module": "otel",
-    "description": "Create OtelAcceptanceCriteriaTests.cs with explicit requirement code traceability for all 17 OTEL requirements (OTEL-01 through OTEL-17). Add [Trait(\"Requirement\", \"OTEL-XX\")] annotations to map each test to its specification requirement code, ensuring 100% traceability coverage.",
-    "status": "done",
-    "priority": 1,
-    "notes": "Created OtelAcceptanceCriteriaTests.cs with 23 tests covering all 17 OTEL requirements (OTEL-01 through OTEL-17). Each test has requirement code comment and ACXX_ prefix."
-  },
-  {
-    "id": "JOB-105",
-    "requirement_code": "OTEL-01",
-    "requirement_module": "otel",
-    "description": "Fix pre-existing test failure in LopenTelemetryDiagnosticsTests.ActivitySource_StartActivity_ReturnsNull_WhenNoListener \u2014 test assumes no ActivityListener is registered but other test classes in the same collection register global listeners that leak across test execution.",
-    "status": "done",
-    "priority": 1,
-    "notes": "Fixed pre-existing test failure by replacing fragile test that assumed no ActivityListeners with one using an isolated ActivitySource. Also added [Collection(\"ActivityListener\")] to OtlpExportTests and ServiceCollectionExtensionsTests to prevent parallel test interference."
-  },
-  {
-    "id": "JOB-106",
-    "requirement_code": "CFG-01 through CFG-16",
-    "requirement_module": "configuration",
-    "description": "Create ConfigurationAcceptanceCriteriaTests.cs with explicit requirement code traceability for all 16 CFG requirements (CFG-01 through CFG-16). Add AC prefix naming to map each test to its specification requirement code.",
-    "status": "done",
-    "priority": 1,
-    "notes": "AuthBridgeTokenProvider bridges ITokenSourceResolver to IGitHubTokenProvider. Registered in Program.cs before AddLopenLlm(). 4 unit tests + 2 DI tests pass."
-  },
-  {
-    "id": "JOB-107",
-    "requirement_code": "CLI-01 through CLI-28",
-    "requirement_module": "cli",
-    "description": "Create CliAcceptanceCriteriaTests.cs with explicit requirement code traceability for CLI requirements (CLI-01 through CLI-28). Add AC prefix naming to map each test to its specification requirement code.",
-    "status": "done",
-    "priority": 2,
-    "notes": "SessionStateSaverBridge bridges ISessionManager to ISessionStateSaver. Conditionally registered when projectRoot is non-null. 5 unit tests + 1 DI test pass."
-  },
-  {
-    "id": "JOB-106",
-    "requirement_code": "LLM-01",
-    "requirement_module": "llm",
-    "description": "Bridge ITokenSourceResolver (Auth) to IGitHubTokenProvider (LLM) via composition root adapter \u2014 create AuthBridgeTokenProvider so CopilotClientProvider receives the authenticated GitHub token instead of null",
-    "status": "done",
-    "priority": 1,
-    "notes": "AuthBridgeTokenProvider bridges ITokenSourceResolver to IGitHubTokenProvider. Registered in Program.cs before AddLopenLlm(). 4 unit tests + 2 DI tests pass."
-  },
-  {
-    "id": "JOB-107",
-    "requirement_code": "CORE-23",
-    "requirement_module": "llm",
-    "description": "Bridge ISessionStateSaver (LLM) to IAutoSaveService (Storage) via composition root adapter \u2014 create SessionStateSaverBridge so AuthErrorHandler can persist session state before aborting on non-recoverable auth errors",
-    "status": "done",
-    "priority": 1,
-    "notes": "SessionStateSaverBridge bridges ISessionManager to ISessionStateSaver. Conditionally registered when projectRoot is non-null. 5 unit tests + 1 DI test pass."
-  },
-  {
-    "id": "JOB-108",
-    "title": "Fix environment variable test isolation in Configuration tests",
-    "description": "ConfigurationAcceptanceCriteriaTests and LopenConfigurationBuilderTests both use Environment.SetEnvironmentVariable which is process-global. xUnit runs different test classes in parallel, causing env var leaks between test classes. Tests setting LOPEN_Models__Building=env-builder leak into Build_GlobalConfig_OverridesDefaults which expects the default value.",
-    "module": "configuration",
-    "priority": 1,
-    "status": "done",
-    "type": "bug",
-    "acceptance_criteria": [
-      "All Configuration tests pass when run together via dotnet test",
-      "Test classes that modify environment variables are placed in the same xUnit collection to prevent parallel execution",
-      "No environment variable leaks between test classes"
-    ],
-    "tasks": [
-      {
-        "id": "TASK-1",
-        "title": "Add Collection attribute to prevent parallel execution of env-var-mutating test classes",
-        "status": "done"
-      }
-    ]
-  },
-  {
-    "id": "JOB-109",
-    "title": "Add acceptance criteria tests for TUI-37 (NO_COLOR) and TUI-49 (lopen test tui)",
-    "description": "Two TUI acceptance criteria lack test coverage: TUI-37 (NO_COLOR env var) - need to verify that the NO_COLOR environment variable is respected by TuiApplication; TUI-49 (lopen test tui) - need to verify the lopen test tui command exists and launches the gallery.",
-    "module": "tui",
-    "priority": 2,
-    "status": "done",
-    "type": "feature",
-    "acceptance_criteria": [
-      "TUI-37: NO_COLOR env var is respected and disables color output",
-      "TUI-49: lopen test tui command exists and launches component gallery"
-    ],
-    "tasks": [
-      {
-        "id": "TASK-1",
-        "title": "Add TUI-37 NO_COLOR acceptance test",
-        "status": "done"
-      },
-      {
-        "id": "TASK-2",
-        "title": "Add TUI-49 lopen test tui acceptance test",
-        "status": "done"
-      }
-    ]
-  },
-  {
-    "id": "JOB-112",
-    "requirement_code": "STOR-02",
-    "requirement_module": "storage",
-    "description": "Add TaskHierarchyNode DTO to Lopen.Storage and wire it into SessionState so the full task tree (module/component/task/subtask with states) is persisted in state.json",
-    "status": "done",
-    "priority": 1,
-    "notes": "Added TaskHierarchyNode DTO to Lopen.Storage with recursive tree support (Id, Name, State, NodeType, Children). Added TaskHierarchy property to SessionState. All tests pass."
-  },
-  {
-    "id": "JOB-113",
-    "requirement_code": "STOR-02",
-    "requirement_module": "storage",
-    "description": "Add tests verifying task hierarchy round-trips through state.json save/load \u2014 nested module/component/task/subtask nodes with states survive serialization",
-    "status": "done",
-    "priority": 1,
-    "notes": "Added AC02_SessionState_PersistsTaskHierarchy (4-level tree round-trip) and AC02_SessionState_NullTaskHierarchy_BackwardCompatible tests. All 3 AC02 tests pass."
-  },
-  {
-    "id": "JOB-114",
-    "requirement_code": "CORE-02",
+    "requirement_code": "CORE-05",
     "requirement_module": "core",
-    "description": "Verify 7-step workflow executes in order: Draft Spec \u2192 Dependencies \u2192 Components \u2192 Select \u2192 Tasks \u2192 Iterate \u2192 Repeat",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented in WorkflowOrchestrator.cs with extensive tests in WorkflowOrchestratorTests.cs including CORE-02 tagged integration tests."
-  },
-  {
-    "id": "JOB-115",
-    "requirement_code": "CORE-25",
-    "requirement_module": "core",
-    "description": "Register Lopen-managed tool definitions with Copilot SDK session for tool handler invocation during SendAndWaitAsync",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented. ToolConversion.ToAiFunctions converts bound handlers to AIFunction instances. CopilotLlmService sets SessionConfig.Tools."
-  },
-  {
-    "id": "JOB-116",
-    "requirement_code": "LLM-04",
-    "requirement_module": "llm",
-    "description": "Context window uses section-level document extractions, not full documents",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented via SectionExtractor and ContextBudgetManager with tests."
-  },
-  {
-    "id": "JOB-117",
-    "requirement_code": "LLM-07",
-    "requirement_module": "llm",
-    "description": "Oracle verification uses separate SDK invocation with standard-tier model",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented. OracleVerifier uses gpt-5-mini (non-premium). Tests verify model is not premium."
-  },
-  {
-    "id": "JOB-118",
-    "requirement_code": "LLM-10",
-    "requirement_module": "llm",
-    "description": "Per-phase model selection \u2014 each phase can use a different configured model",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented in DefaultModelSelector with per-phase mapping and tests."
-  },
-  {
-    "id": "JOB-119",
-    "requirement_code": "LLM-11",
-    "requirement_module": "llm",
-    "description": "Model fallback activates when configured model is unavailable",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented in RetryingLlmService with fallback chain. Tests cover warning logging and chain iteration."
-  },
-  {
-    "id": "JOB-120",
-    "requirement_code": "LLM-12",
-    "requirement_module": "llm",
-    "description": "Token usage metrics read from SDK response metadata and recorded",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented. CopilotLlmService subscribes to SDK events, InMemoryTokenTracker aggregates metrics."
-  },
-  {
-    "id": "JOB-121",
-    "requirement_code": "LLM-13",
-    "requirement_module": "llm",
-    "description": "Token metrics surfaced to TUI and persisted in session state",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented via TopPanelDataProvider and TopPanelComponent. Metrics persisted to metrics.json."
-  },
-  {
-    "id": "JOB-122",
-    "requirement_code": "TUI-49",
-    "requirement_module": "tui",
-    "description": "All TUI components tested via lopen test tui command",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented. TestCommand lists and previews all registered components. Tests verify >= 14 components."
-  },
-  {
-    "id": "JOB-123",
-    "requirement_code": "TUI-50",
-    "requirement_module": "tui",
-    "description": "TuiOutputRenderer bridges orchestrator output events to TUI activity panel",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented. TuiOutputRenderer implements IOutputRenderer with 13 tests covering all methods."
-  },
-  {
-    "id": "JOB-124",
-    "requirement_code": "TUI-51",
-    "requirement_module": "tui",
-    "description": "All TUI data providers registered in DI and wired to live orchestrator/session data",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented in ServiceCollectionExtensions. Tests verify registration, resolution, singleton behavior."
-  },
-  {
-    "id": "JOB-125",
-    "requirement_code": "TUI-52",
-    "requirement_module": "tui",
-    "description": "TUI RunAsync launches WorkflowOrchestrator on background thread",
-    "status": "done",
-    "priority": 3,
-    "notes": "Already implemented. TuiApplication.TryLaunchOrchestrator uses Task.Run. 8 tests in TuiOrchestratorBridgeTests."
-  },
-  {
-    "id": "JOB-126",
-    "requirement_code": "CORE-25",
-    "requirement_module": "core",
-    "description": "Wire ToolHandlerBinder.BindAll() into production startup so tools are available to LLM at runtime \u2014 currently tools register with null handlers and BindAll() is only called in tests",
-    "status": "done",
-    "priority": 1,
-    "notes": "Fixed: IToolHandlerBinder added as optional dependency to WorkflowOrchestrator. BindAll() called after InitializeAsync in RunAsync. DI wired with try/catch for optional resolution. Tests: ToolBindingIntegrationTests + ServiceCollectionExtensionsTests.",
-    "tasks": [
-      {
-        "id": "JOB-126-T1",
-        "description": "Call BindAll() in production code path (WorkflowOrchestrator or DI setup)",
-        "status": "done"
-      },
-      {
-        "id": "JOB-126-T2",
-        "description": "Add integration test verifying tools flow from registry through binder to AI functions",
-        "status": "done"
-      }
-    ]
-  },
-  {
-    "id": "JOB-127",
-    "requirement_code": "CORE-18",
-    "requirement_module": "core",
-    "description": "Register ResourceLimitGuardrail and ChurnDetectionGuardrail in DI \u2014 classes exist but are dead code, not registered in ServiceCollectionExtensions",
-    "status": "done",
-    "priority": 2,
-    "notes": "Fixed: ResourceLimitGuardrail registered (conditional on ITokenTracker + budget > 0, falls back to PassThroughGuardrail). ChurnDetectionGuardrail registered with configurable threshold. Tests: PassThroughGuardrailTests + ServiceCollectionExtensionsTests.",
-    "tasks": [
-      {
-        "id": "JOB-127-T1",
-        "description": "Register both guardrails in Core ServiceCollectionExtensions",
-        "status": "done"
-      },
-      {
-        "id": "JOB-127-T2",
-        "description": "Add tests verifying guardrails are resolved from DI and participate in pipeline",
-        "status": "done"
-      }
-    ]
-  },
-  {
-    "id": "JOB-128",
-    "requirement_code": "CORE-25",
-    "requirement_module": "core",
-    "description": "Add test verifying WorkflowOrchestrator calls ToolHandlerBinder.BindAll() during RunAsync initialization \u2014 ensures tools are bound before orchestration loop starts",
-    "status": "done",
-    "priority": 1,
-    "notes": "Added RunAsync_WithToolHandlerBinder_CallsBindAll and RunAsync_WithoutToolHandlerBinder_CompletesWithoutError tests in WorkflowOrchestratorTests.cs with StubToolHandlerBinder. Verified BindAll is called with correct registry."
-  },
-  {
-    "id": "JOB-129",
-    "requirement_code": "CLI-01",
-    "requirement_module": "cli",
-    "description": "Extend Host_BuildsSuccessfully_WithAllModules integration test to resolve critical service interfaces from DI container \u2014 catches wiring regressions",
-    "status": "done",
-    "priority": 1,
-    "notes": "Added Host_ResolvesCoreCrossModuleServices test in CliIntegrationTests.cs. Resolves LopenOptions, IBudgetEnforcer, IGuardrailPipeline, IPhaseTransitionController, ILlmService, IToolRegistry, IModelSelector, IPromptBuilder, ITokenTracker, IFileSystem, IAuthService."
-  },
-  {
-    "id": "JOB-130",
-    "requirement_code": "CLI-09,CLI-10,CLI-11,CLI-12,CLI-13,CLI-15",
-    "requirement_module": "cli",
-    "description": "Fix Session/Revert commands crash when services not registered (no project root) \u2014 GetRequiredService calls outside try blocks cause unhandled InvalidOperationException instead of user-friendly error",
-    "status": "done",
-    "priority": 1,
-    "notes": "SessionCommand and RevertCommand now use GetService with null checks. 6 tests verify graceful error when services not registered."
-  },
-  {
-    "id": "JOB-131",
-    "requirement_code": "TUI-45",
-    "requirement_module": "tui",
-    "description": "Fix ComponentGallery creating duplicate component instances instead of resolving from DI \u2014 ServiceCollectionExtensions uses new() for 4 DI-registered components",
-    "status": "done",
-    "priority": 2,
-    "notes": "ServiceCollectionExtensions uses sp.GetRequiredService<T>() for 5 DI-registered components. Test verifies singleton identity with Assert.Same."
-  },
-  {
-    "id": "JOB-132",
-    "requirement_code": "CLI-20",
-    "requirement_module": "cli",
-    "description": "Fix Phase commands returning success exit code when orchestrator is null (no project root) \u2014 should return failure with error message per CLI-20 exit code contract",
-    "status": "done",
-    "priority": 2,
-    "notes": "PhaseCommands checks orchestrator is null and returns ExitCodes.Failure. ValidateSpecExistsAsync/ValidatePlanExistsAsync use GetService with null checks. 3 tests verify failure behavior."
-  },
-  {
-    "id": "JOB-133",
-    "requirement_code": "CORE-22",
-    "requirement_module": "core",
-    "description": "Repeated task failures (at threshold) prompt user intervention \u2014 FailureHandler + ChurnDetectionGuardrail wired into WorkflowOrchestrator",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: FailureHandler.cs, ChurnDetectionGuardrail.cs, WorkflowOrchestrator.cs; Tests: FailureHandlerTests, WorkflowOrchestratorTests, FailureModalWiringTests"
-  },
-  {
-    "id": "JOB-134",
-    "requirement_code": "STOR-04",
-    "requirement_module": "storage",
-    "description": "Session IDs follow {module}-YYYYMMDD-{counter} format with no collisions",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: SessionId.cs with regex validation; Tests: SessionIdTests (22 tests), SessionManagerTests collision prevention"
-  },
-  {
-    "id": "JOB-135",
-    "requirement_code": "STOR-14",
-    "requirement_module": "storage",
-    "description": "Corrupted session state is detected, warned, and excluded from resume options",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: SessionManager.QuarantineCorruptedSessionAsync; Tests: SessionManagerTests (5 corruption tests), StorageAcceptanceCriteriaTests (AC14)"
-  },
-  {
-    "id": "JOB-136",
-    "requirement_code": "TUI-04",
-    "requirement_module": "tui",
-    "description": "Main activity area supports scrolling with progressive disclosure",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: ActivityPanelComponent with ScrollOffset; Tests: ActivityPanelComponentTests, ActivityPanelDataProviderTests"
-  },
-  {
-    "id": "JOB-137",
-    "requirement_code": "TUI-05",
-    "requirement_module": "tui",
-    "description": "Multi-line prompt area with keyboard hints at bottom",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: PromptAreaComponent; Tests: PromptAreaComponentTests (20+ tests), UserPromptQueueTests"
-  },
-  {
-    "id": "JOB-138",
-    "requirement_code": "TUI-08",
-    "requirement_module": "tui",
-    "description": "Current action expanded, previous actions collapsed to summaries",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: ActivityPanelComponent with IsExpanded; Tests: ActivityPanelComponentTests (Render_CollapsedEntry_ShowsSummaryOnly)"
-  },
-  {
-    "id": "JOB-139",
-    "requirement_code": "TUI-10",
-    "requirement_module": "tui",
-    "description": "Real-time task progress updates in context panel",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: ContextPanelComponent.RenderProgressBar, ContextPanelDataProvider; Tests: ContextPanelComponentTests, ContextPanelDataProviderTests"
-  },
-  {
-    "id": "JOB-140",
-    "requirement_code": "TUI-13",
-    "requirement_module": "tui",
-    "description": "Inline research display with ability to drill into full document",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: ResearchDisplayComponent, ActivityPanelData.FullDocumentContent; Tests: ToolOutputComponentTests, ActivityPanelComponentTests"
-  },
-  {
-    "id": "JOB-141",
-    "requirement_code": "TUI-14",
-    "requirement_module": "tui",
-    "description": "Phase transition summaries shown in activity area",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: PhaseTransitionComponent, ActivityPanelDataProvider.AddPhaseTransition; Tests: ToolOutputComponentTests, ActivityPanelDataProviderTests"
-  },
-  {
-    "id": "JOB-142",
-    "requirement_code": "TUI-15",
-    "requirement_module": "tui",
-    "description": "Diff viewer with syntax highlighting and line numbers",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: DiffViewerComponent, SyntaxHighlighter.cs; Tests: ToolOutputComponentTests, SyntaxHighlighterTests"
-  },
-  {
-    "id": "JOB-143",
-    "requirement_code": "TUI-16",
-    "requirement_module": "tui",
-    "description": "File picker with tree view navigation",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: FilePickerComponent, SelectionComponents.cs; Tests: SelectionComponentTests, TuiApplicationTests"
-  },
-  {
-    "id": "JOB-144",
-    "requirement_code": "TUI-17",
-    "requirement_module": "tui",
-    "description": "Phase/step visualization (\u25cf/\u25cb progress indicator) in top panel",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: TopPanelComponent.BuildStepIndicator/BuildPhaseLine; Tests: TopPanelComponentTests (\u25cf\u25cf\u25cf\u25cf\u25cf\u25cf\u25cb indicators)"
-  },
-  {
-    "id": "JOB-145",
-    "requirement_code": "TUI-18",
-    "requirement_module": "tui",
-    "description": "Module selection modal with arrow key navigation",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: SelectionModalComponent, TuiApplication.HandleModuleSelectionInput; Tests: SelectionComponentTests, TuiApplicationTests"
-  },
-  {
-    "id": "JOB-146",
-    "requirement_code": "TUI-19",
-    "requirement_module": "tui",
-    "description": "Component selection UI with tree view",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: SelectionModalComponent (shared), ContextPanelComponent tree view; Tests: SelectionComponentTests, ContextPanelComponentTests"
-  },
-  {
-    "id": "JOB-147",
-    "requirement_code": "TUI-21",
-    "requirement_module": "tui",
-    "description": "Keyboard shortcuts functional: Tab (focus panel), Ctrl+P (pause), number keys (resources)",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: KeyboardHandler.cs (Tab\u2192CycleFocus, Ctrl+P\u2192Pause, 1-9\u2192ViewResource); Tests: KeyboardHandlerTests (30+ tests)"
-  },
-  {
-    "id": "JOB-148",
-    "requirement_code": "TUI-24",
-    "requirement_module": "tui",
-    "description": "Expandable sections via click or keyboard shortcut",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: KeyAction.ToggleExpand, Space/Enter on activity panel; Tests: KeyboardHandlerTests, GalleryPreviewControllerTests"
-  },
-  {
-    "id": "JOB-149",
-    "requirement_code": "TUI-25",
-    "requirement_module": "tui",
-    "description": "Task failures displayed inline and auto-expanded",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: ActivityPanelDataProvider.AddTaskFailure() with IsExpanded=true; Tests: ActivityPanelDataProviderTests"
-  },
-  {
-    "id": "JOB-150",
-    "requirement_code": "TUI-29",
-    "requirement_module": "tui",
-    "description": "Context window usage displayed in top panel",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: TopPanelComponent.BuildStatusLine \u2192 'Context: 2.4K/128K'; Tests: TopPanelComponentTests"
-  },
-  {
-    "id": "JOB-151",
-    "requirement_code": "TUI-30",
-    "requirement_module": "tui",
-    "description": "Premium request counter displayed in top panel (\ud83d\udd25 indicator)",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: TopPanelComponent \u2192 '\ud83d\udd25 {count} premium'; Tests: TopPanelComponentTests"
-  },
-  {
-    "id": "JOB-152",
-    "requirement_code": "TUI-31",
-    "requirement_module": "tui",
-    "description": "Real-time progress percentages in context panel",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: ContextPanelComponent.RenderProgressBar, ContextPanelDataProvider; Tests: ContextPanelComponentTests, ContextPanelDataProviderTests"
-  },
-  {
-    "id": "JOB-153",
-    "requirement_code": "TUI-34",
-    "requirement_module": "tui",
-    "description": "Box-drawing characters used for borders and panels",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: VisualDesign.cs \u2192 \u250c\u2510\u2514\u2518\u2500\u2502; Tests: VisualAndCommandTests"
-  },
-  {
-    "id": "JOB-154",
-    "requirement_code": "TUI-35",
-    "requirement_module": "tui",
-    "description": "Syntax highlighting in code blocks",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: SyntaxHighlighter.cs with C#/Python/TS/JS support; Tests: SyntaxHighlighterTests (8 tests), ToolOutputComponentTests"
-  },
-  {
-    "id": "JOB-155",
-    "requirement_code": "TUI-36",
-    "requirement_module": "tui",
-    "description": "Consistent panel styling throughout the application",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: All components use UnicodeSupport, PadToWidth; Tests: ComponentGalleryRegistrationTests"
-  },
-  {
-    "id": "JOB-156",
-    "requirement_code": "TUI-39",
-    "requirement_module": "tui",
-    "description": "Unknown slash commands display error with valid command list",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: SlashCommandExecutor.UnknownCommand(); Tests: SlashCommandExecutorTests"
-  },
-  {
-    "id": "JOB-157",
-    "requirement_code": "TUI-43",
-    "requirement_module": "tui",
-    "description": "Gallery lists all TUI components with selection navigation",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: GalleryListComponent, GalleryPreviewController; Tests: ComponentGalleryRegistrationTests, GalleryPreviewControllerTests"
-  },
-  {
-    "id": "JOB-158",
-    "requirement_code": "TUI-44",
-    "requirement_module": "tui",
-    "description": "Each component renders with realistic mock/stub data",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: All IPreviewableComponent.RenderPreview() implementations; Tests: ComponentGalleryRegistrationTests"
-  },
-  {
-    "id": "JOB-159",
-    "requirement_code": "TUI-46",
-    "requirement_module": "tui",
-    "description": "Components accept injected data with no live dependencies in preview",
-    "status": "done",
-    "priority": 2,
-    "notes": "Already implemented: All components take pure data records, IPreviewableComponent pattern; Tests: ComponentGalleryRegistrationTests (preview with no DI)"
-  },
-  {
-    "id": "JOB-160",
-    "requirement_code": "TUI-01,02,03,08,09,10,11,17,18,19,20,21,22,23,24,27,29,30,31,34,43,46,47",
-    "requirement_module": "tui",
-    "description": "Add explicit requirement code traceability comments to TUI test files for all 23 TUI acceptance criteria that lack explicit TUI-XX references",
-    "status": "done",
-    "priority": 1,
-    "notes": "Created TuiAcceptanceCriteriaTests.cs with 56 tests covering 29 TUI acceptance criteria (TUI-01,02,03,08,09,10,11,12,13,14,15,17,18,19,20,21,22,23,24,27,28,29,30,31,34,43,45,46,47). Added explicit TUI-XX traceability comments to 10 existing test files."
-  },
-  {
-    "id": "JOB-161",
-    "requirement_code": "STOR-16",
-    "requirement_module": "storage",
-    "description": "Disk full / write failure is treated as a critical system error and pauses the workflow \u2014 add IsCritical property to StorageException, create WriteFailureStorageException subclass, update AutoSaveService to re-throw critical errors, update WorkflowOrchestrator to catch and return CriticalError result",
-    "status": "done",
-    "priority": 1,
-    "notes": "AutoSaveService currently swallows all StorageExceptions. Need to distinguish critical (disk full, permissions) from non-critical write failures.",
-    "tasks": [
-      {
-        "id": "STOR-16-1",
-        "title": "Add IsCritical to StorageException + WriteFailureStorageException subclass",
-        "status": "done"
-      },
-      {
-        "id": "STOR-16-2",
-        "title": "Update SessionManager catch blocks",
-        "status": "done"
-      },
-      {
-        "id": "STOR-16-3",
-        "title": "Update AutoSaveService to re-throw critical errors",
-        "status": "done"
-      },
-      {
-        "id": "STOR-16-4",
-        "title": "Update WorkflowOrchestrator to handle critical storage errors",
-        "status": "done"
-      },
-      {
-        "id": "STOR-16-5",
-        "title": "Add unit tests",
-        "status": "done"
-      },
-      {
-        "id": "STOR-16-6",
-        "title": "Run tests and verify",
-        "status": "done"
-      }
-    ]
-  },
-  {
-    "id": "JOB-162",
-    "requirement_code": "AUTH-05",
-    "requirement_module": "auth",
-    "description": "lopen auth login --headless should check the --headless flag explicitly and return an error, not just rely on Console.IsInputRedirected detection",
-    "status": "done",
-    "priority": 2,
-    "notes": "LoginAsync currently checks Environment.UserInteractive && !Console.IsInputRedirected but does not check the --headless CLI flag.",
-    "tasks": [
-      {
-        "id": "AUTH-05-1",
-        "title": "Update LoginAsync to accept and check headless parameter",
-        "status": "done"
-      },
-      {
-        "id": "AUTH-05-2",
-        "title": "Add test for headless login rejection",
-        "status": "done"
-      }
-    ]
-  },
-  {
-    "id": "JOB-163",
-    "requirement_code": "CLI-18",
-    "requirement_module": "cli",
-    "description": "--prompt in TUI mode populates the input field for user review before sending instead of auto-sending to orchestrator",
-    "status": "done",
-    "priority": 1,
-    "notes": "Fixed TuiApplication.RunAsync to pre-populate _promptData with initialPrompt and pass null to TryLaunchOrchestrator. User must press Enter to submit. Tests added in TuiApplicationTests and TuiOrchestratorBridgeTests."
-  },
-  {
-    "id": "JOB-164",
-    "requirement_code": "OTEL-10",
-    "requirement_module": "otel",
-    "description": "Structured logs emitted via ILogger carry TraceId and SpanId for correlation with active spans in non-OTLP sinks",
-    "status": "done",
-    "priority": 2,
-    "notes": "Added ActivityTrackingOptions.TraceId | ActivityTrackingOptions.SpanId to logging configuration in ServiceCollectionExtensions.cs. Updated AC10 tests in OtelAcceptanceCriteriaTests and OtlpExportTests to assert LoggerFactoryOptions.ActivityTrackingOptions. Added dedicated tests in ServiceCollectionExtensionsTests for enabled/disabled states. All 125 OTEL tests pass."
-  },
-  {
-    "id": "JOB-165",
-    "requirement_code": "CLI-02,CLI-07,CLI-08,CLI-22,CLI-23,CLI-24,CLI-26,CLI-27",
-    "requirement_module": "cli",
-    "description": "Track already-implemented CLI requirements: headless mode, auth status/logout, build/test/format verification, project root discovery, --no-welcome flag",
-    "status": "done",
-    "priority": 3,
-    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
-  },
-  {
-    "id": "JOB-166",
-    "requirement_code": "CFG-02,CFG-03,CFG-04,CFG-06,CFG-10,CFG-13,CFG-14",
-    "requirement_module": "configuration",
-    "description": "Track already-implemented Configuration requirements: priority layering, project/global config discovery, config show --json, resume flags, oracle model, tool discipline",
-    "status": "done",
-    "priority": 3,
-    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
-  },
-  {
-    "id": "JOB-167",
-    "requirement_code": "STOR-08,STOR-09,STOR-11,STOR-12,STOR-13,STOR-15,STOR-17,STOR-19,STOR-20,STOR-21",
-    "requirement_module": "storage",
-    "description": "Track already-implemented Storage requirements: resume, plans, section/assessment cache, corrupted files, delete session, compact JSON, research docs",
-    "status": "done",
-    "priority": 3,
-    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
-  },
-  {
-    "id": "JOB-168",
-    "requirement_code": "OTEL-02,OTEL-03,OTEL-05,OTEL-06,OTEL-07,OTEL-09,OTEL-15",
-    "requirement_module": "otel",
-    "description": "Track already-implemented OTEL requirements: workflow/SDK/oracle/task/backpressure spans, histogram metrics, signal toggles",
-    "status": "done",
-    "priority": 3,
-    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
-  },
-  {
-    "id": "JOB-169",
-    "requirement_code": "TUI-35,TUI-48,TUI-36",
-    "requirement_module": "tui",
-    "description": "Add missing acceptance criteria tests for TUI module: (1) SyntaxHighlighter string/comment highlighting tests (TUI-35), (2) Multi-state preview distinct output assertions (TUI-48), (3) Cross-panel consistency assertions for border/padding uniformity (TUI-36)",
-    "status": "done",
-    "priority": 2,
-    "notes": "Added 8 new tests: 5 SyntaxHighlighter string/comment highlighting tests (TUI-35), 2 ComponentGallery tests for distinct state output (TUI-48) and border consistency (TUI-36), plus fixed PromptAreaComponent error state to be distinct from empty. Total TUI tests: 784."
-  },
-  {
-    "id": "JOB-170",
-    "requirement_code": "TUI-03,TUI-12,CORE-19",
-    "requirement_module": "core,tui",
-    "description": "Wire active resource tracking into ContextPanelDataProvider. Create IResourceTracker in Core to discover relevant documents (SPECIFICATION.md, RESEARCH.md, plan.md) for the active module, and populate ContextPanelData.Resources so the TUI context panel displays them. Currently Resources is always empty.",
-    "status": "done",
-    "priority": 1,
-    "notes": "Implemented IResourceTracker in Core (discovers SPECIFICATION.md, RESEARCH.md, RESEARCH-*.md, plan.md). Wired into ContextPanelDataProvider to populate Resources. Added 11 ResourceTracker tests and 5 ContextPanelDataProvider resource integration tests. All 2619 tests pass."
+    "description": "Add test verifying Requirement Gathering→Planning requires explicit user confirmation (human gate)",
+    "status": "open",
+    "priority": 5,
+    "notes": "CORE-05 requires human gate. Verify the confirmation prompt blocks automatic transition."
   }
 ]
