@@ -20,6 +20,7 @@ public class AuthCommandTests
         var error = new StringWriter();
 
         var root = new RootCommand("test");
+        GlobalOptions.AddTo(root);
         root.Add(AuthCommand.Create(provider, output, error));
 
         var config = new CommandLineConfiguration(root);
@@ -136,5 +137,30 @@ public class AuthCommandTests
 
         Assert.Equal(1, exitCode);
         Assert.Contains("Logout failed", error.ToString());
+    }
+
+    [Fact]
+    public async Task Login_WithHeadlessFlag_ReturnsError()
+    {
+        var (config, _, error) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["--headless", "auth", "login"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.False(_fakeAuth.LoginCalled);
+        Assert.Contains("non-interactive", error.ToString());
+        Assert.Contains("GH_TOKEN", error.ToString());
+    }
+
+    [Fact]
+    public async Task Login_WithQuietAlias_ReturnsError()
+    {
+        var (config, _, error) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["-q", "auth", "login"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.False(_fakeAuth.LoginCalled);
+        Assert.Contains("GH_TOKEN", error.ToString());
     }
 }

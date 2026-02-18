@@ -489,4 +489,51 @@ public class TuiApplicationTests
         });
         Assert.False(app.IsRunning);
     }
+
+    // ==================== CLI-18: --prompt pre-populates input ====================
+
+    [Fact]
+    public async Task RunAsync_WithInitialPrompt_PrePopulatesPromptData()
+    {
+        // [CLI-18] --prompt in TUI mode populates the input field for user review
+        var app = CreateApp();
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel(); // Pre-cancel so RunAsync exits immediately after setup
+
+        await app.RunAsync(initialPrompt: "Focus on auth", cancellationToken: cts.Token);
+
+        Assert.Equal("Focus on auth", app.CurrentPromptData.Text);
+        Assert.Equal("Focus on auth".Length, app.CurrentPromptData.CursorPosition);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithNullPrompt_LeavesPromptEmpty()
+    {
+        // [CLI-18] No --prompt means empty input
+        var app = CreateApp();
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        await app.RunAsync(initialPrompt: null, cancellationToken: cts.Token);
+
+        Assert.Equal(string.Empty, app.CurrentPromptData.Text);
+        Assert.Equal(0, app.CurrentPromptData.CursorPosition);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithEmptyPrompt_LeavesPromptEmpty()
+    {
+        // [CLI-18] Empty string --prompt should not change input
+        var app = CreateApp();
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        await app.RunAsync(initialPrompt: "", cancellationToken: cts.Token);
+
+        Assert.Equal(string.Empty, app.CurrentPromptData.Text);
+        Assert.Equal(0, app.CurrentPromptData.CursorPosition);
+    }
 }

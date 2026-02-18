@@ -214,6 +214,7 @@ This specification defines **where and how Lopen stores its state**. It does not
 - [x] [STOR-19] Individual sessions can be deleted via `DeleteSessionAsync`, removing the session directory and all files
 - [x] [STOR-20] Research documents are stored at `docs/requirements/{module}/RESEARCH-{topic}.md` (in source, not `.lopen/`)
 - [x] [STOR-21] Storage format is compact JSON by default, with on-demand prettification via `lopen session show --format`
+- [x] [STOR-22] `.lopen/` is automatically added to an existing `.gitignore` on storage initialization; no `.gitignore` is created if one does not exist
 
 ---
 

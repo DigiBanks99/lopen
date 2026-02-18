@@ -37,9 +37,14 @@ public static class SessionCommand
         var list = new Command("list", "List all sessions");
         list.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
         {
-            var sessionManager = services.GetRequiredService<ISessionManager>();
             try
             {
+                var sessionManager = services.GetService<ISessionManager>();
+                if (sessionManager is null)
+                {
+                    await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
+                    return 1;
+                }
                 var sessions = await sessionManager.ListSessionsAsync(cancellationToken);
                 var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
 
@@ -80,9 +85,14 @@ public static class SessionCommand
 
         show.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
-            var sessionManager = services.GetRequiredService<ISessionManager>();
             try
             {
+                var sessionManager = services.GetService<ISessionManager>();
+                if (sessionManager is null)
+                {
+                    await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
+                    return 1;
+                }
                 var sessionIdStr = parseResult.GetValue(sessionIdArg);
                 var format = parseResult.GetValue(formatOption) ?? "md";
 
@@ -135,9 +145,14 @@ public static class SessionCommand
 
         resume.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
-            var sessionManager = services.GetRequiredService<ISessionManager>();
             try
             {
+                var sessionManager = services.GetService<ISessionManager>();
+                if (sessionManager is null)
+                {
+                    await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
+                    return 1;
+                }
                 var sessionIdStr = parseResult.GetValue(sessionIdArg);
 
                 SessionId? sessionId;
@@ -194,9 +209,14 @@ public static class SessionCommand
 
         delete.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
-            var sessionManager = services.GetRequiredService<ISessionManager>();
             try
             {
+                var sessionManager = services.GetService<ISessionManager>();
+                if (sessionManager is null)
+                {
+                    await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
+                    return 1;
+                }
                 var sessionIdStr = parseResult.GetValue(sessionIdArg);
                 var sessionId = SessionId.TryParse(sessionIdStr);
                 if (sessionId is null)
@@ -228,10 +248,21 @@ public static class SessionCommand
         var prune = new Command("prune", "Remove completed sessions beyond retention limit");
         prune.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
         {
-            var sessionManager = services.GetRequiredService<ISessionManager>();
-            var options = services.GetRequiredService<Configuration.LopenOptions>();
             try
             {
+                var sessionManager = services.GetService<ISessionManager>();
+                if (sessionManager is null)
+                {
+                    await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
+                    return 1;
+                }
+
+                var options = services.GetService<Configuration.LopenOptions>();
+                if (options is null)
+                {
+                    await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
+                    return 1;
+                }
                 var retention = options.Session.SessionRetention;
                 var pruned = await sessionManager.PruneSessionsAsync(retention, cancellationToken);
                 await stdout.WriteLineAsync($"Pruned {pruned} session(s) (retention: {retention}).");

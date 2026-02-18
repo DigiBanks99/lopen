@@ -38,4 +38,8 @@ public sealed record SessionState
     /// <summary>The commit SHA of the last task-completion auto-commit, used for revert.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? LastTaskCompletionCommitSha { get; init; }
+
+    /// <summary>The full task hierarchy tree (module → component → task → subtask) with states.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TaskHierarchyNode>? TaskHierarchy { get; init; }
 }

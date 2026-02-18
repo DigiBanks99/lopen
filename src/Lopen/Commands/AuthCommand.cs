@@ -26,8 +26,15 @@ public static class AuthCommand
     private static Command CreateLoginCommand(IServiceProvider services, TextWriter stdout, TextWriter stderr)
     {
         var login = new Command("login", "Authenticate via Copilot SDK device flow");
-        login.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
+        login.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
+            // AUTH-05: --headless flag explicitly blocks interactive login
+            if (parseResult.GetValue(GlobalOptions.Headless))
+            {
+                await stderr.WriteLineAsync(AuthErrorMessages.HeadlessLoginNotSupported);
+                return 1;
+            }
+
             var authService = services.GetRequiredService<IAuthService>();
             try
             {

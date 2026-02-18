@@ -22,7 +22,11 @@ public sealed class PromptAreaComponent : IPreviewableComponent
         var data = state switch
         {
             "empty" => new PromptAreaData(),
-            "error" => new PromptAreaData(),
+            "error" => new PromptAreaData
+            {
+                Text = "Error: command not recognized",
+                CustomHints = ["Enter: Retry", "Ctrl+C: Cancel"],
+            },
             "loading" => new PromptAreaData
             {
                 Spinner = new SpinnerData { Message = "Analyzing..." },

@@ -18,11 +18,21 @@ public static class RevertCommand
         var revert = new Command("revert", "Roll back to the last task-completion commit");
         revert.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
         {
-            var revertService = services.GetRequiredService<IRevertService>();
-            var sessionManager = services.GetRequiredService<ISessionManager>();
-
             try
             {
+                var revertService = services.GetService<IRevertService>();
+                if (revertService is null)
+                {
+                    await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
+                    return 1;
+                }
+
+                var sessionManager = services.GetService<ISessionManager>();
+                if (sessionManager is null)
+                {
+                    await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
+                    return 1;
+                }
                 var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
                 if (latestId is null)
                 {

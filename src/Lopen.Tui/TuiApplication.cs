@@ -91,6 +91,7 @@ internal sealed class TuiApplication : ITuiApplication
 
     internal TuiModalState CurrentModalState => _modalState;
     internal ErrorModalData CurrentErrorModalData => _errorModalData;
+    internal PromptAreaData CurrentPromptData => _promptData;
     internal void DismissModal() => _modalState = TuiModalState.None;
 
     // Allow test injection of the terminal factory
@@ -159,6 +160,16 @@ internal sealed class TuiApplication : ITuiApplication
         else
             await CheckForActiveSessionAsync(ct).ConfigureAwait(false);
 
+        // [CLI-18] Pre-populate the prompt input for user review instead of auto-sending
+        if (!string.IsNullOrEmpty(initialPrompt))
+        {
+            _promptData = _promptData with
+            {
+                Text = initialPrompt,
+                CursorPosition = initialPrompt.Length
+            };
+        }
+
         ITerminal? terminal = null;
         try
         {
@@ -173,7 +184,8 @@ internal sealed class TuiApplication : ITuiApplication
                 DrainKeyboardInput();
 
                 // 1b. Launch orchestrator if available and not yet started
-                TryLaunchOrchestrator(initialPrompt, ct);
+                // [CLI-18] Don't pass initialPrompt — it's in the input field for user review
+                TryLaunchOrchestrator(null, ct);
 
                 // 1c. Check if orchestrator completed
                 CheckOrchestratorCompletion();

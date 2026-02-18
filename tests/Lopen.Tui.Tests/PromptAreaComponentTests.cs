@@ -3,8 +3,8 @@ using Lopen.Tui;
 namespace Lopen.Tui.Tests;
 
 /// <summary>
-/// Tests for PromptAreaComponent rendering.
-/// Covers AC: multi-line prompt area with keyboard hints at bottom.
+/// Tests for PromptAreaComponent rendering (TUI-20).
+/// Covers AC: multi-line prompt input with Alt+Enter for newlines, keyboard hints at bottom.
 /// </summary>
 public class PromptAreaComponentTests
 {
@@ -17,6 +17,8 @@ public class PromptAreaComponentTests
     {
         Assert.Equal("PromptArea", _component.Name);
     }
+
+    // ==================== TUI-20: Multi-Line Prompt Input with Alt+Enter ====================
 
     // ==================== Placeholder ====================
 

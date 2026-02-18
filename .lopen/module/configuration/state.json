@@ -31,7 +31,7 @@
     },
     "config_passthrough": {
       "status": "complete",
-      "implementation": "OracleOptions → OracleVerifier, ToolDisciplineOptions → ToolDisciplineGuardrail",
+      "implementation": "OracleOptions \u2192 OracleVerifier, ToolDisciplineOptions \u2192 ToolDisciplineGuardrail",
       "tests": "ToolDisciplineGuardrailTests (21 tests), OracleVerifierTests (30 tests)",
       "jobs": [
         "JOB-029"
@@ -54,7 +54,7 @@
       "jobs": [
         "JOB-084"
       ],
-      "notes": "Pre-invocation budget check: Ok→proceed, Warning→log+continue, ConfirmationRequired→prompt/halt, Exceeded→auto-save+halt"
+      "notes": "Pre-invocation budget check: Ok\u2192proceed, Warning\u2192log+continue, ConfirmationRequired\u2192prompt/halt, Exceeded\u2192auto-save+halt"
     },
     "cli_override_wiring": {
       "status": "complete",
@@ -66,7 +66,35 @@
         "JOB-098"
       ],
       "notes": "CFG-08 (--model), CFG-09 (--unattended), CFG-11 (--max-iterations) CLI flags now wired. ApplyConfigOverrides reads from ParseResult and mutates singleton options before orchestrator invocation."
+    },
+    "env_var_overrides": {
+      "status": "complete",
+      "implementation": "LopenConfigurationBuilder.Build() calls AddEnvironmentVariables(\"LOPEN_\") as Layer 3",
+      "tests": "LopenConfigurationBuilderTests (5 env var tests: override project config, CLI overrides env var, override global config, nested key binding, full 4-layer precedence)",
+      "jobs": [
+        "JOB-102",
+        "JOB-103"
+      ],
+      "notes": "CFG-16: LOPEN_-prefixed environment variables override file-based config but are overridden by CLI flags. Uses Microsoft.Extensions.Configuration __ separator for nested keys."
+    },
+    "acceptance_criteria_traceability": {
+      "status": "complete",
+      "implementation": "ConfigurationAcceptanceCriteriaTests.cs with AC01-AC16 prefix naming",
+      "tests": "ConfigurationAcceptanceCriteriaTests (46 tests)",
+      "jobs": [
+        "JOB-106"
+      ],
+      "notes": "Explicit AC traceability for all 16 CFG requirements mapped to focused test methods"
+    },
+    "test_isolation": {
+      "status": "complete",
+      "implementation": "Collection(\"EnvironmentVariableTests\") attribute on both test classes that mutate env vars",
+      "tests": "All 127 configuration tests pass reliably",
+      "jobs": [
+        "JOB-108"
+      ],
+      "notes": "Prevents xUnit parallel execution of ConfigurationAcceptanceCriteriaTests and LopenConfigurationBuilderTests which both use Environment.SetEnvironmentVariable"
     }
   },
-  "last_updated": "2026-02-17T20:07:00Z"
+  "last_updated": "2026-02-17T23:15:00Z"
 }

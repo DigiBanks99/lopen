@@ -3,12 +3,14 @@ using Lopen.Tui;
 namespace Lopen.Tui.Tests;
 
 /// <summary>
-/// Tests for KeyboardHandler, FocusPanel cycling, and context-aware hints.
+/// Tests for KeyboardHandler, FocusPanel cycling, and context-aware hints (TUI-20, TUI-21).
 /// Covers JOB-092 acceptance criteria.
 /// </summary>
 public class KeyboardHandlerTests
 {
     private readonly KeyboardHandler _handler = new();
+
+    // ==================== TUI-21: Keyboard Shortcuts (Tab, Ctrl+P, Number Keys) ====================
 
     // ==================== Ctrl+P Pause/Resume ====================
 
@@ -60,6 +62,8 @@ public class KeyboardHandlerTests
     {
         Assert.Equal(FocusPanel.Prompt, KeyboardHandler.CycleFocus(FocusPanel.Context));
     }
+
+    // ==================== TUI-20: Multi-Line Prompt Input with Alt+Enter ====================
 
     // ==================== Enter / Alt+Enter ====================
 

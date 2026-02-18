@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Lopen.Storage.Tests;
@@ -263,6 +264,140 @@ public class StorageAcceptanceCriteriaTests
         Assert.Equal("workflow_engine", loaded.Component);
     }
 
+    [Fact]
+    public async Task AC02_SessionState_PersistsTaskHierarchy()
+    {
+        var fs = new InMemoryFileSystem();
+        var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
+        fs.CreateDirectory("/project/.lopen/sessions");
+
+        var sessionId = await manager.CreateSessionAsync("core");
+        var now = DateTimeOffset.UtcNow;
+
+        var hierarchy = new List<TaskHierarchyNode>
+        {
+            new()
+            {
+                Id = "mod-core",
+                Name = "Core Module",
+                State = "InProgress",
+                NodeType = "module",
+                Children =
+                [
+                    new()
+                    {
+                        Id = "comp-engine",
+                        Name = "Workflow Engine",
+                        State = "InProgress",
+                        NodeType = "component",
+                        Children =
+                        [
+                            new()
+                            {
+                                Id = "task-init",
+                                Name = "Initialize Engine",
+                                State = "Complete",
+                                NodeType = "task",
+                                Children =
+                                [
+                                    new()
+                                    {
+                                        Id = "sub-validate",
+                                        Name = "Validate Config",
+                                        State = "Complete",
+                                        NodeType = "subtask",
+                                    },
+                                ],
+                            },
+                            new()
+                            {
+                                Id = "task-run",
+                                Name = "Run Workflow",
+                                State = "Pending",
+                                NodeType = "task",
+                            },
+                        ],
+                    },
+                ],
+            },
+        };
+
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "building",
+            Step = "iterate",
+            Module = "core",
+            Component = "workflow_engine",
+            CreatedAt = now,
+            UpdatedAt = now,
+            TaskHierarchy = hierarchy,
+        };
+        await manager.SaveSessionStateAsync(sessionId, state);
+
+        var loaded = await manager.LoadSessionStateAsync(sessionId);
+        Assert.NotNull(loaded);
+        Assert.NotNull(loaded.TaskHierarchy);
+        Assert.Single(loaded.TaskHierarchy);
+
+        var module = loaded.TaskHierarchy[0];
+        Assert.Equal("mod-core", module.Id);
+        Assert.Equal("Core Module", module.Name);
+        Assert.Equal("InProgress", module.State);
+        Assert.Equal("module", module.NodeType);
+        Assert.Single(module.Children);
+
+        var component = module.Children[0];
+        Assert.Equal("comp-engine", component.Id);
+        Assert.Equal("component", component.NodeType);
+        Assert.Equal(2, component.Children.Count);
+
+        var completedTask = component.Children[0];
+        Assert.Equal("task-init", completedTask.Id);
+        Assert.Equal("Complete", completedTask.State);
+        Assert.Equal("task", completedTask.NodeType);
+        Assert.Single(completedTask.Children);
+
+        var subtask = completedTask.Children[0];
+        Assert.Equal("sub-validate", subtask.Id);
+        Assert.Equal("subtask", subtask.NodeType);
+        Assert.Equal("Complete", subtask.State);
+        Assert.Empty(subtask.Children);
+
+        var pendingTask = component.Children[1];
+        Assert.Equal("task-run", pendingTask.Id);
+        Assert.Equal("Pending", pendingTask.State);
+        Assert.Empty(pendingTask.Children);
+    }
+
+    [Fact]
+    public async Task AC02_SessionState_NullTaskHierarchy_BackwardCompatible()
+    {
+        var fs = new InMemoryFileSystem();
+        var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
+        fs.CreateDirectory("/project/.lopen/sessions");
+
+        var sessionId = await manager.CreateSessionAsync("core");
+        var now = DateTimeOffset.UtcNow;
+
+        // Save state without task hierarchy (simulates pre-existing state.json)
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "building",
+            Step = "iterate",
+            Module = "core",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        await manager.SaveSessionStateAsync(sessionId, state);
+
+        var loaded = await manager.LoadSessionStateAsync(sessionId);
+        Assert.NotNull(loaded);
+        Assert.Null(loaded.TaskHierarchy);
+        Assert.Equal("building", loaded.Phase);
+    }
+
     // STOR-14: Corrupted session state is detected, warned, and excluded from resume options
 
     [Fact]
@@ -284,6 +419,359 @@ public class StorageAcceptanceCriteriaTests
         // Good session still loads fine
         var goodState = await manager.LoadSessionStateAsync(goodId);
         Assert.NotNull(goodState);
+    }
+
+    // STOR-03: Session metrics persists per-iteration and cumulative token counts and premium request counts
+
+    [Fact]
+    public async Task AC03_SessionMetrics_PersistsTokenCountsAndPremiumRequests()
+    {
+        var fs = new InMemoryFileSystem();
+        var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
+        fs.CreateDirectory("/project/.lopen/sessions");
+
+        var sessionId = await manager.CreateSessionAsync("auth");
+        var now = DateTimeOffset.UtcNow;
+        var metrics = new SessionMetrics
+        {
+            SessionId = sessionId.ToString(),
+            CumulativeInputTokens = 5000,
+            CumulativeOutputTokens = 3000,
+            PremiumRequestCount = 2,
+            IterationCount = 2,
+            Iterations = new List<IterationMetric>
+            {
+                new() { InputTokens = 2000, OutputTokens = 1500, TotalTokens = 3500, ContextWindowSize = 128000, IsPremiumRequest = true },
+                new() { InputTokens = 3000, OutputTokens = 1500, TotalTokens = 4500, ContextWindowSize = 128000, IsPremiumRequest = true },
+            },
+            UpdatedAt = now,
+        };
+        await manager.SaveSessionMetricsAsync(sessionId, metrics);
+
+        var loaded = await manager.LoadSessionMetricsAsync(sessionId);
+        Assert.NotNull(loaded);
+        Assert.Equal(5000, loaded.CumulativeInputTokens);
+        Assert.Equal(3000, loaded.CumulativeOutputTokens);
+        Assert.Equal(2, loaded.PremiumRequestCount);
+        Assert.Equal(2, loaded.IterationCount);
+        Assert.Equal(2, loaded.Iterations.Count);
+        Assert.True(loaded.Iterations[0].IsPremiumRequest);
+        Assert.Equal(2000, loaded.Iterations[0].InputTokens);
+        Assert.Equal(3000, loaded.Iterations[1].InputTokens);
+    }
+
+    // STOR-08: --resume {id} resumes a specific session (storage layer: load by explicit ID)
+
+    [Fact]
+    public async Task AC08_ResumeSpecificSession_LoadsByExplicitId()
+    {
+        var fs = new InMemoryFileSystem();
+        var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
+        fs.CreateDirectory("/project/.lopen/sessions");
+
+        var first = await manager.CreateSessionAsync("auth");
+        var second = await manager.CreateSessionAsync("auth");
+        var now = DateTimeOffset.UtcNow;
+
+        var firstState = new SessionState
+        {
+            SessionId = first.ToString(),
+            Phase = "research",
+            Step = "gather",
+            Module = "auth",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        var secondState = new SessionState
+        {
+            SessionId = second.ToString(),
+            Phase = "building",
+            Step = "iterate",
+            Module = "auth",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        await manager.SaveSessionStateAsync(first, firstState);
+        await manager.SaveSessionStateAsync(second, secondState);
+
+        // Resume by explicit first session ID (not latest)
+        var loaded = await manager.LoadSessionStateAsync(first);
+        Assert.NotNull(loaded);
+        Assert.Equal("research", loaded.Phase);
+        Assert.Equal("gather", loaded.Step);
+        Assert.Equal(first.ToString(), loaded.SessionId);
+    }
+
+    // STOR-09: Plans stored at .lopen/modules/{module}/plan.md with checkbox task hierarchy
+
+    [Fact]
+    public async Task AC09_PlanStorage_WrittenToCorrectPath()
+    {
+        var fs = new InMemoryFileSystem();
+        var planManager = new PlanManager(fs, NullLogger<PlanManager>.Instance, "/project");
+
+        var plan = "# Plan\n- [ ] Task A\n  - [ ] Subtask A1\n- [ ] Task B\n";
+        await planManager.WritePlanAsync("auth", plan);
+
+        var expectedPath = StoragePaths.GetModulePlanPath("/project", "auth");
+        Assert.True(fs.FileExists(expectedPath));
+
+        var content = await fs.ReadAllTextAsync(expectedPath);
+        Assert.Contains("- [ ] Task A", content);
+        Assert.Contains("  - [ ] Subtask A1", content);
+    }
+
+    // STOR-11: Section cache is keyed by file path + section header + modification timestamp
+
+    [Fact]
+    public async Task AC11_SectionCache_KeyedByPathAndHeaderAndTimestamp()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.CreateDirectory(StoragePaths.GetSectionsCacheDirectory("/project"));
+        var cache = new SectionCache(fs, NullLogger<SectionCache>.Instance, "/project");
+
+        // Create two source files
+        await fs.WriteAllTextAsync("/src/a.md", "content a");
+        await fs.WriteAllTextAsync("/src/b.md", "content b");
+
+        // Same header, different files
+        await cache.SetAsync("/src/a.md", "Overview", "content from a");
+        await cache.SetAsync("/src/b.md", "Overview", "content from b");
+
+        // Different headers, same file
+        await cache.SetAsync("/src/a.md", "Details", "details from a");
+
+        var resultA = await cache.GetAsync("/src/a.md", "Overview");
+        var resultB = await cache.GetAsync("/src/b.md", "Overview");
+        var resultDetails = await cache.GetAsync("/src/a.md", "Details");
+
+        Assert.NotNull(resultA);
+        Assert.NotNull(resultB);
+        Assert.NotNull(resultDetails);
+        Assert.Equal("content from a", resultA.Content);
+        Assert.Equal("content from b", resultB.Content);
+        Assert.Equal("details from a", resultDetails.Content);
+    }
+
+    // STOR-12: Section cache is invalidated when the source file changes
+
+    [Fact]
+    public async Task AC12_SectionCache_InvalidatedOnSourceFileChange()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.CreateDirectory(StoragePaths.GetSectionsCacheDirectory("/project"));
+        var cache = new SectionCache(fs, NullLogger<SectionCache>.Instance, "/project");
+
+        await fs.WriteAllTextAsync("/src/spec.md", "original content");
+        await cache.SetAsync("/src/spec.md", "Overview", "cached section");
+
+        // Modify the source file
+        await Task.Delay(10);
+        await fs.WriteAllTextAsync("/src/spec.md", "modified content");
+
+        var result = await cache.GetAsync("/src/spec.md", "Overview");
+        Assert.Null(result);
+    }
+
+    // STOR-13: Assessment cache is short-lived and invalidated on any file change in the assessed scope
+
+    [Fact]
+    public async Task AC13_AssessmentCache_InvalidatedOnAnyFileChangeInScope()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.CreateDirectory(StoragePaths.GetAssessmentsCacheDirectory("/project"));
+        var cache = new AssessmentCache(fs, NullLogger<AssessmentCache>.Instance, "/project");
+
+        await fs.WriteAllTextAsync("/src/auth/login.cs", "code1");
+        await fs.WriteAllTextAsync("/src/auth/register.cs", "code2");
+        var timestamps = new Dictionary<string, DateTime>
+        {
+            ["/src/auth/login.cs"] = fs.GetLastWriteTimeUtc("/src/auth/login.cs"),
+            ["/src/auth/register.cs"] = fs.GetLastWriteTimeUtc("/src/auth/register.cs"),
+        };
+
+        await cache.SetAsync("auth:assessment", "cached assessment", timestamps);
+
+        // Modify just one file in scope
+        await Task.Delay(10);
+        await fs.WriteAllTextAsync("/src/auth/register.cs", "modified code");
+
+        var result = await cache.GetAsync("auth:assessment");
+        Assert.Null(result);
+    }
+
+    // STOR-15: Corrupted files are moved to .lopen/corrupted/ for manual inspection
+
+    [Fact]
+    public async Task AC15_CorruptedSession_QuarantinedToCorruptedDirectory()
+    {
+        var fs = new InMemoryFileSystem();
+        var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
+        fs.CreateDirectory("/project/.lopen/sessions");
+        fs.CreateDirectory(StoragePaths.GetCorruptedDirectory("/project"));
+
+        var sessionId = await manager.CreateSessionAsync("auth");
+        var statePath = $"/project/.lopen/sessions/{sessionId}/state.json";
+        await fs.WriteAllTextAsync(statePath, "CORRUPTED{{{");
+
+        await manager.QuarantineCorruptedSessionAsync(sessionId);
+
+        var corruptedDir = StoragePaths.GetCorruptedDirectory("/project");
+        var quarantinedDirs = fs.GetDirectories(corruptedDir).ToList();
+        Assert.NotEmpty(quarantinedDirs);
+    }
+
+    // STOR-16: Disk full / write failure is treated as critical system error (wraps IOException in StorageException)
+
+    [Fact]
+    public async Task AC16_WriteFailure_WrappedInStorageException()
+    {
+        var fs = new FailingWriteFileSystem();
+        fs.CreateDirectory("/project/.lopen/sessions");
+        var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
+        var sessionId = SessionId.Generate("auth", DateOnly.FromDateTime(DateTime.UtcNow), 1);
+        var now = DateTimeOffset.UtcNow;
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "building",
+            Step = "iterate",
+            Module = "auth",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var ex = await Assert.ThrowsAsync<StorageException>(() => manager.SaveSessionStateAsync(sessionId, state));
+        Assert.IsType<IOException>(ex.InnerException);
+    }
+
+    // STOR-17: Corrupted cache entries are silently invalidated and regenerated
+
+    [Fact]
+    public async Task AC17_CorruptedSectionCacheEntry_SilentlyInvalidated()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.CreateDirectory(StoragePaths.GetSectionsCacheDirectory("/project"));
+        var cache = new SectionCache(fs, NullLogger<SectionCache>.Instance, "/project");
+
+        await fs.WriteAllTextAsync("/src/spec.md", "content");
+        await cache.SetAsync("/src/spec.md", "Overview", "valid content");
+
+        // Corrupt the cache file on disk
+        var cacheDir = StoragePaths.GetSectionsCacheDirectory("/project");
+        var files = fs.GetFiles(cacheDir, "*.json").ToList();
+        Assert.NotEmpty(files);
+        await fs.WriteAllTextAsync(files[0], "not valid json{{{");
+
+        // Fresh instance reads from disk only
+        var freshCache = new SectionCache(fs, NullLogger<SectionCache>.Instance, "/project");
+        var result = await freshCache.GetAsync("/src/spec.md", "Overview");
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task AC17_CorruptedAssessmentCacheEntry_SilentlyInvalidated()
+    {
+        var fs = new InMemoryFileSystem();
+        fs.CreateDirectory(StoragePaths.GetAssessmentsCacheDirectory("/project"));
+        var cache = new AssessmentCache(fs, NullLogger<AssessmentCache>.Instance, "/project");
+
+        await fs.WriteAllTextAsync("/src/auth/login.cs", "code");
+        var timestamps = new Dictionary<string, DateTime>
+        {
+            ["/src/auth/login.cs"] = fs.GetLastWriteTimeUtc("/src/auth/login.cs"),
+        };
+        await cache.SetAsync("auth:assessment", "valid", timestamps);
+
+        // Corrupt the cache file
+        var cacheDir = StoragePaths.GetAssessmentsCacheDirectory("/project");
+        var files = fs.GetFiles(cacheDir, "*.json").ToList();
+        Assert.NotEmpty(files);
+        await fs.WriteAllTextAsync(files[0], "corrupted{{{");
+
+        var freshCache = new AssessmentCache(fs, NullLogger<AssessmentCache>.Instance, "/project");
+        var result = await freshCache.GetAsync("auth:assessment");
+        Assert.Null(result);
+    }
+
+    // STOR-19: Individual sessions can be deleted via DeleteSessionAsync
+
+    [Fact]
+    public async Task AC19_DeleteSession_RemovesSessionDirectoryAndFiles()
+    {
+        var fs = new InMemoryFileSystem();
+        var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
+        fs.CreateDirectory("/project/.lopen/sessions");
+
+        var sessionId = await manager.CreateSessionAsync("auth");
+        var now = DateTimeOffset.UtcNow;
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "building",
+            Step = "iterate",
+            Module = "auth",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        await manager.SaveSessionStateAsync(sessionId, state);
+
+        var sessionDir = StoragePaths.GetSessionDirectory("/project", sessionId);
+        Assert.True(fs.DirectoryExists(sessionDir));
+
+        await manager.DeleteSessionAsync(sessionId);
+
+        Assert.False(fs.DirectoryExists(sessionDir));
+    }
+
+    // STOR-20: Research documents stored at docs/requirements/{module}/RESEARCH-{topic}.md
+
+    [Fact]
+    public void AC20_ResearchDocumentPath_FollowsExpectedFormat()
+    {
+        var path = StoragePaths.GetResearchDocumentPath("/project", "auth", "oauth-flows");
+
+        Assert.Equal(
+            Path.Combine("/project", "docs", "requirements", "auth", "RESEARCH-oauth-flows.md"),
+            path);
+    }
+
+    // STOR-21: Storage format is compact JSON by default (WriteIndented = false, snake_case properties)
+
+    [Fact]
+    public void AC21_CompactJsonOptions_NotIndentedAndSnakeCase()
+    {
+        Assert.False(SessionManager.CompactJsonOptions.WriteIndented);
+        Assert.Equal(JsonNamingPolicy.SnakeCaseLower, SessionManager.CompactJsonOptions.PropertyNamingPolicy);
+    }
+
+    [Fact]
+    public async Task AC21_SavedJsonOnDisk_IsCompactFormat()
+    {
+        var fs = new InMemoryFileSystem();
+        var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
+        fs.CreateDirectory("/project/.lopen/sessions");
+
+        var sessionId = await manager.CreateSessionAsync("auth");
+        var now = DateTimeOffset.UtcNow;
+        var state = new SessionState
+        {
+            SessionId = sessionId.ToString(),
+            Phase = "building",
+            Step = "iterate",
+            Module = "auth",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        await manager.SaveSessionStateAsync(sessionId, state);
+
+        var statePath = StoragePaths.GetSessionStatePath("/project", sessionId);
+        var json = await fs.ReadAllTextAsync(statePath);
+
+        // Compact JSON should not contain newlines
+        Assert.DoesNotContain("\n", json);
+        // Should use snake_case properties
+        Assert.Contains("session_id", json);
     }
 
     // Fake session manager for auto-save tests
@@ -329,5 +817,68 @@ public class StorageAcceptanceCriteriaTests
 
         public Task DeleteSessionAsync(SessionId sessionId, CancellationToken ct = default) =>
             Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// File system that fails on write operations (simulates disk full/write failure).
+    /// </summary>
+    private sealed class FailingWriteFileSystem : IFileSystem
+    {
+        private readonly HashSet<string> _directories = new(StringComparer.Ordinal);
+
+        public void CreateDirectory(string path) => _directories.Add(path);
+        public bool FileExists(string path) => false;
+        public bool DirectoryExists(string path) => _directories.Contains(path);
+        public Task<string> ReadAllTextAsync(string path, CancellationToken ct) => throw new FileNotFoundException();
+        public Task WriteAllTextAsync(string path, string content, CancellationToken ct) => throw new IOException("Disk full");
+        public IEnumerable<string> GetFiles(string path, string searchPattern = "*") => [];
+        public IEnumerable<string> GetDirectories(string path) => [];
+        public void MoveFile(string src, string dst) => throw new IOException("Disk full");
+        public void DeleteFile(string path) { }
+        public void DeleteDirectory(string path, bool recursive = true) { }
+        public void CreateSymlink(string linkPath, string targetPath) { }
+        public string? GetSymlinkTarget(string linkPath) => null;
+        public DateTime GetLastWriteTimeUtc(string path) => DateTime.MinValue;
+    }
+
+    // STOR-22: .lopen/ is automatically added to an existing .gitignore
+
+    [Fact]
+    public async Task AC22_EnsureGitignoreEntry_AddsEntryToExistingGitignore()
+    {
+        var fs = new InMemoryFileSystem();
+        await fs.WriteAllTextAsync("/project/.gitignore", "bin/\nobj/\n");
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+
+        var content = await fs.ReadAllTextAsync("/project/.gitignore");
+        Assert.Contains(".lopen/", content);
+    }
+
+    [Fact]
+    public async Task AC22_EnsureGitignoreEntry_DoesNotCreateGitignore()
+    {
+        var fs = new InMemoryFileSystem();
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+
+        Assert.False(fs.FileExists("/project/.gitignore"));
+    }
+
+    [Fact]
+    public async Task AC22_EnsureGitignoreEntry_IdempotentOnRepeatedCalls()
+    {
+        var fs = new InMemoryFileSystem();
+        await fs.WriteAllTextAsync("/project/.gitignore", "bin/\n");
+        var initializer = new StorageInitializer(fs, NullLogger<StorageInitializer>.Instance, "/project");
+
+        await initializer.EnsureGitignoreEntryAsync();
+        await initializer.EnsureGitignoreEntryAsync();
+
+        var content = await fs.ReadAllTextAsync("/project/.gitignore");
+        var count = content.Split(".lopen/").Length - 1;
+        Assert.Equal(1, count);
     }
 }

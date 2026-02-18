@@ -1,7 +1,7 @@
 {
   "module": "tui",
   "description": "Terminal User Interface (Spectre.Tui)",
-  "status": "in_progress",
+  "status": "complete",
   "components": {
     "layout_calculator": {
       "status": "complete",
@@ -48,12 +48,13 @@
     "prompt_area": {
       "status": "complete",
       "implementation": "PromptAreaComponent + PromptAreaData + IUserPromptQueue + UserPromptQueue",
-      "tests": "PromptAreaComponentTests (16) + UserPromptQueueTests (12)",
+      "tests": "PromptAreaComponentTests (16) + UserPromptQueueTests (12) + TuiApplicationTests (3 CLI-18 pre-population tests)",
       "jobs": [
         "JOB-088",
-        "JOB-041"
+        "JOB-041",
+        "JOB-163"
       ],
-      "notes": "Multi-line input with Enter/Alt+Enter/Backspace. Context-aware hints wired from KeyboardHandler.GetHints(). Non-slash prompts enqueued to IUserPromptQueue. Thread-safe ConcurrentQueue + SemaphoreSlim. DI via AddUserPromptQueue()."
+      "notes": "Multi-line input with Enter/Alt+Enter/Backspace. Context-aware hints wired from KeyboardHandler.GetHints(). Non-slash prompts enqueued to IUserPromptQueue. Thread-safe ConcurrentQueue + SemaphoreSlim. DI via AddUserPromptQueue(). CLI-18: --prompt pre-populates input field for user review instead of auto-sending."
     },
     "modals": {
       "status": "complete",
@@ -287,12 +288,13 @@
     "orchestrator_bridge": {
       "status": "complete",
       "implementation": "TuiApplication accepts IWorkflowOrchestrator?, launches RunAsync on Task.Run background thread. TryLaunchOrchestrator/CheckOrchestratorCompletion in render loop.",
-      "tests": "TuiOrchestratorBridgeTests (11 tests)",
+      "tests": "TuiOrchestratorBridgeTests (11 tests, updated for CLI-18)",
       "jobs": [
         "JOB-003",
-        "JOB-007"
+        "JOB-007",
+        "JOB-163"
       ],
-      "notes": "TUI-52: Background launch after modals dismissed. Completion/failure/interruption entries added to activity panel. SetOrchestratorModule for module name injection."
+      "notes": "TUI-52: Background launch after modals dismissed. Completion/failure/interruption entries added to activity panel. SetOrchestratorModule for module name injection. CLI-18: initialPrompt no longer passed to orchestrator; pre-populates input field instead."
     },
     "di_wiring": {
       "status": "complete",
@@ -340,7 +342,53 @@
         "JOB-007"
       ],
       "notes": "Wires existing ConsecutiveFailureCount, ErrorModalComponent, and WorkflowOptions.FailureThreshold (default 3). Guard flag prevents duplicate modals per streak."
+    },
+    "no_color_env_var": {
+      "status": "complete",
+      "implementation": "ColorPalette reads NO_COLOR env var in constructor",
+      "tests": "VisualAndCommandTests (3 NO_COLOR env var tests: set, unset, empty)",
+      "jobs": [
+        "JOB-109"
+      ],
+      "notes": "TUI-37: NO_COLOR env var disables all ANSI color output when set to non-empty value"
+    },
+    "test_tui_command_coverage": {
+      "status": "complete",
+      "implementation": "TestCommand in Lopen.Commands; gallery rendering verified via tests",
+      "tests": "TestCommandTests (TUI-49: all gallery components previewable + list mode)",
+      "jobs": [
+        "JOB-109"
+      ],
+      "notes": "TUI-49: All 15+ gallery components verified as IPreviewableComponent with non-empty RenderPreview output"
+    },
+    "component_gallery_di": {
+      "status": "complete",
+      "implementation": "ServiceCollectionExtensions resolves DI-registered components from IServiceProvider instead of creating new instances",
+      "tests": "ComponentGalleryRegistrationTests.Gallery_DiRegisteredComponents_AreSameSingletonInstances",
+      "jobs": [
+        "JOB-131"
+      ],
+      "notes": "TopPanelComponent, ContextPanelComponent, ActivityPanelComponent, PromptAreaComponent, GuidedConversationComponent now use sp.GetRequiredService<T>()"
+    },
+    "acceptance_criteria_traceability": {
+      "status": "complete",
+      "implementation": "TuiAcceptanceCriteriaTests.cs with 56 tests covering TUI-01 through TUI-47",
+      "tests": "TuiAcceptanceCriteriaTests (56)",
+      "jobs": [
+        "JOB-160"
+      ],
+      "notes": "Added explicit TUI-XX requirement code traceability comments to 10 existing test files and created TuiAcceptanceCriteriaTests.cs with 56 dedicated acceptance criteria tests for 29 TUI codes."
+    },
+    "test_coverage_improvements": {
+      "status": "complete",
+      "implementation": "SyntaxHighlighter string/comment tests, multi-state distinct output assertions, panel consistency assertions",
+      "tests": "SyntaxHighlighterTests (5 new), ComponentGalleryRegistrationTests (2 new, 1 updated with PromptArea)",
+      "jobs": [
+        "JOB-169"
+      ],
+      "notes": "Fixed PromptAreaComponent error preview state to be distinct from empty state. Added string/comment highlighting tests for TUI-35, distinct state output tests for TUI-48, and border consistency tests for TUI-36."
     }
   },
-  "last_updated": "2026-02-17T18:20:00Z"
+  "last_updated": "2026-02-18T02:00:00Z",
+  "notes": "All 52 TUI requirements (TUI-01 through TUI-52) are implemented and tested. CLI-18 --prompt pre-population fixed. 773 tests pass."
 }

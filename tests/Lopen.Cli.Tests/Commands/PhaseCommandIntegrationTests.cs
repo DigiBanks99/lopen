@@ -156,13 +156,14 @@ public class PhaseCommandIntegrationTests
     [InlineData("spec")]
     [InlineData("plan")]
     [InlineData("build")]
-    public async Task AllPhaseCommands_NullOrchestrator_ReturnsSuccess(string command)
+    public async Task AllPhaseCommands_NullOrchestrator_ReturnsFailure(string command)
     {
-        var (config, _, _) = CreateConfig(orchestrator: null, registerOrchestrator: false);
+        var (config, _, error) = CreateConfig(orchestrator: null, registerOrchestrator: false);
 
         var exitCode = await config.InvokeAsync([command]);
 
-        Assert.Equal(ExitCodes.Success, exitCode);
+        Assert.Equal(ExitCodes.Failure, exitCode);
+        Assert.Contains("No workflow orchestrator available", error.ToString());
     }
 
     // ==================== Test-local fakes ====================

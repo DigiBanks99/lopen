@@ -2,6 +2,7 @@ using System.Text.Json;
 
 namespace Lopen.Configuration.Tests;
 
+[Collection("EnvironmentVariableTests")]
 public class LopenConfigurationBuilderTests : IDisposable
 {
     private readonly string _tempDir;
@@ -237,5 +238,102 @@ public class LopenConfigurationBuilderTests : IDisposable
         var (options, _) = builder.Build();
 
         Assert.Equal(15, options.Workflow.MaxIterations);
+    }
+
+    // === Environment variable override tests ===
+
+    private static void WithEnvVars(Dictionary<string, string> vars, Action action)
+    {
+        foreach (var (key, value) in vars)
+            Environment.SetEnvironmentVariable(key, value);
+        try
+        {
+            action();
+        }
+        finally
+        {
+            foreach (var key in vars.Keys)
+                Environment.SetEnvironmentVariable(key, null);
+        }
+    }
+
+    [Fact]
+    public void Build_EnvVarOverride_OverridesProjectConfig()
+    {
+        var projectPath = Path.Combine(_tempDir, "project.json");
+        File.WriteAllText(projectPath, JsonSerializer.Serialize(
+            new { Models = new { Planning = "claude-sonnet-4" } }));
+
+        WithEnvVars(new() { ["LOPEN_Models__Planning"] = "gpt-5" }, () =>
+        {
+            var builder = new LopenConfigurationBuilder(projectConfigPath: projectPath);
+            var (options, _) = builder.Build();
+
+            Assert.Equal("gpt-5", options.Models.Planning);
+        });
+    }
+
+    [Fact]
+    public void Build_CliOverride_OverridesEnvVar()
+    {
+        WithEnvVars(new() { ["LOPEN_Workflow__MaxIterations"] = "50" }, () =>
+        {
+            var builder = new LopenConfigurationBuilder();
+            builder.AddOverride("Workflow:MaxIterations", "10");
+
+            var (options, _) = builder.Build();
+
+            Assert.Equal(10, options.Workflow.MaxIterations);
+        });
+    }
+
+    [Fact]
+    public void Build_EnvVarOverride_OverridesGlobalConfig()
+    {
+        var globalPath = Path.Combine(_tempDir, "global.json");
+        File.WriteAllText(globalPath, JsonSerializer.Serialize(
+            new { Workflow = new { Unattended = false } }));
+
+        WithEnvVars(new() { ["LOPEN_Workflow__Unattended"] = "true" }, () =>
+        {
+            var builder = new LopenConfigurationBuilder(globalConfigPath: globalPath);
+            var (options, _) = builder.Build();
+
+            Assert.True(options.Workflow.Unattended);
+        });
+    }
+
+    [Fact]
+    public void Build_EnvVar_NestedKey_SetsNestedProperty()
+    {
+        WithEnvVars(new() { ["LOPEN_Budget__WarningThreshold"] = "0.5" }, () =>
+        {
+            var builder = new LopenConfigurationBuilder();
+            var (options, _) = builder.Build();
+
+            Assert.Equal(0.5, options.Budget.WarningThreshold);
+        });
+    }
+
+    [Fact]
+    public void Build_FullLayerPrecedence_CliWinsOverEnvOverProjectOverGlobal()
+    {
+        var globalPath = Path.Combine(_tempDir, "global.json");
+        var projectPath = Path.Combine(_tempDir, "project.json");
+
+        File.WriteAllText(globalPath, JsonSerializer.Serialize(
+            new { Models = new { Planning = "model-a" } }));
+        File.WriteAllText(projectPath, JsonSerializer.Serialize(
+            new { Models = new { Planning = "model-b" } }));
+
+        WithEnvVars(new() { ["LOPEN_Models__Planning"] = "model-c" }, () =>
+        {
+            var builder = new LopenConfigurationBuilder(globalPath, projectPath);
+            builder.AddOverride("Models:Planning", "model-d");
+
+            var (options, _) = builder.Build();
+
+            Assert.Equal("model-d", options.Models.Planning);
+        });
     }
 }

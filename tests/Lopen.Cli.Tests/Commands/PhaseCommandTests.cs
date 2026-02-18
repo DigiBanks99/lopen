@@ -501,4 +501,68 @@ public class PhaseCommandTests
 
         Assert.Null(_fakeOrchestrator.LastModule);
     }
+
+    // ==================== NO ORCHESTRATOR TESTS ====================
+
+    private (CommandLineConfiguration config, StringWriter output, StringWriter error) CreateConfigWithoutOrchestrator()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ISessionManager>(_fakeSessionManager);
+        services.AddSingleton<IModuleScanner>(_fakeModuleScanner);
+        services.AddSingleton<IPlanManager>(_fakePlanManager);
+        // Intentionally NOT registering IWorkflowOrchestrator
+        var provider = services.BuildServiceProvider();
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+
+        var root = new RootCommand("test");
+        GlobalOptions.AddTo(root);
+        root.Add(PhaseCommands.CreateSpec(provider, output, error));
+        root.Add(PhaseCommands.CreatePlan(provider, output, error));
+        root.Add(PhaseCommands.CreateBuild(provider, output, error));
+
+        var config = new CommandLineConfiguration(root);
+        return (config, output, error);
+    }
+
+    [Fact]
+    public async Task Spec_NoOrchestrator_ReturnsFailure()
+    {
+        var (config, _, error) = CreateConfigWithoutOrchestrator();
+
+        var exitCode = await config.InvokeAsync(["spec"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("No workflow orchestrator available", error.ToString());
+    }
+
+    [Fact]
+    public async Task Plan_NoOrchestrator_ReturnsFailure()
+    {
+        _fakeSessionManager.AddSession(Session1, ActiveState);
+        _fakeSessionManager.SetLatestSessionId(Session1);
+        _fakeModuleScanner.AddModule("auth", hasSpec: true);
+        var (config, _, error) = CreateConfigWithoutOrchestrator();
+
+        var exitCode = await config.InvokeAsync(["plan"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("No workflow orchestrator available", error.ToString());
+    }
+
+    [Fact]
+    public async Task Build_NoOrchestrator_ReturnsFailure()
+    {
+        _fakeSessionManager.AddSession(Session1, ActiveState);
+        _fakeSessionManager.SetLatestSessionId(Session1);
+        _fakeModuleScanner.AddModule("auth", hasSpec: true);
+        _fakePlanManager.AddPlan("auth", "# Plan\n- [ ] Task 1");
+        var (config, _, error) = CreateConfigWithoutOrchestrator();
+
+        var exitCode = await config.InvokeAsync(["build"]);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("No workflow orchestrator available", error.ToString());
+    }
 }

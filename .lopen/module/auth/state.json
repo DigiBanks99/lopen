@@ -38,7 +38,15 @@
         "JOB-099"
       ],
       "notes": "Consolidated acceptance criteria tests with explicit AUTH-XX requirement code traceability"
+    },
+    "headless_login_check": {
+      "status": "complete",
+      "spec_ref": "AUTH-05",
+      "implementation": "AuthCommand.CreateLoginCommand checks GlobalOptions.Headless before calling LoginAsync",
+      "tests": "AuthCommandTests (Login_WithHeadlessFlag_ReturnsError, Login_WithQuietAlias_ReturnsError)",
+      "jobs": ["JOB-162"],
+      "notes": "Explicit --headless / -q / --quiet flag check at CLI layer. Returns exit code 1 with HeadlessLoginNotSupported message directing user to set GH_TOKEN."
     }
   },
-  "last_updated": "2026-02-17T19:15:00Z"
+  "last_updated": "2026-02-18T01:23:00Z"
 }

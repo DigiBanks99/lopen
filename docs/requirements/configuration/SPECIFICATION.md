@@ -12,7 +12,7 @@ Lopen's behavior is controlled through a layered configuration system that suppo
 ### Design Principles
 
 1. **Convention over Configuration** — Sensible defaults for everything; configuration is optional
-2. **Layered** — CLI flags override project config, which overrides global defaults
+2. **Layered** — CLI flags override environment variables, which override project config, which overrides global defaults
 3. **Discoverable** — Users can inspect active configuration and its sources
 4. **Minimal** — Only settings that meaningfully affect behavior are exposed
 
@@ -23,9 +23,10 @@ Lopen's behavior is controlled through a layered configuration system that suppo
 Settings are resolved in this order (highest priority first):
 
 1. **CLI flags** — Per-invocation overrides (e.g., `--model claude-opus-4.6`)
-2. **Project configuration** — `.lopen/config.json` in the project root
-3. **Global configuration** — `~/.config/lopen/config.json` (user-wide defaults)
-4. **Built-in defaults** — Hardcoded sensible defaults in Lopen
+2. **Environment variables** — `LOPEN_`-prefixed variables (e.g., `LOPEN_Models__Planning=gpt-5`)
+3. **Project configuration** — `.lopen/config.json` in the project root
+4. **Global configuration** — `~/.config/lopen/config.json` (user-wide defaults)
+5. **Built-in defaults** — Hardcoded sensible defaults in Lopen
 
 When a setting is defined at multiple levels, the highest-priority source wins.
 
@@ -119,6 +120,29 @@ Common CLI flags that override configuration:
 
 ---
 
+## Environment Variables
+
+Lopen supports configuration via environment variables prefixed with `LOPEN_`. This is useful for CI/CD pipelines, container deployments, and ephemeral overrides that shouldn't be committed to project config.
+
+### Naming Convention
+
+Environment variable names map to configuration keys using the `__` (double underscore) separator for nested properties:
+
+| Environment Variable                   | Configuration Key              | Example Value     |
+| -------------------------------------- | ------------------------------ | ----------------- |
+| `LOPEN_Models__Planning`               | `Models:Planning`              | `gpt-5`           |
+| `LOPEN_Models__Building`               | `Models:Building`              | `claude-sonnet-4` |
+| `LOPEN_Workflow__MaxIterations`        | `Workflow:MaxIterations`       | `50`              |
+| `LOPEN_Workflow__Unattended`           | `Workflow:Unattended`          | `true`            |
+| `LOPEN_Budget__TokenBudgetPerModule`   | `Budget:TokenBudgetPerModule`  | `100000`          |
+| `LOPEN_Session__AutoResume`            | `Session:AutoResume`           | `false`           |
+
+### Precedence
+
+Environment variables override both global and project configuration files, but are themselves overridden by CLI flags. This makes them ideal for deployment-specific defaults that can still be tuned per invocation.
+
+---
+
 ## Configuration Discovery
 
 ### Project Configuration
@@ -147,7 +171,7 @@ This specification defines **what can be configured and how settings are resolve
 
 ## Acceptance Criteria
 
-- [x] [CFG-01] Configuration hierarchy resolves in order: CLI flags → project config → global config → built-in defaults
+- [x] [CFG-01] Configuration hierarchy resolves in order: CLI flags → environment variables → project config → global config → built-in defaults
 - [x] [CFG-02] Higher-priority source wins when a setting is defined at multiple levels
 - [x] [CFG-03] Project configuration is discovered at `.lopen/config.json` in the current working directory or nearest parent with `.lopen/`
 - [x] [CFG-04] Global configuration is discovered at `~/.config/lopen/config.json`
@@ -162,6 +186,7 @@ This specification defines **what can be configured and how settings are resolve
 - [x] [CFG-13] Oracle model setting is passed to the LLM module for verification sub-agent dispatch
 - [x] [CFG-14] Tool discipline settings control corrective injection thresholds
 - [x] [CFG-15] Invalid configuration values produce clear error messages with guidance
+- [x] [CFG-16] `LOPEN_`-prefixed environment variables override file-based config but are overridden by CLI flags
 
 ---
 

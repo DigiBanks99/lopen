@@ -3,6 +3,7 @@ using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
+using Lopen.Core.ToolHandlers;
 using Lopen.Llm;
 using Lopen.Otel;
 using Lopen.Storage;
@@ -35,6 +36,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IPlanManager? _planManager;
     private readonly IPauseController? _pauseController;
     private readonly IUserPromptQueue? _userPromptQueue;
+    private readonly IToolHandlerBinder? _toolHandlerBinder;
     private readonly WorkflowOptions? _workflowOptions;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
@@ -63,6 +65,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IPlanManager? planManager = null,
         IPauseController? pauseController = null,
         IUserPromptQueue? userPromptQueue = null,
+        IToolHandlerBinder? toolHandlerBinder = null,
         WorkflowOptions? workflowOptions = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
@@ -85,6 +88,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _planManager = planManager;
         _pauseController = pauseController;
         _userPromptQueue = userPromptQueue;
+        _toolHandlerBinder = toolHandlerBinder;
         _workflowOptions = workflowOptions;
     }
 
@@ -149,130 +153,150 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
 
         await _engine.InitializeAsync(moduleName, cancellationToken);
+
+        // Bind tool handlers to registry so LLM can invoke them (CORE-25)
+        _toolHandlerBinder?.BindAll(_toolRegistry);
+
         _logger.LogInformation("Starting orchestration for module {Module} at step {Step}",
             moduleName, _engine.CurrentStep);
 
         while (!_engine.IsComplete && !cancellationToken.IsCancellationRequested)
         {
-            // Wait if paused by user (TUI-41: Ctrl+P pause gate)
-            if (_pauseController is not null && _pauseController.IsPaused)
+            try
             {
-                _logger.LogInformation("Execution paused — waiting for resume");
-                await _renderer.RenderResultAsync("Paused — press Ctrl+P to resume");
-                await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
-                await _pauseController.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
-                _logger.LogInformation("Execution resumed");
-                await _renderer.RenderResultAsync("Resumed");
-            }
-
-            var stepResult = await RunStepAsync(moduleName, cancellationToken: cancellationToken);
-
-            if (!stepResult.Success)
-            {
-                _logger.LogWarning("Step {Step} failed: {Summary}", _engine.CurrentStep, stepResult.Summary);
-                await _renderer.RenderErrorAsync(stepResult.Summary ?? "Step failed");
-                await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
-
-                // CORE-21: Consult failure handler for self-correction vs interruption
-                if (_failureHandler is not null)
+                // Wait if paused by user (TUI-41: Ctrl+P pause gate)
+                if (_pauseController is not null && _pauseController.IsPaused)
                 {
-                    var taskId = _engine.CurrentStep.ToString();
+                    _logger.LogInformation("Execution paused — waiting for resume");
+                    await _renderer.RenderResultAsync("Paused — press Ctrl+P to resume");
+                    await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
+                    await _pauseController.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
+                    _logger.LogInformation("Execution resumed");
+                    await _renderer.RenderResultAsync("Resumed");
+                }
 
-                    // CORE-23: Critical system errors bypass normal failure tracking and block immediately
-                    if (stepResult.IsCriticalError)
+                var stepResult = await RunStepAsync(moduleName, cancellationToken: cancellationToken);
+
+                if (!stepResult.Success)
+                {
+                    _logger.LogWarning("Step {Step} failed: {Summary}", _engine.CurrentStep, stepResult.Summary);
+                    await _renderer.RenderErrorAsync(stepResult.Summary ?? "Step failed");
+                    await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
+
+                    // CORE-21: Consult failure handler for self-correction vs interruption
+                    if (_failureHandler is not null)
                     {
-                        var criticalClassification = _failureHandler.RecordCriticalError(
-                            stepResult.Summary ?? "Critical system error");
-                        _logger.LogCritical(
-                            "Critical system error — blocking execution: {Message}",
-                            criticalClassification.Message);
-                        await _renderer.RenderErrorAsync(
-                            $"CRITICAL ERROR — execution blocked: {criticalClassification.Message}");
-                        await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
-                        return OrchestrationResult.CriticalError(_iterationCount, _engine.CurrentStep,
-                            criticalClassification.Message);
-                    }
+                        var taskId = _engine.CurrentStep.ToString();
 
-                    var classification = _failureHandler.RecordFailure(taskId, stepResult.Summary ?? "Step failed");
-
-                    if (classification.Action == FailureAction.SelfCorrect)
-                    {
-                        _logger.LogInformation(
-                            "Self-correcting: {Message} (attempt {Count})",
-                            classification.Message, classification.ConsecutiveFailures);
-                        continue; // Let the LLM retry on next iteration
-                    }
-
-                    // CORE-22: Prompt user for intervention on repeated failures
-                    if (classification.Action == FailureAction.PromptUser)
-                    {
-                        if (_workflowOptions?.Unattended == true)
+                        // CORE-23: Critical system errors bypass normal failure tracking and block immediately
+                        if (stepResult.IsCriticalError)
                         {
-                            _logger.LogWarning(
-                                "Unattended mode — suppressing intervention prompt, continuing: {Message}",
-                                classification.Message);
-                            continue;
+                            var criticalClassification = _failureHandler.RecordCriticalError(
+                                stepResult.Summary ?? "Critical system error");
+                            _logger.LogCritical(
+                                "Critical system error — blocking execution: {Message}",
+                                criticalClassification.Message);
+                            await _renderer.RenderErrorAsync(
+                                $"CRITICAL ERROR — execution blocked: {criticalClassification.Message}");
+                            await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
+                            return OrchestrationResult.CriticalError(_iterationCount, _engine.CurrentStep,
+                                criticalClassification.Message);
                         }
 
-                        var promptMessage = $"Task '{taskId}' has failed {classification.ConsecutiveFailures} consecutive times. Continue? [y/N]";
-                        var response = await _renderer.PromptAsync(promptMessage, cancellationToken);
+                        var classification = _failureHandler.RecordFailure(taskId, stepResult.Summary ?? "Step failed");
 
-                        if (response is not null &&
-                            response.Trim().Equals("y", StringComparison.OrdinalIgnoreCase) ||
-                            response?.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase) == true)
+                        if (classification.Action == FailureAction.SelfCorrect)
                         {
                             _logger.LogInformation(
-                                "User confirmed continuation after repeated failure: {TaskId}",
-                                taskId);
-                            _failureHandler.ResetFailureCount(taskId);
-                            continue;
+                                "Self-correcting: {Message} (attempt {Count})",
+                                classification.Message, classification.ConsecutiveFailures);
+                            continue; // Let the LLM retry on next iteration
                         }
 
-                        _logger.LogWarning(
-                            "User declined continuation after repeated failure: {TaskId}",
-                            taskId);
+                        // CORE-22: Prompt user for intervention on repeated failures
+                        if (classification.Action == FailureAction.PromptUser)
+                        {
+                            if (_workflowOptions?.Unattended == true)
+                            {
+                                _logger.LogWarning(
+                                    "Unattended mode — suppressing intervention prompt, continuing: {Message}",
+                                    classification.Message);
+                                continue;
+                            }
+
+                            var promptMessage = $"Task '{taskId}' has failed {classification.ConsecutiveFailures} consecutive times. Continue? [y/N]";
+                            var response = await _renderer.PromptAsync(promptMessage, cancellationToken);
+
+                            if (response is not null &&
+                                response.Trim().Equals("y", StringComparison.OrdinalIgnoreCase) ||
+                                response?.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase) == true)
+                            {
+                                _logger.LogInformation(
+                                    "User confirmed continuation after repeated failure: {TaskId}",
+                                    taskId);
+                                _failureHandler.ResetFailureCount(taskId);
+                                continue;
+                            }
+
+                            _logger.LogWarning(
+                                "User declined continuation after repeated failure: {TaskId}",
+                                taskId);
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "Failure escalated: {Action} — {Message}",
+                                classification.Action, classification.Message);
+                        }
                     }
-                    else
+
+                    return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
+                        stepResult.Summary ?? "Step failed");
+                }
+
+                // Reset failure count on success when handler is present
+                _failureHandler?.ResetFailureCount(_engine.CurrentStep.ToString());
+
+                // Auto-save after each successful step (STOR-06)
+                await AutoSaveAsync(AutoSaveTrigger.StepCompletion, moduleName, cancellationToken);
+
+                if (stepResult.RequiresUserConfirmation)
+                {
+                    _logger.LogInformation("User confirmation required at step {Step}", _engine.CurrentStep);
+                    await _renderer.RenderResultAsync(stepResult.Summary ?? "Awaiting user confirmation");
+                    await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
+                    return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
+                        "User confirmation required");
+                }
+
+                if (stepResult.NextTrigger.HasValue)
+                {
+                    var previousPhase = _engine.CurrentPhase;
+                    var fired = _engine.Fire(stepResult.NextTrigger.Value);
+                    if (!fired)
                     {
-                        _logger.LogWarning(
-                            "Failure escalated: {Action} — {Message}",
-                            classification.Action, classification.Message);
+                        _logger.LogWarning("Cannot fire trigger {Trigger} from step {Step}",
+                            stepResult.NextTrigger.Value, _engine.CurrentStep);
+                    }
+                    else if (_engine.CurrentPhase != previousPhase)
+                    {
+                        // Phase transition occurred — save state
+                        await AutoSaveAsync(AutoSaveTrigger.PhaseTransition, moduleName, cancellationToken);
                     }
                 }
-
-                return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
-                    stepResult.Summary ?? "Step failed");
             }
-
-            // Reset failure count on success when handler is present
-            _failureHandler?.ResetFailureCount(_engine.CurrentStep.ToString());
-
-            // Auto-save after each successful step (STOR-06)
-            await AutoSaveAsync(AutoSaveTrigger.StepCompletion, moduleName, cancellationToken);
-
-            if (stepResult.RequiresUserConfirmation)
+            catch (StorageException ex) when (ex.IsCritical)
             {
-                _logger.LogInformation("User confirmation required at step {Step}", _engine.CurrentStep);
-                await _renderer.RenderResultAsync(stepResult.Summary ?? "Awaiting user confirmation");
-                await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
-                return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
-                    "User confirmation required");
-            }
+                // STOR-16: Disk full / write failure — pause the workflow
+                var errorMessage = FormatCriticalStorageError(ex);
 
-            if (stepResult.NextTrigger.HasValue)
-            {
-                var previousPhase = _engine.CurrentPhase;
-                var fired = _engine.Fire(stepResult.NextTrigger.Value);
-                if (!fired)
-                {
-                    _logger.LogWarning("Cannot fire trigger {Trigger} from step {Step}",
-                        stepResult.NextTrigger.Value, _engine.CurrentStep);
-                }
-                else if (_engine.CurrentPhase != previousPhase)
-                {
-                    // Phase transition occurred — save state
-                    await AutoSaveAsync(AutoSaveTrigger.PhaseTransition, moduleName, cancellationToken);
-                }
+                _failureHandler?.RecordCriticalError(errorMessage);
+
+                _logger.LogCritical(ex, "Critical storage error — pausing workflow: {Message}", errorMessage);
+                await _renderer.RenderErrorAsync($"CRITICAL ERROR — workflow paused: {errorMessage}");
+
+                return OrchestrationResult.CriticalError(
+                    _iterationCount, _engine.CurrentStep, errorMessage);
             }
         }
 
@@ -657,9 +681,17 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             await _autoSaveService.SaveAsync(trigger, _sessionId, state, metrics, cancellationToken);
             _logger.LogDebug("Auto-saved state: trigger={Trigger}, step={Step}", trigger, _engine.CurrentStep);
         }
+        catch (StorageException ex) when (ex.IsCritical)
+        {
+            // STOR-16: Critical write failure — must propagate to pause the workflow
+            _logger.LogCritical(ex,
+                "Critical storage failure during auto-save: {Path} — {Message}",
+                ex.Path, ex.Message);
+            throw;
+        }
         catch (Exception ex)
         {
-            // Auto-save failures must not crash the workflow (STOR-06)
+            // STOR-06: Non-critical auto-save failures must not crash the workflow
             _logger.LogWarning(ex, "Auto-save failed for trigger {Trigger}", trigger);
         }
     }
@@ -701,4 +733,23 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             or UnauthorizedAccessException
             or OutOfMemoryException
             or System.Security.SecurityException;
+
+    /// <summary>
+    /// Formats a critical storage error with path and OS details for user display (STOR-16).
+    /// </summary>
+    private static string FormatCriticalStorageError(StorageException ex)
+    {
+        var message = ex.Message;
+
+        if (ex.Path is not null)
+            message += $" | Path: {ex.Path}";
+
+        if (ex is WriteFailureStorageException wfEx)
+            message += $" | OS Error: {wfEx.OsErrorDescription} (0x{wfEx.OsErrorCode:X8})";
+
+        if (ex.InnerException is not null)
+            message += $" | Details: {ex.InnerException.Message}";
+
+        return message;
+    }
 }

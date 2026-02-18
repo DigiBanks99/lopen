@@ -85,4 +85,43 @@ public class SyntaxHighlighterTests
         Assert.NotNull(result);
         Assert.Contains("\x1b[34mreturn\x1b[0m", result);
     }
+
+    // String literal highlighting (TUI-35)
+
+    [Fact]
+    public void HighlightLine_DoubleQuotedString_WrapsInGreen()
+    {
+        var result = SyntaxHighlighter.HighlightLine("var x = \"hello\";", ".cs");
+        Assert.Contains("\x1b[32m\"hello\"\x1b[0m", result);
+    }
+
+    [Fact]
+    public void HighlightLine_SingleQuotedString_WrapsInGreen()
+    {
+        var result = SyntaxHighlighter.HighlightLine("var c = 'x';", ".js");
+        Assert.Contains("\x1b[32m'x'\x1b[0m", result);
+    }
+
+    // Comment highlighting (TUI-35)
+
+    [Fact]
+    public void HighlightLine_CSharpComment_WrapsInGray()
+    {
+        var result = SyntaxHighlighter.HighlightLine("// this is a comment", ".cs");
+        Assert.Contains("\x1b[90m", result);
+    }
+
+    [Fact]
+    public void HighlightLine_PythonComment_WrapsInGray()
+    {
+        var result = SyntaxHighlighter.HighlightLine("# python comment", ".py");
+        Assert.Contains("\x1b[90m", result);
+    }
+
+    [Fact]
+    public void HighlightLine_JavaScriptComment_WrapsInGray()
+    {
+        var result = SyntaxHighlighter.HighlightLine("// js comment", ".js");
+        Assert.Contains("\x1b[90m", result);
+    }
 }

@@ -271,6 +271,70 @@ public class ServiceCollectionExtensionsTests
         Assert.NotNull(service);
     }
 
+    [Fact]
+    public void AddLopenCore_WithProjectRoot_RegistersToolHandlerBinder()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddSingleton<Lopen.Llm.IVerificationTracker, NullVerificationTracker>();
+        services.AddLopenCore(projectRoot: "/tmp");
+
+        var provider = services.BuildServiceProvider();
+        var service = provider.GetService<Lopen.Core.ToolHandlers.IToolHandlerBinder>();
+
+        Assert.NotNull(service);
+    }
+
+    [Fact]
+    public void AddLopenCore_RegistersChurnDetectionGuardrail()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddLopenCore();
+
+        var provider = services.BuildServiceProvider();
+        var guardrails = provider.GetServices<IGuardrail>().ToList();
+
+        Assert.Contains(guardrails, g => g is Lopen.Core.BackPressure.ChurnDetectionGuardrail);
+    }
+
+    [Fact]
+    public void AddLopenCore_RegistersResourceLimitGuardrail_WhenBudgetConfigured()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<Lopen.Llm.ITokenTracker, FakeTokenTracker>();
+        services.AddSingleton(new Lopen.Configuration.BudgetOptions { PremiumRequestBudget = 100 });
+        services.AddLopenCore();
+
+        var provider = services.BuildServiceProvider();
+        var guardrails = provider.GetServices<IGuardrail>().ToList();
+
+        Assert.Contains(guardrails, g => g is Lopen.Core.BackPressure.ResourceLimitGuardrail);
+    }
+
+    [Fact]
+    public void AddLopenCore_RegistersPassThroughGuardrail_WhenNoBudget()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddLopenCore();
+
+        var provider = services.BuildServiceProvider();
+        var guardrails = provider.GetServices<IGuardrail>().ToList();
+
+        Assert.Contains(guardrails, g => g is Lopen.Core.BackPressure.PassThroughGuardrail);
+    }
+
+    private sealed class FakeTokenTracker : Lopen.Llm.ITokenTracker
+    {
+        public void RecordUsage(Lopen.Llm.TokenUsage usage) { }
+        public Lopen.Llm.SessionTokenMetrics GetSessionMetrics() => new() { PremiumRequestCount = 0 };
+        public void ResetSession() { }
+        public void RestoreMetrics(int cumulativeInput, int cumulativeOutput, int premiumCount, IReadOnlyList<Lopen.Llm.TokenUsage>? priorIterations = null) { }
+    }
+
     private sealed class StubFileSystem : Lopen.Storage.IFileSystem
     {
         public void CreateDirectory(string path) { }
@@ -316,5 +380,12 @@ public class ServiceCollectionExtensionsTests
 
         public IReadOnlyList<string> GetFallbackChain(Lopen.Llm.WorkflowPhase phase) =>
             ["gpt-4"];
+    }
+
+    private sealed class NullVerificationTracker : Lopen.Llm.IVerificationTracker
+    {
+        public void RecordVerification(Lopen.Llm.VerificationScope scope, string identifier, bool passed) { }
+        public bool IsVerified(Lopen.Llm.VerificationScope scope, string identifier) => false;
+        public void ResetForInvocation() { }
     }
 }

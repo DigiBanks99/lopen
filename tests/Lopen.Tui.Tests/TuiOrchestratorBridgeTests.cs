@@ -68,8 +68,10 @@ public class TuiOrchestratorBridgeTests
     }
 
     [Fact]
-    public async Task RunAsync_WithOrchestrator_PassesInitialPrompt()
+    public async Task RunAsync_WithOrchestrator_PrePopulatesInputInsteadOfPassingPrompt()
     {
+        // [CLI-18] --prompt in TUI mode populates the input field for user review,
+        // so the orchestrator should NOT receive the prompt directly.
         var orchestrator = new StubOrchestrator();
         var app = CreateApp(orchestrator: orchestrator, showLandingPage: false);
 
@@ -77,7 +79,11 @@ public class TuiOrchestratorBridgeTests
 
         await app.RunAsync("build the auth module", cts.Token);
 
-        Assert.Equal("build the auth module", orchestrator.ReceivedPrompt);
+        // Orchestrator receives null (not the initial prompt) because CLI-18
+        // puts it in the input field for user review
+        Assert.Null(orchestrator.ReceivedPrompt);
+        // The prompt text is in the input field instead
+        Assert.Equal("build the auth module", app.CurrentPromptData.Text);
     }
 
     [Fact]

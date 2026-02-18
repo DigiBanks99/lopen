@@ -152,6 +152,17 @@ public sealed class AutoSaveServiceTests
         await service.SaveAsync(AutoSaveTrigger.TaskCompletion, TestSessionId, CreateState());
     }
 
+    [Fact]
+    public async Task SaveAsync_CriticalStorageException_Throws()
+    {
+        var manager = new CriticalThrowingSessionManager();
+        var service = CreateService(manager);
+
+        // STOR-16: Critical write failures must propagate
+        await Assert.ThrowsAsync<StorageException>(() =>
+            service.SaveAsync(AutoSaveTrigger.TaskCompletion, TestSessionId, CreateState()));
+    }
+
     // --- Test doubles ---
 
     internal sealed class FakeSessionManager : ISessionManager
@@ -209,6 +220,23 @@ public sealed class AutoSaveServiceTests
         public Task<SessionState?> LoadSessionStateAsync(SessionId sessionId, CancellationToken ct = default) => Task.FromResult<SessionState?>(null);
         public Task SaveSessionStateAsync(SessionId sessionId, SessionState state, CancellationToken ct = default)
             => throw new StorageException("Disk full");
+        public Task<SessionMetrics?> LoadSessionMetricsAsync(SessionId sessionId, CancellationToken ct = default) => Task.FromResult<SessionMetrics?>(null);
+        public Task SaveSessionMetricsAsync(SessionId sessionId, SessionMetrics metrics, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<IReadOnlyList<SessionId>> ListSessionsAsync(CancellationToken ct = default) => Task.FromResult<IReadOnlyList<SessionId>>(Array.Empty<SessionId>());
+        public Task SetLatestAsync(SessionId sessionId, CancellationToken ct = default) => Task.CompletedTask;
+        public Task QuarantineCorruptedSessionAsync(SessionId sessionId, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<int> PruneSessionsAsync(int retentionCount, CancellationToken ct = default) => Task.FromResult(0);
+        public Task DeleteSessionAsync(SessionId sessionId, CancellationToken ct = default) => Task.CompletedTask;
+    }
+
+    private sealed class CriticalThrowingSessionManager : ISessionManager
+    {
+        public Task<SessionId> CreateSessionAsync(string module, CancellationToken ct = default)
+            => Task.FromResult(SessionId.Generate(module, DateOnly.FromDateTime(DateTime.UtcNow), 1));
+        public Task<SessionId?> GetLatestSessionIdAsync(CancellationToken ct = default) => Task.FromResult<SessionId?>(null);
+        public Task<SessionState?> LoadSessionStateAsync(SessionId sessionId, CancellationToken ct = default) => Task.FromResult<SessionState?>(null);
+        public Task SaveSessionStateAsync(SessionId sessionId, SessionState state, CancellationToken ct = default)
+            => throw new StorageException("Disk full", "/tmp/session.json", new IOException("No space left on device"));
         public Task<SessionMetrics?> LoadSessionMetricsAsync(SessionId sessionId, CancellationToken ct = default) => Task.FromResult<SessionMetrics?>(null);
         public Task SaveSessionMetricsAsync(SessionId sessionId, SessionMetrics metrics, CancellationToken ct = default) => Task.CompletedTask;
         public Task<IReadOnlyList<SessionId>> ListSessionsAsync(CancellationToken ct = default) => Task.FromResult<IReadOnlyList<SessionId>>(Array.Empty<SessionId>());

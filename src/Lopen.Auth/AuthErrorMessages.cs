@@ -3,7 +3,7 @@ namespace Lopen.Auth;
 /// <summary>
 /// Centralised auth error messages following the what/why/how-to-fix pattern.
 /// </summary>
-internal static class AuthErrorMessages
+public static class AuthErrorMessages
 {
     public const string NotAuthenticated =
         "Not authenticated. No valid credentials found.\n"

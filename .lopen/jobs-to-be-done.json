@@ -889,5 +889,731 @@
     "status": "done",
     "priority": 1,
     "notes": "Created AuthAcceptanceCriteriaTests.cs with 31 tests covering AUTH-01 through AUTH-15. All tests pass. Cross-module references: AUTH-10 integration in PhaseCommandTests, AUTH-11/12 in AuthErrorHandlerTests."
+  },
+  {
+    "id": "JOB-100",
+    "requirement_code": "STOR-03,08,09,11,12,13,15,16,17,19,20,21",
+    "requirement_module": "storage",
+    "description": "Add explicit acceptance criteria tests for 12 STOR requirements missing traceability in StorageAcceptanceCriteriaTests.cs (AC03, AC08, AC09, AC11-AC13, AC15-AC17, AC19-AC21)",
+    "status": "done",
+    "priority": 1,
+    "notes": "Added 14 acceptance criteria tests covering AC03, AC08, AC09, AC11-AC13, AC15-AC17x2, AC19, AC20, AC21x2. All 2369 tests pass. Storage module now has full acceptance test traceability for all 21 STOR requirements."
+  },
+  {
+    "id": "JOB-101",
+    "requirement_code": "STOR-22",
+    "requirement_module": "storage",
+    "description": "Implement .gitignore auto-management in StorageInitializer \u2014 EnsureGitignoreEntryAsync adds .lopen/ to existing .gitignore on storage initialization, skips if no .gitignore exists",
+    "status": "done",
+    "priority": 2,
+    "notes": "EnsureGitignoreEntryAsync added to StorageInitializer. 7 unit tests + 3 acceptance criteria tests. Only modifies existing .gitignore, does not create one."
+  },
+  {
+    "id": "JOB-102",
+    "requirement_code": "CFG-16",
+    "requirement_module": "configuration",
+    "description": "Document LOPEN_-prefixed environment variable overrides in Configuration SPECIFICATION.md and add acceptance criterion CFG-16",
+    "status": "done",
+    "priority": 2,
+    "notes": "Added Environment Variables section to SPECIFICATION.md with naming convention table, updated hierarchy to 5 layers, added CFG-16 acceptance criterion."
+  },
+  {
+    "id": "JOB-103",
+    "requirement_code": "CFG-16",
+    "requirement_module": "configuration",
+    "description": "Add tests verifying LOPEN_-prefixed environment variables override file-based config and are overridden by CLI flags",
+    "status": "done",
+    "priority": 2,
+    "notes": "Added 5 tests in LopenConfigurationBuilderTests.cs: env var overrides project config, CLI overrides env var, env var overrides global config, nested key binding, and full 4-layer precedence test. All 81 configuration tests pass."
+  },
+  {
+    "id": "JOB-104",
+    "requirement_code": "OTEL-01 through OTEL-17",
+    "requirement_module": "otel",
+    "description": "Create OtelAcceptanceCriteriaTests.cs with explicit requirement code traceability for all 17 OTEL requirements (OTEL-01 through OTEL-17). Add [Trait(\"Requirement\", \"OTEL-XX\")] annotations to map each test to its specification requirement code, ensuring 100% traceability coverage.",
+    "status": "done",
+    "priority": 1,
+    "notes": "Created OtelAcceptanceCriteriaTests.cs with 23 tests covering all 17 OTEL requirements (OTEL-01 through OTEL-17). Each test has requirement code comment and ACXX_ prefix."
+  },
+  {
+    "id": "JOB-105",
+    "requirement_code": "OTEL-01",
+    "requirement_module": "otel",
+    "description": "Fix pre-existing test failure in LopenTelemetryDiagnosticsTests.ActivitySource_StartActivity_ReturnsNull_WhenNoListener \u2014 test assumes no ActivityListener is registered but other test classes in the same collection register global listeners that leak across test execution.",
+    "status": "done",
+    "priority": 1,
+    "notes": "Fixed pre-existing test failure by replacing fragile test that assumed no ActivityListeners with one using an isolated ActivitySource. Also added [Collection(\"ActivityListener\")] to OtlpExportTests and ServiceCollectionExtensionsTests to prevent parallel test interference."
+  },
+  {
+    "id": "JOB-106",
+    "requirement_code": "CFG-01 through CFG-16",
+    "requirement_module": "configuration",
+    "description": "Create ConfigurationAcceptanceCriteriaTests.cs with explicit requirement code traceability for all 16 CFG requirements (CFG-01 through CFG-16). Add AC prefix naming to map each test to its specification requirement code.",
+    "status": "done",
+    "priority": 1,
+    "notes": "AuthBridgeTokenProvider bridges ITokenSourceResolver to IGitHubTokenProvider. Registered in Program.cs before AddLopenLlm(). 4 unit tests + 2 DI tests pass."
+  },
+  {
+    "id": "JOB-107",
+    "requirement_code": "CLI-01 through CLI-28",
+    "requirement_module": "cli",
+    "description": "Create CliAcceptanceCriteriaTests.cs with explicit requirement code traceability for CLI requirements (CLI-01 through CLI-28). Add AC prefix naming to map each test to its specification requirement code.",
+    "status": "done",
+    "priority": 2,
+    "notes": "SessionStateSaverBridge bridges ISessionManager to ISessionStateSaver. Conditionally registered when projectRoot is non-null. 5 unit tests + 1 DI test pass."
+  },
+  {
+    "id": "JOB-106",
+    "requirement_code": "LLM-01",
+    "requirement_module": "llm",
+    "description": "Bridge ITokenSourceResolver (Auth) to IGitHubTokenProvider (LLM) via composition root adapter \u2014 create AuthBridgeTokenProvider so CopilotClientProvider receives the authenticated GitHub token instead of null",
+    "status": "done",
+    "priority": 1,
+    "notes": "AuthBridgeTokenProvider bridges ITokenSourceResolver to IGitHubTokenProvider. Registered in Program.cs before AddLopenLlm(). 4 unit tests + 2 DI tests pass."
+  },
+  {
+    "id": "JOB-107",
+    "requirement_code": "CORE-23",
+    "requirement_module": "llm",
+    "description": "Bridge ISessionStateSaver (LLM) to IAutoSaveService (Storage) via composition root adapter \u2014 create SessionStateSaverBridge so AuthErrorHandler can persist session state before aborting on non-recoverable auth errors",
+    "status": "done",
+    "priority": 1,
+    "notes": "SessionStateSaverBridge bridges ISessionManager to ISessionStateSaver. Conditionally registered when projectRoot is non-null. 5 unit tests + 1 DI test pass."
+  },
+  {
+    "id": "JOB-108",
+    "title": "Fix environment variable test isolation in Configuration tests",
+    "description": "ConfigurationAcceptanceCriteriaTests and LopenConfigurationBuilderTests both use Environment.SetEnvironmentVariable which is process-global. xUnit runs different test classes in parallel, causing env var leaks between test classes. Tests setting LOPEN_Models__Building=env-builder leak into Build_GlobalConfig_OverridesDefaults which expects the default value.",
+    "module": "configuration",
+    "priority": 1,
+    "status": "done",
+    "type": "bug",
+    "acceptance_criteria": [
+      "All Configuration tests pass when run together via dotnet test",
+      "Test classes that modify environment variables are placed in the same xUnit collection to prevent parallel execution",
+      "No environment variable leaks between test classes"
+    ],
+    "tasks": [
+      {
+        "id": "TASK-1",
+        "title": "Add Collection attribute to prevent parallel execution of env-var-mutating test classes",
+        "status": "done"
+      }
+    ]
+  },
+  {
+    "id": "JOB-109",
+    "title": "Add acceptance criteria tests for TUI-37 (NO_COLOR) and TUI-49 (lopen test tui)",
+    "description": "Two TUI acceptance criteria lack test coverage: TUI-37 (NO_COLOR env var) - need to verify that the NO_COLOR environment variable is respected by TuiApplication; TUI-49 (lopen test tui) - need to verify the lopen test tui command exists and launches the gallery.",
+    "module": "tui",
+    "priority": 2,
+    "status": "done",
+    "type": "feature",
+    "acceptance_criteria": [
+      "TUI-37: NO_COLOR env var is respected and disables color output",
+      "TUI-49: lopen test tui command exists and launches component gallery"
+    ],
+    "tasks": [
+      {
+        "id": "TASK-1",
+        "title": "Add TUI-37 NO_COLOR acceptance test",
+        "status": "done"
+      },
+      {
+        "id": "TASK-2",
+        "title": "Add TUI-49 lopen test tui acceptance test",
+        "status": "done"
+      }
+    ]
+  },
+  {
+    "id": "JOB-112",
+    "requirement_code": "STOR-02",
+    "requirement_module": "storage",
+    "description": "Add TaskHierarchyNode DTO to Lopen.Storage and wire it into SessionState so the full task tree (module/component/task/subtask with states) is persisted in state.json",
+    "status": "done",
+    "priority": 1,
+    "notes": "Added TaskHierarchyNode DTO to Lopen.Storage with recursive tree support (Id, Name, State, NodeType, Children). Added TaskHierarchy property to SessionState. All tests pass."
+  },
+  {
+    "id": "JOB-113",
+    "requirement_code": "STOR-02",
+    "requirement_module": "storage",
+    "description": "Add tests verifying task hierarchy round-trips through state.json save/load \u2014 nested module/component/task/subtask nodes with states survive serialization",
+    "status": "done",
+    "priority": 1,
+    "notes": "Added AC02_SessionState_PersistsTaskHierarchy (4-level tree round-trip) and AC02_SessionState_NullTaskHierarchy_BackwardCompatible tests. All 3 AC02 tests pass."
+  },
+  {
+    "id": "JOB-114",
+    "requirement_code": "CORE-02",
+    "requirement_module": "core",
+    "description": "Verify 7-step workflow executes in order: Draft Spec \u2192 Dependencies \u2192 Components \u2192 Select \u2192 Tasks \u2192 Iterate \u2192 Repeat",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented in WorkflowOrchestrator.cs with extensive tests in WorkflowOrchestratorTests.cs including CORE-02 tagged integration tests."
+  },
+  {
+    "id": "JOB-115",
+    "requirement_code": "CORE-25",
+    "requirement_module": "core",
+    "description": "Register Lopen-managed tool definitions with Copilot SDK session for tool handler invocation during SendAndWaitAsync",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. ToolConversion.ToAiFunctions converts bound handlers to AIFunction instances. CopilotLlmService sets SessionConfig.Tools."
+  },
+  {
+    "id": "JOB-116",
+    "requirement_code": "LLM-04",
+    "requirement_module": "llm",
+    "description": "Context window uses section-level document extractions, not full documents",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented via SectionExtractor and ContextBudgetManager with tests."
+  },
+  {
+    "id": "JOB-117",
+    "requirement_code": "LLM-07",
+    "requirement_module": "llm",
+    "description": "Oracle verification uses separate SDK invocation with standard-tier model",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. OracleVerifier uses gpt-5-mini (non-premium). Tests verify model is not premium."
+  },
+  {
+    "id": "JOB-118",
+    "requirement_code": "LLM-10",
+    "requirement_module": "llm",
+    "description": "Per-phase model selection \u2014 each phase can use a different configured model",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented in DefaultModelSelector with per-phase mapping and tests."
+  },
+  {
+    "id": "JOB-119",
+    "requirement_code": "LLM-11",
+    "requirement_module": "llm",
+    "description": "Model fallback activates when configured model is unavailable",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented in RetryingLlmService with fallback chain. Tests cover warning logging and chain iteration."
+  },
+  {
+    "id": "JOB-120",
+    "requirement_code": "LLM-12",
+    "requirement_module": "llm",
+    "description": "Token usage metrics read from SDK response metadata and recorded",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. CopilotLlmService subscribes to SDK events, InMemoryTokenTracker aggregates metrics."
+  },
+  {
+    "id": "JOB-121",
+    "requirement_code": "LLM-13",
+    "requirement_module": "llm",
+    "description": "Token metrics surfaced to TUI and persisted in session state",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented via TopPanelDataProvider and TopPanelComponent. Metrics persisted to metrics.json."
+  },
+  {
+    "id": "JOB-122",
+    "requirement_code": "TUI-49",
+    "requirement_module": "tui",
+    "description": "All TUI components tested via lopen test tui command",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. TestCommand lists and previews all registered components. Tests verify >= 14 components."
+  },
+  {
+    "id": "JOB-123",
+    "requirement_code": "TUI-50",
+    "requirement_module": "tui",
+    "description": "TuiOutputRenderer bridges orchestrator output events to TUI activity panel",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. TuiOutputRenderer implements IOutputRenderer with 13 tests covering all methods."
+  },
+  {
+    "id": "JOB-124",
+    "requirement_code": "TUI-51",
+    "requirement_module": "tui",
+    "description": "All TUI data providers registered in DI and wired to live orchestrator/session data",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented in ServiceCollectionExtensions. Tests verify registration, resolution, singleton behavior."
+  },
+  {
+    "id": "JOB-125",
+    "requirement_code": "TUI-52",
+    "requirement_module": "tui",
+    "description": "TUI RunAsync launches WorkflowOrchestrator on background thread",
+    "status": "done",
+    "priority": 3,
+    "notes": "Already implemented. TuiApplication.TryLaunchOrchestrator uses Task.Run. 8 tests in TuiOrchestratorBridgeTests."
+  },
+  {
+    "id": "JOB-126",
+    "requirement_code": "CORE-25",
+    "requirement_module": "core",
+    "description": "Wire ToolHandlerBinder.BindAll() into production startup so tools are available to LLM at runtime \u2014 currently tools register with null handlers and BindAll() is only called in tests",
+    "status": "done",
+    "priority": 1,
+    "notes": "Fixed: IToolHandlerBinder added as optional dependency to WorkflowOrchestrator. BindAll() called after InitializeAsync in RunAsync. DI wired with try/catch for optional resolution. Tests: ToolBindingIntegrationTests + ServiceCollectionExtensionsTests.",
+    "tasks": [
+      {
+        "id": "JOB-126-T1",
+        "description": "Call BindAll() in production code path (WorkflowOrchestrator or DI setup)",
+        "status": "done"
+      },
+      {
+        "id": "JOB-126-T2",
+        "description": "Add integration test verifying tools flow from registry through binder to AI functions",
+        "status": "done"
+      }
+    ]
+  },
+  {
+    "id": "JOB-127",
+    "requirement_code": "CORE-18",
+    "requirement_module": "core",
+    "description": "Register ResourceLimitGuardrail and ChurnDetectionGuardrail in DI \u2014 classes exist but are dead code, not registered in ServiceCollectionExtensions",
+    "status": "done",
+    "priority": 2,
+    "notes": "Fixed: ResourceLimitGuardrail registered (conditional on ITokenTracker + budget > 0, falls back to PassThroughGuardrail). ChurnDetectionGuardrail registered with configurable threshold. Tests: PassThroughGuardrailTests + ServiceCollectionExtensionsTests.",
+    "tasks": [
+      {
+        "id": "JOB-127-T1",
+        "description": "Register both guardrails in Core ServiceCollectionExtensions",
+        "status": "done"
+      },
+      {
+        "id": "JOB-127-T2",
+        "description": "Add tests verifying guardrails are resolved from DI and participate in pipeline",
+        "status": "done"
+      }
+    ]
+  },
+  {
+    "id": "JOB-128",
+    "requirement_code": "CORE-25",
+    "requirement_module": "core",
+    "description": "Add test verifying WorkflowOrchestrator calls ToolHandlerBinder.BindAll() during RunAsync initialization \u2014 ensures tools are bound before orchestration loop starts",
+    "status": "done",
+    "priority": 1,
+    "notes": "Added RunAsync_WithToolHandlerBinder_CallsBindAll and RunAsync_WithoutToolHandlerBinder_CompletesWithoutError tests in WorkflowOrchestratorTests.cs with StubToolHandlerBinder. Verified BindAll is called with correct registry."
+  },
+  {
+    "id": "JOB-129",
+    "requirement_code": "CLI-01",
+    "requirement_module": "cli",
+    "description": "Extend Host_BuildsSuccessfully_WithAllModules integration test to resolve critical service interfaces from DI container \u2014 catches wiring regressions",
+    "status": "done",
+    "priority": 1,
+    "notes": "Added Host_ResolvesCoreCrossModuleServices test in CliIntegrationTests.cs. Resolves LopenOptions, IBudgetEnforcer, IGuardrailPipeline, IPhaseTransitionController, ILlmService, IToolRegistry, IModelSelector, IPromptBuilder, ITokenTracker, IFileSystem, IAuthService."
+  },
+  {
+    "id": "JOB-130",
+    "requirement_code": "CLI-09,CLI-10,CLI-11,CLI-12,CLI-13,CLI-15",
+    "requirement_module": "cli",
+    "description": "Fix Session/Revert commands crash when services not registered (no project root) \u2014 GetRequiredService calls outside try blocks cause unhandled InvalidOperationException instead of user-friendly error",
+    "status": "done",
+    "priority": 1,
+    "notes": "SessionCommand and RevertCommand now use GetService with null checks. 6 tests verify graceful error when services not registered."
+  },
+  {
+    "id": "JOB-131",
+    "requirement_code": "TUI-45",
+    "requirement_module": "tui",
+    "description": "Fix ComponentGallery creating duplicate component instances instead of resolving from DI \u2014 ServiceCollectionExtensions uses new() for 4 DI-registered components",
+    "status": "done",
+    "priority": 2,
+    "notes": "ServiceCollectionExtensions uses sp.GetRequiredService<T>() for 5 DI-registered components. Test verifies singleton identity with Assert.Same."
+  },
+  {
+    "id": "JOB-132",
+    "requirement_code": "CLI-20",
+    "requirement_module": "cli",
+    "description": "Fix Phase commands returning success exit code when orchestrator is null (no project root) \u2014 should return failure with error message per CLI-20 exit code contract",
+    "status": "done",
+    "priority": 2,
+    "notes": "PhaseCommands checks orchestrator is null and returns ExitCodes.Failure. ValidateSpecExistsAsync/ValidatePlanExistsAsync use GetService with null checks. 3 tests verify failure behavior."
+  },
+  {
+    "id": "JOB-133",
+    "requirement_code": "CORE-22",
+    "requirement_module": "core",
+    "description": "Repeated task failures (at threshold) prompt user intervention \u2014 FailureHandler + ChurnDetectionGuardrail wired into WorkflowOrchestrator",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: FailureHandler.cs, ChurnDetectionGuardrail.cs, WorkflowOrchestrator.cs; Tests: FailureHandlerTests, WorkflowOrchestratorTests, FailureModalWiringTests"
+  },
+  {
+    "id": "JOB-134",
+    "requirement_code": "STOR-04",
+    "requirement_module": "storage",
+    "description": "Session IDs follow {module}-YYYYMMDD-{counter} format with no collisions",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: SessionId.cs with regex validation; Tests: SessionIdTests (22 tests), SessionManagerTests collision prevention"
+  },
+  {
+    "id": "JOB-135",
+    "requirement_code": "STOR-14",
+    "requirement_module": "storage",
+    "description": "Corrupted session state is detected, warned, and excluded from resume options",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: SessionManager.QuarantineCorruptedSessionAsync; Tests: SessionManagerTests (5 corruption tests), StorageAcceptanceCriteriaTests (AC14)"
+  },
+  {
+    "id": "JOB-136",
+    "requirement_code": "TUI-04",
+    "requirement_module": "tui",
+    "description": "Main activity area supports scrolling with progressive disclosure",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: ActivityPanelComponent with ScrollOffset; Tests: ActivityPanelComponentTests, ActivityPanelDataProviderTests"
+  },
+  {
+    "id": "JOB-137",
+    "requirement_code": "TUI-05",
+    "requirement_module": "tui",
+    "description": "Multi-line prompt area with keyboard hints at bottom",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: PromptAreaComponent; Tests: PromptAreaComponentTests (20+ tests), UserPromptQueueTests"
+  },
+  {
+    "id": "JOB-138",
+    "requirement_code": "TUI-08",
+    "requirement_module": "tui",
+    "description": "Current action expanded, previous actions collapsed to summaries",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: ActivityPanelComponent with IsExpanded; Tests: ActivityPanelComponentTests (Render_CollapsedEntry_ShowsSummaryOnly)"
+  },
+  {
+    "id": "JOB-139",
+    "requirement_code": "TUI-10",
+    "requirement_module": "tui",
+    "description": "Real-time task progress updates in context panel",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: ContextPanelComponent.RenderProgressBar, ContextPanelDataProvider; Tests: ContextPanelComponentTests, ContextPanelDataProviderTests"
+  },
+  {
+    "id": "JOB-140",
+    "requirement_code": "TUI-13",
+    "requirement_module": "tui",
+    "description": "Inline research display with ability to drill into full document",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: ResearchDisplayComponent, ActivityPanelData.FullDocumentContent; Tests: ToolOutputComponentTests, ActivityPanelComponentTests"
+  },
+  {
+    "id": "JOB-141",
+    "requirement_code": "TUI-14",
+    "requirement_module": "tui",
+    "description": "Phase transition summaries shown in activity area",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: PhaseTransitionComponent, ActivityPanelDataProvider.AddPhaseTransition; Tests: ToolOutputComponentTests, ActivityPanelDataProviderTests"
+  },
+  {
+    "id": "JOB-142",
+    "requirement_code": "TUI-15",
+    "requirement_module": "tui",
+    "description": "Diff viewer with syntax highlighting and line numbers",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: DiffViewerComponent, SyntaxHighlighter.cs; Tests: ToolOutputComponentTests, SyntaxHighlighterTests"
+  },
+  {
+    "id": "JOB-143",
+    "requirement_code": "TUI-16",
+    "requirement_module": "tui",
+    "description": "File picker with tree view navigation",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: FilePickerComponent, SelectionComponents.cs; Tests: SelectionComponentTests, TuiApplicationTests"
+  },
+  {
+    "id": "JOB-144",
+    "requirement_code": "TUI-17",
+    "requirement_module": "tui",
+    "description": "Phase/step visualization (\u25cf/\u25cb progress indicator) in top panel",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: TopPanelComponent.BuildStepIndicator/BuildPhaseLine; Tests: TopPanelComponentTests (\u25cf\u25cf\u25cf\u25cf\u25cf\u25cf\u25cb indicators)"
+  },
+  {
+    "id": "JOB-145",
+    "requirement_code": "TUI-18",
+    "requirement_module": "tui",
+    "description": "Module selection modal with arrow key navigation",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: SelectionModalComponent, TuiApplication.HandleModuleSelectionInput; Tests: SelectionComponentTests, TuiApplicationTests"
+  },
+  {
+    "id": "JOB-146",
+    "requirement_code": "TUI-19",
+    "requirement_module": "tui",
+    "description": "Component selection UI with tree view",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: SelectionModalComponent (shared), ContextPanelComponent tree view; Tests: SelectionComponentTests, ContextPanelComponentTests"
+  },
+  {
+    "id": "JOB-147",
+    "requirement_code": "TUI-21",
+    "requirement_module": "tui",
+    "description": "Keyboard shortcuts functional: Tab (focus panel), Ctrl+P (pause), number keys (resources)",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: KeyboardHandler.cs (Tab\u2192CycleFocus, Ctrl+P\u2192Pause, 1-9\u2192ViewResource); Tests: KeyboardHandlerTests (30+ tests)"
+  },
+  {
+    "id": "JOB-148",
+    "requirement_code": "TUI-24",
+    "requirement_module": "tui",
+    "description": "Expandable sections via click or keyboard shortcut",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: KeyAction.ToggleExpand, Space/Enter on activity panel; Tests: KeyboardHandlerTests, GalleryPreviewControllerTests"
+  },
+  {
+    "id": "JOB-149",
+    "requirement_code": "TUI-25",
+    "requirement_module": "tui",
+    "description": "Task failures displayed inline and auto-expanded",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: ActivityPanelDataProvider.AddTaskFailure() with IsExpanded=true; Tests: ActivityPanelDataProviderTests"
+  },
+  {
+    "id": "JOB-150",
+    "requirement_code": "TUI-29",
+    "requirement_module": "tui",
+    "description": "Context window usage displayed in top panel",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: TopPanelComponent.BuildStatusLine \u2192 'Context: 2.4K/128K'; Tests: TopPanelComponentTests"
+  },
+  {
+    "id": "JOB-151",
+    "requirement_code": "TUI-30",
+    "requirement_module": "tui",
+    "description": "Premium request counter displayed in top panel (\ud83d\udd25 indicator)",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: TopPanelComponent \u2192 '\ud83d\udd25 {count} premium'; Tests: TopPanelComponentTests"
+  },
+  {
+    "id": "JOB-152",
+    "requirement_code": "TUI-31",
+    "requirement_module": "tui",
+    "description": "Real-time progress percentages in context panel",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: ContextPanelComponent.RenderProgressBar, ContextPanelDataProvider; Tests: ContextPanelComponentTests, ContextPanelDataProviderTests"
+  },
+  {
+    "id": "JOB-153",
+    "requirement_code": "TUI-34",
+    "requirement_module": "tui",
+    "description": "Box-drawing characters used for borders and panels",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: VisualDesign.cs \u2192 \u250c\u2510\u2514\u2518\u2500\u2502; Tests: VisualAndCommandTests"
+  },
+  {
+    "id": "JOB-154",
+    "requirement_code": "TUI-35",
+    "requirement_module": "tui",
+    "description": "Syntax highlighting in code blocks",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: SyntaxHighlighter.cs with C#/Python/TS/JS support; Tests: SyntaxHighlighterTests (8 tests), ToolOutputComponentTests"
+  },
+  {
+    "id": "JOB-155",
+    "requirement_code": "TUI-36",
+    "requirement_module": "tui",
+    "description": "Consistent panel styling throughout the application",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: All components use UnicodeSupport, PadToWidth; Tests: ComponentGalleryRegistrationTests"
+  },
+  {
+    "id": "JOB-156",
+    "requirement_code": "TUI-39",
+    "requirement_module": "tui",
+    "description": "Unknown slash commands display error with valid command list",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: SlashCommandExecutor.UnknownCommand(); Tests: SlashCommandExecutorTests"
+  },
+  {
+    "id": "JOB-157",
+    "requirement_code": "TUI-43",
+    "requirement_module": "tui",
+    "description": "Gallery lists all TUI components with selection navigation",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: GalleryListComponent, GalleryPreviewController; Tests: ComponentGalleryRegistrationTests, GalleryPreviewControllerTests"
+  },
+  {
+    "id": "JOB-158",
+    "requirement_code": "TUI-44",
+    "requirement_module": "tui",
+    "description": "Each component renders with realistic mock/stub data",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: All IPreviewableComponent.RenderPreview() implementations; Tests: ComponentGalleryRegistrationTests"
+  },
+  {
+    "id": "JOB-159",
+    "requirement_code": "TUI-46",
+    "requirement_module": "tui",
+    "description": "Components accept injected data with no live dependencies in preview",
+    "status": "done",
+    "priority": 2,
+    "notes": "Already implemented: All components take pure data records, IPreviewableComponent pattern; Tests: ComponentGalleryRegistrationTests (preview with no DI)"
+  },
+  {
+    "id": "JOB-160",
+    "requirement_code": "TUI-01,02,03,08,09,10,11,17,18,19,20,21,22,23,24,27,29,30,31,34,43,46,47",
+    "requirement_module": "tui",
+    "description": "Add explicit requirement code traceability comments to TUI test files for all 23 TUI acceptance criteria that lack explicit TUI-XX references",
+    "status": "done",
+    "priority": 1,
+    "notes": "Created TuiAcceptanceCriteriaTests.cs with 56 tests covering 29 TUI acceptance criteria (TUI-01,02,03,08,09,10,11,12,13,14,15,17,18,19,20,21,22,23,24,27,28,29,30,31,34,43,45,46,47). Added explicit TUI-XX traceability comments to 10 existing test files."
+  },
+  {
+    "id": "JOB-161",
+    "requirement_code": "STOR-16",
+    "requirement_module": "storage",
+    "description": "Disk full / write failure is treated as a critical system error and pauses the workflow \u2014 add IsCritical property to StorageException, create WriteFailureStorageException subclass, update AutoSaveService to re-throw critical errors, update WorkflowOrchestrator to catch and return CriticalError result",
+    "status": "done",
+    "priority": 1,
+    "notes": "AutoSaveService currently swallows all StorageExceptions. Need to distinguish critical (disk full, permissions) from non-critical write failures.",
+    "tasks": [
+      {
+        "id": "STOR-16-1",
+        "title": "Add IsCritical to StorageException + WriteFailureStorageException subclass",
+        "status": "done"
+      },
+      {
+        "id": "STOR-16-2",
+        "title": "Update SessionManager catch blocks",
+        "status": "done"
+      },
+      {
+        "id": "STOR-16-3",
+        "title": "Update AutoSaveService to re-throw critical errors",
+        "status": "done"
+      },
+      {
+        "id": "STOR-16-4",
+        "title": "Update WorkflowOrchestrator to handle critical storage errors",
+        "status": "done"
+      },
+      {
+        "id": "STOR-16-5",
+        "title": "Add unit tests",
+        "status": "done"
+      },
+      {
+        "id": "STOR-16-6",
+        "title": "Run tests and verify",
+        "status": "done"
+      }
+    ]
+  },
+  {
+    "id": "JOB-162",
+    "requirement_code": "AUTH-05",
+    "requirement_module": "auth",
+    "description": "lopen auth login --headless should check the --headless flag explicitly and return an error, not just rely on Console.IsInputRedirected detection",
+    "status": "done",
+    "priority": 2,
+    "notes": "LoginAsync currently checks Environment.UserInteractive && !Console.IsInputRedirected but does not check the --headless CLI flag.",
+    "tasks": [
+      {
+        "id": "AUTH-05-1",
+        "title": "Update LoginAsync to accept and check headless parameter",
+        "status": "done"
+      },
+      {
+        "id": "AUTH-05-2",
+        "title": "Add test for headless login rejection",
+        "status": "done"
+      }
+    ]
+  },
+  {
+    "id": "JOB-163",
+    "requirement_code": "CLI-18",
+    "requirement_module": "cli",
+    "description": "--prompt in TUI mode populates the input field for user review before sending instead of auto-sending to orchestrator",
+    "status": "done",
+    "priority": 1,
+    "notes": "Fixed TuiApplication.RunAsync to pre-populate _promptData with initialPrompt and pass null to TryLaunchOrchestrator. User must press Enter to submit. Tests added in TuiApplicationTests and TuiOrchestratorBridgeTests."
+  },
+  {
+    "id": "JOB-164",
+    "requirement_code": "OTEL-10",
+    "requirement_module": "otel",
+    "description": "Structured logs emitted via ILogger carry TraceId and SpanId for correlation with active spans in non-OTLP sinks",
+    "status": "done",
+    "priority": 2,
+    "notes": "Added ActivityTrackingOptions.TraceId | ActivityTrackingOptions.SpanId to logging configuration in ServiceCollectionExtensions.cs. Updated AC10 tests in OtelAcceptanceCriteriaTests and OtlpExportTests to assert LoggerFactoryOptions.ActivityTrackingOptions. Added dedicated tests in ServiceCollectionExtensionsTests for enabled/disabled states. All 125 OTEL tests pass."
+  },
+  {
+    "id": "JOB-165",
+    "requirement_code": "CLI-02,CLI-07,CLI-08,CLI-22,CLI-23,CLI-24,CLI-26,CLI-27",
+    "requirement_module": "cli",
+    "description": "Track already-implemented CLI requirements: headless mode, auth status/logout, build/test/format verification, project root discovery, --no-welcome flag",
+    "status": "done",
+    "priority": 3,
+    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
+  },
+  {
+    "id": "JOB-166",
+    "requirement_code": "CFG-02,CFG-03,CFG-04,CFG-06,CFG-10,CFG-13,CFG-14",
+    "requirement_module": "configuration",
+    "description": "Track already-implemented Configuration requirements: priority layering, project/global config discovery, config show --json, resume flags, oracle model, tool discipline",
+    "status": "done",
+    "priority": 3,
+    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
+  },
+  {
+    "id": "JOB-167",
+    "requirement_code": "STOR-08,STOR-09,STOR-11,STOR-12,STOR-13,STOR-15,STOR-17,STOR-19,STOR-20,STOR-21",
+    "requirement_module": "storage",
+    "description": "Track already-implemented Storage requirements: resume, plans, section/assessment cache, corrupted files, delete session, compact JSON, research docs",
+    "status": "done",
+    "priority": 3,
+    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
+  },
+  {
+    "id": "JOB-168",
+    "requirement_code": "OTEL-02,OTEL-03,OTEL-05,OTEL-06,OTEL-07,OTEL-09,OTEL-15",
+    "requirement_module": "otel",
+    "description": "Track already-implemented OTEL requirements: workflow/SDK/oracle/task/backpressure spans, histogram metrics, signal toggles",
+    "status": "done",
+    "priority": 3,
+    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
+  },
+  {
+    "id": "JOB-169",
+    "requirement_code": "TUI-35,TUI-48,TUI-36",
+    "requirement_module": "tui",
+    "description": "Add missing acceptance criteria tests for TUI module: (1) SyntaxHighlighter string/comment highlighting tests (TUI-35), (2) Multi-state preview distinct output assertions (TUI-48), (3) Cross-panel consistency assertions for border/padding uniformity (TUI-36)",
+    "status": "done",
+    "priority": 2,
+    "notes": "Added 8 new tests: 5 SyntaxHighlighter string/comment highlighting tests (TUI-35), 2 ComponentGallery tests for distinct state output (TUI-48) and border consistency (TUI-36), plus fixed PromptAreaComponent error state to be distinct from empty. Total TUI tests: 784."
   }
 ]

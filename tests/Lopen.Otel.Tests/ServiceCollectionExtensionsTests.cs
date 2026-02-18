@@ -6,6 +6,7 @@ using OpenTelemetry.Trace;
 
 namespace Lopen.Otel.Tests;
 
+[Collection("ActivityListener")]
 public class ServiceCollectionExtensionsTests
 {
     private static IConfiguration BuildConfiguration(Dictionary<string, string?>? settings = null)
@@ -414,6 +415,45 @@ public class ServiceCollectionExtensionsTests
         // No providers registered when all signals disabled
         Assert.Null(provider.GetService<TracerProvider>());
         Assert.Null(provider.GetService<MeterProvider>());
+    }
+
+    // --- OTEL-10: ActivityTrackingOptions for non-OTLP sinks ---
+
+    [Fact]
+    public void AddLopenOtel_LogsEnabled_ConfiguresActivityTrackingOptions()
+    {
+        var services = new ServiceCollection();
+        var config = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["otel:logs:enabled"] = "true"
+        });
+
+        services.AddLopenOtel(config);
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>().Value;
+        Assert.True(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.TraceId),
+            "ActivityTrackingOptions should include TraceId for non-OTLP sink correlation");
+        Assert.True(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.SpanId),
+            "ActivityTrackingOptions should include SpanId for non-OTLP sink correlation");
+    }
+
+    [Fact]
+    public void AddLopenOtel_LogsDisabled_DoesNotConfigureActivityTrackingOptions()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(); // Register default logging
+        var config = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["otel:logs:enabled"] = "false"
+        });
+
+        services.AddLopenOtel(config);
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>().Value;
+        Assert.False(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.TraceId),
+            "ActivityTrackingOptions should NOT include TraceId when logs are disabled");
     }
 
     // --- OTEL-17: Performance overhead < 5ms ---

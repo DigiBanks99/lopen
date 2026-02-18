@@ -24,10 +24,10 @@ public static class ServiceCollectionExtensions
         {
             var gallery = new ComponentGallery();
             // Self-register all built-in components
-            gallery.Register(new TopPanelComponent());
-            gallery.Register(new ContextPanelComponent());
-            gallery.Register(new ActivityPanelComponent());
-            gallery.Register(new PromptAreaComponent());
+            gallery.Register(sp.GetRequiredService<TopPanelComponent>());
+            gallery.Register(sp.GetRequiredService<ContextPanelComponent>());
+            gallery.Register(sp.GetRequiredService<ActivityPanelComponent>());
+            gallery.Register(sp.GetRequiredService<PromptAreaComponent>());
             gallery.Register(new LandingPageComponent());
             gallery.Register(new SessionResumeModalComponent());
             gallery.Register(new DiffViewerComponent());
@@ -38,7 +38,7 @@ public static class ServiceCollectionExtensions
             gallery.Register(new ConfirmationModalComponent());
             gallery.Register(new ErrorModalComponent());
             gallery.Register(new SpinnerComponent());
-            gallery.Register(new GuidedConversationComponent());
+            gallery.Register(sp.GetRequiredService<GuidedConversationComponent>());
             return gallery;
         });
         return services;

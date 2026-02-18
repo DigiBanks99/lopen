@@ -4,11 +4,14 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Lopen.Tui.Tests;
 
 /// <summary>
-/// Tests for ComponentGallery self-registration and GalleryListComponent.
+/// Tests for ComponentGallery self-registration and GalleryListComponent
+/// (TUI-43, TUI-46, TUI-47).
 /// Covers JOB-097 acceptance criteria.
 /// </summary>
 public class ComponentGalleryRegistrationTests
 {
+    // ==================== TUI-47: Components Self-Register with Gallery ====================
+
     // ==================== Self-Registration ====================
 
     [Fact]
@@ -75,6 +78,21 @@ public class ComponentGalleryRegistrationTests
     }
 
     [Fact]
+    public void Gallery_DiRegisteredComponents_AreSameSingletonInstances()
+    {
+        var services = new ServiceCollection();
+        services.AddLopenTui();
+        var sp = services.BuildServiceProvider();
+        var gallery = sp.GetRequiredService<IComponentGallery>();
+
+        Assert.Same(sp.GetRequiredService<TopPanelComponent>(), gallery.GetByName("TopPanel"));
+        Assert.Same(sp.GetRequiredService<ContextPanelComponent>(), gallery.GetByName("ContextPanel"));
+        Assert.Same(sp.GetRequiredService<ActivityPanelComponent>(), gallery.GetByName("ActivityPanel"));
+        Assert.Same(sp.GetRequiredService<PromptAreaComponent>(), gallery.GetByName("PromptArea"));
+        Assert.Same(sp.GetRequiredService<GuidedConversationComponent>(), gallery.GetByName("GuidedConversation"));
+    }
+
+    [Fact]
     public void Gallery_GetByName_CaseInsensitive()
     {
         var services = new ServiceCollection();
@@ -84,6 +102,8 @@ public class ComponentGalleryRegistrationTests
 
         Assert.NotNull(gallery.GetByName("toppanel"));
     }
+
+    // ==================== TUI-43: Gallery Lists All TUI Components with Selection Navigation ====================
 
     // ==================== GalleryListComponent ====================
 
@@ -174,6 +194,8 @@ public class ComponentGalleryRegistrationTests
         Assert.Equal("TopPanel", data.Items[0].Name);
         Assert.Equal("Spinner", data.Items[1].Name);
     }
+
+    // ==================== TUI-46: Components Accept Injected Data with No Live Dependencies ====================
 
     // ==================== IPreviewableComponent ====================
 
@@ -304,6 +326,31 @@ public class ComponentGalleryRegistrationTests
         }
     }
 
+    [Theory]
+    [InlineData(typeof(TopPanelComponent))]
+    [InlineData(typeof(ContextPanelComponent))]
+    [InlineData(typeof(ActivityPanelComponent))]
+    [InlineData(typeof(LandingPageComponent))]
+    [InlineData(typeof(PromptAreaComponent))]
+    public void RenderPreview_DifferentStates_ProduceDistinctOutput(Type componentType)
+    {
+        var component = (IPreviewableComponent)Activator.CreateInstance(componentType)!;
+        var states = component.GetPreviewStates();
+        var outputs = new Dictionary<string, string>();
+
+        foreach (var state in states)
+        {
+            var lines = component.RenderPreview(state, 120, 30);
+            outputs[state] = string.Join("\n", lines);
+        }
+
+        // Each state should produce unique output
+        var uniqueOutputs = outputs.Values.ToHashSet();
+        Assert.True(uniqueOutputs.Count == outputs.Count,
+            $"{componentType.Name}: Expected {outputs.Count} distinct outputs but got {uniqueOutputs.Count}. " +
+            $"Duplicate states: {string.Join(", ", outputs.GroupBy(kv => kv.Value).Where(g => g.Count() > 1).SelectMany(g => g.Select(kv => kv.Key)))}");
+    }
+
     // ==================== TUI-36: Consistent panel styling ====================
 
     [Fact]
@@ -359,6 +406,54 @@ public class ComponentGalleryRegistrationTests
                 var previewable = (IPreviewableComponent)component;
                 var lines = previewable.RenderPreview(80, 24);
                 Assert.NotNull(lines);
+            }
+        }
+        finally
+        {
+            UnicodeSupport.UseAscii = original;
+        }
+    }
+
+    [Fact]
+    public void AllComponents_WithBorders_UseConsistentBorderCharacters()
+    {
+        var original = UnicodeSupport.UseAscii;
+        UnicodeSupport.UseAscii = false;
+        try
+        {
+            var services = new ServiceCollection();
+            services.AddLopenTui();
+            var sp = services.BuildServiceProvider();
+            var gallery = sp.GetRequiredService<IComponentGallery>();
+
+            var borderCharSets = new List<(string Name, HashSet<char> Chars)>();
+            var unicodeBoxChars = new HashSet<char> { '─', '│', '┌', '┐', '└', '┘', '├', '┤', '┬', '┴', '┼',
+                                                       '━', '┃', '┏', '┓', '┗', '┛', '╭', '╮', '╰', '╯' };
+
+            foreach (var component in gallery.GetAll())
+            {
+                var previewable = (IPreviewableComponent)component;
+                var lines = previewable.RenderPreview(80, 24);
+                if (lines.Length == 0)
+                    continue;
+
+                var output = string.Concat(lines);
+                var usedBoxChars = new HashSet<char>(output.Where(c => unicodeBoxChars.Contains(c)));
+
+                if (usedBoxChars.Count > 0)
+                {
+                    borderCharSets.Add((component.Name, usedBoxChars));
+                }
+            }
+
+            // Each component with borders should be internally consistent
+            // (not mixing thin ─ and thick ━ horizontal styles)
+            foreach (var (name, chars) in borderCharSets)
+            {
+                var hasThin = chars.Contains('─');
+                var hasThick = chars.Contains('━');
+                Assert.False(hasThin && hasThick,
+                    $"{name} mixes thin (─) and thick (━) horizontal border characters");
             }
         }
         finally

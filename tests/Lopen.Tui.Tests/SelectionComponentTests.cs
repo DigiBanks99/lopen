@@ -3,11 +3,14 @@ using Lopen.Tui;
 namespace Lopen.Tui.Tests;
 
 /// <summary>
-/// Tests for FilePickerComponent, SelectionModalComponent, ConfirmationModalComponent, ErrorModalComponent.
+/// Tests for FilePickerComponent, SelectionModalComponent, ConfirmationModalComponent, ErrorModalComponent
+/// (TUI-18, TUI-19, TUI-23, TUI-27).
 /// Covers JOB-091 and JOB-093 acceptance criteria.
 /// </summary>
 public class SelectionComponentTests
 {
+    // ==================== TUI-19: Component Selection UI with Tree View ====================
+
     // ==================== FilePickerComponent ====================
 
     private readonly FilePickerComponent _filePicker = new();
@@ -73,6 +76,8 @@ public class SelectionComponentTests
         Assert.Empty(_filePicker.Render(data, new ScreenRect(0, 0, 0, 10)));
     }
 
+    // ==================== TUI-18: Module Selection Modal with Arrow Key Navigation ====================
+
     // ==================== SelectionModalComponent ====================
 
     private readonly SelectionModalComponent _selection = new();
@@ -112,6 +117,8 @@ public class SelectionComponentTests
         var data = new ModuleSelectionData { Title = "X" };
         Assert.Empty(_selection.Render(data, new ScreenRect(0, 0, 0, 10)));
     }
+
+    // ==================== TUI-23: Confirmation Modals with Yes/No/Always/Other Options ====================
 
     // ==================== ConfirmationModalComponent ====================
 
@@ -158,6 +165,8 @@ public class SelectionComponentTests
     {
         Assert.Empty(_confirm.Render(new ConfirmationData { Title = "X" }, new ScreenRect(0, 0, 0, 10)));
     }
+
+    // ==================== TUI-27: Critical Error Modal with Details and Recovery Options ====================
 
     // ==================== ErrorModalComponent ====================
 

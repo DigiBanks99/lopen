@@ -52,11 +52,18 @@ public static class ServiceCollectionExtensions
 
         if (configuration.GetValue("otel:logs:enabled", defaultValue: true))
         {
-            services.AddLogging(logging => logging.AddOpenTelemetry(otelLogging =>
+            services.AddLogging(logging =>
             {
-                otelLogging.IncludeFormattedMessage = true;
-                otelLogging.IncludeScopes = true;
-            }));
+                logging.Configure(options =>
+                    options.ActivityTrackingOptions =
+                        ActivityTrackingOptions.TraceId |
+                        ActivityTrackingOptions.SpanId);
+                logging.AddOpenTelemetry(otelLogging =>
+                {
+                    otelLogging.IncludeFormattedMessage = true;
+                    otelLogging.IncludeScopes = true;
+                });
+            });
         }
 
         var otlpEndpoint = configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]

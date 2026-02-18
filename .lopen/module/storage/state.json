@@ -10,8 +10,9 @@
     "disk_full_handling": {
       "status": "complete",
       "spec_ref": "STOR-16",
-      "tests": "SessionManagerTests (2 disk-full tests + 2 existing)",
-      "notes": "Create, save state, save metrics all throw StorageException with IOException inner on disk-full."
+      "tests": "SessionManagerTests (2 disk-full tests + 2 existing), StorageExceptionTests (10 new), AutoSaveServiceTests (1 new), WorkflowOrchestratorTests (2 new)",
+      "notes": "Added IsCritical property to StorageException, WriteFailureStorageException subclass with OS error classification. AutoSaveService re-throws critical errors. WorkflowOrchestrator catches critical StorageException and returns CriticalError result to pause workflow.",
+      "jobs": ["JOB-161"]
     },
     "per_iteration_metrics": {
       "status": "complete",
@@ -45,7 +46,35 @@
         "JOB-062"
       ],
       "notes": "Explicit test mapping for STOR acceptance criteria per SPECIFICATION.md. Covers directory creation, symlink management, auto-save triggers, session resume, plan checkboxes, session pruning, session ID format, state persistence, and corruption detection."
+    },
+    "acceptance_test_traceability": {
+      "status": "complete",
+      "spec_ref": "STOR-03,08,09,11,12,13,15,16,17,19,20,21",
+      "tests": "StorageAcceptanceCriteriaTests (14 new tests for AC03, AC08, AC09, AC11-AC13, AC15-AC17, AC19-AC21)",
+      "notes": "All 21 STOR requirements now have explicit acceptance criteria tests with traceability."
+    },
+    "gitignore_management": {
+      "status": "complete",
+      "spec_ref": "STOR-22",
+      "implementation": "StorageInitializer.EnsureGitignoreEntryAsync",
+      "tests": "StorageInitializerTests (7 gitignore tests) + StorageAcceptanceCriteriaTests (3 AC22 tests)",
+      "jobs": [
+        "JOB-101"
+      ],
+      "notes": "Adds .lopen/ to existing .gitignore. Idempotent. Does not create .gitignore if missing. Handles trailing newlines and whitespace."
+    },
+    "task_hierarchy_persistence": {
+      "status": "complete",
+      "spec_ref": "STOR-02",
+      "implementation": "TaskHierarchyNode DTO + SessionState.TaskHierarchy property",
+      "tests": "StorageAcceptanceCriteriaTests (AC02_SessionState_PersistsTaskHierarchy, AC02_SessionState_NullTaskHierarchy_BackwardCompatible)",
+      "jobs": [
+        "JOB-112",
+        "JOB-113"
+      ],
+      "notes": "Added recursive TaskHierarchyNode DTO (Id, Name, State, NodeType, Children) to Lopen.Storage. Added optional TaskHierarchy property to SessionState. Full 4-level tree round-trips through JSON serialization. Backward compatible with existing state.json files."
     }
   },
-  "last_updated": "2026-02-17T18:52:00Z"
+  "last_updated": "2026-02-18T01:23:00Z",
+  "status": "complete"
 }

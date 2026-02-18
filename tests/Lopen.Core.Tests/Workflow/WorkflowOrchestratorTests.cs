@@ -3,8 +3,10 @@ using System.Diagnostics.Metrics;
 using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
+using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
+using Lopen.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Lopen.Core.Tests.Workflow;
@@ -2385,6 +2387,48 @@ public class WorkflowOrchestratorTests
         Assert.Equal("Queued message", _promptBuilder.LastContextSections["queued_user_messages"]);
     }
 
+    // --- CORE-25 / JOB-126: ToolHandlerBinder.BindAll wiring ---
+
+    [Fact]
+    public async Task RunAsync_WithToolHandlerBinder_CallsBindAll()
+    {
+        _engine.IsComplete = true;
+        var binder = new StubToolHandlerBinder();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
+            toolHandlerBinder: binder);
+
+        await sut.RunAsync("test-module");
+
+        Assert.True(binder.BindAllCalled);
+        Assert.Same(_toolRegistry, binder.BoundRegistry);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithoutToolHandlerBinder_CompletesWithoutError()
+    {
+        _engine.IsComplete = true;
+        var sut = CreateOrchestrator(); // No binder injected
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsComplete);
+    }
+
+    private sealed class StubToolHandlerBinder : IToolHandlerBinder
+    {
+        public bool BindAllCalled { get; private set; }
+        public IToolRegistry? BoundRegistry { get; private set; }
+
+        public void BindAll(IToolRegistry registry)
+        {
+            BindAllCalled = true;
+            BoundRegistry = registry;
+        }
+    }
+
     private sealed class InMemoryUserPromptQueue : IUserPromptQueue
     {
         private readonly Queue<string> _queue = new();
@@ -2406,5 +2450,67 @@ public class WorkflowOrchestratorTests
             => Task.FromResult(_queue.Dequeue());
 
         public int Count => _queue.Count;
+    }
+
+    // --- STOR-16: Critical storage error handling ---
+
+    [Fact]
+    public async Task RunAsync_CriticalStorageError_ReturnsCriticalErrorResult()
+    {
+        _engine.StepsBeforeComplete = 1; // Complete after 1 step
+        var failureHandler = new StubFailureHandler();
+        var autoSaveService = new CriticalAutoSaveService();
+        var sessionManager = new StubSessionManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
+            _driftService,
+            NullLogger<WorkflowOrchestrator>.Instance,
+            autoSaveService: autoSaveService,
+            sessionManager: sessionManager,
+            failureHandler: failureHandler);
+
+        var result = await sut.RunAsync("test-module");
+
+        Assert.True(result.IsCriticalError);
+        Assert.True(result.WasInterrupted);
+        Assert.Contains("Disk full", result.InterruptionReason);
+    }
+
+    [Fact]
+    public async Task RunAsync_NonCriticalStorageError_ContinuesWorkflow()
+    {
+        _engine.StepsBeforeComplete = 1;
+        var phaseController = new StubPhaseTransitionController { SpecApproved = true };
+        var autoSaveService = new NonCriticalAutoSaveService();
+        var sessionManager = new StubSessionManager();
+        var sut = new WorkflowOrchestrator(
+            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _modelSelector, _guardrailPipeline, _renderer, phaseController,
+            _driftService,
+            NullLogger<WorkflowOrchestrator>.Instance,
+            autoSaveService: autoSaveService,
+            sessionManager: sessionManager);
+
+        var result = await sut.RunAsync("test-module");
+
+        // Non-critical error should be swallowed and workflow should complete
+        Assert.True(result.IsComplete);
+    }
+
+    private sealed class CriticalAutoSaveService : Lopen.Storage.IAutoSaveService
+    {
+        public Task SaveAsync(Lopen.Storage.AutoSaveTrigger trigger, Lopen.Storage.SessionId sessionId,
+            Lopen.Storage.SessionState state, Lopen.Storage.SessionMetrics? metrics = null,
+            CancellationToken cancellationToken = default)
+            => throw new StorageException("Disk full", "/tmp/session.json", new IOException("No space left on device"));
+    }
+
+    private sealed class NonCriticalAutoSaveService : Lopen.Storage.IAutoSaveService
+    {
+        public Task SaveAsync(Lopen.Storage.AutoSaveTrigger trigger, Lopen.Storage.SessionId sessionId,
+            Lopen.Storage.SessionState state, Lopen.Storage.SessionMetrics? metrics = null,
+            CancellationToken cancellationToken = default)
+            => throw new StorageException("Transient error");
     }
 }

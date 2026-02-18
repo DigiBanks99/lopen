@@ -25,13 +25,14 @@
     },
     "prompt_injection": {
       "status": "complete",
-      "implementation": "--prompt flag wired through IWorkflowOrchestrator to IPromptBuilder contextSections, and to ITuiApplication.RunAsync for TUI pre-population",
-      "tests": "Spec_WithPrompt_PassesPromptToOrchestrator, RootCommand_WithPrompt_PassesPromptToTui, StubTuiApplication prompt tests",
+      "implementation": "--prompt flag wired through IWorkflowOrchestrator to IPromptBuilder contextSections, and to ITuiApplication.RunAsync for TUI pre-population (CLI-18: populates input field for user review, not auto-sent)",
+      "tests": "Spec_WithPrompt_PassesPromptToOrchestrator, RootCommand_WithPrompt_PassesPromptToTui, StubTuiApplication prompt tests, TuiApplicationTests (3 CLI-18 pre-population tests), TuiOrchestratorBridgeTests (updated)",
       "jobs": [
         "JOB-031",
-        "JOB-032"
+        "JOB-032",
+        "JOB-163"
       ],
-      "notes": "Headless: prompt injected via contextSections[user_prompt]. TUI: prompt passed as initialPrompt parameter."
+      "notes": "Headless: prompt injected via contextSections[user_prompt]. TUI: prompt pre-populates input field for user review (CLI-18). User must press Enter to submit."
     },
     "headless_validation": {
       "status": "complete",
@@ -110,7 +111,7 @@
       "jobs": [
         "JOB-096"
       ],
-      "notes": "E2E integration tests simulating fizz-buzz workflow through spec→plan→build phases. Tests use TrackingOrchestrator fake to verify phase invocation, prerequisite enforcement, prompt passthrough, and headless mode."
+      "notes": "E2E integration tests simulating fizz-buzz workflow through spec\u2192plan\u2192build phases. Tests use TrackingOrchestrator fake to verify phase invocation, prerequisite enforcement, prompt passthrough, and headless mode."
     },
     "config_override_flags": {
       "status": "complete",
@@ -127,7 +128,43 @@
         "JOB-098"
       ],
       "notes": "--model overrides all 4 phase models, --unattended sets WorkflowOptions.Unattended, --max-iterations sets WorkflowOptions.MaxIterations. ApplyConfigOverrides called before orchestrator in all command handlers."
+    },
+    "acceptance_criteria_traceability": {
+      "status": "complete",
+      "implementation": "CliAcceptanceCriteriaTests.cs with AC01-AC28 prefix naming",
+      "tests": "CliAcceptanceCriteriaTests (28 tests, 25 pass, 3 CI-only skipped)",
+      "jobs": [
+        "JOB-107"
+      ],
+      "notes": "Explicit AC traceability for all 28 CLI requirements mapped to focused test methods"
+    },
+    "di_service_resolution": {
+      "status": "complete",
+      "implementation": "Host_ResolvesCoreCrossModuleServices integration test",
+      "tests": "CliIntegrationTests.Host_ResolvesCoreCrossModuleServices",
+      "jobs": [
+        "JOB-129"
+      ],
+      "notes": "Verifies 11 critical cross-module services resolve from DI container"
+    },
+    "session_revert_error_handling": {
+      "status": "complete",
+      "implementation": "SessionCommand and RevertCommand use GetService with null checks for graceful errors when no project root",
+      "tests": "SessionCommandTests (5 NoServiceRegistered tests), RevertCommandTests (1 NoServiceRegistered test)",
+      "jobs": [
+        "JOB-130"
+      ],
+      "notes": "Returns exit code 1 with user-friendly message instead of unhandled DI exception"
+    },
+    "phase_commands_null_orchestrator": {
+      "status": "complete",
+      "implementation": "PhaseCommands checks orchestrator is null and returns ExitCodes.Failure. ValidateSpecExistsAsync/ValidatePlanExistsAsync use GetService with null checks.",
+      "tests": "PhaseCommandTests (3 NoOrchestrator tests), PhaseCommandIntegrationTests (3 NullOrchestrator tests)",
+      "jobs": [
+        "JOB-132"
+      ],
+      "notes": "Per CLI-20, returns exit code 1 instead of silently succeeding when orchestrator unavailable"
     }
   },
-  "last_updated": "2026-02-17T20:07:00Z"
+  "last_updated": "2026-02-18T02:00:00Z"
 }
