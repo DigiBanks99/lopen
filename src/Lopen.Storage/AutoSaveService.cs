@@ -43,12 +43,19 @@ internal sealed class AutoSaveService : IAutoSaveService
                 "Auto-save complete for session {SessionId} on {Trigger}",
                 sessionId, trigger);
         }
+        catch (StorageException ex) when (ex.IsCritical)
+        {
+            _logger.LogCritical(ex,
+                "Critical write failure during auto-save for session {SessionId} on {Trigger} — path: {Path}",
+                sessionId, trigger, ex.Path);
+            throw; // STOR-16: Critical storage errors must propagate to pause the workflow
+        }
         catch (StorageException ex)
         {
             _logger.LogError(ex,
                 "Auto-save failed for session {SessionId} on {Trigger}",
                 sessionId, trigger);
-            // Auto-save failures should not crash the workflow
+            // Non-critical auto-save failures should not crash the workflow (STOR-06)
         }
     }
 }

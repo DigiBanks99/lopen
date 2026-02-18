@@ -162,6 +162,8 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         while (!_engine.IsComplete && !cancellationToken.IsCancellationRequested)
         {
+            try
+            {
             // Wait if paused by user (TUI-41: Ctrl+P pause gate)
             if (_pauseController is not null && _pauseController.IsPaused)
             {
@@ -281,6 +283,20 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                     // Phase transition occurred — save state
                     await AutoSaveAsync(AutoSaveTrigger.PhaseTransition, moduleName, cancellationToken);
                 }
+            }
+            }
+            catch (StorageException ex) when (ex.IsCritical)
+            {
+                // STOR-16: Disk full / write failure — pause the workflow
+                var errorMessage = FormatCriticalStorageError(ex);
+
+                _failureHandler?.RecordCriticalError(errorMessage);
+
+                _logger.LogCritical(ex, "Critical storage error — pausing workflow: {Message}", errorMessage);
+                await _renderer.RenderErrorAsync($"CRITICAL ERROR — workflow paused: {errorMessage}");
+
+                return OrchestrationResult.CriticalError(
+                    _iterationCount, _engine.CurrentStep, errorMessage);
             }
         }
 
@@ -665,9 +681,17 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             await _autoSaveService.SaveAsync(trigger, _sessionId, state, metrics, cancellationToken);
             _logger.LogDebug("Auto-saved state: trigger={Trigger}, step={Step}", trigger, _engine.CurrentStep);
         }
+        catch (StorageException ex) when (ex.IsCritical)
+        {
+            // STOR-16: Critical write failure — must propagate to pause the workflow
+            _logger.LogCritical(ex,
+                "Critical storage failure during auto-save: {Path} — {Message}",
+                ex.Path, ex.Message);
+            throw;
+        }
         catch (Exception ex)
         {
-            // Auto-save failures must not crash the workflow (STOR-06)
+            // STOR-06: Non-critical auto-save failures must not crash the workflow
             _logger.LogWarning(ex, "Auto-save failed for trigger {Trigger}", trigger);
         }
     }
@@ -709,4 +733,23 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             or UnauthorizedAccessException
             or OutOfMemoryException
             or System.Security.SecurityException;
+
+    /// <summary>
+    /// Formats a critical storage error with path and OS details for user display (STOR-16).
+    /// </summary>
+    private static string FormatCriticalStorageError(StorageException ex)
+    {
+        var message = ex.Message;
+
+        if (ex.Path is not null)
+            message += $" | Path: {ex.Path}";
+
+        if (ex is WriteFailureStorageException wfEx)
+            message += $" | OS Error: {wfEx.OsErrorDescription} (0x{wfEx.OsErrorCode:X8})";
+
+        if (ex.InnerException is not null)
+            message += $" | Details: {ex.InnerException.Message}";
+
+        return message;
+    }
 }
