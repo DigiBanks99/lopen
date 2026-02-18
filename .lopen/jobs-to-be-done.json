@@ -13,9 +13,9 @@
     "requirement_code": "OTEL-13",
     "requirement_module": "otel",
     "description": "Remove or integrate unused Lopen.ServiceDefaults project — it is referenced by Lopen.csproj but AddServiceDefaults() is never called",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ServiceDefaults project is Aspire boilerplate that was superseded by custom Lopen.Otel. AddServiceDefaults() is never invoked. The project reference adds unnecessary build weight. Either remove the reference and project, or integrate the health check/service discovery features if needed."
+    "notes": "Removed Lopen.ServiceDefaults project reference from Lopen.csproj and Lopen.slnx. Deleted src/Lopen.ServiceDefaults/ directory. AddLopenOtel() already provides all OTEL wiring for the CLI app. Added regression test Lopen_DoesNotReference_ServiceDefaults in OtlpExportTests.cs."
   },
   {
     "id": "JOB-006",
@@ -112,9 +112,9 @@
     "requirement_code": "CORE-02",
     "requirement_module": "core",
     "description": "Add integration test for WorkflowOrchestrator + RetryingLlmService + guardrail pipeline end-to-end",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "WorkflowOrchestratorTests (106 tests) and RetryingLlmServiceTests (13 tests) test in isolation. No integration test exercises the retry + guardrail + tool-execution pipeline together."
+    "notes": "Added OrchestratorRetryGuardrailIntegrationTests with 5 tests: (1) full pipeline with passing guardrails and RetryingLlmService, (2) guardrail blocks prevents LLM invocation, (3) model unavailable triggers fallback chain, (4) guardrail warns but continues, (5) all models fail is handled by orchestrator. Uses real GuardrailPipeline and RetryingLlmService with fake inner ILlmService."
   },
   {
     "id": "JOB-017",

@@ -88,17 +88,17 @@
       "jobs": [
         "JOB-002"
       ],
-      "notes": "Drives assess \u2192 guardrails \u2192 LLM invoke \u2192 transition loop. Human gate for spec step. Registered in DI via AddLopenCore(). CORE-25: Tools now registered with SDK SessionConfig via ToolConversion bridge."
+      "notes": "Drives assess → guardrails → LLM invoke → transition loop. Human gate for spec step. Registered in DI via AddLopenCore(). CORE-25: Tools now registered with SDK SessionConfig via ToolConversion bridge."
     },
     "auto_transitions": {
       "status": "complete",
       "implementation": "WorkflowOrchestrator auto-transition checks in RunStepAsync",
-      "tests": "WorkflowOrchestratorTests (2 new tests for Repeat\u2192ModuleComplete and Repeat\u2192Assess)",
+      "tests": "WorkflowOrchestratorTests (2 new tests for Repeat→ModuleComplete and Repeat→Assess)",
       "jobs": [
         "JOB-014",
         "JOB-015"
       ],
-      "notes": "Human gate for spec approval. Auto-transition from Repeat\u2192Complete when no more components. Planning\u2192Building via PhaseTransitionController."
+      "notes": "Human gate for spec approval. Auto-transition from Repeat→Complete when no more components. Planning→Building via PhaseTransitionController."
     },
     "drift_detection_wiring": {
       "status": "complete",
@@ -194,17 +194,17 @@
     },
     "failure_handler_wiring": {
       "status": "complete",
-      "implementation": "IFailureHandler wired into WorkflowOrchestrator. On step failure: RecordFailure() \u2192 SelfCorrect continues loop, PromptUser prompts user or auto-continues in unattended mode, Block interrupts. ResetFailureCount on success.",
+      "implementation": "IFailureHandler wired into WorkflowOrchestrator. On step failure: RecordFailure() → SelfCorrect continues loop, PromptUser prompts user or auto-continues in unattended mode, Block interrupts. ResetFailureCount on success.",
       "tests": "WorkflowOrchestratorTests (12 failure handler tests) + ServiceCollectionExtensionsTests (2 DI tests)",
       "jobs": [
         "JOB-071",
         "JOB-072"
       ],
-      "notes": "CORE-21: SelfCorrect on single failure. CORE-22: PromptUser at threshold prompts via IOutputRenderer.PromptAsync \u2014 user confirms y/yes to continue (resets count), declines/null to interrupt. Unattended mode suppresses prompt and continues. WorkflowOptions passed to orchestrator via DI."
+      "notes": "CORE-21: SelfCorrect on single failure. CORE-22: PromptUser at threshold prompts via IOutputRenderer.PromptAsync — user confirms y/yes to continue (resets count), declines/null to interrupt. Unattended mode suppresses prompt and continues. WorkflowOptions passed to orchestrator via DI."
     },
     "budget_enforcement_wiring": {
       "status": "complete",
-      "implementation": "WorkflowOrchestrator.CheckBudgetAsync() \u2014 IBudgetEnforcer + ITokenTracker pre-invocation check",
+      "implementation": "WorkflowOrchestrator.CheckBudgetAsync() — IBudgetEnforcer + ITokenTracker pre-invocation check",
       "tests": "WorkflowOrchestratorTests (10 budget tests) + ServiceCollectionExtensionsTests (1 DI test)",
       "jobs": [
         "JOB-084"
@@ -231,7 +231,7 @@
     },
     "module_selection": {
       "status": "complete",
-      "implementation": "IModuleSelectionService + ModuleSelectionService. Lists modules via IModuleLister with status indicators (\u25cb/\u25d0/\u25cf) and progress counts. Selection by number or name. Wired into PhaseCommands.ResolveModuleNameAsync as fallback.",
+      "implementation": "IModuleSelectionService + ModuleSelectionService. Lists modules via IModuleLister with status indicators (○/◐/●) and progress counts. Selection by number or name. Wired into PhaseCommands.ResolveModuleNameAsync as fallback.",
       "tests": "ModuleSelectionServiceTests (17 tests)",
       "jobs": [
         "JOB-074"
@@ -240,7 +240,7 @@
     },
     "tool_handler_binding": {
       "status": "complete",
-      "implementation": "IToolHandlerBinder wired into WorkflowOrchestrator.RunAsync \u2014 BindAll called after engine init",
+      "implementation": "IToolHandlerBinder wired into WorkflowOrchestrator.RunAsync — BindAll called after engine init",
       "tests": "ToolBindingIntegrationTests (1 test) + ServiceCollectionExtensionsTests (1 DI test)",
       "jobs": [
         "JOB-126"
@@ -285,7 +285,16 @@
       "tests": "ResourceTrackerTests (11 tests: discovery, content loading, error handling)",
       "job": "JOB-170",
       "notes": "Discovers SPECIFICATION.md, RESEARCH.md, RESEARCH-*.md, and plan.md for active module. Uses IFileSystem and StoragePaths for testability."
+    },
+    "orchestrator_retry_guardrail_integration": {
+      "status": "complete",
+      "implementation": "OrchestratorRetryGuardrailIntegrationTests in Lopen.Core.Tests",
+      "tests": "5 tests: pass/block/warn guardrails + model fallback + all-models-fail",
+      "jobs": [
+        "JOB-016"
+      ],
+      "notes": "Uses real GuardrailPipeline and RetryingLlmService (via InternalsVisibleTo) with fake inner ILlmService. Added Lopen.Llm project reference to Core.Tests."
     }
   },
-  "last_updated": "2026-02-18T00:00:00Z"
+  "last_updated": "2026-02-18T07:50:00Z"
 }

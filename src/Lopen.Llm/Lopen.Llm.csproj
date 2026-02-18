@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Lopen.Llm.Tests" />
+    <InternalsVisibleTo Include="Lopen.Core.Tests" />
   </ItemGroup>
 
   <ItemGroup>

@@ -13,110 +13,194 @@
       "status": "complete",
       "implementation": "SpanFactory.StartCommand wired into RootCommandHandler and PhaseCommands",
       "tests": "Verified via gpt-5-mini sub-agent",
-      "jobs": ["JOB-022"],
+      "jobs": [
+        "JOB-022"
+      ],
       "notes": "lopen.command span with exit code, error status on exceptions"
     },
     "workflow_phase_instrumentation": {
       "status": "complete",
       "implementation": "SpanFactory.StartWorkflowPhase wired into WorkflowOrchestrator.RunStepAsync",
       "tests": "WorkflowOrchestratorTests.RunStepAsync_CreatesWorkflowPhaseSpan",
-      "jobs": ["JOB-023"],
+      "jobs": [
+        "JOB-023"
+      ],
       "notes": "lopen.workflow.phase span per step iteration"
     },
     "sdk_invocation_instrumentation": {
       "status": "complete",
       "implementation": "SpanFactory.StartSdkInvocation wired into WorkflowOrchestrator.InvokeLlmForStepAsync",
       "tests": "WorkflowOrchestratorTests.RunStepAsync_CreatesSdkInvocationSpan",
-      "jobs": ["JOB-024"],
+      "jobs": [
+        "JOB-024"
+      ],
       "notes": "lopen.sdk.invocation span with token/tool call attributes, error status on failure"
     },
     "tool_call_instrumentation": {
       "status": "complete",
       "implementation": "ToolHandlerBinder.Traced() wrapper creates lopen.tool.<name> spans",
       "tests": "ToolHandlerBinderTests.BindAll_TracedHandlers_CreateToolSpans",
-      "jobs": ["JOB-025"],
+      "jobs": [
+        "JOB-025"
+      ],
       "notes": "All 7 non-verify handlers wrapped with tool spans"
     },
     "oracle_verification_instrumentation": {
       "status": "complete",
       "implementation": "ToolHandlerBinder.TracedVerify() wrapper creates lopen.oracle.verification spans",
       "tests": "ToolHandlerBinderTests.BindAll_VerifyHandlers_CreateOracleSpans",
-      "jobs": ["JOB-026"],
+      "jobs": [
+        "JOB-026"
+      ],
       "notes": "All 3 verify handlers wrapped with oracle spans"
     },
     "task_execution_instrumentation": {
       "status": "complete",
       "implementation": "SpanFactory.StartTask in WorkflowOrchestrator for IterateThroughTasks step",
       "tests": "WorkflowOrchestratorTests.RunStepAsync_CreatesTaskSpanForIterateThroughTasks",
-      "jobs": ["JOB-027"],
+      "jobs": [
+        "JOB-027"
+      ],
       "notes": "lopen.task.execution span with outcome and iteration count"
     },
     "backpressure_instrumentation": {
       "status": "complete",
       "implementation": "SpanFactory.StartBackpressure + BackPressureEventCount counter in WorkflowOrchestrator guardrail handling",
       "tests": "WorkflowOrchestratorTests.RunStepAsync_RecordsBackPressureCounterOnBlock",
-      "jobs": ["JOB-028"],
+      "jobs": [
+        "JOB-028"
+      ],
       "notes": "lopen.backpressure span + counter on block/warn"
     },
     "counter_metrics": {
       "status": "complete",
       "implementation": "LopenTelemetryDiagnostics 10 counters",
       "tests": "Counters_IncrementCorrectly_VerifiedViaMeterListener (MeterListener-based value verification)",
-      "jobs": ["JOB-047"]
+      "jobs": [
+        "JOB-047"
+      ]
     },
     "histogram_gauge_metrics": {
       "status": "complete",
       "implementation": "SdkInvocationDuration, ToolDuration, TaskDuration, CommandDuration, OracleDuration histograms + SessionIteration, ContextWindowUtilization gauges wired",
       "tests": "RecordsSdkInvocationDurationHistogram, RecordsToolDuration, RecordsTaskMetricsOnTaskCompletion",
-      "jobs": ["JOB-030"],
+      "jobs": [
+        "JOB-030"
+      ],
       "notes": "All 5 histograms and 2 gauges from LopenTelemetryDiagnostics wired with Stopwatch timing"
     },
     "overhead_verification": {
       "status": "complete",
       "implementation": "AddLopenOtel in Program.cs + overhead benchmark test",
       "tests": "OtlpExportTests.AddLopenOtel_Overhead_LessThan5ms",
-      "jobs": ["JOB-076"]
+      "jobs": [
+        "JOB-076"
+      ]
     },
     "env_var_precedence": {
       "status": "complete",
       "implementation": "ServiceCollectionExtensions OTEL_SERVICE_NAME ?? otel:service_name ?? lopen",
       "tests": "3 new precedence tests with value assertions",
-      "jobs": ["JOB-073"]
+      "jobs": [
+        "JOB-073"
+      ]
     },
     "log_correlation_non_otlp": {
       "status": "complete",
       "implementation": "ActivityTrackingOptions.TraceId | ActivityTrackingOptions.SpanId configured in AddLopenOtel logging setup",
       "tests": "AC10_StructuredLogs_CarryTraceIdAndSpanId, StructuredLogs_CarryTraceIdAndSpanId_WhenActivityActive, AddLopenOtel_LogsEnabled_ConfiguresActivityTrackingOptions, AddLopenOtel_LogsDisabled_DoesNotConfigureActivityTrackingOptions",
-      "jobs": ["JOB-164"],
+      "jobs": [
+        "JOB-164"
+      ],
       "notes": "Non-OTLP sinks (console/file) now receive TraceId/SpanId via ActivityTrackingOptions scope enrichment"
     },
     "acceptance-criteria-tests": {
       "status": "complete",
       "description": "OtelAcceptanceCriteriaTests.cs with 23 tests providing explicit requirement code traceability for all 17 OTEL requirements",
       "tasks": {
-        "otel-01-traceability": { "status": "complete", "description": "OTEL-01 command span test" },
-        "otel-02-traceability": { "status": "complete", "description": "OTEL-02 workflow phase span test" },
-        "otel-03-traceability": { "status": "complete", "description": "OTEL-03 SDK invocation span test" },
-        "otel-04-traceability": { "status": "complete", "description": "OTEL-04 tool span test" },
-        "otel-05-traceability": { "status": "complete", "description": "OTEL-05 oracle verification span test" },
-        "otel-06-traceability": { "status": "complete", "description": "OTEL-06 task execution span test" },
-        "otel-07-traceability": { "status": "complete", "description": "OTEL-07 backpressure span test" },
-        "otel-08-traceability": { "status": "complete", "description": "OTEL-08 counter metrics test" },
-        "otel-09-traceability": { "status": "complete", "description": "OTEL-09 histogram metrics test" },
-        "otel-10-traceability": { "status": "complete", "description": "OTEL-10 log correlation test with ActivityTrackingOptions assertion" },
-        "otel-11-traceability": { "status": "complete", "description": "OTEL-11 OTLP export test" },
-        "otel-12-traceability": { "status": "complete", "description": "OTEL-12 no export without endpoint test" },
-        "otel-13-traceability": { "status": "complete", "description": "OTEL-13 Aspire integration test" },
-        "otel-14-traceability": { "status": "complete", "description": "OTEL-14 master toggle test" },
-        "otel-15-traceability": { "status": "complete", "description": "OTEL-15 signal toggles test" },
-        "otel-16-traceability": { "status": "complete", "description": "OTEL-16 env var precedence test" },
-        "otel-17-traceability": { "status": "complete", "description": "OTEL-17 performance overhead test" }
+        "otel-01-traceability": {
+          "status": "complete",
+          "description": "OTEL-01 command span test"
+        },
+        "otel-02-traceability": {
+          "status": "complete",
+          "description": "OTEL-02 workflow phase span test"
+        },
+        "otel-03-traceability": {
+          "status": "complete",
+          "description": "OTEL-03 SDK invocation span test"
+        },
+        "otel-04-traceability": {
+          "status": "complete",
+          "description": "OTEL-04 tool span test"
+        },
+        "otel-05-traceability": {
+          "status": "complete",
+          "description": "OTEL-05 oracle verification span test"
+        },
+        "otel-06-traceability": {
+          "status": "complete",
+          "description": "OTEL-06 task execution span test"
+        },
+        "otel-07-traceability": {
+          "status": "complete",
+          "description": "OTEL-07 backpressure span test"
+        },
+        "otel-08-traceability": {
+          "status": "complete",
+          "description": "OTEL-08 counter metrics test"
+        },
+        "otel-09-traceability": {
+          "status": "complete",
+          "description": "OTEL-09 histogram metrics test"
+        },
+        "otel-10-traceability": {
+          "status": "complete",
+          "description": "OTEL-10 log correlation test with ActivityTrackingOptions assertion"
+        },
+        "otel-11-traceability": {
+          "status": "complete",
+          "description": "OTEL-11 OTLP export test"
+        },
+        "otel-12-traceability": {
+          "status": "complete",
+          "description": "OTEL-12 no export without endpoint test"
+        },
+        "otel-13-traceability": {
+          "status": "complete",
+          "description": "OTEL-13 Aspire integration test"
+        },
+        "otel-14-traceability": {
+          "status": "complete",
+          "description": "OTEL-14 master toggle test"
+        },
+        "otel-15-traceability": {
+          "status": "complete",
+          "description": "OTEL-15 signal toggles test"
+        },
+        "otel-16-traceability": {
+          "status": "complete",
+          "description": "OTEL-16 env var precedence test"
+        },
+        "otel-17-traceability": {
+          "status": "complete",
+          "description": "OTEL-17 performance overhead test"
+        }
       }
     },
     "test-isolation": {
       "status": "complete",
       "description": "Fixed test isolation issues: ActivityListener Collection attribute on all test classes, fixed fragile null-listener test"
+    },
+    "service_defaults_removal": {
+      "status": "complete",
+      "implementation": "Removed unused Lopen.ServiceDefaults project - ASP.NET Core web-service boilerplate not needed for CLI app",
+      "tests": "Lopen_DoesNotReference_ServiceDefaults regression test in OtlpExportTests.cs",
+      "jobs": [
+        "JOB-003"
+      ],
+      "notes": "Removed ProjectReference from Lopen.csproj, removed from Lopen.slnx, deleted src/Lopen.ServiceDefaults/ directory"
     }
   },
-  "last_updated": "2026-02-18T02:14:00Z"
+  "last_updated": "2026-02-18T07:30:00Z"
 }
