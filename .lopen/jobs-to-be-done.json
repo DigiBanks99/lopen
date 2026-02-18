@@ -76,9 +76,9 @@
     "requirement_code": "TUI-38",
     "requirement_module": "tui",
     "description": "Add dedicated unit tests for SlashCommandRegistry — Register(), GetAll(), CreateDefault() methods",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "SlashCommandRegistry has no dedicated test file. Only indirectly tested via SlashCommandExecutorTests. Needs direct unit tests for registry behavior."
+    "notes": "Created SlashCommandRegistryTests.cs with 36 tests covering Register (overwrite, alias, alias collision), GetAll (empty, ordering, alias dedup, read-only), CreateDefault (8 commands, descriptions, no aliases, new instance), TryParse edge cases (whitespace, slash-only, leading whitespace, alias resolution, multi-arg, case-insensitive, unregistered). All 2479 solution tests pass."
   },
   {
     "id": "JOB-013",

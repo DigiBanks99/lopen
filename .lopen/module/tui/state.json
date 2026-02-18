@@ -103,13 +103,14 @@
     "slash_commands": {
       "status": "complete",
       "implementation": "SlashCommandRegistry + SlashCommandDefinition + ISlashCommandExecutor + SlashCommandExecutor + SlashCommandResult + domain handlers for /spec, /plan, /build, /session, /config, /revert, /auth",
-      "tests": "VisualAndCommandTests (8 command tests) + SlashCommandExecutorTests (37 tests) + SlashCommandHandlerTests (37 tests)",
+      "tests": "VisualAndCommandTests (8 command tests) + SlashCommandExecutorTests (37 tests) + SlashCommandHandlerTests (37 tests) + SlashCommandRegistryTests (36 tests)",
       "jobs": [
         "JOB-096",
         "JOB-036",
-        "JOB-101"
+        "JOB-101",
+        "JOB-012"
       ],
-      "notes": "All slash commands now invoke corresponding domain logic via IServiceProvider. Phase commands (/spec, /plan, /build) use IWorkflowOrchestrator.RunAsync(). /session supports list/show/resume/delete/prune via ISessionManager. /config uses ConfigurationDiagnostics. /revert uses IRevertService + ISessionManager. /auth supports login/status/logout via IAuthService. Handlers gracefully handle missing services when no project root exists."
+      "notes": "All slash commands now invoke corresponding domain logic via IServiceProvider. Phase commands (/spec, /plan, /build) use IWorkflowOrchestrator.RunAsync(). /session supports list/show/resume/delete/prune via ISessionManager. /config uses ConfigurationDiagnostics. /revert uses IRevertService + ISessionManager. /auth supports login/status/logout via IAuthService. Handlers gracefully handle missing services when no project root exists. Dedicated SlashCommandRegistryTests cover Register (overwrite, alias, collision), GetAll (empty, ordering, alias dedup), CreateDefault (descriptions, no aliases), TryParse edge cases."
     },
     "keyboard_handler": {
       "status": "complete",
@@ -390,6 +391,6 @@
       "notes": "Fixed PromptAreaComponent error preview state to be distinct from empty state. Added string/comment highlighting tests for TUI-35, distinct state output tests for TUI-48, and border consistency tests for TUI-36."
     }
   },
-  "last_updated": "2026-02-18T05:02:00Z",
+  "last_updated": "2026-02-18T08:30:00Z",
   "notes": "51 of 52 TUI requirements implemented. TUI-38 slash command framework is complete (parsing, dispatch, handler registration) but domain handlers for /spec, /plan, /build, /session, /config, /revert, /auth are not wired to invoke real workflow actions. 789 tests pass."
 }
