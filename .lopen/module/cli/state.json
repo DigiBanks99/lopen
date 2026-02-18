@@ -1,7 +1,7 @@
 {
   "module": "cli",
   "description": "CLI commands and argument parsing",
-  "status": "complete",
+  "status": "in-progress",
   "components": {
     "phase_commands_wiring": {
       "status": "complete",
@@ -102,16 +102,17 @@
       "notes": "Version 0.1.0 set in Directory.Build.props. --help and --version handled by System.CommandLine automatically. Test verifies assembly carries semver version attribute."
     },
     "fizzbuzz_workflow_tests": {
-      "status": "complete",
+      "status": "partial",
       "spec_ref": "CLI-28",
       "files": [
         "FizzBuzzWorkflowTests.cs"
       ],
-      "tests": "FizzBuzzWorkflowTests (10 tests)",
+      "tests": "FizzBuzzWorkflowTests (10 tests with fakes), CliAcceptanceCriteriaTests.AC28 (1 traceability test)",
       "jobs": [
-        "JOB-096"
+        "JOB-096",
+        "JOB-200"
       ],
-      "notes": "E2E integration tests simulating fizz-buzz workflow through spec\u2192plan\u2192build phases. Tests use TrackingOrchestrator fake to verify phase invocation, prerequisite enforcement, prompt passthrough, and headless mode."
+      "notes": "Unit/integration tests with TrackingOrchestrator fake pass. CLI-28 acceptance criterion remains unchecked because it requires running the actual lopen executable against a real fizz-buzz scenario, not just fakes. JOB-200 tracks the remaining E2E validation work."
     },
     "config_override_flags": {
       "status": "complete",
@@ -166,5 +167,5 @@
       "notes": "Per CLI-20, returns exit code 1 instead of silently succeeding when orchestrator unavailable"
     }
   },
-  "last_updated": "2026-02-18T02:00:00Z"
+  "last_updated": "2026-02-18T05:02:00Z"
 }

@@ -1,7 +1,7 @@
 {
   "module": "tui",
   "description": "Terminal User Interface (Spectre.Tui)",
-  "status": "complete",
+  "status": "in-progress",
   "components": {
     "layout_calculator": {
       "status": "complete",
@@ -101,14 +101,16 @@
       ]
     },
     "slash_commands": {
-      "status": "complete",
+      "status": "partial",
       "implementation": "SlashCommandRegistry + SlashCommandDefinition + ISlashCommandExecutor + SlashCommandExecutor + SlashCommandResult",
       "tests": "VisualAndCommandTests (8 command tests) + SlashCommandExecutorTests (37 tests)",
       "jobs": [
         "JOB-096",
-        "JOB-036"
+        "JOB-036",
+        "JOB-201",
+        "JOB-203"
       ],
-      "notes": "SlashCommandExecutor parses via SlashCommandRegistry, dispatches to registered handlers. /help built-in. Unknown commands return error with valid list. Wired into TuiApplication.SubmitPrompt. DI registered in AddLopenTui()."
+      "notes": "Framework complete: parsing, dispatch, handler registration, /help handler. Missing: domain handlers for /spec, /plan, /build, /session, /config, /revert, /auth — these fall through to generic success message instead of invoking real workflow actions per TUI-38. JOB-201 tracks handler implementation, JOB-203 tracks integration tests."
     },
     "keyboard_handler": {
       "status": "complete",
@@ -389,6 +391,6 @@
       "notes": "Fixed PromptAreaComponent error preview state to be distinct from empty state. Added string/comment highlighting tests for TUI-35, distinct state output tests for TUI-48, and border consistency tests for TUI-36."
     }
   },
-  "last_updated": "2026-02-18T02:00:00Z",
-  "notes": "All 52 TUI requirements (TUI-01 through TUI-52) are implemented and tested. CLI-18 --prompt pre-population fixed. 773 tests pass."
+  "last_updated": "2026-02-18T05:02:00Z",
+  "notes": "51 of 52 TUI requirements implemented. TUI-38 slash command framework is complete (parsing, dispatch, handler registration) but domain handlers for /spec, /plan, /build, /session, /config, /revert, /auth are not wired to invoke real workflow actions. 789 tests pass."
 }
