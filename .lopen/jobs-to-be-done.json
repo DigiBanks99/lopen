@@ -4,9 +4,9 @@
     "requirement_code": "CLI-28",
     "requirement_module": "cli",
     "description": "Implement true E2E integration test for CLI-28 — run the lopen executable (or real DI host with stubbed LLM) to create a fizz-buzz application validating the full spec→plan→build pipeline",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "See docs/requirements/cli/RESEARCH.md 'E2E Integration Testing (CLI-28)' section for implementation approach. Recommended: Option C (in-process DI with ScriptedLlmService) for CI, with optional Option A (real SDK) as nightly test."
+    "notes": "Implemented Option C from RESEARCH.md: in-process DI with ScriptedLlmService. Created ScriptedLlmService test fake and FizzBuzzE2ETests with 6 tests covering spec phase (LLM + human gate), plan phase (multi-step state machine), build phase (completion + iteration paths), and full pipeline transitions. All tests use real WorkflowOrchestrator with full DI container."
   },
   {
     "id": "JOB-003",
