@@ -358,6 +358,15 @@
         "JOB-109"
       ],
       "notes": "TUI-49: All 15+ gallery components verified as IPreviewableComponent with non-empty RenderPreview output"
+    },
+    "component_gallery_di": {
+      "status": "complete",
+      "implementation": "ServiceCollectionExtensions resolves DI-registered components from IServiceProvider instead of creating new instances",
+      "tests": "ComponentGalleryRegistrationTests.Gallery_DiRegisteredComponents_AreSameSingletonInstances",
+      "jobs": [
+        "JOB-131"
+      ],
+      "notes": "TopPanelComponent, ContextPanelComponent, ActivityPanelComponent, PromptAreaComponent, GuidedConversationComponent now use sp.GetRequiredService<T>()"
     }
   },
   "last_updated": "2026-02-17T23:15:00Z"

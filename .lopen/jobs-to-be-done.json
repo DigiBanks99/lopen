@@ -1211,5 +1211,32 @@
     "status": "done",
     "priority": 1,
     "notes": "Added Host_ResolvesCoreCrossModuleServices test in CliIntegrationTests.cs. Resolves LopenOptions, IBudgetEnforcer, IGuardrailPipeline, IPhaseTransitionController, ILlmService, IToolRegistry, IModelSelector, IPromptBuilder, ITokenTracker, IFileSystem, IAuthService."
+  },
+  {
+    "id": "JOB-130",
+    "requirement_code": "CLI-09,CLI-10,CLI-11,CLI-12,CLI-13,CLI-15",
+    "requirement_module": "cli",
+    "description": "Fix Session/Revert commands crash when services not registered (no project root) \u2014 GetRequiredService calls outside try blocks cause unhandled InvalidOperationException instead of user-friendly error",
+    "status": "done",
+    "priority": 1,
+    "notes": "SessionCommand and RevertCommand now use GetService with null checks. 6 tests verify graceful error when services not registered."
+  },
+  {
+    "id": "JOB-131",
+    "requirement_code": "TUI-45",
+    "requirement_module": "tui",
+    "description": "Fix ComponentGallery creating duplicate component instances instead of resolving from DI \u2014 ServiceCollectionExtensions uses new() for 4 DI-registered components",
+    "status": "done",
+    "priority": 2,
+    "notes": "ServiceCollectionExtensions uses sp.GetRequiredService<T>() for 5 DI-registered components. Test verifies singleton identity with Assert.Same."
+  },
+  {
+    "id": "JOB-132",
+    "requirement_code": "CLI-20",
+    "requirement_module": "cli",
+    "description": "Fix Phase commands returning success exit code when orchestrator is null (no project root) \u2014 should return failure with error message per CLI-20 exit code contract",
+    "status": "done",
+    "priority": 2,
+    "notes": "PhaseCommands checks orchestrator is null and returns ExitCodes.Failure. ValidateSpecExistsAsync/ValidatePlanExistsAsync use GetService with null checks. 3 tests verify failure behavior."
   }
 ]

@@ -145,6 +145,24 @@
         "JOB-129"
       ],
       "notes": "Verifies 11 critical cross-module services resolve from DI container"
+    },
+    "session_revert_error_handling": {
+      "status": "complete",
+      "implementation": "SessionCommand and RevertCommand use GetService with null checks for graceful errors when no project root",
+      "tests": "SessionCommandTests (5 NoServiceRegistered tests), RevertCommandTests (1 NoServiceRegistered test)",
+      "jobs": [
+        "JOB-130"
+      ],
+      "notes": "Returns exit code 1 with user-friendly message instead of unhandled DI exception"
+    },
+    "phase_commands_null_orchestrator": {
+      "status": "complete",
+      "implementation": "PhaseCommands checks orchestrator is null and returns ExitCodes.Failure. ValidateSpecExistsAsync/ValidatePlanExistsAsync use GetService with null checks.",
+      "tests": "PhaseCommandTests (3 NoOrchestrator tests), PhaseCommandIntegrationTests (3 NullOrchestrator tests)",
+      "jobs": [
+        "JOB-132"
+      ],
+      "notes": "Per CLI-20, returns exit code 1 instead of silently succeeding when orchestrator unavailable"
     }
   },
   "last_updated": "2026-02-17T20:07:00Z"
