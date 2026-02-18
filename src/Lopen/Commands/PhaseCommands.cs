@@ -53,10 +53,18 @@ public static class PhaseCommands
                 await stdout.WriteLineAsync("Starting requirement gathering phase...");
 
                 var orchestrator = services.GetService<IWorkflowOrchestrator>();
+                if (orchestrator is null)
+                {
+                    await stderr.WriteLineAsync("No workflow orchestrator available. Run from a project directory.");
+                    LopenTelemetryDiagnostics.CommandDuration.Record(
+                        sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "spec"));
+                    return ExitCodes.Failure;
+                }
+
                 var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
                 var prompt = parseResult.GetValue(GlobalOptions.Prompt);
 
-                if (orchestrator is not null && module is not null)
+                if (module is not null)
                 {
                     var result = await orchestrator.RunAsync(module, prompt, cancellationToken);
                     if (!result.IsComplete && result.WasInterrupted)
@@ -136,10 +144,18 @@ public static class PhaseCommands
                 await stdout.WriteLineAsync("Starting planning phase...");
 
                 var orchestrator = services.GetService<IWorkflowOrchestrator>();
+                if (orchestrator is null)
+                {
+                    await stderr.WriteLineAsync("No workflow orchestrator available. Run from a project directory.");
+                    LopenTelemetryDiagnostics.CommandDuration.Record(
+                        sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "plan"));
+                    return ExitCodes.Failure;
+                }
+
                 var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
                 var prompt = parseResult.GetValue(GlobalOptions.Prompt);
 
-                if (orchestrator is not null && module is not null)
+                if (module is not null)
                 {
                     var result = await orchestrator.RunAsync(module, prompt, cancellationToken);
                     if (!result.IsComplete && result.WasInterrupted)
@@ -226,10 +242,18 @@ public static class PhaseCommands
                 await stdout.WriteLineAsync("Starting building phase...");
 
                 var orchestrator = services.GetService<IWorkflowOrchestrator>();
+                if (orchestrator is null)
+                {
+                    await stderr.WriteLineAsync("No workflow orchestrator available. Run from a project directory.");
+                    LopenTelemetryDiagnostics.CommandDuration.Record(
+                        sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "build"));
+                    return ExitCodes.Failure;
+                }
+
                 var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
                 var prompt = parseResult.GetValue(GlobalOptions.Prompt);
 
-                if (orchestrator is not null && module is not null)
+                if (module is not null)
                 {
                     var result = await orchestrator.RunAsync(module, prompt, cancellationToken);
                     if (!result.IsComplete && result.WasInterrupted)
@@ -320,8 +344,11 @@ public static class PhaseCommands
     /// </summary>
     internal static async Task<string?> ValidateSpecExistsAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var sessionManager = services.GetRequiredService<ISessionManager>();
-        var moduleScanner = services.GetRequiredService<IModuleScanner>();
+        var sessionManager = services.GetService<ISessionManager>();
+        var moduleScanner = services.GetService<IModuleScanner>();
+
+        if (sessionManager is null || moduleScanner is null)
+            return "No project found. Run from a directory with a .lopen/ or .git/ folder.";
 
         var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
         if (latestId is null)
@@ -353,8 +380,11 @@ public static class PhaseCommands
     /// </summary>
     internal static async Task<string?> ValidatePlanExistsAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var sessionManager = services.GetRequiredService<ISessionManager>();
-        var planManager = services.GetRequiredService<IPlanManager>();
+        var sessionManager = services.GetService<ISessionManager>();
+        var planManager = services.GetService<IPlanManager>();
+
+        if (sessionManager is null || planManager is null)
+            return "No project found. Run from a directory with a .lopen/ or .git/ folder.";
 
         var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
         if (latestId is null)
