@@ -337,9 +337,9 @@
     "requirement_code": "CORE-10",
     "requirement_module": "core",
     "description": "Add integration test proving oracle verification blocks premature task completion across the full pipeline",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Unit tests exist for oracle verification in isolation. Need an integration test proving the full pipeline: tool call → oracle dispatch → verdict → accept/reject update_task_status."
+    "notes": "Added OracleVerificationIntegrationTests with 10 tests wiring real ToolHandlerBinder + TaskStatusGate + VerificationTracker + OracleVerifier with FakeLlmService. Tests cover: oracle pass→complete accepted, oracle fail→complete rejected, no verification→rejected, component/module scopes, malformed JSON, reset clears state, task isolation, retry pass-then-fail and fail-then-pass (last-write-wins)."
   },
   {
     "id": "JOB-044",
