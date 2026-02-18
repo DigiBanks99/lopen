@@ -378,6 +378,15 @@
         "JOB-160"
       ],
       "notes": "Added explicit TUI-XX requirement code traceability comments to 10 existing test files and created TuiAcceptanceCriteriaTests.cs with 56 dedicated acceptance criteria tests for 29 TUI codes."
+    },
+    "test_coverage_improvements": {
+      "status": "complete",
+      "implementation": "SyntaxHighlighter string/comment tests, multi-state distinct output assertions, panel consistency assertions",
+      "tests": "SyntaxHighlighterTests (5 new), ComponentGalleryRegistrationTests (2 new, 1 updated with PromptArea)",
+      "jobs": [
+        "JOB-169"
+      ],
+      "notes": "Fixed PromptAreaComponent error preview state to be distinct from empty state. Added string/comment highlighting tests for TUI-35, distinct state output tests for TUI-48, and border consistency tests for TUI-36."
     }
   },
   "last_updated": "2026-02-18T02:00:00Z",

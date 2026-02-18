@@ -1606,5 +1606,14 @@
     "status": "done",
     "priority": 3,
     "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
+  },
+  {
+    "id": "JOB-169",
+    "requirement_code": "TUI-35,TUI-48,TUI-36",
+    "requirement_module": "tui",
+    "description": "Add missing acceptance criteria tests for TUI module: (1) SyntaxHighlighter string/comment highlighting tests (TUI-35), (2) Multi-state preview distinct output assertions (TUI-48), (3) Cross-panel consistency assertions for border/padding uniformity (TUI-36)",
+    "status": "done",
+    "priority": 2,
+    "notes": "Added 8 new tests: 5 SyntaxHighlighter string/comment highlighting tests (TUI-35), 2 ComponentGallery tests for distinct state output (TUI-48) and border consistency (TUI-36), plus fixed PromptAreaComponent error state to be distinct from empty. Total TUI tests: 784."
   }
 ]
