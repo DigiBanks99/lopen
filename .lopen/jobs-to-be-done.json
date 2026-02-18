@@ -1490,5 +1490,121 @@
     "status": "done",
     "priority": 1,
     "notes": "Created TuiAcceptanceCriteriaTests.cs with 56 tests covering 29 TUI acceptance criteria (TUI-01,02,03,08,09,10,11,12,13,14,15,17,18,19,20,21,22,23,24,27,28,29,30,31,34,43,45,46,47). Added explicit TUI-XX traceability comments to 10 existing test files."
+  },
+  {
+    "id": "JOB-161",
+    "requirement_code": "STOR-16",
+    "requirement_module": "storage",
+    "description": "Disk full / write failure is treated as a critical system error and pauses the workflow \u2014 add IsCritical property to StorageException, create WriteFailureStorageException subclass, update AutoSaveService to re-throw critical errors, update WorkflowOrchestrator to catch and return CriticalError result",
+    "status": "done",
+    "priority": 1,
+    "notes": "AutoSaveService currently swallows all StorageExceptions. Need to distinguish critical (disk full, permissions) from non-critical write failures.",
+    "tasks": [
+      {
+        "id": "STOR-16-1",
+        "title": "Add IsCritical to StorageException + WriteFailureStorageException subclass",
+        "status": "done"
+      },
+      {
+        "id": "STOR-16-2",
+        "title": "Update SessionManager catch blocks",
+        "status": "done"
+      },
+      {
+        "id": "STOR-16-3",
+        "title": "Update AutoSaveService to re-throw critical errors",
+        "status": "done"
+      },
+      {
+        "id": "STOR-16-4",
+        "title": "Update WorkflowOrchestrator to handle critical storage errors",
+        "status": "done"
+      },
+      {
+        "id": "STOR-16-5",
+        "title": "Add unit tests",
+        "status": "done"
+      },
+      {
+        "id": "STOR-16-6",
+        "title": "Run tests and verify",
+        "status": "done"
+      }
+    ]
+  },
+  {
+    "id": "JOB-162",
+    "requirement_code": "AUTH-05",
+    "requirement_module": "auth",
+    "description": "lopen auth login --headless should check the --headless flag explicitly and return an error, not just rely on Console.IsInputRedirected detection",
+    "status": "done",
+    "priority": 2,
+    "notes": "LoginAsync currently checks Environment.UserInteractive && !Console.IsInputRedirected but does not check the --headless CLI flag.",
+    "tasks": [
+      {
+        "id": "AUTH-05-1",
+        "title": "Update LoginAsync to accept and check headless parameter",
+        "status": "done"
+      },
+      {
+        "id": "AUTH-05-2",
+        "title": "Add test for headless login rejection",
+        "status": "done"
+      }
+    ]
+  },
+  {
+    "id": "JOB-163",
+    "requirement_code": "CLI-18",
+    "requirement_module": "cli",
+    "description": "--prompt in TUI mode populates the input field for user review before sending instead of auto-sending to orchestrator",
+    "status": "done",
+    "priority": 1,
+    "notes": "Fixed TuiApplication.RunAsync to pre-populate _promptData with initialPrompt and pass null to TryLaunchOrchestrator. User must press Enter to submit. Tests added in TuiApplicationTests and TuiOrchestratorBridgeTests."
+  },
+  {
+    "id": "JOB-164",
+    "requirement_code": "OTEL-10",
+    "requirement_module": "otel",
+    "description": "Structured logs emitted via ILogger carry TraceId and SpanId for correlation with active spans in non-OTLP sinks",
+    "status": "pending",
+    "priority": 2,
+    "notes": "OTEL logging is wired with OTLP export but non-OTLP sinks (console/file) may not include TraceId/SpanId. Needs investigation for console structured log enrichment."
+  },
+  {
+    "id": "JOB-165",
+    "requirement_code": "CLI-02,CLI-07,CLI-08,CLI-22,CLI-23,CLI-24,CLI-26,CLI-27",
+    "requirement_module": "cli",
+    "description": "Track already-implemented CLI requirements: headless mode, auth status/logout, build/test/format verification, project root discovery, --no-welcome flag",
+    "status": "done",
+    "priority": 3,
+    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
+  },
+  {
+    "id": "JOB-166",
+    "requirement_code": "CFG-02,CFG-03,CFG-04,CFG-06,CFG-10,CFG-13,CFG-14",
+    "requirement_module": "configuration",
+    "description": "Track already-implemented Configuration requirements: priority layering, project/global config discovery, config show --json, resume flags, oracle model, tool discipline",
+    "status": "done",
+    "priority": 3,
+    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
+  },
+  {
+    "id": "JOB-167",
+    "requirement_code": "STOR-08,STOR-09,STOR-11,STOR-12,STOR-13,STOR-15,STOR-17,STOR-19,STOR-20,STOR-21",
+    "requirement_module": "storage",
+    "description": "Track already-implemented Storage requirements: resume, plans, section/assessment cache, corrupted files, delete session, compact JSON, research docs",
+    "status": "done",
+    "priority": 3,
+    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
+  },
+  {
+    "id": "JOB-168",
+    "requirement_code": "OTEL-02,OTEL-03,OTEL-05,OTEL-06,OTEL-07,OTEL-09,OTEL-15",
+    "requirement_module": "otel",
+    "description": "Track already-implemented OTEL requirements: workflow/SDK/oracle/task/backpressure spans, histogram metrics, signal toggles",
+    "status": "done",
+    "priority": 3,
+    "notes": "All requirements verified as fully implemented via code review. Tracked retroactively."
   }
 ]

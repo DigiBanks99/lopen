@@ -25,13 +25,14 @@
     },
     "prompt_injection": {
       "status": "complete",
-      "implementation": "--prompt flag wired through IWorkflowOrchestrator to IPromptBuilder contextSections, and to ITuiApplication.RunAsync for TUI pre-population",
-      "tests": "Spec_WithPrompt_PassesPromptToOrchestrator, RootCommand_WithPrompt_PassesPromptToTui, StubTuiApplication prompt tests",
+      "implementation": "--prompt flag wired through IWorkflowOrchestrator to IPromptBuilder contextSections, and to ITuiApplication.RunAsync for TUI pre-population (CLI-18: populates input field for user review, not auto-sent)",
+      "tests": "Spec_WithPrompt_PassesPromptToOrchestrator, RootCommand_WithPrompt_PassesPromptToTui, StubTuiApplication prompt tests, TuiApplicationTests (3 CLI-18 pre-population tests), TuiOrchestratorBridgeTests (updated)",
       "jobs": [
         "JOB-031",
-        "JOB-032"
+        "JOB-032",
+        "JOB-163"
       ],
-      "notes": "Headless: prompt injected via contextSections[user_prompt]. TUI: prompt passed as initialPrompt parameter."
+      "notes": "Headless: prompt injected via contextSections[user_prompt]. TUI: prompt pre-populates input field for user review (CLI-18). User must press Enter to submit."
     },
     "headless_validation": {
       "status": "complete",
@@ -165,5 +166,5 @@
       "notes": "Per CLI-20, returns exit code 1 instead of silently succeeding when orchestrator unavailable"
     }
   },
-  "last_updated": "2026-02-17T20:07:00Z"
+  "last_updated": "2026-02-18T02:00:00Z"
 }

@@ -48,12 +48,13 @@
     "prompt_area": {
       "status": "complete",
       "implementation": "PromptAreaComponent + PromptAreaData + IUserPromptQueue + UserPromptQueue",
-      "tests": "PromptAreaComponentTests (16) + UserPromptQueueTests (12)",
+      "tests": "PromptAreaComponentTests (16) + UserPromptQueueTests (12) + TuiApplicationTests (3 CLI-18 pre-population tests)",
       "jobs": [
         "JOB-088",
-        "JOB-041"
+        "JOB-041",
+        "JOB-163"
       ],
-      "notes": "Multi-line input with Enter/Alt+Enter/Backspace. Context-aware hints wired from KeyboardHandler.GetHints(). Non-slash prompts enqueued to IUserPromptQueue. Thread-safe ConcurrentQueue + SemaphoreSlim. DI via AddUserPromptQueue()."
+      "notes": "Multi-line input with Enter/Alt+Enter/Backspace. Context-aware hints wired from KeyboardHandler.GetHints(). Non-slash prompts enqueued to IUserPromptQueue. Thread-safe ConcurrentQueue + SemaphoreSlim. DI via AddUserPromptQueue(). CLI-18: --prompt pre-populates input field for user review instead of auto-sending."
     },
     "modals": {
       "status": "complete",
@@ -287,12 +288,13 @@
     "orchestrator_bridge": {
       "status": "complete",
       "implementation": "TuiApplication accepts IWorkflowOrchestrator?, launches RunAsync on Task.Run background thread. TryLaunchOrchestrator/CheckOrchestratorCompletion in render loop.",
-      "tests": "TuiOrchestratorBridgeTests (11 tests)",
+      "tests": "TuiOrchestratorBridgeTests (11 tests, updated for CLI-18)",
       "jobs": [
         "JOB-003",
-        "JOB-007"
+        "JOB-007",
+        "JOB-163"
       ],
-      "notes": "TUI-52: Background launch after modals dismissed. Completion/failure/interruption entries added to activity panel. SetOrchestratorModule for module name injection."
+      "notes": "TUI-52: Background launch after modals dismissed. Completion/failure/interruption entries added to activity panel. SetOrchestratorModule for module name injection. CLI-18: initialPrompt no longer passed to orchestrator; pre-populates input field instead."
     },
     "di_wiring": {
       "status": "complete",
@@ -378,6 +380,6 @@
       "notes": "Added explicit TUI-XX requirement code traceability comments to 10 existing test files and created TuiAcceptanceCriteriaTests.cs with 56 dedicated acceptance criteria tests for 29 TUI codes."
     }
   },
-  "last_updated": "2026-02-18T00:57:00Z",
-  "notes": "All 52 TUI requirements (TUI-01 through TUI-52) are implemented and tested. 714 tests pass."
+  "last_updated": "2026-02-18T02:00:00Z",
+  "notes": "All 52 TUI requirements (TUI-01 through TUI-52) are implemented and tested. CLI-18 --prompt pre-population fixed. 773 tests pass."
 }
