@@ -1,5 +1,6 @@
 using Lopen.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Lopen.Tui;
 
@@ -17,7 +18,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<PromptAreaComponent>();
         services.AddSingleton<KeyboardHandler>();
         services.AddSingleton(_ => SlashCommandRegistry.CreateDefault());
-        services.AddSingleton<ISlashCommandExecutor, SlashCommandExecutor>();
+        services.AddSingleton<ISlashCommandExecutor>(sp =>
+            new SlashCommandExecutor(
+                sp.GetRequiredService<SlashCommandRegistry>(),
+                sp.GetRequiredService<ILogger<SlashCommandExecutor>>(),
+                sp));
         services.AddSingleton<GuidedConversationComponent>();
         services.AddSingleton<ITuiApplication, StubTuiApplication>();
         services.AddSingleton<IComponentGallery>(sp =>

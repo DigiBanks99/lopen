@@ -220,7 +220,9 @@ public class TuiOrchestratorBridgeTests
         public Task<StepResult> RunStepAsync(
             string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            ReceivedModuleName = moduleName;
+            ReceivedPrompt = userPrompt;
+            return Task.FromResult(StepResult.Succeeded(WorkflowTrigger.Assess, "Step complete"));
         }
     }
 

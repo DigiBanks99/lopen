@@ -274,9 +274,9 @@
     "requirement_code": "TUI-50",
     "requirement_module": "tui",
     "description": "Fix NotImplementedException in TuiOrchestratorBridgeTests.cs line 223",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Test file has throw new NotImplementedException() at line 223. This indicates incomplete test coverage for TuiOrchestratorBridge."
+    "notes": "Fixed: StubOrchestrator.RunStepAsync in TuiOrchestratorBridgeTests.cs now returns StepResult.Succeeded() instead of throwing NotImplementedException."
   },
   {
     "id": "JOB-037",
@@ -787,9 +787,9 @@
     "requirement_code": "TUI-38",
     "requirement_module": "tui",
     "description": "Wire TUI slash command domain handlers — register handlers via SlashCommandExecutor.RegisterHandler() for /spec, /plan, /build, /session, /config, /revert, /auth that invoke corresponding workflow/service actions",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Framework complete (parsing, dispatch, handler registration). Only /help has a handler. Other 7 commands fall through to generic success message. Per TUI-38, these should invoke the same logic as the corresponding lopen <command>."
+    "notes": "Implemented: All 7 domain handlers (/spec, /plan, /build, /session, /config, /revert, /auth) registered in SlashCommandExecutor via IServiceProvider injection. 37 new tests in SlashCommandHandlerTests.cs verify handler behavior including graceful missing-service handling."
   },
   {
     "id": "JOB-102",
