@@ -22,18 +22,18 @@
     "requirement_code": "STOR-11",
     "requirement_module": "storage",
     "description": "Add logging to silent IOException catch blocks in SectionCache.cs cache cleanup (line 172-175)",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "IOException during file deletion is silently swallowed with no logging. Should at least log at Debug level for diagnostics. Best-effort cleanup should still be observable."
+    "notes": "Added _logger.LogDebug(ex, ...) to SectionCache.TryDeleteFile catch block. Added InvalidateFileAsync_DeleteThrowsIOException_LogsDebugMessage test using ThrowingDeleteFileSystem wrapper."
   },
   {
     "id": "JOB-007",
     "requirement_code": "STOR-13",
     "requirement_module": "storage",
     "description": "Add logging to silent IOException catch block in AssessmentCache.cs cache cleanup (line 142-145)",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "Same pattern as SectionCache — IOException silently swallowed during cleanup. Should log at Debug level."
+    "notes": "Added _logger.LogDebug(ex, ...) to AssessmentCache.TryDeleteFile catch block. Added InvalidateAsync_DeleteThrowsIOException_LogsDebugMessage test using ThrowingDeleteFileSystem wrapper."
   },
   {
     "id": "JOB-008",

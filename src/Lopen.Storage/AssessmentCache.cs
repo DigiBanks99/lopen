@@ -139,9 +139,9 @@ public sealed class AssessmentCache : IAssessmentCache
             if (_fileSystem.FileExists(path))
                 _fileSystem.DeleteFile(path);
         }
-        catch (IOException)
+        catch (IOException ex)
         {
-            // Best effort cleanup
+            _logger.LogDebug(ex, "Best-effort cache cleanup failed for {Path}", path);
         }
     }
 }
