@@ -256,7 +256,7 @@ This specification defines the **CLI command structure and flags**. It does not 
 - [x] [CLI-25] CLI entry point uses `Microsoft.Extensions.Hosting` for dependency injection
 - [x] [CLI-26] CLI discovers the project root directory (nearest parent containing `.lopen/` or `.git/`, falling back to CWD) and passes it to `AddLopenCore(projectRoot)` and `AddLopenStorage(projectRoot)` so all path-dependent services are registered
 - [x] [CLI-27] `--no-welcome` flag suppresses the TUI landing page modal on startup
-- [x] [CLI-28] Run the CLI workflow to create a fizz-buzz application with tests to validate the workflow works
+- [ ] [CLI-28] Run lopen executable to create a fizz-buzz application with tests in order to validate the full integration
 
 ---
 

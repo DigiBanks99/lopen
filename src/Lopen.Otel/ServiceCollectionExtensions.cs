@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
         {
             services.AddLogging(logging =>
             {
+                logging.ClearProviders();
                 logging.Configure(options =>
                     options.ActivityTrackingOptions =
                         ActivityTrackingOptions.TraceId |
