@@ -222,14 +222,18 @@ public class OtlpExportTests
         var sp = services.BuildServiceProvider();
         var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("test");
 
-        // When logging inside an active Activity, the log framework has access
-        // to Activity.Current for correlation. The OTEL log exporter attaches
-        // TraceId/SpanId automatically. We verify the infrastructure is wired.
         logger.LogInformation("Test log within span");
 
         // The key assertion: Activity.Current is available for log correlation
         Assert.Equal(activity.TraceId, System.Diagnostics.Activity.Current!.TraceId);
         Assert.Equal(activity.SpanId, System.Diagnostics.Activity.Current!.SpanId);
+
+        // Verify ActivityTrackingOptions configured for non-OTLP sink enrichment
+        var optionsMonitor = sp.GetService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>();
+        Assert.NotNull(optionsMonitor);
+        var options = optionsMonitor!.Value;
+        Assert.True(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.TraceId));
+        Assert.True(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.SpanId));
     }
 
     // ==================== OTEL-11: OTLP export activates for all 3 signals ====================

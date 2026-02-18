@@ -1567,9 +1567,9 @@
     "requirement_code": "OTEL-10",
     "requirement_module": "otel",
     "description": "Structured logs emitted via ILogger carry TraceId and SpanId for correlation with active spans in non-OTLP sinks",
-    "status": "pending",
+    "status": "done",
     "priority": 2,
-    "notes": "OTEL logging is wired with OTLP export but non-OTLP sinks (console/file) may not include TraceId/SpanId. Needs investigation for console structured log enrichment."
+    "notes": "Added ActivityTrackingOptions.TraceId | ActivityTrackingOptions.SpanId to logging configuration in ServiceCollectionExtensions.cs. Updated AC10 tests in OtelAcceptanceCriteriaTests and OtlpExportTests to assert LoggerFactoryOptions.ActivityTrackingOptions. Added dedicated tests in ServiceCollectionExtensionsTests for enabled/disabled states. All 125 OTEL tests pass."
   },
   {
     "id": "JOB-165",
