@@ -1,129 +1,100 @@
 ---
 date: 2026-02-15
 sources:
-  - https://www.nuget.org/packages/GitHub.Copilot.SDK
-  - https://github.com/github/copilot-sdk
-  - https://raw.githubusercontent.com/github/copilot-sdk/main/docs/auth/index.md
-  - https://raw.githubusercontent.com/github/copilot-sdk/main/docs/auth/byok.md
-  - https://raw.githubusercontent.com/github/copilot-sdk/main/docs/getting-started.md
+  - https://cli.github.com/manual/gh_auth
   - https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow
   - https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli
 ---
 
 # Auth Module Research
 
-## 1. GitHub Copilot SDK Authentication in .NET
+## 1. Authentication Architecture
 
-The official **`GitHub.Copilot.SDK`** NuGet package (latest stable: `0.1.23`, latest preview: `0.1.24-preview.0`, as of Feb 2026) is the .NET SDK for programmatic control of GitHub Copilot CLI. It requires **.NET 8.0 or later**. It is in **technical preview** and may change in breaking ways.
-
-The SDK does not implement authentication directly. Instead, it wraps the **Copilot CLI** (`copilot` binary), which must be installed separately and available in `PATH`. The SDK communicates with the CLI over JSON-RPC (stdio transport by default). Authentication is handled entirely by the CLI process — the SDK passes configuration that tells the CLI which auth method to use.
+Lopen's auth module delegates all authentication operations to the **GitHub CLI (`gh`)** via the `IGhCliAdapter`/`GhCliAdapter` abstraction. The `gh` CLI must be installed and available on `PATH`. There is no direct dependency on the Copilot SDK or `CopilotClient` for authentication — the auth module is a standalone layer that resolves credentials before any SDK interaction.
 
 ### Architecture
 
 ```
 Lopen (.NET Application)
        ↓
-  GitHub.Copilot.SDK (NuGet)
-       ↓ JSON-RPC (stdio)
-  Copilot CLI (server mode)
-       ↓ HTTPS
-  GitHub Copilot API
+  CopilotAuthService (IAuthService)
+       ├── ITokenSourceResolver          → Environment variables (GH_TOKEN, GITHUB_TOKEN)
+       └── IGhCliAdapter (GhCliAdapter)  → gh auth login / status / logout
+              ↓ Process.Start
+         gh CLI (subprocess, 30s timeout)
+              ↓ HTTPS
+         GitHub API
 ```
 
-### SDK Authentication Options
+### Key Components
 
-The `CopilotClientOptions` class exposes two auth-relevant properties:
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `GithubToken` | `string?` | `null` | GitHub token for authentication. When provided, takes priority over all other auth methods. |
-| `UseLoggedInUser` | `bool` | `true` (`false` when `GithubToken` is set) | Whether to use the stored OAuth credentials from a prior `copilot` CLI login. Cannot be used with `CliUrl`. |
-
-### Authentication Priority (SDK/CLI combined)
-
-The SDK documentation specifies this priority order:
-
-1. **Explicit `GithubToken`** — token passed directly to `CopilotClientOptions`
-2. **HMAC key** — `CAPI_HMAC_KEY` or `COPILOT_HMAC_KEY` environment variables
-3. **Direct API token** — `GITHUB_COPILOT_API_TOKEN` with `COPILOT_API_URL`
-4. **Environment variable tokens** — `COPILOT_GITHUB_TOKEN` → `GH_TOKEN` → `GITHUB_TOKEN`
-5. **Stored OAuth credentials** — from previous `copilot` CLI login (device flow)
-6. **GitHub CLI** — `gh auth` credentials
-
-## 2. Device Flow Implementation
-
-### How the GitHub OAuth Device Flow Works
-
-The device flow (RFC 8628) is designed for headless apps like CLI tools. The flow is:
-
-1. **Request device code** — `POST https://github.com/login/device/code` with `client_id` and optional `scope`. Returns:
-   - `device_code` — 40-char verification code (app keeps this secret)
-   - `user_code` — 8-char code with hyphen (e.g., `WDJB-MJHT`) shown to the user
-   - `verification_uri` — `https://github.com/login/device`
-   - `expires_in` — 900 seconds (15 minutes)
-   - `interval` — minimum polling interval in seconds (typically 5)
-
-2. **Display to user** — show `user_code` and `verification_uri`, optionally open browser
-
-3. **Poll for completion** — `POST https://github.com/login/oauth/access_token` with `client_id`, `device_code`, and `grant_type=urn:ietf:params:oauth:grant-type:device_code`. Poll at the specified `interval`.
-
-4. **Receive token** — on success, receive `access_token`, `token_type`, and `scope`
-
-### Polling Error Codes
-
-| Error | Meaning |
+| Component | Responsibility |
 |---|---|
-| `authorization_pending` | User hasn't entered the code yet — keep polling |
-| `slow_down` | Polling too fast — add 5 seconds to interval |
-| `expired_token` | Device code expired (15 min timeout) — restart flow |
-| `access_denied` | User cancelled authorization |
+| `IAuthService` / `CopilotAuthService` | Orchestrates auth operations: login, logout, status, pre-flight validation |
+| `ITokenSourceResolver` / `EnvironmentTokenSourceResolver` | Resolves environment variable tokens (`GH_TOKEN` → `GITHUB_TOKEN` → None) |
+| `IGhCliAdapter` / `GhCliAdapter` | Wraps `gh` CLI process execution with 30-second timeout |
+| `AuthStatusResult` | Immutable result record: `State`, `Source`, `Username?`, `ErrorMessage?` |
 
-### How the Copilot SDK Handles It
+### Authentication Priority (Implemented)
 
-The SDK **does not expose the device flow directly** to the embedding application. The device flow is handled by the Copilot CLI itself. Per the [official Copilot CLI docs](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli#authenticating-with-copilot-cli), authentication works as follows:
+`CopilotAuthService.GetStatusAsync()` checks sources in this order:
 
-- On **first launch** of the interactive `copilot` CLI, the user is prompted to use the **`/login` slash command** within the TUI
-- The `/login` command triggers the GitHub OAuth device flow interactively
-- Credentials are stored in the **system keychain**
-- There is **no `copilot auth login` subcommand** — authentication is a TUI-internal slash command, not a CLI flag or subcommand
+1. **`GH_TOKEN`** environment variable (via `ITokenSourceResolver`)
+2. **`GITHUB_TOKEN`** environment variable (via `ITokenSourceResolver`)
+3. **`gh auth` stored credentials** — parsed from `gh auth status` output, then validated with `gh api user --jq .login`
 
-When the SDK is created with `UseLoggedInUser = true` (the default), it tells the CLI process (running in server mode) to use these stored credentials. The SDK does not provide an API to programmatically initiate the device flow from .NET code.
+## 2. Login via gh CLI Device Flow
 
-**Implication for Lopen**: `lopen auth login` cannot simply shell out to a CLI subcommand. Options:
-- (a) Launch `copilot` in interactive TUI mode and programmatically send `/login` via stdin, then parse the device code output — fragile but possible
-- (b) Start the SDK/CLI with `UseLoggedInUser = true` when no credentials exist, and handle the resulting error to direct the user to run `copilot` interactively first
-- (c) Implement the GitHub device flow directly using the GitHub OAuth endpoints (see Section 2 above) with Copilot's client_id — gives full UX control but bypasses the CLI's credential storage
+### How `lopen auth login` Works (Implemented)
 
-Option (c) would require discovering or reverse-engineering the Copilot CLI's OAuth `client_id` and keychain storage format. Option (b) is simplest but degrades the UX. This is a key architectural decision for implementation.
+Login delegates entirely to `gh auth login --git-protocol https --web`. The `--web` flag triggers the GitHub OAuth device flow, which opens a browser for the user to authorize. The `gh` CLI handles the full device flow lifecycle: code generation, browser opening, polling, and credential storage.
+
+`CopilotAuthService.LoginAsync()` performs these steps:
+
+1. **Check interactivity** — blocks login in non-interactive environments (no TTY / redirected stdin) with `AuthErrorMessages.HeadlessLoginNotSupported`
+2. **Check gh CLI availability** — calls `gh --version` via `IGhCliAdapter.IsAvailableAsync()`; throws `AuthErrorMessages.GhCliNotFound` if not found
+3. **Run `gh auth login`** — delegates to `GhCliAdapter.LoginAsync()` which runs `gh auth login --git-protocol https --web` with stdout/stderr passed through to the user (not redirected)
+4. **Verify success** — calls `gh auth status` to confirm credentials were stored, extracts username
+
+### Key Implementation Details
+
+- Login runs the `gh` process with **`redirectOutput: false`**, meaning the device flow UI (user code, verification URL) is displayed directly to the user's terminal
+- The `gh` CLI stores credentials in its own credential store (platform keychain on macOS/Windows, encrypted file on Linux)
+- After login, a verification call to `gh auth status` confirms the credentials are stored and extracts the username
+- The `GhCliAdapter` enforces a **30-second process timeout** on all operations (though login runs without output redirection, so the timeout applies to `WaitForExitAsync`)
+
+### Headless Environments
+
+In non-interactive environments (CI/CD, containers, piped input), `LoginAsync` throws immediately with a message directing users to set `GH_TOKEN` with a fine-grained PAT that has the "Copilot Requests" permission.
+
+### Underlying Device Flow (handled by gh CLI)
+
+The `gh` CLI implements the standard GitHub OAuth device flow (RFC 8628):
+
+1. **Request device code** — `POST https://github.com/login/device/code` with `client_id` and `scope`
+2. **Display to user** — shows `user_code` and `verification_uri`, opens browser
+3. **Poll for completion** — polls `POST https://github.com/login/oauth/access_token` at the specified interval
+4. **Store token** — saves `access_token` to the platform credential store
+
+Lopen does not implement any of this directly — it is fully owned by the `gh` CLI binary.
 
 ## 3. Environment Variable Authentication
 
-### How GH_TOKEN / GITHUB_TOKEN Work
+### How GH_TOKEN / GITHUB_TOKEN Work (Implemented)
 
-When environment variables are set, the Copilot CLI (and by extension the SDK) automatically detects and uses them — **no code changes needed**.
-
-```csharp
-// Environment variables are detected automatically by the CLI process
-// No explicit configuration required in the SDK
-await using var client = new CopilotClient();
-```
-
-The SDK also allows passing a token explicitly via `CopilotClientOptions.GithubToken`, which takes the **highest** priority:
+`EnvironmentTokenSourceResolver` checks environment variables synchronously. When a token is found, `CopilotAuthService.GetStatusAsync()` returns `Authenticated` immediately without calling the `gh` CLI.
 
 ```csharp
-// Explicit token — overrides all environment variables and stored credentials
-await using var client = new CopilotClient(new CopilotClientOptions
-{
-    GithubToken = Environment.GetEnvironmentVariable("GH_TOKEN")
-                  ?? Environment.GetEnvironmentVariable("GITHUB_TOKEN"),
-});
+// EnvironmentTokenSourceResolver.Resolve() checks in order:
+// 1. GH_TOKEN — if non-empty, returns AuthCredentialSource.GhToken
+// 2. GITHUB_TOKEN — if non-empty, returns AuthCredentialSource.GitHubToken
+// 3. Otherwise — returns AuthCredentialSource.None (falls through to gh CLI check)
 ```
 
-### Environment Variable Priority
+### Environment Variable Priority (Implemented)
 
-1. `COPILOT_GITHUB_TOKEN` — Copilot-specific (not mentioned in Lopen spec, but supported by SDK)
-2. `GH_TOKEN` — GitHub CLI compatible
-3. `GITHUB_TOKEN` — GitHub Actions compatible
+1. `GH_TOKEN` — GitHub CLI compatible (highest precedence)
+2. `GITHUB_TOKEN` — GitHub Actions compatible
 
 ### Supported Token Types
 
@@ -138,264 +109,143 @@ await using var client = new CopilotClient(new CopilotClientOptions
 
 Per the Lopen specification, PATs must have the **"Copilot Requests"** permission enabled. This is a fine-grained PAT permission (not a classic scope).
 
-## 4. Token Renewal
+## 4. Credential Validation
 
-### How Automatic Token Refresh Works
+### How Credential Validation Works (Implemented)
 
-The Copilot CLI manages token refresh internally for OAuth-based credentials (stored device flow tokens). This is transparent to the SDK consumer.
+`CopilotAuthService.GetStatusAsync()` performs a two-step validation for `gh` CLI credentials:
 
-**For stored OAuth credentials** (`UseLoggedInUser = true`):
-- The CLI handles token refresh automatically using its stored refresh token
-- The SDK does not expose any refresh API because it delegates to the CLI
-- If the refresh token itself is revoked or expired, the CLI returns an error
+1. **`gh auth status`** — checks whether credentials are stored; parses output for username, active status, and token scopes
+2. **`gh api user --jq .login`** — makes a lightweight API call to verify credentials are actually functional (not expired/revoked)
 
-**For explicit tokens** (`GithubToken` or environment variables):
-- There is **no automatic refresh**. PATs and explicit tokens are static.
-- If a PAT expires mid-session, the request fails and the application must handle it
-- The BYOK docs confirm: "The SDK does not refresh this token automatically"
+If `gh auth status` succeeds but `gh api user` fails, the status is reported as `AuthState.InvalidCredentials` rather than `Authenticated`.
 
-### Error Handling for Token Expiry
+For environment variable tokens (`GH_TOKEN` / `GITHUB_TOKEN`), only presence is checked — no API validation is performed. Invalid tokens will fail at first use.
 
-The SDK emits `SessionErrorEvent` when authentication fails during a session. The `OnErrorOccurred` hook can intercept errors with retry/skip/abort strategies:
+### Pre-flight Validation (Implemented)
 
-```csharp
-var session = await client.CreateSessionAsync(new SessionConfig
-{
-    Model = "gpt-5",
-    Hooks = new SessionHooks
-    {
-        OnErrorOccurred = async (input, invocation) =>
-        {
-            // input.Error contains the error details
-            // input.ErrorContext describes where the error occurred
-            return new ErrorOccurredHookOutput
-            {
-                ErrorHandling = "retry" // "retry", "skip", or "abort"
-            };
-        }
-    }
-});
-```
+`ValidateAsync()` calls `GetStatusAsync()` and maps the result:
 
-**Implication for Lopen**: For the automatic token renewal described in the spec, Lopen should:
-1. Use the `OnErrorOccurred` hook to detect 401/403 errors
-2. For stored OAuth credentials — the CLI should auto-refresh transparently
-3. For explicit tokens (PATs) — treat as unrecoverable, trigger the critical error path
-4. Use `ErrorHandling = "retry"` after confirming refresh succeeded (for OAuth), or `"abort"` for revoked tokens
+| State | Behavior |
+|---|---|
+| `Authenticated` | Returns successfully — credentials are valid |
+| `InvalidCredentials` | Throws `AuthenticationException` with `AuthErrorMessages.InvalidCredentials` |
+| `NotAuthenticated` | Throws `AuthenticationException` with `AuthErrorMessages.PreFlightFailed` |
 
-**To be verified**: Whether the CLI's internal token refresh is fully transparent or whether the SDK needs to restart the CLI process. The NuGet package's `AutoRestart` option (default: `true`) suggests the SDK can recover from CLI crashes, which may cover some auth failure scenarios.
+### Token Refresh
 
-## 5. Recommended NuGet Packages
+The auth module does **not** implement automatic token refresh. The `gh` CLI manages its own stored token lifecycle. For environment variable tokens (PATs), there is no refresh mechanism — expired tokens produce errors at the point of use.
 
-### Required
+## 5. Dependencies
 
-| Package | Version | Purpose |
-|---|---|---|
-| `GitHub.Copilot.SDK` | `0.1.23` (stable) / `0.1.24-preview.0` (preview) | Core SDK — CopilotClient, sessions, events, auth options |
+### Actual NuGet Packages (Lopen.Auth.csproj)
 
-### Likely Required (Transitive or Companion)
+| Package | Purpose |
+|---|---|
+| `Microsoft.Extensions.DependencyInjection.Abstractions` | `IServiceCollection` for DI registration via `AddLopenAuth()` |
+| `Microsoft.Extensions.Logging.Abstractions` | `ILogger<T>` for structured logging in `GhCliAdapter` and `CopilotAuthService` |
 
-| Package | Version | Purpose |
-|---|---|---|
-| `Microsoft.Extensions.AI` | latest | Provides `AIFunctionFactory.Create` for custom tool definitions. Used by the SDK for tool registration. |
-| `Microsoft.Extensions.Logging` | latest | The SDK accepts an `ILogger` instance via `CopilotClientOptions.Logger` |
+### External Dependencies
 
-### Optional
-
-| Package | Version | Purpose |
-|---|---|---|
-| `GitHub.Copilot.SDK.Supercharged` | `1.0.15` | Community package with additional helpers (21 language support). Not official. |
+| Dependency | Purpose |
+|---|---|
+| `gh` CLI (runtime) | Required on `PATH` for interactive login, status checks, logout, and credential validation |
 
 ### Not Needed
 
-- **No separate auth library** — authentication is handled entirely by the SDK/CLI
+- **No `GitHub.Copilot.SDK`** — auth is fully independent of the Copilot SDK
 - **No Octokit** — Lopen does not need direct GitHub API access for auth
-- **No custom OAuth library** — the device flow is owned by the CLI
+- **No custom OAuth library** — the device flow is owned by the `gh` CLI
 
-## 6. Implementation Approach
+## 6. Implementation (Actual)
 
-### Recommended Architecture
+### Architecture
 
 ```
 Lopen.Auth (module)
-├── IAuthService                 # Interface for auth operations
-├── CopilotAuthService           # Implementation delegating to SDK/CLI
-├── AuthCommands                 # CLI command handlers (login, status, logout)
-├── AuthPreflightCheck           # Pre-workflow validation
-└── TokenSourceResolver          # Determines credential source and precedence
+├── IAuthService                          # Interface: login, logout, status, validate
+├── CopilotAuthService                    # Orchestrates env vars + gh CLI delegation
+├── ITokenSourceResolver                  # Interface: resolve env var token source
+├── EnvironmentTokenSourceResolver        # GH_TOKEN → GITHUB_TOKEN → None
+├── IGhCliAdapter                         # Interface: gh CLI process operations
+├── GhCliAdapter                          # Process.Start wrapper with 30s timeout
+├── AuthStatusResult                      # Record: State, Source, Username?, ErrorMessage?
+├── TokenSourceResult                     # Record: Source, Token?
+├── GhAuthStatusInfo                      # Record: Username, IsActive, TokenScopes?
+├── AuthCredentialSource                  # Enum: None, GhToken, GitHubToken, SdkCredentials
+├── AuthState                             # Enum: Authenticated, NotAuthenticated, InvalidCredentials
+├── AuthErrorMessages                     # Static error message strings (what/why/fix pattern)
+├── AuthenticationException               # Custom exception for auth failures
+└── ServiceCollectionExtensions           # DI: AddLopenAuth() registration
 ```
 
-### lopen auth login
-
-Since the SDK does not expose a device flow API, and the CLI uses a `/login` slash command in TUI mode (not a CLI subcommand), `lopen auth login` should:
+### lopen auth login (Implemented)
 
 ```csharp
-// Option A: Direct user to authenticate via the copilot CLI first
-// Simplest approach — delegate fully to the CLI's interactive TUI
-public async Task LoginAsync()
-{
-    var cliPath = options.CliPath ?? "copilot";
+// CopilotAuthService.LoginAsync():
+// 1. Block non-interactive environments (no TTY / redirected stdin)
+// 2. Check gh CLI availability via IGhCliAdapter.IsAvailableAsync()
+// 3. Delegate to IGhCliAdapter.LoginAsync()
 
-    // Check if already authenticated by trying to start the SDK
-    try
-    {
-        await using var client = new CopilotClient();
-        await client.StartAsync();
-        await client.PingAsync();
-        Console.WriteLine("Already authenticated.");
-        return;
-    }
-    catch { /* Not authenticated — proceed */ }
-
-    // Direct the user to run the copilot CLI interactively
-    Console.WriteLine("Opening Copilot CLI for authentication...");
-    Console.WriteLine("Use the /login command when prompted.");
-    var process = Process.Start(new ProcessStartInfo
-    {
-        FileName = cliPath,
-        UseShellExecute = false,
-    });
-    await process.WaitForExitAsync();
-}
+// GhCliAdapter.LoginAsync():
+// Runs: gh auth login --git-protocol https --web
+// - redirectOutput: false (user sees device flow UI directly)
+// - Verifies success via GetStatusAsync() after process exits
+// - Returns authenticated username
 ```
 
+### lopen auth status (Implemented)
+
 ```csharp
-// Option B: Launch TUI and programmatically send /login
-// More control but fragile — depends on TUI's stdin/stdout behavior
-var process = Process.Start(new ProcessStartInfo
-{
-    FileName = cliPath,
-    RedirectStandardInput = true,
-    RedirectStandardOutput = true,
-    RedirectStandardError = true,
-});
-await process.StandardInput.WriteLineAsync("/login");
-// Parse output for user_code and verification_uri
-// Display to user, wait for completion
+// CopilotAuthService.GetStatusAsync():
+// 1. Check ITokenSourceResolver.Resolve() for GH_TOKEN / GITHUB_TOKEN
+//    → returns Authenticated with GhToken or GitHubToken source
+// 2. Call IGhCliAdapter.GetStatusAsync() (runs: gh auth status)
+//    → parses output for username, active status, token scopes
+// 3. If gh status found, call IGhCliAdapter.ValidateCredentialsAsync()
+//    (runs: gh api user --jq .login)
+//    → if invalid: returns InvalidCredentials with username
+//    → if valid: returns Authenticated with SdkCredentials source
+// 4. Otherwise: returns NotAuthenticated
 ```
 
-**Recommendation**: Option A is more robust for v1. It delegates the entire auth UX to the `copilot` CLI, which already handles the device flow, browser opening, and credential storage. Lopen can verify success afterward with `PingAsync()`.
-
-### lopen auth status
+### lopen auth logout (Implemented)
 
 ```csharp
-public async Task<AuthStatus> CheckStatusAsync()
-{
-    // 1. Check environment variables first
-    var ghToken = Environment.GetEnvironmentVariable("GH_TOKEN");
-    var githubToken = Environment.GetEnvironmentVariable("GITHUB_TOKEN");
-
-    if (!string.IsNullOrEmpty(ghToken))
-        return AuthStatus.AuthenticatedViaEnvVar("GH_TOKEN");
-    if (!string.IsNullOrEmpty(githubToken))
-        return AuthStatus.AuthenticatedViaEnvVar("GITHUB_TOKEN");
-
-    // 2. Try to create a client and ping to validate stored credentials
-    try
-    {
-        await using var client = new CopilotClient();
-        await client.StartAsync();
-        await client.PingAsync();
-        return AuthStatus.AuthenticatedViaDeviceFlow(username);
-    }
-    catch
-    {
-        return AuthStatus.NotAuthenticated;
-    }
-}
+// CopilotAuthService.LogoutAsync():
+// 1. Delegate to IGhCliAdapter.LogoutAsync()
+//    (runs: gh auth logout --hostname github.com, sends "Y\n" to confirm)
+// 2. Check ITokenSourceResolver.Resolve() for leftover env vars
+//    → warns if GH_TOKEN or GITHUB_TOKEN is still set
 ```
 
-### lopen auth logout
+### Pre-flight Auth Check (Implemented)
 
 ```csharp
-// The copilot CLI does not have a known `auth logout` subcommand.
-// Logout may need to: (a) clear keychain credentials directly, or
-// (b) use the copilot CLI's TUI `/logout` command if one exists.
-// Alternatively, start the SDK and handle the case where stored creds are cleared.
-//
-// Simplest approach: launch copilot interactively for the user
-var process = Process.Start("copilot");
-await process.WaitForExitAsync();
-
-// Warn if env vars are still set
-if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GH_TOKEN")))
-    Console.WriteLine("Warning: GH_TOKEN is still set in your environment.");
+// CopilotAuthService.ValidateAsync():
+// 1. Call GetStatusAsync()
+// 2. Authenticated → return (success)
+// 3. InvalidCredentials → throw AuthenticationException(InvalidCredentials)
+// 4. NotAuthenticated → throw AuthenticationException(PreFlightFailed)
 ```
 
-### Pre-flight Auth Check
+### GhCliAdapter Process Management
 
-Use the SDK's `PingAsync()` method to validate connectivity and authentication before starting a workflow:
+All `gh` CLI operations go through `GhCliAdapter.RunAsync()`:
 
-```csharp
-public async Task ValidateAuthAsync()
-{
-    await using var client = new CopilotClient(BuildClientOptions());
-    await client.StartAsync();
+- Spawns `gh` with `Process.Start()` via an injected `Func<ProcessStartInfo, Process?>` (testable)
+- Enforces a **30-second timeout** via `WaitForExitAsync().WaitAsync(ProcessTimeout)`
+- Kills the process in a `finally` block if it hasn't exited
+- Captures stdout/stderr when `redirectOutput: true`; passes through to terminal when `false` (login flow)
+- Supports sending stdin input (used for logout confirmation: `"Y\n"`)
 
-    try
-    {
-        var response = await client.PingAsync();
-        // Ping succeeded — credentials are valid
-    }
-    catch (Exception ex)
-    {
-        throw new AuthenticationException(
-            "Authentication failed. Run 'lopen auth login' or set GH_TOKEN.",
-            ex);
-    }
-}
-```
-
-### Token Source Resolution
+### DI Registration
 
 ```csharp
-public CopilotClientOptions BuildClientOptions()
-{
-    var ghToken = Environment.GetEnvironmentVariable("GH_TOKEN");
-    var githubToken = Environment.GetEnvironmentVariable("GITHUB_TOKEN");
-    var explicitToken = ghToken ?? githubToken;
-
-    if (explicitToken != null)
-    {
-        return new CopilotClientOptions
-        {
-            GithubToken = explicitToken,
-            UseLoggedInUser = false,
-        };
-    }
-
-    // Fall back to stored credentials
-    return new CopilotClientOptions
-    {
-        UseLoggedInUser = true,
-    };
-}
-```
-
-### Automatic Token Renewal (Mid-Session)
-
-```csharp
-var session = await client.CreateSessionAsync(new SessionConfig
-{
-    Model = model,
-    Hooks = new SessionHooks
-    {
-        OnErrorOccurred = async (input, invocation) =>
-        {
-            if (IsAuthError(input.Error))
-            {
-                // For stored OAuth: CLI should auto-refresh, retry
-                if (usingStoredCredentials)
-                    return new ErrorOccurredHookOutput { ErrorHandling = "retry" };
-
-                // For PATs: unrecoverable — abort and save session
-                await SaveSessionStateAsync();
-                return new ErrorOccurredHookOutput { ErrorHandling = "abort" };
-            }
-            return null;
-        }
-    }
-});
+// ServiceCollectionExtensions.AddLopenAuth():
+services.AddSingleton<ITokenSourceResolver, EnvironmentTokenSourceResolver>();
+services.AddSingleton<IGhCliAdapter, GhCliAdapter>();
+services.AddSingleton<IAuthService, CopilotAuthService>();
 ```
 
 ---
@@ -404,34 +254,33 @@ var session = await client.CreateSessionAsync(new SessionConfig
 
 ### Key Findings
 
-1. **The SDK fully supports Lopen's auth model.** `CopilotClientOptions.GithubToken` maps to the spec's environment variable auth, and `UseLoggedInUser` maps to the device flow credential path. No custom OAuth implementation is needed.
+1. **Auth delegates to `gh` CLI, not the Copilot SDK.** `CopilotAuthService` orchestrates `ITokenSourceResolver` (environment variables) and `IGhCliAdapter` (`gh` CLI subprocess). There is no dependency on `GitHub.Copilot.SDK` or `CopilotClient` for authentication.
 
-2. **Device flow is CLI-owned, not SDK-owned.** `lopen auth login` must delegate to the `copilot` CLI. The CLI authenticates via a `/login` slash command in its interactive TUI — there is no `copilot auth login` subcommand and no SDK `LoginAsync()` method. This means Lopen must either launch the CLI interactively for the user or implement device flow directly.
+2. **Device flow uses `gh auth login --web`.** Login runs the `gh` CLI with stdout/stderr passed through to the terminal, giving users the standard `gh` authentication UX. No custom OAuth implementation is needed.
 
-3. **Environment variable precedence matches the spec.** The SDK checks `GH_TOKEN` before `GITHUB_TOKEN`. The SDK also supports `COPILOT_GITHUB_TOKEN` (highest env var priority) which is not in the Lopen spec — Lopen can optionally support this for forward-compatibility.
+3. **Environment variable precedence is `GH_TOKEN` → `GITHUB_TOKEN`.** Checked synchronously by `EnvironmentTokenSourceResolver`. The `COPILOT_GITHUB_TOKEN` variable is **not** supported by the current implementation.
 
-4. **Token renewal is partially transparent.** For stored OAuth credentials, the CLI handles refresh internally. For PATs (environment variable auth), there is no auto-refresh — Lopen must detect failures and surface them as critical errors per the spec.
+4. **Credential validation is two-step.** `gh auth status` confirms credentials exist; `gh api user --jq .login` confirms they are functional. This catches expired/revoked tokens before workflow execution.
 
-5. **`PingAsync()` is ideal for pre-flight checks.** It validates both connectivity and authentication in one call.
+5. **Pre-flight validation via `ValidateAsync()`.** Maps `GetStatusAsync()` results to success/exception, providing actionable what/why/fix error messages via `AuthErrorMessages`.
 
-6. **Session hooks enable error interception.** The `OnErrorOccurred` hook provides the retry/abort mechanism needed for the spec's automatic token renewal and critical error handling.
+6. **30-second process timeout.** All `gh` CLI operations are bounded by `TimeSpan.FromSeconds(30)` in `GhCliAdapter.RunAsync()`. Processes that exceed this are killed.
 
-7. **The SDK is in technical preview.** Breaking changes are expected. Lopen should pin to a specific version and plan for SDK updates.
-
-### Open Questions (To Be Verified)
-
-- **CLI auth trigger in server mode**: When the SDK starts the CLI in server mode with `UseLoggedInUser = true` and no credentials exist, does the CLI return a specific error code/message? Or does it hang waiting for auth? This determines how `lopen auth status` detects "not authenticated."
-- **`/login` and `/logout` slash commands**: The docs confirm `/login` exists as a TUI slash command. Does `/logout` also exist? Are there other auth-related slash commands?
-- **Username retrieval**: How to get the authenticated GitHub username for `lopen auth status` display. The SDK may expose this through session metadata or require a separate API call.
-- **Credential storage location**: The docs say "system keychain" — confirm this works across Linux, macOS, and Windows for the Lopen Dockerfile environment. On Linux, this likely requires `gnome-keyring`, `kwallet`, or a similar service.
-- **CLI process lifetime**: Does each `CopilotClient` instance spawn a new CLI process? If so, what's the cost of creating a client just for auth status checks?
-- **`COPILOT_GITHUB_TOKEN` support**: Should Lopen support this in addition to `GH_TOKEN` / `GITHUB_TOKEN` for alignment with the SDK's full priority chain?
-- **Copilot CLI npm package**: The CLI is installed via `npm install -g @github/copilot` (or Homebrew/WinGet). What is the relationship between the CLI version and the SDK version? Must they be kept in sync?
+7. **Testability via constructor injection.** `GhCliAdapter` accepts a `Func<ProcessStartInfo, Process?>` for process creation. `EnvironmentTokenSourceResolver` accepts a `Func<string, string?>` for environment variable access. `CopilotAuthService` accepts a `Func<bool>` for interactivity checking.
 
 ### Resolved Questions
 
-- **~~Exact CLI auth commands~~**: There is no `copilot auth login` subcommand. Auth uses the `/login` slash command within the interactive TUI. (Source: [Copilot CLI install docs](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli#authenticating-with-copilot-cli))
-- **~~PAT auth method~~**: Confirmed: set `GH_TOKEN` or `GITHUB_TOKEN` with a fine-grained PAT that has "Copilot Requests" permission. (Source: same docs)
+- **Auth commands**: `gh auth login`, `gh auth status`, `gh auth logout` — all standard `gh` CLI subcommands, not TUI slash commands
+- **PAT auth method**: Set `GH_TOKEN` or `GITHUB_TOKEN` with a fine-grained PAT that has "Copilot Requests" permission
+- **Credential storage**: Managed entirely by the `gh` CLI (platform keychain on macOS/Windows, encrypted file on Linux)
+- **Username retrieval**: Parsed from `gh auth status` output using regex (`account\s+(?<username>\S+)`)
+- **Logout confirmation**: `GhCliAdapter` sends `"Y\n"` to stdin to confirm `gh auth logout --hostname github.com`
+
+### Open Questions
+
+- **`SdkCredentials` enum naming**: The `AuthCredentialSource.SdkCredentials` value is used for `gh` CLI stored credentials — consider renaming to `GhCliCredentials` for clarity
+- **Token scope validation**: `GhAuthStatusInfo` captures token scopes but they are not currently validated against required permissions (e.g., "Copilot Requests")
+- **Environment variable token validation**: Tokens from `GH_TOKEN`/`GITHUB_TOKEN` are accepted on presence alone without an API call — invalid tokens only fail at point of use
 
 ---
 
