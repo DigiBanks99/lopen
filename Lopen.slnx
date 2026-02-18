@@ -9,6 +9,7 @@
     <Project Path="src/Lopen.Tui/Lopen.Tui.csproj" />
     <Project Path="src/Lopen/Lopen.csproj" />
     <Project Path="src/Lopen.AppHost/Lopen.AppHost.csproj" />
+    <Project Path="src/Lopen.ServiceDefaults/Lopen.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Lopen.Auth.Tests/Lopen.Auth.Tests.csproj" />

@@ -1,21 +1,19 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Aspire.AppHost.Sdk/13.1.1">
 
-  <Sdk Name="Aspire.AppHost.Sdk" Version="13.1.1" />
+  <ItemGroup>
+    <ProjectReference Include="..\Lopen\Lopen.csproj" />
+  </ItemGroup>
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <IsAspireHost>true</IsAspireHost>
+    <UserSecretsId>a01d47ff-fcf6-423e-bddb-44a2e1c629ed</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.AppHost" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Lopen\Lopen.csproj" />
+    <Using Include="Aspire.Hosting" />
   </ItemGroup>
 
 </Project>
