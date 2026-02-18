@@ -37,7 +37,7 @@ For large files, prefer stream-based serialization:
 
 ```csharp
 await using var stream = File.Create(path);
-await JsonSerializer.SerializeAsync(stream, state, AppJsonContext.Default.SessionState);
+await JsonSerializer.SerializeAsync(stream, state, SessionManager.CompactJsonOptions);
 ```
 
 ### Symlink Management (.NET 6+)
@@ -82,61 +82,48 @@ Every state save (`state.json`, `metrics.json`) should use the atomic write patt
 
 ## 2. JSON Serialization
 
-The spec requires compact JSON by default with on-demand prettification. System.Text.Json with source generators provides AOT-compatible, high-performance serialization.
+The spec requires compact JSON by default with on-demand prettification. System.Text.Json with `JsonSerializerOptions` instances provides high-performance serialization using reflection-based resolution.
 
-### Source Generators for AOT Compatibility
+### JsonSerializerOptions Instances
+
+Each storage class defines a `static readonly JsonSerializerOptions` instance with the required configuration:
 
 ```csharp
-[JsonSourceGenerationOptions(
+// SessionManager — shared across session state and metrics serialization
+internal static readonly JsonSerializerOptions CompactJsonOptions = new()
+{
+    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     WriteIndented = false,
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-)]
-[JsonSerializable(typeof(SessionState))]
-[JsonSerializable(typeof(SessionMetrics))]
-[JsonSerializable(typeof(ProjectConfig))]
-[JsonSerializable(typeof(AssessmentCacheEntry))]
-public partial class CompactJsonContext : JsonSerializerContext { }
+};
 
-[JsonSourceGenerationOptions(
-    WriteIndented = true,
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-)]
-[JsonSerializable(typeof(SessionState))]
-[JsonSerializable(typeof(SessionMetrics))]
-public partial class PrettyJsonContext : JsonSerializerContext { }
+// AssessmentCache and SectionCache — identical configuration, scoped per class
+private static readonly JsonSerializerOptions JsonOptions = new()
+{
+    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    WriteIndented = false,
+};
 ```
 
 ### Usage Pattern
 
 ```csharp
-// Compact (default for storage)
-string json = JsonSerializer.Serialize(state, CompactJsonContext.Default.SessionState);
+// Compact (default for storage — all persistence uses snake_case, non-indented)
+string json = JsonSerializer.Serialize(state, SessionManager.CompactJsonOptions);
 
-// Pretty (for `lopen session show --format json`)
-string json = JsonSerializer.Serialize(state, PrettyJsonContext.Default.SessionState);
-
-// Deserialization (always uses compact context — format doesn't matter for reading)
-var state = JsonSerializer.Deserialize(json, CompactJsonContext.Default.SessionState);
+// Deserialization (same options instance — format doesn't matter for reading)
+var state = JsonSerializer.Deserialize<SessionState>(json, SessionManager.CompactJsonOptions);
 ```
 
-### AOT Safety Rules
+### Design Notes
 
-- **Always** pass a `JsonTypeInfo<T>` or `JsonSerializerContext` to `Serialize`/`Deserialize` — never use parameterless overloads (those use reflection).
-- Register all types via `[JsonSerializable(typeof(...))]`, including generic instantiations like `List<TaskNode>`.
-- Set `JsonSerializerIsReflectionEnabledByDefault` to `false` in `.csproj` for build-time errors on accidental reflection use.
-- Avoid `object` or `dynamic` properties — they require reflection.
-
-```xml
-<PropertyGroup>
-    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
-</PropertyGroup>
-```
+- **Reflection-based serialization** is used throughout; no source-generated `JsonSerializerContext` classes exist. This is simpler and sufficient since Lopen is not published as an AOT-trimmed binary.
+- **`JsonNamingPolicy.SnakeCaseLower`** is used instead of `CamelCase`, producing keys like `session_id` and `created_at` on disk.
+- **`WriteIndented = false`** keeps all persisted JSON compact. Pretty-printing for CLI display (e.g., `lopen session show --format json`) can be achieved by creating a separate options instance with `WriteIndented = true`.
+- Each class owns its own `JsonSerializerOptions` instance rather than sharing a global one, keeping configuration co-located with usage.
 
 ### Relevance to Lopen
 
-Two serializer contexts (compact/pretty) directly map to the spec's "Compact by Default, Inspectable on Demand" principle. The compact context is used for all `.lopen/` persistence; the pretty context is used only for CLI display commands like `lopen session show --format json`.
+The compact `JsonSerializerOptions` instances directly map to the spec's "Compact by Default, Inspectable on Demand" principle. Compact options are used for all `.lopen/` persistence; a pretty-printing options instance with `WriteIndented = true` can be used for CLI display commands like `lopen session show --format json`.
 
 ---
 
@@ -152,7 +139,7 @@ As described in Section 1, all state writes use atomic rename. The full pattern 
 public async Task SaveSessionStateAsync(string sessionDir, SessionState state)
 {
     var statePath = Path.Combine(sessionDir, "state.json");
-    var json = JsonSerializer.Serialize(state, CompactJsonContext.Default.SessionState);
+    var json = JsonSerializer.Serialize(state, CompactJsonOptions);
     await WriteAtomicAsync(statePath, json);
 }
 ```
@@ -386,7 +373,7 @@ public SessionState? TryLoadSessionState(string statePath)
     try
     {
         var json = File.ReadAllText(statePath);
-        return JsonSerializer.Deserialize(json, CompactJsonContext.Default.SessionState);
+        return JsonSerializer.Deserialize<SessionState>(json, CompactJsonOptions);
     }
     catch (JsonException ex)
     {
@@ -452,7 +439,7 @@ public string? TryGetCachedSection(string cachePath)
     try
     {
         var json = File.ReadAllText(cachePath);
-        var entry = JsonSerializer.Deserialize(json, CompactJsonContext.Default.CacheEntry);
+        var entry = JsonSerializer.Deserialize<CacheEntry>(json, JsonOptions);
         return entry?.Content;
     }
     catch
@@ -481,14 +468,14 @@ The three-tier error strategy matches the spec exactly: corrupted state → warn
 
 | Package                            | Why Not                                                                                      |
 | ---------------------------------- | -------------------------------------------------------------------------------------------- |
-| `Newtonsoft.Json`                  | System.Text.Json is built-in, AOT-compatible, and faster                                     |
+| `Newtonsoft.Json`                  | System.Text.Json is built-in and faster                                                      |
 | `Microsoft.Extensions.Caching.*`  | Overkill for file-based caching; a simple `ConcurrentDictionary` suffices                    |
 | `YamlDotNet`                       | Markdig's YAML frontmatter extension handles the limited YAML parsing needed                 |
 | `Polly`                            | Retry logic for file I/O is simple enough to implement inline                                |
 
 ### Relevance to Lopen
 
-Minimal dependencies keep the CLI lightweight and AOT-friendly. System.Text.Json is zero-cost (built-in). Markdig is the only external dependency needed for storage.
+Minimal dependencies keep the CLI lightweight. System.Text.Json is zero-cost (built-in). Markdig is the only external dependency needed for storage.
 
 ---
 
@@ -585,6 +572,12 @@ public record AssessmentCacheEntry(
 
 public class AssessmentCache
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        WriteIndented = false,
+    };
+
     private readonly string _cacheDir;
 
     public string? Get(string scopeKey, IEnumerable<string> filePaths)
@@ -595,7 +588,7 @@ public class AssessmentCache
         try
         {
             var json = File.ReadAllText(cachePath);
-            var entry = JsonSerializer.Deserialize(json, CompactJsonContext.Default.AssessmentCacheEntry);
+            var entry = JsonSerializer.Deserialize<AssessmentCacheEntry>(json, JsonOptions);
             if (entry is null) return null;
 
             // Invalidate if ANY file in scope has changed
@@ -621,7 +614,7 @@ public class AssessmentCache
             f => File.GetLastWriteTimeUtc(f)
         );
         var entry = new AssessmentCacheEntry(result, DateTime.UtcNow, timestamps);
-        var json = JsonSerializer.Serialize(entry, CompactJsonContext.Default.AssessmentCacheEntry);
+        var json = JsonSerializer.Serialize(entry, JsonOptions);
         WriteAtomicAsync(GetCachePath(scopeKey), json).GetAwaiter().GetResult();
     }
 
@@ -792,8 +785,8 @@ public class SectionCacheService
 
 | Decision                        | Choice                  | Rationale                                                 |
 | ------------------------------- | ----------------------- | --------------------------------------------------------- |
-| Serialization library           | System.Text.Json        | Built-in, AOT-compatible, high performance                |
-| Serialization approach          | Source generators        | Required for AOT; two contexts for compact/pretty         |
+| Serialization library           | System.Text.Json        | Built-in, high performance                                |
+| Serialization approach          | `JsonSerializerOptions`  | Reflection-based; static readonly instances per class     |
 | Atomic write strategy           | Write-temp + rename     | Crash-safe, well-tested pattern, works on Linux and Windows |
 | Symlink fallback                | `latest.txt` file       | Windows without Developer Mode cannot create symlinks     |
 | Markdown parser                 | Markdig                 | Fast, CommonMark-compliant, good AST API                  |
@@ -806,7 +799,7 @@ public class SectionCacheService
 
 ### Relevance to Lopen
 
-This approach satisfies all acceptance criteria in the spec: atomic writes for crash-safety, symlink-based resume detection, dual-layer caching (section + assessment), three-tier error handling, plan checkbox management, session pruning, and minimal dependencies. The implementation is AOT-compatible throughout, keeping the CLI startup fast.
+This approach satisfies all acceptance criteria in the spec: atomic writes for crash-safety, symlink-based resume detection, dual-layer caching (section + assessment), three-tier error handling, plan checkbox management, session pruning, and minimal dependencies.
 
 ---
 
