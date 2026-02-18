@@ -28,7 +28,7 @@
         "JOB-044",
         "JOB-045"
       ],
-      "notes": "Visual progress bar [\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591] for task progress. Data pipeline: IPlanManager \u2192 ContextPanelDataProvider \u2192 1s polling \u2192 renderer. Task name, %, subtask tree with \u2713/\u25b6/\u25cb icons. Numbered resource access (1-9 keys) opens ResourceViewerModal (scrollable, Esc-dismiss). ResourceItem has optional Content property."
+      "notes": "Visual progress bar [████░░░░] for task progress. Data pipeline: IPlanManager → ContextPanelDataProvider → 1s polling → renderer. Task name, %, subtask tree with ✓/▶/○ icons. Numbered resource access (1-9 keys) opens ResourceViewerModal (scrollable, Esc-dismiss). ResourceItem has optional Content property."
     },
     "activity_panel": {
       "status": "complete",
@@ -43,7 +43,7 @@
         "JOB-047",
         "JOB-048"
       ],
-      "notes": "Thread-safe ConcurrentQueue for workflow events. Auto-scroll on new entries. Progressive disclosure via IsExpanded/Details. Wired into TuiApplication render loop. DI via AddActivityPanelDataProvider(). Progressive disclosure: latest entry auto-expanded, previous collapsed, errors stay expanded. SelectedEntryIndex for keyboard navigation. ToolCall kind with \u2699 prefix. \u25bc/\u25b6 expand indicators. > selection marker. Research kind with \ud83d\udcd6 prefix and FullDocumentContent drill-into via ResourceViewerModal. AddPhaseTransition method for phase transition summaries with \u25c6 prefix. AddFileEdit method for diff display with +/- markers and FullDocumentContent drill-into."
+      "notes": "Thread-safe ConcurrentQueue for workflow events. Auto-scroll on new entries. Progressive disclosure via IsExpanded/Details. Wired into TuiApplication render loop. DI via AddActivityPanelDataProvider(). Progressive disclosure: latest entry auto-expanded, previous collapsed, errors stay expanded. SelectedEntryIndex for keyboard navigation. ToolCall kind with ⚙ prefix. ▼/▶ expand indicators. > selection marker. Research kind with 📖 prefix and FullDocumentContent drill-into via ResourceViewerModal. AddPhaseTransition method for phase transition summaries with ◆ prefix. AddFileEdit method for diff display with +/- markers and FullDocumentContent drill-into."
     },
     "prompt_area": {
       "status": "complete",
@@ -101,16 +101,16 @@
       ]
     },
     "slash_commands": {
-      "status": "partial",
-      "implementation": "SlashCommandRegistry + SlashCommandDefinition + ISlashCommandExecutor + SlashCommandExecutor + SlashCommandResult",
-      "tests": "VisualAndCommandTests (8 command tests) + SlashCommandExecutorTests (37 tests)",
+      "status": "complete",
+      "implementation": "SlashCommandRegistry + SlashCommandDefinition + ISlashCommandExecutor + SlashCommandExecutor + SlashCommandResult + domain handlers for /spec, /plan, /build, /session, /config, /revert, /auth",
+      "tests": "VisualAndCommandTests (8 command tests) + SlashCommandExecutorTests (37 tests) + SlashCommandHandlerTests (37 tests) + SlashCommandRegistryTests (36 tests)",
       "jobs": [
         "JOB-096",
         "JOB-036",
-        "JOB-201",
-        "JOB-203"
+        "JOB-101",
+        "JOB-012"
       ],
-      "notes": "Framework complete: parsing, dispatch, handler registration, /help handler. Missing: domain handlers for /spec, /plan, /build, /session, /config, /revert, /auth — these fall through to generic success message instead of invoking real workflow actions per TUI-38. JOB-201 tracks handler implementation, JOB-203 tracks integration tests."
+      "notes": "All slash commands now invoke corresponding domain logic via IServiceProvider. Phase commands (/spec, /plan, /build) use IWorkflowOrchestrator.RunAsync(). /session supports list/show/resume/delete/prune via ISessionManager. /config uses ConfigurationDiagnostics. /revert uses IRevertService + ISessionManager. /auth supports login/status/logout via IAuthService. Handlers gracefully handle missing services when no project root exists. Dedicated SlashCommandRegistryTests cover Register (overwrite, alias, collision), GetAll (empty, ordering, alias dedup), CreateDefault (descriptions, no aliases), TryParse edge cases."
     },
     "keyboard_handler": {
       "status": "complete",
@@ -188,7 +188,7 @@
       "jobs": [
         "JOB-049"
       ],
-      "notes": "File picker modal with tree view. \ud83d\udcc1/\ud83d\udcc2/\ud83d\udcc4 icons, \u25b6 selection, Up/Down nav, Enter expand/collapse dirs, Esc close."
+      "notes": "File picker modal with tree view. 📁/📂/📄 icons, ▶ selection, Up/Down nav, Enter expand/collapse dirs, Esc close."
     },
     "module_selection": {
       "status": "complete",
@@ -197,7 +197,7 @@
       "jobs": [
         "JOB-051"
       ],
-      "notes": "Module selection modal with \u25b6 indicator, Up/Down nav, Enter select, Esc cancel."
+      "notes": "Module selection modal with ▶ indicator, Up/Down nav, Enter select, Esc cancel."
     },
     "confirmation_modal": {
       "status": "complete",
@@ -285,7 +285,7 @@
         "JOB-004",
         "JOB-006"
       ],
-      "notes": "TUI-50: Maps RenderProgress\u2192PhaseTransition, RenderError\u2192TaskFailure, RenderResult\u2192Action, Prompt\u2192UserPromptQueue.DequeueAsync with Conversation entry."
+      "notes": "TUI-50: Maps RenderProgress→PhaseTransition, RenderError→TaskFailure, RenderResult→Action, Prompt→UserPromptQueue.DequeueAsync with Conversation entry."
     },
     "orchestrator_bridge": {
       "status": "complete",
@@ -391,6 +391,6 @@
       "notes": "Fixed PromptAreaComponent error preview state to be distinct from empty state. Added string/comment highlighting tests for TUI-35, distinct state output tests for TUI-48, and border consistency tests for TUI-36."
     }
   },
-  "last_updated": "2026-02-18T05:02:00Z",
+  "last_updated": "2026-02-18T08:30:00Z",
   "notes": "51 of 52 TUI requirements implemented. TUI-38 slash command framework is complete (parsing, dispatch, handler registration) but domain handlers for /spec, /plan, /build, /session, /config, /revert, /auth are not wired to invoke real workflow actions. 789 tests pass."
 }

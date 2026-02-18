@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Lopen.Storage.Tests;
@@ -242,5 +243,68 @@ public sealed class SectionCacheTests
         Assert.NotNull(result);
         Assert.True(result.CachedAtUtc >= before);
         Assert.True(result.FileModifiedUtc > DateTime.MinValue);
+    }
+
+    // --- IOException during delete is logged ---
+
+    [Fact]
+    public async Task InvalidateFileAsync_DeleteThrowsIOException_LogsDebugMessage()
+    {
+        var inner = new InMemoryFileSystem();
+        inner.CreateDirectory(StoragePaths.GetSectionsCacheDirectory(ProjectRoot));
+        var throwingFs = new ThrowingDeleteFileSystem(inner);
+        var logger = new TestLogger<SectionCache>();
+        var cache = new SectionCache(throwingFs, logger, ProjectRoot);
+
+        var dir = Path.GetDirectoryName("/src/spec.md")!;
+        if (!inner.DirectoryExists(dir))
+            inner.CreateDirectory(dir);
+        await inner.WriteAllTextAsync("/src/spec.md", "content");
+
+        await cache.SetAsync("/src/spec.md", "Overview", "cached");
+
+        throwingFs.ThrowOnDelete = true;
+
+        var exception = await Record.ExceptionAsync(() => cache.InvalidateFileAsync("/src/spec.md"));
+        Assert.Null(exception);
+
+        Assert.Contains(logger.Entries, e =>
+            e.Level == LogLevel.Debug &&
+            e.Message.Contains("Best-effort cache cleanup failed"));
+    }
+
+    private sealed class TestLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add((logLevel, formatter(state, exception)));
+        }
+    }
+
+    private sealed class ThrowingDeleteFileSystem(InMemoryFileSystem inner) : IFileSystem
+    {
+        public bool ThrowOnDelete { get; set; }
+
+        public void CreateDirectory(string path) => inner.CreateDirectory(path);
+        public bool FileExists(string path) => inner.FileExists(path);
+        public bool DirectoryExists(string path) => inner.DirectoryExists(path);
+        public Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default) => inner.ReadAllTextAsync(path, cancellationToken);
+        public Task WriteAllTextAsync(string path, string content, CancellationToken cancellationToken = default) => inner.WriteAllTextAsync(path, content, cancellationToken);
+        public IEnumerable<string> GetFiles(string path, string searchPattern = "*") => inner.GetFiles(path, searchPattern);
+        public IEnumerable<string> GetDirectories(string path) => inner.GetDirectories(path);
+        public void MoveFile(string sourcePath, string destinationPath) => inner.MoveFile(sourcePath, destinationPath);
+        public void DeleteFile(string path)
+        {
+            if (ThrowOnDelete)
+                throw new IOException("Simulated delete failure");
+            inner.DeleteFile(path);
+        }
+        public void CreateSymlink(string linkPath, string targetPath) => inner.CreateSymlink(linkPath, targetPath);
+        public string? GetSymlinkTarget(string linkPath) => inner.GetSymlinkTarget(linkPath);
+        public void DeleteDirectory(string path, bool recursive = true) => inner.DeleteDirectory(path, recursive);
+        public DateTime GetLastWriteTimeUtc(string path) => inner.GetLastWriteTimeUtc(path);
     }
 }

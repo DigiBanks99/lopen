@@ -12,7 +12,9 @@
       "spec_ref": "STOR-16",
       "tests": "SessionManagerTests (2 disk-full tests + 2 existing), StorageExceptionTests (10 new), AutoSaveServiceTests (1 new), WorkflowOrchestratorTests (2 new)",
       "notes": "Added IsCritical property to StorageException, WriteFailureStorageException subclass with OS error classification. AutoSaveService re-throws critical errors. WorkflowOrchestrator catches critical StorageException and returns CriticalError result to pause workflow.",
-      "jobs": ["JOB-161"]
+      "jobs": [
+        "JOB-161"
+      ]
     },
     "per_iteration_metrics": {
       "status": "complete",
@@ -73,8 +75,19 @@
         "JOB-113"
       ],
       "notes": "Added recursive TaskHierarchyNode DTO (Id, Name, State, NodeType, Children) to Lopen.Storage. Added optional TaskHierarchy property to SessionState. Full 4-level tree round-trips through JSON serialization. Backward compatible with existing state.json files."
+    },
+    "cache_cleanup_logging": {
+      "status": "complete",
+      "spec_ref": "STOR-11,STOR-13",
+      "implementation": "SectionCache.TryDeleteFile and AssessmentCache.TryDeleteFile now log IOException at Debug level",
+      "tests": "SectionCacheTests.InvalidateFileAsync_DeleteThrowsIOException_LogsDebugMessage, AssessmentCacheTests.InvalidateAsync_DeleteThrowsIOException_LogsDebugMessage",
+      "jobs": [
+        "JOB-006",
+        "JOB-007"
+      ],
+      "notes": "Both caches already had ILogger injected. Added _logger.LogDebug(ex, \"Best-effort cache cleanup failed for {Path}\", path) to catch blocks. Tests use ThrowingDeleteFileSystem wrapper and TestLogger<T> to verify Debug-level logging."
     }
   },
-  "last_updated": "2026-02-18T01:23:00Z",
+  "last_updated": "2026-02-18T08:25:00Z",
   "status": "complete"
 }

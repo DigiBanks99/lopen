@@ -4,36 +4,36 @@
     "requirement_code": "CLI-28",
     "requirement_module": "cli",
     "description": "Implement true E2E integration test for CLI-28 — run the lopen executable (or real DI host with stubbed LLM) to create a fizz-buzz application validating the full spec→plan→build pipeline",
-    "status": "open",
+    "status": "done",
     "priority": 1,
-    "notes": "See docs/requirements/cli/RESEARCH.md 'E2E Integration Testing (CLI-28)' section for implementation approach. Recommended: Option C (in-process DI with ScriptedLlmService) for CI, with optional Option A (real SDK) as nightly test."
+    "notes": "Implemented Option C from RESEARCH.md: in-process DI with ScriptedLlmService. Created ScriptedLlmService test fake and FizzBuzzE2ETests with 6 tests covering spec phase (LLM + human gate), plan phase (multi-step state machine), build phase (completion + iteration paths), and full pipeline transitions. All tests use real WorkflowOrchestrator with full DI container."
   },
   {
     "id": "JOB-003",
     "requirement_code": "OTEL-13",
     "requirement_module": "otel",
     "description": "Remove or integrate unused Lopen.ServiceDefaults project — it is referenced by Lopen.csproj but AddServiceDefaults() is never called",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "ServiceDefaults project is Aspire boilerplate that was superseded by custom Lopen.Otel. AddServiceDefaults() is never invoked. The project reference adds unnecessary build weight. Either remove the reference and project, or integrate the health check/service discovery features if needed."
+    "notes": "Removed Lopen.ServiceDefaults project reference from Lopen.csproj and Lopen.slnx. Deleted src/Lopen.ServiceDefaults/ directory. AddLopenOtel() already provides all OTEL wiring for the CLI app. Added regression test Lopen_DoesNotReference_ServiceDefaults in OtlpExportTests.cs."
   },
   {
     "id": "JOB-006",
     "requirement_code": "STOR-11",
     "requirement_module": "storage",
     "description": "Add logging to silent IOException catch blocks in SectionCache.cs cache cleanup (line 172-175)",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "IOException during file deletion is silently swallowed with no logging. Should at least log at Debug level for diagnostics. Best-effort cleanup should still be observable."
+    "notes": "Added _logger.LogDebug(ex, ...) to SectionCache.TryDeleteFile catch block. Added InvalidateFileAsync_DeleteThrowsIOException_LogsDebugMessage test using ThrowingDeleteFileSystem wrapper."
   },
   {
     "id": "JOB-007",
     "requirement_code": "STOR-13",
     "requirement_module": "storage",
     "description": "Add logging to silent IOException catch block in AssessmentCache.cs cache cleanup (line 142-145)",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "Same pattern as SectionCache — IOException silently swallowed during cleanup. Should log at Debug level."
+    "notes": "Added _logger.LogDebug(ex, ...) to AssessmentCache.TryDeleteFile catch block. Added InvalidateAsync_DeleteThrowsIOException_LogsDebugMessage test using ThrowingDeleteFileSystem wrapper."
   },
   {
     "id": "JOB-008",
@@ -76,18 +76,18 @@
     "requirement_code": "TUI-38",
     "requirement_module": "tui",
     "description": "Add dedicated unit tests for SlashCommandRegistry — Register(), GetAll(), CreateDefault() methods",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "SlashCommandRegistry has no dedicated test file. Only indirectly tested via SlashCommandExecutorTests. Needs direct unit tests for registry behavior."
+    "notes": "Created SlashCommandRegistryTests.cs with 36 tests covering Register (overwrite, alias, alias collision), GetAll (empty, ordering, alias dedup, read-only), CreateDefault (8 commands, descriptions, no aliases, new instance), TryParse edge cases (whitespace, slash-only, leading whitespace, alias resolution, multi-arg, case-insensitive, unregistered). All 2479 solution tests pass."
   },
   {
     "id": "JOB-013",
     "requirement_code": "LLM-05",
     "requirement_module": "llm",
     "description": "Add integration test for ToolBindingIntegration — expand beyond single binding test to cover behavioral verification of each tool handler",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "ToolBindingIntegrationTests.cs has only 1 test verifying binding exists. Need behavioral tests for individual tool handlers in integration context."
+    "notes": "Added 7 behavioral integration tests in ToolBindingIntegrationTests verifying each tool handler is functional when invoked through the registry after BindAll()"
   },
   {
     "id": "JOB-014",
@@ -112,9 +112,9 @@
     "requirement_code": "CORE-02",
     "requirement_module": "core",
     "description": "Add integration test for WorkflowOrchestrator + RetryingLlmService + guardrail pipeline end-to-end",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "WorkflowOrchestratorTests (106 tests) and RetryingLlmServiceTests (13 tests) test in isolation. No integration test exercises the retry + guardrail + tool-execution pipeline together."
+    "notes": "Added OrchestratorRetryGuardrailIntegrationTests with 5 tests: (1) full pipeline with passing guardrails and RetryingLlmService, (2) guardrail blocks prevents LLM invocation, (3) model unavailable triggers fallback chain, (4) guardrail warns but continues, (5) all models fail is handled by orchestrator. Uses real GuardrailPipeline and RetryingLlmService with fake inner ILlmService."
   },
   {
     "id": "JOB-017",
@@ -274,9 +274,9 @@
     "requirement_code": "TUI-50",
     "requirement_module": "tui",
     "description": "Fix NotImplementedException in TuiOrchestratorBridgeTests.cs line 223",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Test file has throw new NotImplementedException() at line 223. This indicates incomplete test coverage for TuiOrchestratorBridge."
+    "notes": "Fixed: StubOrchestrator.RunStepAsync in TuiOrchestratorBridgeTests.cs now returns StepResult.Succeeded() instead of throwing NotImplementedException."
   },
   {
     "id": "JOB-037",
@@ -328,18 +328,18 @@
     "requirement_code": "CORE-09",
     "requirement_module": "core",
     "description": "Add tests verifying task state transitions are enforced — Pending→InProgress→Complete/Failed only valid transitions",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "CORE-09 specifies valid state transitions. Need tests proving invalid transitions (e.g., Pending→Complete) are rejected."
+    "notes": "Added 4 missing invalid transition tests to WorkNodeTests (Complete→Failed, Complete→Pending, Failed→Complete, InProgress→Pending) and 6 additional SubtaskNode transition tests in TaskHierarchyTests (3 valid + 3 invalid). Full matrix: 4 valid + 7 invalid transitions now tested for both WorkNode and SubtaskNode."
   },
   {
     "id": "JOB-043",
     "requirement_code": "CORE-10",
     "requirement_module": "core",
     "description": "Add integration test proving oracle verification blocks premature task completion across the full pipeline",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Unit tests exist for oracle verification in isolation. Need an integration test proving the full pipeline: tool call → oracle dispatch → verdict → accept/reject update_task_status."
+    "notes": "Added OracleVerificationIntegrationTests with 10 tests wiring real ToolHandlerBinder + TaskStatusGate + VerificationTracker + OracleVerifier with FakeLlmService. Tests cover: oracle pass→complete accepted, oracle fail→complete rejected, no verification→rejected, component/module scopes, malformed JSON, reset clears state, task isolation, retry pass-then-fail and fail-then-pass (last-write-wins)."
   },
   {
     "id": "JOB-044",
@@ -364,9 +364,9 @@
     "requirement_code": "CFG-01",
     "requirement_module": "configuration",
     "description": "Add integration test for full configuration hierarchy resolution — CLI→env→project→global→defaults",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "CFG-01 specifies the priority chain. Unit tests exist per layer but no single test exercises all 5 layers together."
+    "notes": "Full hierarchy test already exists in ConfigurationAcceptanceCriteriaTests.AC01 and AC16, plus LopenConfigurationBuilderTests.Build_FullLayerPrecedence"
   },
   {
     "id": "JOB-047",
@@ -544,9 +544,9 @@
     "requirement_code": "LLM-08",
     "requirement_module": "llm",
     "description": "Add test verifying update_task_status(complete) rejected without prior passing verify_*_completion",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "LLM-08 requires oracle gating. ToolHandlerBinderTests has some tests. Verify the full rejection path is tested."
+    "notes": "TaskStatusGate tested at unit (12 tests) and integration (10 tests in OracleVerificationIntegrationTests)"
   },
   {
     "id": "JOB-071",
@@ -616,9 +616,9 @@
     "requirement_code": "CLI-20",
     "requirement_module": "cli",
     "description": "Add test verifying exit code 2 is returned when user intervention required in headless+unattended mode",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "CLI-20 requires exit code 2 for intervention needed. Verify this specific scenario is tested."
+    "notes": "Exit code 2 tested at unit, integration, and E2E levels: CliAcceptanceCriteriaTests.AC20, RootCommandTests.RootCommand_Headless_Interrupted_ReturnsExitCode2, FizzBuzzE2ETests"
   },
   {
     "id": "JOB-079",
@@ -751,9 +751,9 @@
     "requirement_code": "CLI-15",
     "requirement_module": "cli",
     "description": "Add test for 'lopen revert' rolling back to last task-completion commit and updating session state",
-    "status": "open",
+    "status": "done",
     "priority": 4,
-    "notes": "CLI-15 requires revert functionality. Verify git rollback and session state update."
+    "notes": "Revert tested comprehensively: CliAcceptanceCriteriaTests.AC15, 8 RevertCommandTests, 11 RevertServiceTests"
   },
   {
     "id": "JOB-098",
@@ -787,9 +787,9 @@
     "requirement_code": "TUI-38",
     "requirement_module": "tui",
     "description": "Wire TUI slash command domain handlers — register handlers via SlashCommandExecutor.RegisterHandler() for /spec, /plan, /build, /session, /config, /revert, /auth that invoke corresponding workflow/service actions",
-    "status": "open",
+    "status": "done",
     "priority": 3,
-    "notes": "Framework complete (parsing, dispatch, handler registration). Only /help has a handler. Other 7 commands fall through to generic success message. Per TUI-38, these should invoke the same logic as the corresponding lopen <command>."
+    "notes": "Implemented: All 7 domain handlers (/spec, /plan, /build, /session, /config, /revert, /auth) registered in SlashCommandExecutor via IServiceProvider injection. 37 new tests in SlashCommandHandlerTests.cs verify handler behavior including graceful missing-service handling."
   },
   {
     "id": "JOB-102",

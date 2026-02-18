@@ -102,17 +102,20 @@
       "notes": "Version 0.1.0 set in Directory.Build.props. --help and --version handled by System.CommandLine automatically. Test verifies assembly carries semver version attribute."
     },
     "fizzbuzz_workflow_tests": {
-      "status": "partial",
+      "status": "complete",
       "spec_ref": "CLI-28",
       "files": [
-        "FizzBuzzWorkflowTests.cs"
+        "FizzBuzzWorkflowTests.cs",
+        "FizzBuzzE2ETests.cs",
+        "ScriptedLlmService.cs"
       ],
-      "tests": "FizzBuzzWorkflowTests (10 tests with fakes), CliAcceptanceCriteriaTests.AC28 (1 traceability test)",
+      "tests": "FizzBuzzWorkflowTests (10 tests with fakes), FizzBuzzE2ETests (6 E2E tests with real orchestrator + ScriptedLlmService), CliAcceptanceCriteriaTests.AC28 (1 traceability test)",
       "jobs": [
+        "JOB-002",
         "JOB-096",
         "JOB-200"
       ],
-      "notes": "Unit/integration tests with TrackingOrchestrator fake pass. CLI-28 acceptance criterion remains unchecked because it requires running the actual lopen executable against a real fizz-buzz scenario, not just fakes. JOB-200 tracks the remaining E2E validation work."
+      "notes": "E2E tests exercise real WorkflowOrchestrator with ScriptedLlmService via full DI container. Tests cover: spec phase (LLM invoked + human gate), plan phase (multi-step state machine transitions with 4+ LLM calls), build phase (completion path with all checkboxes checked, and iteration path with unfinished tasks), and full pipeline (spec→approval→plan transitions). Option C from RESEARCH.md implemented."
     },
     "config_override_flags": {
       "status": "complete",
@@ -167,5 +170,5 @@
       "notes": "Per CLI-20, returns exit code 1 instead of silently succeeding when orchestrator unavailable"
     }
   },
-  "last_updated": "2026-02-18T05:02:00Z"
+  "last_updated": "2026-02-18T05:57:00Z"
 }

@@ -187,6 +187,20 @@ public class OtlpExportTests
         Assert.Contains("DistributedApplication", content);
     }
 
+    [Fact]
+    public void Lopen_DoesNotReference_ServiceDefaults()
+    {
+        // OTEL-13: ServiceDefaults is ASP.NET Core web-service boilerplate, not needed for CLI.
+        // AddLopenOtel() provides all necessary OTEL wiring.
+        var lopenDir = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory,
+            "..", "..", "..", "..", "..", "src", "Lopen");
+        var csprojPath = Path.Combine(lopenDir, "Lopen.csproj");
+
+        var content = File.ReadAllText(csprojPath);
+        Assert.DoesNotContain("ServiceDefaults", content);
+    }
+
     // ==================== OTEL-10: Log correlation with TraceId/SpanId ====================
 
     [Fact]
