@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Lopen.Configuration;
@@ -504,7 +505,7 @@ public class WorkflowOrchestratorTests
     [Fact]
     public async Task RunStepAsync_CreatesWorkflowPhaseSpan()
     {
-        var activities = new List<Activity>();
+        var activities = new ConcurrentBag<Activity>();
         using var listener = new ActivityListener
         {
             ShouldListenTo = _ => true,
@@ -523,7 +524,7 @@ public class WorkflowOrchestratorTests
     [Fact]
     public async Task RunStepAsync_CreatesSdkInvocationSpan()
     {
-        var activities = new List<Activity>();
+        var activities = new ConcurrentBag<Activity>();
         using var listener = new ActivityListener
         {
             ShouldListenTo = _ => true,
@@ -542,7 +543,7 @@ public class WorkflowOrchestratorTests
     [Fact]
     public async Task RunStepAsync_CreatesTaskSpanForIterateThroughTasks()
     {
-        var activities = new List<Activity>();
+        var activities = new ConcurrentBag<Activity>();
         using var listener = new ActivityListener
         {
             ShouldListenTo = _ => true,
