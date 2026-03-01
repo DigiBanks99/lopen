@@ -633,5 +633,6 @@ public class CliAcceptanceCriteriaTests
         }
 
         public void SuppressLandingPage() => LandingPageSuppressed = true;
+        public void SuppressSessionResumeModal() { }
     }
 }

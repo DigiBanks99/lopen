@@ -49,6 +49,7 @@ internal sealed class TuiApplication : ITuiApplication
     private readonly int _failureThreshold;
     private bool _failureModalShownForCurrentStreak;
     private bool _showLandingPage;
+    private bool _suppressSessionResume;
     private readonly ILogger<TuiApplication> _logger;
 
     private volatile bool _running;
@@ -440,6 +441,9 @@ internal sealed class TuiApplication : ITuiApplication
 
     /// <inheritdoc />
     public void SuppressLandingPage() => _showLandingPage = false;
+
+    /// <inheritdoc />
+    public void SuppressSessionResumeModal() => _suppressSessionResume = true;
 
     /// <summary>
     /// Updates the session resume data for the modal overlay.
@@ -1015,7 +1019,7 @@ internal sealed class TuiApplication : ITuiApplication
 
     private async Task CheckForActiveSessionAsync(CancellationToken cancellationToken)
     {
-        if (_sessionDetector is null)
+        if (_sessionDetector is null || _suppressSessionResume)
             return;
 
         try

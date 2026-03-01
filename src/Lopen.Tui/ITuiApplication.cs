@@ -28,4 +28,10 @@ public interface ITuiApplication
     /// Must be called before <see cref="RunAsync"/>.
     /// </summary>
     void SuppressLandingPage();
+
+    /// <summary>
+    /// Suppresses the session resume modal on startup (CLI-30: --resume/--no-resume flags).
+    /// Must be called before <see cref="RunAsync"/>.
+    /// </summary>
+    void SuppressSessionResumeModal();
 }

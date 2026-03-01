@@ -32,4 +32,9 @@ internal sealed class StubTuiApplication(ILogger<StubTuiApplication> logger) : I
     {
         logger.LogDebug("SuppressLandingPage called (no-op in stub)");
     }
+
+    public void SuppressSessionResumeModal()
+    {
+        logger.LogDebug("SuppressSessionResumeModal called (no-op in stub)");
+    }
 }

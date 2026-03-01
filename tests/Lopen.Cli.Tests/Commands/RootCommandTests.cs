@@ -331,6 +331,81 @@ public class RootCommandTests
         Assert.Equal("fix the bug", tui.InitialPrompt);
     }
 
+    // ==================== CLI-30: --resume/--no-resume suppress session resume modal ====================
+
+    [Fact]
+    public async Task RootCommand_Resume_SuppressesSessionResumeModal()
+    {
+        var sessionManager = new FakeSessionManager();
+        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
+        {
+            SessionId = "testmod-20260101-001",
+            Module = "testmod",
+            Phase = "spec",
+            Step = "1",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await sessionManager.SetLatestAsync(sessionId);
+
+        var (config, _, _, tui) = CreateConfig(sessionManager);
+
+        var exitCode = await config.InvokeAsync(["--resume", "testmod-20260101-001"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(tui.SessionResumeModalSuppressed, "SuppressSessionResumeModal should be called when --resume is set");
+        Assert.True(tui.RunWasCalled);
+    }
+
+    [Fact]
+    public async Task RootCommand_NoResume_SuppressesSessionResumeModal()
+    {
+        var (config, _, _, tui) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["--no-resume"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(tui.SessionResumeModalSuppressed, "SuppressSessionResumeModal should be called when --no-resume is set");
+        Assert.True(tui.RunWasCalled);
+    }
+
+    [Fact]
+    public async Task RootCommand_NoFlags_DoesNotSuppressSessionResumeModal()
+    {
+        var (config, _, _, tui) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync([]);
+
+        Assert.Equal(0, exitCode);
+        Assert.False(tui.SessionResumeModalSuppressed, "SuppressSessionResumeModal should NOT be called without --resume/--no-resume");
+    }
+
+    [Fact]
+    public async Task RootCommand_ResumeAndNoWelcome_BothSuppressed()
+    {
+        var sessionManager = new FakeSessionManager();
+        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
+        {
+            SessionId = "testmod-20260101-001",
+            Module = "testmod",
+            Phase = "spec",
+            Step = "1",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await sessionManager.SetLatestAsync(sessionId);
+
+        var (config, _, _, tui) = CreateConfig(sessionManager);
+
+        var exitCode = await config.InvokeAsync(["--resume", "testmod-20260101-001", "--no-welcome"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(tui.SessionResumeModalSuppressed);
+        Assert.True(tui.LandingPageSuppressed);
+    }
+
     // ==================== CFG-08: --model override ====================
 
     [Fact]
@@ -540,6 +615,7 @@ public class RootCommandTests
         public bool IsRunning { get; private set; }
         public string? InitialPrompt { get; private set; }
         public bool LandingPageSuppressed { get; private set; }
+        public bool SessionResumeModalSuppressed { get; private set; }
 
         public Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
         {
@@ -556,6 +632,7 @@ public class RootCommandTests
         }
 
         public void SuppressLandingPage() => LandingPageSuppressed = true;
+        public void SuppressSessionResumeModal() => SessionResumeModalSuppressed = true;
     }
 
     private sealed class ThrowingTuiApplication : ITuiApplication
@@ -568,6 +645,7 @@ public class RootCommandTests
         public Task StopAsync() => Task.CompletedTask;
 
         public void SuppressLandingPage() { }
+        public void SuppressSessionResumeModal() { }
     }
 
     private sealed class FakeOrchestrator : IWorkflowOrchestrator

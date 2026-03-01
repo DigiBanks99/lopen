@@ -87,6 +87,10 @@ public static class RootCommandHandler
                         var prompt = parseResult.GetValue(GlobalOptions.Prompt);
                         if (parseResult.GetValue(GlobalOptions.NoWelcome))
                             app.SuppressLandingPage();
+                        var resumeId = parseResult.GetValue(GlobalOptions.Resume);
+                        var noResume = parseResult.GetValue(GlobalOptions.NoResume);
+                        if (!string.IsNullOrEmpty(resumeId) || noResume)
+                            app.SuppressSessionResumeModal();
                         await app.RunAsync(prompt, cancellationToken);
                         exitCode = ExitCodes.Success;
                     }
