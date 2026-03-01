@@ -46,7 +46,7 @@ public class FizzBuzzE2ETests : IDisposable
 
     // ==================== Test 1: Spec Phase — Human gate returns Interrupted ====================
 
-    [Fact]
+    [Fact(Skip = "For now until we can configure the models so we don't use all the tokens")]
     public async Task SpecPhase_WithRealOrchestrator_InvokesLlmAndReturnsInterrupted()
     {
         // Arrange: create module directory without SPECIFICATION.md
@@ -69,7 +69,7 @@ public class FizzBuzzE2ETests : IDisposable
 
     // ==================== Test 2: Spec Phase — Headless mode also returns Interrupted ====================
 
-    [Fact]
+    [Fact(Skip = "For now until we can configure the models so we don't use all the tokens")]
     public async Task SpecPhase_Headless_WithRealOrchestrator_InvokesLlm()
     {
         // Arrange
@@ -92,7 +92,7 @@ public class FizzBuzzE2ETests : IDisposable
 
     // ==================== Test 3: Plan Phase — Multiple LLM calls through planning ====================
 
-    [Fact]
+    [Fact(Skip = "For now until we can configure the models so we don't use all the tokens")]
     public async Task PlanPhase_WithRealOrchestrator_RunsMultipleLlmCalls()
     {
         // Arrange: create module with a valid SPECIFICATION.md (>100 chars, unchecked checkboxes)
@@ -128,7 +128,7 @@ public class FizzBuzzE2ETests : IDisposable
 
     // ==================== Test 4: Build Phase — LLM invoked and completes when all tasks done ====================
 
-    [Fact]
+    [Fact(Skip = "For now until we can configure the models so we don't use all the tokens")]
     public async Task BuildPhase_WithRealOrchestrator_InvokesLlmAndCompletes()
     {
         // Arrange: spec with ALL checkboxes checked → state assessor returns Repeat
@@ -157,7 +157,7 @@ public class FizzBuzzE2ETests : IDisposable
 
     // ==================== Test 5: Build Phase — iterates through tasks with unchecked items ====================
 
-    [Fact]
+    [Fact(Skip = "For now until we can configure the models so we don't use all the tokens")]
     public async Task BuildPhase_WithUnfinishedTasks_InvokesLlmMultipleTimes()
     {
         // Arrange: spec with some unchecked checkboxes → state assessor returns IterateThroughTasks or DetermineDependencies
@@ -182,7 +182,7 @@ public class FizzBuzzE2ETests : IDisposable
 
     // ==================== Test 6: Full Pipeline — spec → approval → plan → build ====================
 
-    [Fact]
+    [Fact(Skip = "For now until we can configure the models so we don't use all the tokens")]
     public async Task FullPipeline_SpecThenApprovedThenPlan_TransitionsCorrectly()
     {
         // Phase 1: Spec — no spec exists, should invoke LLM and return interrupted (human gate)
@@ -224,7 +224,7 @@ public class FizzBuzzE2ETests : IDisposable
 
     // ==================== Test 7: Full Pipeline — spec → plan → build completes ====================
 
-    [Fact]
+    [Fact(Skip = "For now until we can configure the models so we don't use all the tokens")]
     public async Task FullPipeline_SpecThenPlanThenBuild_CompletesSuccessfully()
     {
         // PHASE 1: SPEC — gather requirements (no spec file on disk yet)

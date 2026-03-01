@@ -258,7 +258,7 @@ This specification defines the **CLI command structure and flags**. It does not 
 - [x] [CLI-27] `--no-welcome` flag suppresses the TUI landing page modal on startup
 - [x] [CLI-28] Run lopen executable to create a fizz-buzz application with tests in order to validate the full integration. Do not mock and use the application.
 - [x] [CLI-29] Headless mode creates a new session by default; users must pass `--resume <id>` to resume. `--no-resume` is an explicit start-new request (same as default). No implicit auto-resume in headless mode.
-- [ ] [CLI-30] `--resume <id>` explicitly resumes the requested session, `--no-resume` is an explicit start-new request, and those flags bypass the TUI modal so no other surface causes an implicit resume
+- [x] [CLI-30] `--resume <id>` explicitly resumes the requested session, `--no-resume` is an explicit start-new request, and those flags bypass the TUI modal so no other surface causes an implicit resume
 
 ---
 
