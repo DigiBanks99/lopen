@@ -453,6 +453,12 @@ public static class PhaseCommands
             return (parsed, null);
         }
 
+        // Headless mode defaults to a new session unless --resume is explicit
+        if (parseResult.GetValue(GlobalOptions.Headless))
+        {
+            return (null, null);
+        }
+
         // No explicit flags: check for latest active session
         var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
         if (latestId is not null)

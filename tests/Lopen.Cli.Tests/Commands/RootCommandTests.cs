@@ -208,7 +208,7 @@ public class RootCommandTests
         var orchestrator = new FakeOrchestrator(OrchestrationResult.Completed(5, WorkflowStep.Repeat));
         var (config, output, error, tui) = CreateConfig(sessionManager, orchestrator);
 
-        var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it"]);
+        var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it", "--resume", "testmod-20260101-001"]);
 
         Assert.Equal(0, exitCode);
         Assert.False(tui.RunWasCalled, "TUI should not launch in headless mode");
@@ -235,7 +235,7 @@ public class RootCommandTests
         var orchestrator = new FakeOrchestrator(OrchestrationResult.Interrupted(3, WorkflowStep.IterateThroughTasks, "Human gate required"));
         var (config, output, error, tui) = CreateConfig(sessionManager, orchestrator);
 
-        var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it"]);
+        var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it", "--resume", "testmod-20260101-001"]);
 
         Assert.Equal(2, exitCode);
         Assert.False(tui.RunWasCalled);

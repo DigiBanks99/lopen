@@ -383,6 +383,21 @@ public class PhaseCommandTests
         Assert.DoesNotContain("Resuming session", output.ToString());
     }
 
+    // ==================== CLI-29: headless default new session ====================
+
+    [Fact]
+    public async Task Spec_Headless_WithoutResumeFlags_DoesNotAutoResume()
+    {
+        _fakeSessionManager.AddSession(Session1, ActiveState);
+        _fakeSessionManager.SetLatestSessionId(Session1);
+        var (config, output, _) = CreateConfig();
+
+        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", "Build auth"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.DoesNotContain("Resuming session", output.ToString());
+    }
+
     // ==================== CLI-17: --prompt injection ====================
 
     [Fact]

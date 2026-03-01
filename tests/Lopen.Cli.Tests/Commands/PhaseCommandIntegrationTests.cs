@@ -90,7 +90,7 @@ public class PhaseCommandIntegrationTests
             OrchestrationResult.Interrupted(1, WorkflowStep.DraftSpecification, "User input needed"));
         var (config, output, _) = CreateConfig(orchestrator);
 
-        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", "test"]);
+        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", "test", "--resume", Session1.ToString()]);
 
         Assert.Equal(ExitCodes.UserInterventionRequired, exitCode);
         Assert.Contains("interrupted", output.ToString(), StringComparison.OrdinalIgnoreCase);

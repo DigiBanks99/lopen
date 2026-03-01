@@ -47,7 +47,7 @@ public class FizzBuzzWorkflowTests
         var orchestrator = new TrackingOrchestrator();
         var (config, output, _) = CreateConfig(orchestrator, hasSpec: false, hasPlan: false);
 
-        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt]);
+        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt, "--resume", FizzBuzzSession.ToString()]);
 
         Assert.Equal(ExitCodes.Success, exitCode);
         Assert.Equal(FizzBuzzModule, orchestrator.LastModule);

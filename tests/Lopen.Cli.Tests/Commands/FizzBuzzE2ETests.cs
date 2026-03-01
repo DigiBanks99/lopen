@@ -55,10 +55,10 @@ public class FizzBuzzE2ETests : IDisposable
         var scriptedLlm = new ScriptedLlmService(
             ScriptedLlmService.CreateResponse("# FizzBuzz Specification\n\nDrafted by LLM."));
 
-        var (config, output, error, host) = await CreateE2EConfigAsync(scriptedLlm);
+        var (config, output, error, host, sessionId) = await CreateE2EConfigAsync(scriptedLlm);
 
         // Act
-        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt]);
+        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt, "--resume", sessionId.ToString()]);
 
         // Assert: LLM was called at least once for spec drafting
         Assert.True(scriptedLlm.InvokeCount >= 1, $"Expected at least 1 LLM invocation, got {scriptedLlm.InvokeCount}");
@@ -78,10 +78,10 @@ public class FizzBuzzE2ETests : IDisposable
         var scriptedLlm = new ScriptedLlmService(
             ScriptedLlmService.CreateResponse("# FizzBuzz Specification\n\nHeadless draft."));
 
-        var (config, output, _, _) = await CreateE2EConfigAsync(scriptedLlm);
+        var (config, output, _, _, sessionId) = await CreateE2EConfigAsync(scriptedLlm);
 
         // Act
-        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt]);
+        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt, "--resume", sessionId.ToString()]);
 
         // Assert
         Assert.True(scriptedLlm.InvokeCount >= 1, $"Expected at least 1 LLM invocation, got {scriptedLlm.InvokeCount}");
@@ -112,10 +112,10 @@ public class FizzBuzzE2ETests : IDisposable
             ScriptedLlmService.CreateResponse("Repeat check"),
             ScriptedLlmService.CreateResponse("All components complete"));
 
-        var (config, output, error, _) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
+        var (config, output, error, _, sessionId) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
 
         // Act
-        var exitCode = await config.InvokeAsync(["plan", "--headless", "--prompt", "Plan the fizzbuzz module"]);
+        var exitCode = await config.InvokeAsync(["plan", "--headless", "--prompt", "Plan the fizzbuzz module", "--resume", sessionId.ToString()]);
 
         // Assert: multiple LLM invocations happened (at least 4 for planning steps)
         Assert.True(scriptedLlm.InvokeCount >= 4,
@@ -141,10 +141,10 @@ public class FizzBuzzE2ETests : IDisposable
         var scriptedLlm = new ScriptedLlmService(
             ScriptedLlmService.CreateResponse("Assessment: all components complete"));
 
-        var (config, output, error, _) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
+        var (config, output, error, _, sessionId) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
 
         // Act
-        var exitCode = await config.InvokeAsync(["build", "--headless", "--prompt", "Build the fizzbuzz application"]);
+        var exitCode = await config.InvokeAsync(["build", "--headless", "--prompt", "Build the fizzbuzz application", "--resume", sessionId.ToString()]);
 
         // Assert: LLM was called for the Repeat assessment step
         Assert.True(scriptedLlm.InvokeCount >= 1,
@@ -170,10 +170,10 @@ public class FizzBuzzE2ETests : IDisposable
             Enumerable.Range(0, 20).Select(i =>
                 ScriptedLlmService.CreateResponse($"Working on task iteration {i}")).ToArray());
 
-        var (config, output, error, _) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
+        var (config2, output2, error2, _, sessionId2) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
 
         // Act
-        var exitCode = await config.InvokeAsync(["build", "--headless", "--prompt", "Build the fizzbuzz application"]);
+        var exitCode = await config2.InvokeAsync(["build", "--headless", "--prompt", "Build the fizzbuzz application", "--resume", sessionId2.ToString()]);
 
         // Assert: LLM was invoked multiple times for task iterations
         Assert.True(scriptedLlm.InvokeCount >= 2,
@@ -191,9 +191,9 @@ public class FizzBuzzE2ETests : IDisposable
         var specLlm = new ScriptedLlmService(
             ScriptedLlmService.CreateResponse("# FizzBuzz Specification\n\nDrafted spec content."));
 
-        var (specConfig, specOutput, _, _) = await CreateE2EConfigAsync(specLlm);
+        var (specConfig, specOutput, _, _, specSessionId) = await CreateE2EConfigAsync(specLlm);
 
-        var specExit = await specConfig.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt]);
+        var specExit = await specConfig.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt, "--resume", specSessionId.ToString()]);
 
         Assert.Equal(ExitCodes.UserInterventionRequired, specExit);
         Assert.True(specLlm.InvokeCount >= 1, "Spec phase should invoke LLM at least once");
@@ -210,9 +210,9 @@ public class FizzBuzzE2ETests : IDisposable
             ScriptedLlmService.CreateResponse("Iterating tasks"),
             ScriptedLlmService.CreateResponse("Complete"));
 
-        var (planConfig, planOutput, _, _) = await CreateE2EConfigAsync(planLlm, approveSpec: true);
+        var (planConfig, planOutput, _, _, planSessionId) = await CreateE2EConfigAsync(planLlm, approveSpec: true);
 
-        var planExit = await planConfig.InvokeAsync(["plan", "--headless", "--prompt", "Plan the module"]);
+        var planExit = await planConfig.InvokeAsync(["plan", "--headless", "--prompt", "Plan the module", "--resume", planSessionId.ToString()]);
 
         // Plan should have invoked LLM multiple times
         Assert.True(planLlm.InvokeCount >= 1,
@@ -300,7 +300,7 @@ public class FizzBuzzE2ETests : IDisposable
                """;
     }
 
-    private async Task<(CommandLineConfiguration config, StringWriter output, StringWriter error, IHost host)> CreateE2EConfigAsync(
+    private async Task<(CommandLineConfiguration config, StringWriter output, StringWriter error, IHost host, SessionId sessionId)> CreateE2EConfigAsync(
         ScriptedLlmService scriptedLlm,
         bool approveSpec = false)
     {
@@ -325,7 +325,7 @@ public class FizzBuzzE2ETests : IDisposable
 
         // Create a session so ResolveModuleNameAsync can find the module
         var sessionManager = host.Services.GetRequiredService<ISessionManager>();
-        await sessionManager.CreateSessionAsync(FizzBuzzModule);
+        var sessionId = await sessionManager.CreateSessionAsync(FizzBuzzModule);
 
         // Optionally approve the spec to allow planning transitions
         if (approveSpec)
@@ -343,6 +343,6 @@ public class FizzBuzzE2ETests : IDisposable
         root.Add(PhaseCommands.CreatePlan(host.Services, output, error));
         root.Add(PhaseCommands.CreateBuild(host.Services, output, error));
 
-        return (new CommandLineConfiguration(root), output, error, host);
+        return (new CommandLineConfiguration(root), output, error, host, sessionId);
     }
 }
