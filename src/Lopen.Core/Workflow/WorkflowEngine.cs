@@ -104,6 +104,7 @@ internal sealed class WorkflowEngine : IWorkflowEngine
         // Step 7: Repeat — loops back to SelectNextComponent or marks complete
         _machine.Configure(WorkflowStep.Repeat)
             .Permit(WorkflowTrigger.Assess, WorkflowStep.SelectNextComponent)
+            .PermitReentry(WorkflowTrigger.ModuleComplete)
             .OnEntry(transition =>
             {
                 if (transition.Trigger == WorkflowTrigger.ModuleComplete)

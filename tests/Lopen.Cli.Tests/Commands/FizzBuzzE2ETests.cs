@@ -222,6 +222,60 @@ public class FizzBuzzE2ETests : IDisposable
         Assert.Contains("planning", planOutput.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
+    // ==================== Test 7: Full Pipeline — spec → plan → build completes ====================
+
+    [Fact]
+    public async Task FullPipeline_SpecThenPlanThenBuild_CompletesSuccessfully()
+    {
+        // PHASE 1: SPEC — gather requirements (no spec file on disk yet)
+        // Headless spec always returns UserInterventionRequired due to the human gate.
+        CreateModuleDirectory(FizzBuzzModule, createSpec: false);
+
+        var specLlm = new ScriptedLlmService(
+            ScriptedLlmService.CreateResponse(
+                "# FizzBuzz Module\n\nA module that prints numbers 1-100, replacing multiples of 3 with Fizz, 5 with Buzz, and both with FizzBuzz.\n\n## Components\n- [ ] FizzBuzz logic\n- [ ] Console output\n- [ ] Unit tests"));
+
+        var (specConfig, specOutput, specError, specHost, specSessionId) = await CreateE2EConfigAsync(specLlm);
+
+        var specExitCode = await specConfig.InvokeAsync(["spec", "--headless", "--prompt", "Create a FizzBuzz module", "--resume", specSessionId.ToString()]);
+
+        Assert.Equal(ExitCodes.UserInterventionRequired, specExitCode);
+        Assert.True(specLlm.InvokeCount >= 1, $"Spec phase should invoke LLM at least once, got {specLlm.InvokeCount}");
+        specHost.Dispose();
+
+        // PHASE 2: Simulate user approval by writing the completed spec, then run PLAN.
+        // Using completed spec (all [x]) so the assessor starts at Repeat and the orchestrator
+        // reaches ModuleComplete via HasMoreComponentsAsync → false. This completes the plan
+        // phase successfully because IterateThroughTasks has no ComponentComplete exit path.
+        CreateModuleDirectory(FizzBuzzModule, createSpec: true, specContent: CreateCompletedSpecContent());
+
+        var planLlm = new ScriptedLlmService(
+            ScriptedLlmService.CreateResponse("Assessment: all components planned"));
+
+        var (planConfig, planOutput, planError, planHost, planSessionId) = await CreateE2EConfigAsync(planLlm, approveSpec: true);
+
+        var planExitCode = await planConfig.InvokeAsync(["plan", "--headless", "--prompt", "Plan the FizzBuzz module", "--resume", planSessionId.ToString()]);
+
+        Assert.Equal(ExitCodes.Success, planExitCode);
+        Assert.True(planLlm.InvokeCount >= 1, $"Plan phase should invoke LLM at least once, got {planLlm.InvokeCount}");
+        planHost.Dispose();
+
+        // PHASE 3: Create plan file (required by ValidatePlanExistsAsync), then BUILD.
+        // Completed spec → assessor starts at Repeat → ModuleComplete.
+        CreatePlanFile(FizzBuzzModule, "# FizzBuzz Plan\n- [x] Implement FizzBuzz logic\n- [x] Add console output\n- [x] Write unit tests");
+
+        var buildLlm = new ScriptedLlmService(
+            ScriptedLlmService.CreateResponse("Assessment: all components complete"));
+
+        var (buildConfig, buildOutput, buildError, buildHost, buildSessionId) = await CreateE2EConfigAsync(buildLlm, approveSpec: true);
+
+        var buildExitCode = await buildConfig.InvokeAsync(["build", "--headless", "--prompt", "Build the FizzBuzz module", "--resume", buildSessionId.ToString()]);
+
+        Assert.Equal(ExitCodes.Success, buildExitCode);
+        Assert.True(buildLlm.InvokeCount >= 1, $"Build phase should invoke LLM at least once, got {buildLlm.InvokeCount}");
+        buildHost.Dispose();
+    }
+
     // ==================== Helpers ====================
 
     private void CreateModuleDirectory(string moduleName, bool createSpec, string? specContent = null)
