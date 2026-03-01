@@ -153,7 +153,7 @@ When `--headless` / `--quiet` / `-q` is specified:
 - **No TUI** — Output is plain text to stdout/stderr
 - **Non-interactive** — Lopen does not prompt the user for input
 - **Prompt required** — For commands that need user input (e.g., `lopen spec`), `--prompt` provides the initial instruction
-- **Session selection** — Uses `--resume <id>` or the latest active session. If no session and no `--prompt`, errors with guidance
+- **Session selection** — Always creates a new session by default. Use `--resume <id>` to explicitly resume an existing session. `--no-resume` is equivalent to the default (explicit start-new). If no `--prompt` is provided for a new session, errors with guidance
 - **Progress output** — Emits structured progress messages (step transitions, task completions, errors) to stdout
 - **Exit codes** — `0` for success, `1` for failure, `2` for user intervention required (only in `--unattended` mode when threshold hit)
 
@@ -256,7 +256,9 @@ This specification defines the **CLI command structure and flags**. It does not 
 - [x] [CLI-25] CLI entry point uses `Microsoft.Extensions.Hosting` for dependency injection
 - [x] [CLI-26] CLI discovers the project root directory (nearest parent containing `.lopen/` or `.git/`, falling back to CWD) and passes it to `AddLopenCore(projectRoot)` and `AddLopenStorage(projectRoot)` so all path-dependent services are registered
 - [x] [CLI-27] `--no-welcome` flag suppresses the TUI landing page modal on startup
-- [ ] [CLI-28] Run lopen executable to create a fizz-buzz application with tests in order to validate the full integration. Do not mock and use the application.
+- [x] [CLI-28] Run lopen executable to create a fizz-buzz application with tests in order to validate the full integration. Do not mock and use the application.
+- [x] [CLI-29] Headless mode creates a new session by default; users must pass `--resume <id>` to resume. `--no-resume` is an explicit start-new request (same as default). No implicit auto-resume in headless mode.
+- [ ] [CLI-30] `--resume <id>` explicitly resumes the requested session, `--no-resume` is an explicit start-new request, and those flags bypass the TUI modal so no other surface causes an implicit resume
 
 ---
 
