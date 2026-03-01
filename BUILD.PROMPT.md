@@ -1,29 +1,28 @@
-1. Ensure you are not on the `main` branch. It is okay to be on a feature branch. Don't create a branch for every task.
-2. Study the @.lopen/jobs-to-be-done.json file.
+1. Ensure you are not on the `main` branch.
+2. Study `lopen-memory` for a feature that is not complete.
 3. Identify the most important open/partially completed task to be done.
-4. Study the @.lopen/module/<module>/state.json file for the relevant module to understand the current state of the module and its components. It contains information on previous steps and actions taken.
-5. Study the relevant SPECIFICATION.md file in the corresponding @docs/requirements/<module>/ folder to fully understand the requirement.
-6. Verify that the feature is not already completed using a sub-agent by studying the code.
-7. Update the @.lopen/jobs-to-be-done.json document to reflect any changes in priorities or new tasks that have emerged.
-8. Use a subagent to study existing RESEARCH.md files in the relevant requirement sub-folder to gather information on how to implement the task.
+4. Study the module feature to understand the current state of the feature and its tasks. It contains information on previous steps and actions taken.
+5. Use a subagent to verify that the feature is not already completed by studying the code and comparing it to the acceptance criteria of the module, the feature and the task.
+7. Update the task, module and feature to reflect any changes in priorities or new tasks that have emerged.
+8. Use a subagent to study existing research to gather information on how to implement the task.
 9. Use subagents to research how the feature integrates with existing modules and features.
-10. Update the @.lopen/jobs-to-be-done.json document to reflect the new task.
-11. Remember your context window is limited so use sub-agents for development and task completion.
-12. Prioritize adding tests before marking a task or job as complete.
-13. Document new features or changes to features using the divio model
-14. Write the state of the module, component and task to the state store in @.lopen/module/<module>/state.json .
-15. Format the code and then run all tests and ensure they pass using a sub-agent.
-16. Verify the features added by running the application and using the features where possible using a sub-agent with model gpt-5-mini.
-17. Commit all the changes using conventional commit messages.
-18. Push the changes to the remote repository.
+10. Decide on a task to work on.
+11. Update the task, feature and module to reflect state of the task selected.
+12. Use as many subagents as needed to complete the task.
+13. Use only one subagent to verify the implementation.
+14. Commit all the changes using conventional commit messages.
+15. Push the changes to the remote repository.
 
 IMPORTANT:
-- Do not make up any requirements
-- Use only existing requirements from SPECIFICATION.md files
+- If all the work on the selected feature is done, output a blank file called lopen.loop.done in the root directory and don't attempt any further actions.
+- Do not make up any requirements.
+- Stick to a single feature.
+- It is okay to be on a feature branch. Don't create a branch for every task.
+- Remember your context window is limited so use sub-agents for development and task completion.
+- Prioritize adding tests before marking a task or job as complete.
 - A job to be done is only done if it can be proven by tests (excludes non-technical tasks, i.e. documentation, design, package updates)
 - You must fix failing tests before continuing.
 - You don't get to decide that tests are optional or don't add value.
-- Run a sub-agent with model gpt-5-mini to verify that all the acceptance criteria have been met before marking a task as done. Be clear on what task was done and where to find the acceptance criteria.
-- Verify the features added by running the application and using the features where possible.
-- If you find a bug, create a new job to be done for the bug fix and prioritize it accordingly. Do not just fix the bug without tracking it as a job to be done.
-- Ensure you update the state of each module, component and task in @.lopen/module/<module>/state.json as you work on them with context on what was done and what was learned. This is crucial for tracking progress and understanding the current state of the project.
+- Use the feature end-to-end before marking it as done.
+- Use a subagent to verify end-to-end code usage from Lopen CLI to the module.
+- If you find a bug not caused by the work you are doing, create a new task for the feature and provide as much detail as you can without attempting to fix it. Only fix the bug if it is blocking you from completing the task you are working on.
