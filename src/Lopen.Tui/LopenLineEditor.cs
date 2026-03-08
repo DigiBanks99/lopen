@@ -1,3 +1,4 @@
+using Lopen.Core.Workflow;
 using RadLine;
 using Spectre.Console;
 
@@ -15,9 +16,10 @@ public sealed class LopenLineEditor
     public LopenLineEditor(
         IAnsiConsole console,
         ILineEditorHistory history,
-        ITextCompletion? completion = null)
+        ITextCompletion? completion = null,
+        IPauseController? pauseController = null)
     {
-        var provider = new EditorServiceProvider(history, _exitFlag);
+        EditorServiceProvider provider = new EditorServiceProvider(history, _exitFlag);
 
         _editor = new LineEditor(console, provider: provider)
         {
@@ -26,8 +28,14 @@ public sealed class LopenLineEditor
             Completion = completion,
         };
 
-        // Ctrl+D: exit on empty prompt
+        // Ctrl+D: exit on empty prompt (TUI-08)
         _editor.KeyBindings.Add(ConsoleKey.D, ConsoleModifiers.Control, () => new ExitOnEmptyCommand(_exitFlag));
+
+        // Ctrl+P: toggle pause/resume (TUI-09)
+        if (pauseController is not null)
+        {
+            _editor.KeyBindings.Add(ConsoleKey.P, ConsoleModifiers.Control, () => new TogglePauseCommand(pauseController));
+        }
     }
 
     /// <summary>

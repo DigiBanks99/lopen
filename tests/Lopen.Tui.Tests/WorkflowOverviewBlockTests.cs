@@ -1,7 +1,9 @@
 using Lopen.Configuration;
+using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Storage;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 using Spectre.Console;
 
 namespace Lopen.Tui.Tests;
@@ -183,5 +185,78 @@ public class WorkflowOverviewBlockTests
         var console = CreateTestConsole();
         var options = Options.Create(new LopenOptions());
         return new WorkflowOverviewBlock(console, options);
+    }
+
+    // ── Pause Indicator Tests ────────────────────────────────────────
+
+    [Fact]
+    public void Render_WhenPaused_OutputContainsPausedIndicator()
+    {
+        var writer = new StringWriter();
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        var options = Options.Create(new LopenOptions());
+        var pauseController = Substitute.For<IPauseController>();
+        pauseController.IsPaused.Returns(true);
+
+        var block = new WorkflowOverviewBlock(console, options, pauseController: pauseController);
+        block.Render();
+
+        string output = writer.ToString();
+        Assert.Contains("PAUSED", output);
+    }
+
+    [Fact]
+    public void Render_WhenNotPaused_OutputDoesNotContainPausedIndicator()
+    {
+        var writer = new StringWriter();
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        var options = Options.Create(new LopenOptions());
+        var pauseController = Substitute.For<IPauseController>();
+        pauseController.IsPaused.Returns(false);
+
+        var block = new WorkflowOverviewBlock(console, options, pauseController: pauseController);
+        block.Render();
+
+        string output = writer.ToString();
+        Assert.DoesNotContain("PAUSED", output);
+    }
+
+    [Fact]
+    public void Render_PauseAndResume_IndicatorAppearsAndDisappears()
+    {
+        var writer = new StringWriter();
+        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        var options = Options.Create(new LopenOptions());
+        var pauseController = Substitute.For<IPauseController>();
+
+        var block = new WorkflowOverviewBlock(console, options, pauseController: pauseController);
+
+        // Paused: indicator should appear
+        pauseController.IsPaused.Returns(true);
+        block.Render();
+        string pausedOutput = writer.ToString();
+        Assert.Contains("PAUSED", pausedOutput);
+
+        // Resume: indicator should disappear
+        writer.GetStringBuilder().Clear();
+        pauseController.IsPaused.Returns(false);
+        block.Render();
+        string resumedOutput = writer.ToString();
+        Assert.DoesNotContain("PAUSED", resumedOutput);
     }
 }

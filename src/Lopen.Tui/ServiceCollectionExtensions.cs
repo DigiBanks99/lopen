@@ -29,9 +29,9 @@ public static class ServiceCollectionExtensions
         // File-backed history stored in user's config directory
         services.TryAddSingleton<RadLine.ILineEditorHistory>(sp =>
         {
-            var configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME")
+            string configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME")
                 ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
-            var historyPath = Path.Combine(configHome, "lopen", "history.txt");
+            string historyPath = Path.Combine(configHome, "lopen", "history.txt");
             return new FileLineEditorHistory(historyPath);
         });
 
@@ -53,8 +53,8 @@ public static class ServiceCollectionExtensions
         // Command registry (also implements ISlashCommandRegistry for completion)
         services.TryAddSingleton<SlashCommandRegistry>(sp =>
         {
-            var console = sp.GetRequiredService<IAnsiConsole>();
-            var commands = sp.GetServices<ISlashCommand>();
+            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
+            IEnumerable<ISlashCommand> commands = sp.GetServices<ISlashCommand>();
             return new SlashCommandRegistry(console, commands);
         });
         services.TryAddSingleton<ISlashCommandRegistry>(sp => sp.GetRequiredService<SlashCommandRegistry>());
@@ -62,24 +62,25 @@ public static class ServiceCollectionExtensions
         // Slash command completion (requires ISlashCommandRegistry)
         services.TryAddSingleton<RadLine.ITextCompletion>(sp =>
         {
-            var registry = sp.GetRequiredService<ISlashCommandRegistry>();
+            ISlashCommandRegistry registry = sp.GetRequiredService<ISlashCommandRegistry>();
             return new SlashCommandCompletion(registry);
         });
 
         // Line editor
         services.TryAddSingleton<LopenLineEditor>(sp =>
         {
-            var console = sp.GetRequiredService<IAnsiConsole>();
-            var history = sp.GetRequiredService<RadLine.ILineEditorHistory>();
-            var completion = sp.GetService<RadLine.ITextCompletion>();
-            return new LopenLineEditor(console, history, completion);
+            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
+            RadLine.ILineEditorHistory history = sp.GetRequiredService<RadLine.ILineEditorHistory>();
+            RadLine.ITextCompletion? completion = sp.GetService<RadLine.ITextCompletion>();
+            IPauseController? pauseController = sp.GetService<IPauseController>();
+            return new LopenLineEditor(console, history, completion, pauseController);
         });
 
         // TUI output renderer - registered as IOutputRenderer to override HeadlessRenderer
         services.AddSingleton<IOutputRenderer>(sp =>
         {
-            var console = sp.GetRequiredService<IAnsiConsole>();
-            var lineEditor = sp.GetRequiredService<LopenLineEditor>();
+            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
+            LopenLineEditor lineEditor = sp.GetRequiredService<LopenLineEditor>();
             return new TuiOutputRenderer(console, lineEditor);
         });
 
@@ -95,24 +96,24 @@ public static class ServiceCollectionExtensions
         // Workflow overview block
         services.TryAddSingleton<WorkflowOverviewBlock>(sp =>
         {
-            var console = sp.GetRequiredService<IAnsiConsole>();
-            var options = sp.GetRequiredService<IOptions<LopenOptions>>();
-            var workflowEngine = sp.GetService<IWorkflowEngine>();
-            var tokenTracker = sp.GetService<ITokenTracker>();
-            var pauseController = sp.GetService<IPauseController>();
+            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
+            IOptions<LopenOptions> options = sp.GetRequiredService<IOptions<LopenOptions>>();
+            IWorkflowEngine? workflowEngine = sp.GetService<IWorkflowEngine>();
+            ITokenTracker? tokenTracker = sp.GetService<ITokenTracker>();
+            IPauseController? pauseController = sp.GetService<IPauseController>();
             return new WorkflowOverviewBlock(console, options, workflowEngine, tokenTracker, pauseController);
         });
 
         // TUI runner for the REPL loop
         services.TryAddSingleton<TuiRunner>(sp =>
         {
-            var console = sp.GetRequiredService<IAnsiConsole>();
-            var lineEditor = sp.GetRequiredService<LopenLineEditor>();
-            var promptQueue = sp.GetRequiredService<TuiUserPromptQueue>();
-            var renderer = sp.GetRequiredService<IOutputRenderer>();
-            var commandRegistry = sp.GetRequiredService<SlashCommandRegistry>();
-            var orchestrator = sp.GetService<IWorkflowOrchestrator>();
-            var overviewBlock = sp.GetService<WorkflowOverviewBlock>();
+            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
+            LopenLineEditor lineEditor = sp.GetRequiredService<LopenLineEditor>();
+            TuiUserPromptQueue promptQueue = sp.GetRequiredService<TuiUserPromptQueue>();
+            IOutputRenderer renderer = sp.GetRequiredService<IOutputRenderer>();
+            SlashCommandRegistry commandRegistry = sp.GetRequiredService<SlashCommandRegistry>();
+            IWorkflowOrchestrator? orchestrator = sp.GetService<IWorkflowOrchestrator>();
+            WorkflowOverviewBlock? overviewBlock = sp.GetService<WorkflowOverviewBlock>();
             return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator, overviewBlock);
         });
 
