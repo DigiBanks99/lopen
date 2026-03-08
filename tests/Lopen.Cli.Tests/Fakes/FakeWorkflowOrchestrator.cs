@@ -1,4 +1,5 @@
 using Lopen.Core.Workflow;
+using Lopen.Storage;
 
 namespace Lopen.Cli.Tests.Fakes;
 
@@ -10,6 +11,10 @@ internal sealed class FakeWorkflowOrchestrator : IWorkflowOrchestrator
     public OrchestrationResult? LastResult { get; private set; }
     public string? LastModule { get; private set; }
     public string? LastPrompt { get; private set; }
+    public string? ActiveModule => null;
+
+    public Task InitializeAsync(string moduleName, SessionId? resumeSessionId = null, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
 
     public Task<OrchestrationResult> RunAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
     {

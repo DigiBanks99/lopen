@@ -182,6 +182,11 @@ public class PhaseCommandIntegrationTests
 
         public Task<StepResult> RunStepAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
             => throw _exception;
+
+        public string? ActiveModule => null;
+
+        public Task InitializeAsync(string moduleName, SessionId? resumeSessionId = null, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 
     /// <summary>
@@ -209,5 +214,10 @@ public class PhaseCommandIntegrationTests
             LastPrompt = userPrompt;
             return Task.FromResult(StepResult.Succeeded(WorkflowTrigger.Assess, "Done"));
         }
+
+        public string? ActiveModule => null;
+
+        public Task InitializeAsync(string moduleName, SessionId? resumeSessionId = null, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 }

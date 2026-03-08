@@ -1,3 +1,5 @@
+using Lopen.Storage;
+
 namespace Lopen.Core.Workflow;
 
 /// <summary>
@@ -6,6 +8,18 @@ namespace Lopen.Core.Workflow;
 /// </summary>
 public interface IWorkflowOrchestrator
 {
+    /// <summary>
+    /// The active module name after initialization.
+    /// </summary>
+    string? ActiveModule { get; }
+
+    /// <summary>
+    /// Initializes the orchestrator for step-by-step interactive mode.
+    /// Must be called before RunStepAsync in TUI mode.
+    /// Optionally resumes a specific session, restoring token metrics.
+    /// </summary>
+    Task InitializeAsync(string moduleName, SessionId? resumeSessionId = null, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Runs the orchestration loop for a module until completion or interruption.
     /// </summary>

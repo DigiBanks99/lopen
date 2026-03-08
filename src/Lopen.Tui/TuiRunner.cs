@@ -114,6 +114,12 @@ public sealed class TuiRunner(
                     $"{LopenTheme.InfoHint} Resuming session {initialSessionId} at {state.Phase}/{state.Step}",
                     LopenTheme.Accent));
             }
+            else
+            {
+                _console.MarkupLine(LopenTheme.Styled(
+                    $"Session {initialSessionId} not found or corrupted. Starting fresh.",
+                    LopenTheme.Warning));
+            }
 
             return;
         }

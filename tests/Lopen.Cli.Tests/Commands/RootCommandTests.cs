@@ -409,6 +409,11 @@ public class RootCommandTests
 
         public Task<StepResult> RunStepAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
             => Task.FromResult(StepResult.Completed("test"));
+
+        public string? ActiveModule => null;
+
+        public Task InitializeAsync(string moduleName, SessionId? resumeSessionId = null, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 
     private sealed class FakeSessionManager : ISessionManager

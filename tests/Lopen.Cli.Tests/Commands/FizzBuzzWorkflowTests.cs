@@ -254,5 +254,10 @@ public class FizzBuzzWorkflowTests
             CallCount++;
             return Task.FromResult(StepResult.Succeeded(WorkflowTrigger.Assess, "Step complete"));
         }
+
+        public string? ActiveModule => null;
+
+        public Task InitializeAsync(string moduleName, SessionId? resumeSessionId = null, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 }

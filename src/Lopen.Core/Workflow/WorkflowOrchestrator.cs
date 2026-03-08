@@ -43,6 +43,9 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private int _iterationCount;
     private SessionId? _sessionId;
     private string? _userPrompt;
+    private string? _activeModule;
+
+    public string? ActiveModule => _activeModule;
 
     public WorkflowOrchestrator(
         IWorkflowEngine engine,
@@ -92,6 +95,59 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _workflowOptions = workflowOptions;
     }
 
+    public async Task InitializeAsync(string moduleName, SessionId? resumeSessionId = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
+
+        _activeModule = moduleName;
+
+        // Check for resumable session (STOR-07)
+        if (_sessionManager is not null)
+        {
+            if (resumeSessionId is not null)
+            {
+                // Explicit resume: use the provided session ID
+                _sessionId = resumeSessionId;
+                await RestoreSessionMetricsAsync(resumeSessionId, cancellationToken);
+
+                var savedState = await _sessionManager.LoadSessionStateAsync(resumeSessionId, cancellationToken);
+                if (savedState is not null)
+                {
+                    await _renderer.RenderResultAsync(
+                        $"Resuming session {resumeSessionId} at {savedState.Step}");
+                }
+            }
+            else
+            {
+                // Auto-detect: check for latest resumable session
+                var latestId = await _sessionManager.GetLatestSessionIdAsync(cancellationToken);
+                if (latestId is not null && latestId.Module.Equals(moduleName, StringComparison.OrdinalIgnoreCase))
+                {
+                    var savedState = await _sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
+                    if (savedState is not null && !savedState.IsComplete)
+                    {
+                        _logger.LogInformation("Resuming session {SessionId} for module {Module}",
+                            latestId, moduleName);
+                        _sessionId = latestId;
+
+                        await RestoreSessionMetricsAsync(latestId, cancellationToken);
+
+                        await _renderer.RenderResultAsync(
+                            $"Resuming session {latestId} at {savedState.Step}");
+                    }
+                }
+
+                // Create new session if not resuming
+                _sessionId ??= await _sessionManager.CreateSessionAsync(moduleName, cancellationToken);
+            }
+        }
+
+        await _engine.InitializeAsync(moduleName, cancellationToken);
+
+        // Bind tool handlers to registry so LLM can invoke them (CORE-25)
+        _toolHandlerBinder?.BindAll(_toolRegistry);
+    }
+
     public async Task<OrchestrationResult> RunAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
@@ -110,52 +166,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             }
         }
 
-        // Check for resumable session (STOR-07)
-        if (_sessionManager is not null)
-        {
-            var latestId = await _sessionManager.GetLatestSessionIdAsync(cancellationToken);
-            if (latestId is not null && latestId.Module.Equals(moduleName, StringComparison.OrdinalIgnoreCase))
-            {
-                var savedState = await _sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
-                if (savedState is not null && !savedState.IsComplete)
-                {
-                    _logger.LogInformation("Resuming session {SessionId} for module {Module}",
-                        latestId, moduleName);
-                    _sessionId = latestId;
-
-                    // Restore token metrics so new usage accumulates on top (LLM-13)
-                    if (_tokenTracker is not null)
-                    {
-                        var savedMetrics = await _sessionManager.LoadSessionMetricsAsync(latestId, cancellationToken);
-                        if (savedMetrics is not null)
-                        {
-                            var priorIterations = savedMetrics.Iterations.Select(i => new TokenUsage(
-                                i.InputTokens, i.OutputTokens, i.TotalTokens, i.ContextWindowSize, i.IsPremiumRequest)).ToList();
-                            _tokenTracker.RestoreMetrics(
-                                (int)savedMetrics.CumulativeInputTokens,
-                                (int)savedMetrics.CumulativeOutputTokens,
-                                savedMetrics.PremiumRequestCount,
-                                priorIterations);
-                            _logger.LogInformation(
-                                "Restored token metrics: {Input} in, {Output} out, {Premium} premium",
-                                savedMetrics.CumulativeInputTokens, savedMetrics.CumulativeOutputTokens,
-                                savedMetrics.PremiumRequestCount);
-                        }
-                    }
-
-                    await _renderer.RenderResultAsync(
-                        $"Resuming session {latestId} at step {savedState.Step}");
-                }
-            }
-
-            // Create new session if not resuming
-            _sessionId ??= await _sessionManager.CreateSessionAsync(moduleName, cancellationToken);
-        }
-
-        await _engine.InitializeAsync(moduleName, cancellationToken);
-
-        // Bind tool handlers to registry so LLM can invoke them (CORE-25)
-        _toolHandlerBinder?.BindAll(_toolRegistry);
+        await InitializeAsync(moduleName, cancellationToken: cancellationToken);
 
         _logger.LogInformation("Starting orchestration for module {Module} at step {Step}",
             moduleName, _engine.CurrentStep);
@@ -733,6 +744,28 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             or UnauthorizedAccessException
             or OutOfMemoryException
             or System.Security.SecurityException;
+
+    private async Task RestoreSessionMetricsAsync(SessionId sessionId, CancellationToken cancellationToken)
+    {
+        if (_tokenTracker is null || _sessionManager is null)
+            return;
+
+        var savedMetrics = await _sessionManager.LoadSessionMetricsAsync(sessionId, cancellationToken);
+        if (savedMetrics is not null)
+        {
+            var priorIterations = savedMetrics.Iterations.Select(i => new TokenUsage(
+                i.InputTokens, i.OutputTokens, i.TotalTokens, i.ContextWindowSize, i.IsPremiumRequest)).ToList();
+            _tokenTracker.RestoreMetrics(
+                (int)savedMetrics.CumulativeInputTokens,
+                (int)savedMetrics.CumulativeOutputTokens,
+                savedMetrics.PremiumRequestCount,
+                priorIterations);
+            _logger.LogInformation(
+                "Restored token metrics: {Input} in, {Output} out, {Premium} premium",
+                savedMetrics.CumulativeInputTokens, savedMetrics.CumulativeOutputTokens,
+                savedMetrics.PremiumRequestCount);
+        }
+    }
 
     /// <summary>
     /// Formats a critical storage error with path and OS details for user display (STOR-16).
