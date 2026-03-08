@@ -1,7 +1,6 @@
+using Lopen.Core.Workflow;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-
-using Lopen.Core.Workflow;
 
 namespace Lopen.Core.Tests.Workflow;
 /// <summary>
