@@ -16,6 +16,7 @@ public sealed class TuiRunner
     private readonly IOutputRenderer _renderer;
     private readonly SlashCommandRegistry _commandRegistry;
     private readonly IWorkflowOrchestrator? _orchestrator;
+    private readonly WorkflowOverviewBlock? _overviewBlock;
 
     public TuiRunner(
         IAnsiConsole console,
@@ -23,7 +24,8 @@ public sealed class TuiRunner
         TuiUserPromptQueue promptQueue,
         IOutputRenderer renderer,
         SlashCommandRegistry commandRegistry,
-        IWorkflowOrchestrator? orchestrator = null)
+        IWorkflowOrchestrator? orchestrator = null,
+        WorkflowOverviewBlock? overviewBlock = null)
     {
         _console = console ?? throw new ArgumentNullException(nameof(console));
         _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
@@ -31,6 +33,7 @@ public sealed class TuiRunner
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
         _commandRegistry = commandRegistry ?? throw new ArgumentNullException(nameof(commandRegistry));
         _orchestrator = orchestrator;
+        _overviewBlock = overviewBlock;
     }
 
     /// <summary>
@@ -40,6 +43,7 @@ public sealed class TuiRunner
     {
         while (!cancellationToken.IsCancellationRequested)
         {
+            _overviewBlock?.Render();
             string? input;
             try
             {

@@ -1,9 +1,12 @@
+using Lopen.Configuration;
 using Lopen.Core;
 using Lopen.Core.Workflow;
+using Lopen.Llm;
 using Lopen.Storage;
 using Lopen.Tui.Commands;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Spectre.Console;
 
 namespace Lopen.Tui;
@@ -84,6 +87,17 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TuiUserPromptQueue>();
         services.AddSingleton<IUserPromptQueue>(sp => sp.GetRequiredService<TuiUserPromptQueue>());
 
+        // Workflow overview block
+        services.TryAddSingleton<WorkflowOverviewBlock>(sp =>
+        {
+            var console = sp.GetRequiredService<IAnsiConsole>();
+            var options = sp.GetRequiredService<IOptions<LopenOptions>>();
+            var workflowEngine = sp.GetService<IWorkflowEngine>();
+            var tokenTracker = sp.GetService<ITokenTracker>();
+            var pauseController = sp.GetService<IPauseController>();
+            return new WorkflowOverviewBlock(console, options, workflowEngine, tokenTracker, pauseController);
+        });
+
         // TUI runner for the REPL loop
         services.TryAddSingleton<TuiRunner>(sp =>
         {
@@ -93,7 +107,8 @@ public static class ServiceCollectionExtensions
             var renderer = sp.GetRequiredService<IOutputRenderer>();
             var commandRegistry = sp.GetRequiredService<SlashCommandRegistry>();
             var orchestrator = sp.GetService<IWorkflowOrchestrator>();
-            return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator);
+            var overviewBlock = sp.GetService<WorkflowOverviewBlock>();
+            return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator, overviewBlock);
         });
 
         return services;
