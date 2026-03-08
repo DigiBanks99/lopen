@@ -17,7 +17,8 @@ public sealed class TuiRunner(
     IOutputRenderer renderer,
     SlashCommandRegistry commandRegistry,
     IWorkflowOrchestrator? orchestrator = null,
-    WorkflowOverviewBlock? overviewBlock = null)
+    WorkflowOverviewBlock? overviewBlock = null,
+    CommandPalette? commandPalette = null)
 {
     private readonly IAnsiConsole _console = console ?? throw new ArgumentNullException(nameof(console));
     private readonly LopenLineEditor _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
@@ -26,6 +27,7 @@ public sealed class TuiRunner(
     private readonly SlashCommandRegistry _commandRegistry = commandRegistry ?? throw new ArgumentNullException(nameof(commandRegistry));
     private readonly IWorkflowOrchestrator? _orchestrator = orchestrator;
     private readonly WorkflowOverviewBlock? _overviewBlock = overviewBlock;
+    private readonly CommandPalette? _commandPalette = commandPalette;
 
     /// <summary>
     /// Runs the TUI REPL loop until the user exits.
@@ -49,6 +51,15 @@ public sealed class TuiRunner(
             if (_lineEditor.ExitRequested)
                 return 0;
 
+            // Ctrl+O was pressed — open command palette (TUI-11)
+            if (_lineEditor.CommandPaletteRequested)
+            {
+                _lineEditor.ResetCommandPaletteRequested();
+                if (await ShowCommandPaletteAsync(cancellationToken))
+                    return 0;
+                continue;
+            }
+
             // Ctrl+C returns null — re-prompt
             if (input is null)
                 continue;
@@ -56,6 +67,14 @@ public sealed class TuiRunner(
             // Empty input — just re-prompt
             if (string.IsNullOrWhiteSpace(input))
                 continue;
+
+            // ? on empty prompt — open command palette (TUI-10)
+            if (input.Trim() == "?" && _commandPalette is not null)
+            {
+                if (await ShowCommandPaletteAsync(cancellationToken))
+                    return 0;
+                continue;
+            }
 
             // Dispatch slash commands
             if (input.StartsWith('/'))
@@ -72,6 +91,29 @@ public sealed class TuiRunner(
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// Shows the command palette and dispatches the selected command.
+    /// Returns true if the selected command requests exit.
+    /// </summary>
+    internal async Task<bool> ShowCommandPaletteAsync(CancellationToken cancellationToken)
+    {
+        if (_commandPalette is null) return false;
+
+        CommandPaletteResult result = _commandPalette.Show();
+        if (result.SelectedCommand is null) return false;
+
+        if (result.IsArgumentCommand)
+        {
+            _console.MarkupLine(LopenTheme.Styled(
+                $"Type: /{Markup.Escape(result.SelectedCommand)} <args>", LopenTheme.Accent));
+            return false;
+        }
+
+        SlashCommandResult cmdResult = await _commandRegistry.DispatchAsync(
+            $"/{result.SelectedCommand}", cancellationToken);
+        return cmdResult == SlashCommandResult.ExitRequested;
     }
 
     /// <summary>

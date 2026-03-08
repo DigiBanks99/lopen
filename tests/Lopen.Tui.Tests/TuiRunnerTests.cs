@@ -196,6 +196,128 @@ public class TuiRunnerTests
         Assert.Contains("Cancelled", output);
     }
 
+    [Fact]
+    public void Constructor_AcceptsNullCommandPalette()
+    {
+        (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
+        TuiRunner runner = new(console, editor, queue, renderer, registry, commandPalette: null);
+        Assert.NotNull(runner);
+    }
+
+    [Fact]
+    public async Task ShowCommandPaletteAsync_WithNoPalette_ReturnsFalse()
+    {
+        (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
+        TuiRunner runner = new(console, editor, queue, renderer, registry, commandPalette: null);
+
+        bool result = await runner.ShowCommandPaletteAsync(CancellationToken.None);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task ShowCommandPaletteAsync_WhenPaletteReturnsNull_ReturnsFalse()
+    {
+        (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
+        ISlashCommandRegistry mockRegistry = Substitute.For<ISlashCommandRegistry>();
+        mockRegistry.GetCommands().Returns(Array.Empty<SlashCommandDescriptor>());
+        CommandPalette palette = new(console, mockRegistry);
+
+        TuiRunner runner = new(console, editor, queue, renderer, registry, commandPalette: palette);
+
+        bool result = await runner.ShowCommandPaletteAsync(CancellationToken.None);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task ShowCommandPaletteAsync_ActionCommand_DispatchesViaRegistry()
+    {
+        var writer = new StringWriter();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        FileLineEditorHistory history = new(
+            Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
+        LopenLineEditor editor = new(console, history);
+        TuiUserPromptQueue queue = new();
+        TuiOutputRenderer renderer = new(console, editor);
+
+        var executed = false;
+        ISlashCommand clearCmd = Substitute.For<ISlashCommand>();
+        clearCmd.Name.Returns("clear");
+        clearCmd.Description.Returns("Clear screen");
+        clearCmd.ExecuteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => { executed = true; return SlashCommandResult.Handled; });
+
+        SlashCommandRegistry registry = new(console, [clearCmd]);
+
+        CommandPalette palette = Substitute.For<CommandPalette>(console, Substitute.For<ISlashCommandRegistry>());
+        palette.Show().Returns(new CommandPaletteResult("clear", false));
+
+        TuiRunner runner = new(console, editor, queue, renderer, registry, commandPalette: palette);
+
+        bool exitRequested = await runner.ShowCommandPaletteAsync(CancellationToken.None);
+
+        Assert.False(exitRequested);
+        Assert.True(executed);
+    }
+
+    [Fact]
+    public async Task ShowCommandPaletteAsync_ExitCommand_ReturnsTrue()
+    {
+        (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry _) = CreateDependencies();
+
+        ISlashCommand exitCmd = Substitute.For<ISlashCommand>();
+        exitCmd.Name.Returns("exit");
+        exitCmd.Description.Returns("Exit");
+        exitCmd.ExecuteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(SlashCommandResult.ExitRequested);
+
+        SlashCommandRegistry registry = new(console, [exitCmd]);
+
+        CommandPalette palette = Substitute.For<CommandPalette>(console, Substitute.For<ISlashCommandRegistry>());
+        palette.Show().Returns(new CommandPaletteResult("exit", false));
+
+        TuiRunner runner = new(console, editor, queue, renderer, registry, commandPalette: palette);
+
+        bool exitRequested = await runner.ShowCommandPaletteAsync(CancellationToken.None);
+
+        Assert.True(exitRequested);
+    }
+
+    [Fact]
+    public async Task ShowCommandPaletteAsync_ArgumentCommand_ShowsHintAndReturnsFalse()
+    {
+        var writer = new StringWriter();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        FileLineEditorHistory history = new(
+            Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
+        LopenLineEditor editor = new(console, history);
+        TuiUserPromptQueue queue = new();
+        TuiOutputRenderer renderer = new(console, editor);
+        SlashCommandRegistry registry = new(console, []);
+
+        CommandPalette palette = Substitute.For<CommandPalette>(console, Substitute.For<ISlashCommandRegistry>());
+        palette.Show().Returns(new CommandPaletteResult("model", true));
+
+        TuiRunner runner = new(console, editor, queue, renderer, registry, commandPalette: palette);
+
+        bool exitRequested = await runner.ShowCommandPaletteAsync(CancellationToken.None);
+
+        Assert.False(exitRequested);
+        string output = writer.ToString();
+        Assert.Contains("model", output);
+    }
+
     private static (IAnsiConsole console, LopenLineEditor editor, TuiUserPromptQueue queue, Lopen.Core.IOutputRenderer renderer, SlashCommandRegistry registry) CreateDependencies()
     {
         // RadLine requires ANSI support

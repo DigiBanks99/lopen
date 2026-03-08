@@ -104,6 +104,14 @@ public static class ServiceCollectionExtensions
             return new WorkflowOverviewBlock(console, options, workflowEngine, tokenTracker, pauseController);
         });
 
+        // Command palette for command discovery (TUI-10 through TUI-13)
+        services.TryAddSingleton<CommandPalette>(sp =>
+        {
+            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
+            ISlashCommandRegistry registry = sp.GetRequiredService<ISlashCommandRegistry>();
+            return new CommandPalette(console, registry);
+        });
+
         // TUI runner for the REPL loop
         services.TryAddSingleton<TuiRunner>(sp =>
         {
@@ -114,7 +122,8 @@ public static class ServiceCollectionExtensions
             SlashCommandRegistry commandRegistry = sp.GetRequiredService<SlashCommandRegistry>();
             IWorkflowOrchestrator? orchestrator = sp.GetService<IWorkflowOrchestrator>();
             WorkflowOverviewBlock? overviewBlock = sp.GetService<WorkflowOverviewBlock>();
-            return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator, overviewBlock);
+            CommandPalette? commandPalette = sp.GetService<CommandPalette>();
+            return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator, overviewBlock, commandPalette);
         });
 
         return services;
