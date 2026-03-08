@@ -1,5 +1,7 @@
 using Lopen.Core;
 using Lopen.Core.Workflow;
+using Lopen.Storage;
+using Lopen.Tui.Commands;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Spectre.Console;
@@ -30,13 +32,35 @@ public static class ServiceCollectionExtensions
             return new FileLineEditorHistory(historyPath);
         });
 
+        // Slash commands
+        services.AddSingleton<ISlashCommand>(sp => new HelpCommand(
+            sp.GetRequiredService<IAnsiConsole>(),
+            new Lazy<ISlashCommandRegistry>(() => sp.GetRequiredService<ISlashCommandRegistry>())));
+        services.AddSingleton<ISlashCommand, ModelCommand>();
+        services.AddSingleton<ISlashCommand, SkillsCommand>();
+        services.AddSingleton<ISlashCommand>(sp => new SessionsCommand(
+            sp.GetRequiredService<IAnsiConsole>(),
+            sp.GetService<ISessionManager>()));
+        services.AddSingleton<ISlashCommand>(sp => new ResumeCommand(
+            sp.GetRequiredService<IAnsiConsole>(),
+            sp.GetService<ISessionManager>()));
+        services.AddSingleton<ISlashCommand, ClearCommand>();
+        services.AddSingleton<ISlashCommand, ExitCommand>();
+
+        // Command registry (also implements ISlashCommandRegistry for completion)
+        services.TryAddSingleton<SlashCommandRegistry>(sp =>
+        {
+            var console = sp.GetRequiredService<IAnsiConsole>();
+            var commands = sp.GetServices<ISlashCommand>();
+            return new SlashCommandRegistry(console, commands);
+        });
+        services.TryAddSingleton<ISlashCommandRegistry>(sp => sp.GetRequiredService<SlashCommandRegistry>());
+
         // Slash command completion (requires ISlashCommandRegistry)
         services.TryAddSingleton<RadLine.ITextCompletion>(sp =>
         {
-            var registry = sp.GetService<ISlashCommandRegistry>();
-            if (registry is not null)
-                return new SlashCommandCompletion(registry);
-            return new SlashCommandCompletion(new EmptySlashCommandRegistry());
+            var registry = sp.GetRequiredService<ISlashCommandRegistry>();
+            return new SlashCommandCompletion(registry);
         });
 
         // Line editor
@@ -67,8 +91,9 @@ public static class ServiceCollectionExtensions
             var lineEditor = sp.GetRequiredService<LopenLineEditor>();
             var promptQueue = sp.GetRequiredService<TuiUserPromptQueue>();
             var renderer = sp.GetRequiredService<IOutputRenderer>();
+            var commandRegistry = sp.GetRequiredService<SlashCommandRegistry>();
             var orchestrator = sp.GetService<IWorkflowOrchestrator>();
-            return new TuiRunner(console, lineEditor, promptQueue, renderer, orchestrator);
+            return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator);
         });
 
         return services;

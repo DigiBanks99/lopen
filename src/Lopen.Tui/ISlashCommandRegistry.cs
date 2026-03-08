@@ -18,10 +18,4 @@ public interface ISlashCommandRegistry
 /// <param name="Description">Human-readable description of the command.</param>
 public sealed record SlashCommandDescriptor(string Name, string Description);
 
-/// <summary>
-/// Empty registry used when no slash commands are configured.
-/// </summary>
-internal sealed class EmptySlashCommandRegistry : ISlashCommandRegistry
-{
-    public IReadOnlyList<SlashCommandDescriptor> GetCommands() => [];
-}
+

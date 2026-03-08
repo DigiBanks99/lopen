@@ -1,5 +1,6 @@
 using Lopen.Core;
 using Lopen.Core.Workflow;
+using Lopen.Tui.Commands;
 using Spectre.Console;
 
 namespace Lopen.Tui;
@@ -13,6 +14,7 @@ public sealed class TuiRunner
     private readonly LopenLineEditor _lineEditor;
     private readonly TuiUserPromptQueue _promptQueue;
     private readonly IOutputRenderer _renderer;
+    private readonly SlashCommandRegistry _commandRegistry;
     private readonly IWorkflowOrchestrator? _orchestrator;
 
     public TuiRunner(
@@ -20,12 +22,14 @@ public sealed class TuiRunner
         LopenLineEditor lineEditor,
         TuiUserPromptQueue promptQueue,
         IOutputRenderer renderer,
+        SlashCommandRegistry commandRegistry,
         IWorkflowOrchestrator? orchestrator = null)
     {
         _console = console ?? throw new ArgumentNullException(nameof(console));
         _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
         _promptQueue = promptQueue ?? throw new ArgumentNullException(nameof(promptQueue));
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
+        _commandRegistry = commandRegistry ?? throw new ArgumentNullException(nameof(commandRegistry));
         _orchestrator = orchestrator;
     }
 
@@ -54,18 +58,12 @@ public sealed class TuiRunner
             if (string.IsNullOrWhiteSpace(input))
                 continue;
 
-            // Handle /exit command
-            if (input.Equals("/exit", StringComparison.OrdinalIgnoreCase))
-            {
-                _console.MarkupLine(LopenTheme.Styled("Goodbye!", LopenTheme.Muted));
-                return 0;
-            }
-
-            // Handle slash commands (basic dispatch for now)
+            // Dispatch slash commands
             if (input.StartsWith('/'))
             {
-                _console.MarkupLine(LopenTheme.Styled(
-                    $"Unknown command: {input}. Type ? for available commands.", LopenTheme.Warning));
+                var result = await _commandRegistry.DispatchAsync(input, cancellationToken);
+                if (result == SlashCommandResult.ExitRequested)
+                    return 0;
                 continue;
             }
 
