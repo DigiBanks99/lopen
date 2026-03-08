@@ -32,7 +32,7 @@ public sealed class TuiUserPromptQueue : IUserPromptQueue
 
     public async Task<string> DequeueAsync(CancellationToken cancellationToken = default)
     {
-        var result = await _channel.Reader.ReadAsync(cancellationToken);
+        string result = await _channel.Reader.ReadAsync(cancellationToken);
         Interlocked.Decrement(ref _count);
         return result;
     }

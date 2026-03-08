@@ -8,7 +8,7 @@ public class HelpCommandTests
     [Fact]
     public async Task Execute_ReturnsHandled()
     {
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.No,
             Interactive = InteractionSupport.No,
@@ -17,7 +17,7 @@ public class HelpCommandTests
         var registry = new SlashCommandRegistry(console, []);
         var command = new HelpCommand(console, new Lazy<ISlashCommandRegistry>(() => registry));
 
-        var result = await command.ExecuteAsync("");
+        SlashCommandResult result = await command.ExecuteAsync("");
 
         Assert.Equal(SlashCommandResult.Handled, result);
     }

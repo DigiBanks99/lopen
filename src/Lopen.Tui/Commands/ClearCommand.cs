@@ -2,14 +2,9 @@ using Spectre.Console;
 
 namespace Lopen.Tui.Commands;
 
-public sealed class ClearCommand : ISlashCommand
+public sealed class ClearCommand(IAnsiConsole console) : ISlashCommand
 {
-    private readonly IAnsiConsole _console;
-
-    public ClearCommand(IAnsiConsole console)
-    {
-        _console = console;
-    }
+    private readonly IAnsiConsole _console = console;
 
     public string Name => "clear";
     public string Description => "Clear terminal";

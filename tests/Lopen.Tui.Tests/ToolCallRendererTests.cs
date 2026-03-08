@@ -18,34 +18,34 @@ public class ToolCallRendererTests
     [Fact]
     public void RenderSuccess_DoesNotThrow()
     {
-        var renderer = CreateRenderer();
+        ToolCallRenderer renderer = CreateRenderer();
         renderer.RenderSuccess("git-diff", TimeSpan.FromSeconds(1.2));
     }
 
     [Fact]
     public void RenderSuccess_WithOutput_DoesNotThrow()
     {
-        var renderer = CreateRenderer();
+        ToolCallRenderer renderer = CreateRenderer();
         renderer.RenderSuccess("git-diff", TimeSpan.FromSeconds(0.5), "diff output here");
     }
 
     [Fact]
     public void RenderFailure_DoesNotThrow()
     {
-        var renderer = CreateRenderer();
+        ToolCallRenderer renderer = CreateRenderer();
         renderer.RenderFailure("git-commit", "file not found", TimeSpan.FromMilliseconds(200));
     }
 
     [Fact]
     public void RenderSuccess_SpecialCharsInOutput_DoesNotThrow()
     {
-        var renderer = CreateRenderer();
+        ToolCallRenderer renderer = CreateRenderer();
         renderer.RenderSuccess("tool", TimeSpan.FromSeconds(1), "output with [brackets] and {braces}");
     }
 
     private static ToolCallRenderer CreateRenderer()
     {
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.No,
             Interactive = InteractionSupport.No,

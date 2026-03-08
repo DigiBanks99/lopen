@@ -1,3 +1,4 @@
+using Lopen.Core.Workflow;
 using Lopen.Tui.Commands;
 using NSubstitute;
 using Spectre.Console;
@@ -69,7 +70,7 @@ public class TuiRunnerTests
     public async Task ProcessTurnAsync_WithMockOrchestrator_CallsRunStepAsync()
     {
         (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
-        var orchestrator = NSubstitute.Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
+        IWorkflowOrchestrator orchestrator = NSubstitute.Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
         orchestrator.RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Core.Workflow.StepResult.Succeeded(Core.Workflow.WorkflowTrigger.Assess));
         TuiRunner runner = new(console, editor, queue, renderer, registry, orchestrator);
@@ -83,7 +84,7 @@ public class TuiRunnerTests
     public async Task ProcessTurnAsync_WithPreCancelledToken_ThrowsOrCancels()
     {
         (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
-        var orchestrator = NSubstitute.Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
+        IWorkflowOrchestrator orchestrator = NSubstitute.Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
         orchestrator.RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
@@ -106,7 +107,7 @@ public class TuiRunnerTests
     {
         (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
         CancellationToken receivedToken = default;
-        var orchestrator = NSubstitute.Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
+        IWorkflowOrchestrator orchestrator = NSubstitute.Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
         orchestrator.RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
@@ -164,11 +165,11 @@ public class TuiRunnerTests
         SlashCommandRegistry registry = new(console, []);
 
         var started = new TaskCompletionSource();
-        var orchestrator = Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
+        IWorkflowOrchestrator orchestrator = Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
         orchestrator.RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async callInfo =>
             {
-                var ct = callInfo.Arg<CancellationToken>();
+                CancellationToken ct = callInfo.Arg<CancellationToken>();
                 started.SetResult();
                 await Task.Delay(Timeout.Infinite, ct);
                 return Core.Workflow.StepResult.Succeeded(Core.Workflow.WorkflowTrigger.Assess);

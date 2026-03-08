@@ -2,14 +2,9 @@ using Spectre.Console;
 
 namespace Lopen.Tui.Commands;
 
-public sealed class ExitCommand : ISlashCommand
+public sealed class ExitCommand(IAnsiConsole console) : ISlashCommand
 {
-    private readonly IAnsiConsole _console;
-
-    public ExitCommand(IAnsiConsole console)
-    {
-        _console = console;
-    }
+    private readonly IAnsiConsole _console = console;
 
     public string Name => "exit";
     public string Description => "Exit lopen";

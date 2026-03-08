@@ -11,36 +11,27 @@ namespace Lopen.Tui;
 /// Renders the workflow overview panel before each prompt.
 /// Shows phase indicators, task progress, token count, and current model.
 /// </summary>
-public sealed class WorkflowOverviewBlock
+public sealed class WorkflowOverviewBlock(
+    IAnsiConsole console,
+    IOptions<LopenOptions> options,
+    IWorkflowEngine? workflowEngine = null,
+    ITokenTracker? tokenTracker = null,
+    IPauseController? pauseController = null)
 {
-    private readonly IAnsiConsole _console;
-    private readonly IOptions<LopenOptions> _options;
-    private readonly IWorkflowEngine? _workflowEngine;
-    private readonly ITokenTracker? _tokenTracker;
-    private readonly IPauseController? _pauseController;
+    private readonly IAnsiConsole _console = console ?? throw new ArgumentNullException(nameof(console));
+    private readonly IOptions<LopenOptions> _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly IWorkflowEngine? _workflowEngine = workflowEngine;
+    private readonly ITokenTracker? _tokenTracker = tokenTracker;
+    private readonly IPauseController? _pauseController = pauseController;
 
     private string? _lastModel;
-
-    public WorkflowOverviewBlock(
-        IAnsiConsole console,
-        IOptions<LopenOptions> options,
-        IWorkflowEngine? workflowEngine = null,
-        ITokenTracker? tokenTracker = null,
-        IPauseController? pauseController = null)
-    {
-        _console = console ?? throw new ArgumentNullException(nameof(console));
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _workflowEngine = workflowEngine;
-        _tokenTracker = tokenTracker;
-        _pauseController = pauseController;
-    }
 
     /// <summary>
     /// Renders the overview block. Call before each prompt.
     /// </summary>
     public void Render(SessionState? sessionState = null)
     {
-        var currentModel = GetCurrentModel();
+        string currentModel = GetCurrentModel();
 
         // Check for model change notification
         if (_lastModel is not null && _lastModel != currentModel)
@@ -49,7 +40,7 @@ public sealed class WorkflowOverviewBlock
         }
         _lastModel = currentModel;
 
-        var lines = new List<string>();
+        List<string> lines = new List<string>();
 
         // Paused indicator
         if (_pauseController?.IsPaused == true)
@@ -60,14 +51,14 @@ public sealed class WorkflowOverviewBlock
         // Phase indicators (only if workflow engine is available and has started)
         if (_workflowEngine is not null)
         {
-            var phaseDisplay = BuildPhaseDisplay(_workflowEngine.CurrentPhase, _workflowEngine.IsComplete);
+            string phaseDisplay = BuildPhaseDisplay(_workflowEngine.CurrentPhase, _workflowEngine.IsComplete);
             lines.Add(phaseDisplay);
         }
 
         // Task progress (only if session state has task info)
         if (sessionState is not null)
         {
-            var taskLine = BuildTaskLine(sessionState);
+            string? taskLine = BuildTaskLine(sessionState);
             if (taskLine is not null)
             {
                 lines.Add(taskLine);
@@ -75,11 +66,11 @@ public sealed class WorkflowOverviewBlock
         }
 
         // Token count and model (always shown)
-        var tokenLine = BuildTokenLine(currentModel);
+        string tokenLine = BuildTokenLine(currentModel);
         lines.Add(tokenLine);
 
-        var content = string.Join("\n", lines);
-        var panel = new Panel(new Markup(content))
+        string content = string.Join("\n", lines);
+        Panel panel = new Panel(new Markup(content))
         {
             Border = BoxBorder.Rounded,
             Header = new PanelHeader(LopenTheme.Bold("lopen", LopenTheme.Primary)),
@@ -96,10 +87,10 @@ public sealed class WorkflowOverviewBlock
 
     internal static string BuildPhaseDisplay(WorkflowPhase currentPhase, bool isComplete)
     {
-        var phases = MapPhases(currentPhase, isComplete);
+        IReadOnlyList<DisplayPhase> phases = MapPhases(currentPhase, isComplete);
         return string.Join("  ", phases.Select(p =>
         {
-            var (indicator, color) = p.State switch
+            (string? indicator, Color color) = p.State switch
             {
                 DisplayPhaseState.Complete => (LopenTheme.PhaseComplete, LopenTheme.Success),
                 DisplayPhaseState.Active => (LopenTheme.PhaseActive, LopenTheme.Primary),
@@ -158,19 +149,19 @@ public sealed class WorkflowOverviewBlock
 
     private static string? BuildTaskLine(SessionState state)
     {
-        var module = state.Module;
+        string module = state.Module;
         if (string.IsNullOrEmpty(module))
             return null;
 
-        var parts = new List<string> { Markup.Escape(module) };
+        List<string> parts = new List<string> { Markup.Escape(module) };
 
         // Count tasks and find active one
         if (state.TaskHierarchy is { Count: > 0 })
         {
-            var (completed, total, activeName) = CountTasks(state.TaskHierarchy);
+            (int completed, int total, string? activeName) = CountTasks(state.TaskHierarchy);
             if (total > 0)
             {
-                var taskInfo = $"task {completed}/{total}";
+                string taskInfo = $"task {completed}/{total}";
                 if (activeName is not null)
                 {
                     taskInfo += $" \u2014 {Markup.Escape(activeName)}";
@@ -188,7 +179,7 @@ public sealed class WorkflowOverviewBlock
         int total = 0;
         string? activeName = null;
 
-        foreach (var node in nodes)
+        foreach (TaskHierarchyNode node in nodes)
         {
             if (node.NodeType is "task" or "subtask")
             {
@@ -201,7 +192,7 @@ public sealed class WorkflowOverviewBlock
 
             if (node.Children.Count > 0)
             {
-                var (childCompleted, childTotal, childActive) = CountTasks(node.Children);
+                (int childCompleted, int childTotal, string? childActive) = CountTasks(node.Children);
                 completed += childCompleted;
                 total += childTotal;
                 activeName ??= childActive;
@@ -213,14 +204,14 @@ public sealed class WorkflowOverviewBlock
 
     private string BuildTokenLine(string model)
     {
-        var metrics = _tokenTracker?.GetSessionMetrics();
-        var totalTokens = metrics is not null
+        SessionTokenMetrics? metrics = _tokenTracker?.GetSessionMetrics();
+        int totalTokens = metrics is not null
             ? metrics.CumulativeInputTokens + metrics.CumulativeOutputTokens
             : 0;
 
-        var tokenStr = FormatTokenCount(totalTokens);
-        var budget = _options.Value.Budget.TokenBudgetPerModule;
-        var tokenDisplay = budget > 0
+        string tokenStr = FormatTokenCount(totalTokens);
+        int budget = _options.Value.Budget.TokenBudgetPerModule;
+        string tokenDisplay = budget > 0
             ? $"tokens: {tokenStr}/{FormatTokenCount(budget)}"
             : $"tokens: {tokenStr}";
 

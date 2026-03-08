@@ -68,7 +68,7 @@ public class LopenLineEditorTests
         });
         FileLineEditorHistory history = new(
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
-        var pauseController = Substitute.For<IPauseController>();
+        IPauseController pauseController = Substitute.For<IPauseController>();
 
         LopenLineEditor editor = new(console, history, pauseController: pauseController);
         Assert.NotNull(editor);

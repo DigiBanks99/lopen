@@ -8,7 +8,7 @@ public class ExitCommandTests
     [Fact]
     public async Task Execute_ReturnsExitRequested()
     {
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.No,
             Interactive = InteractionSupport.No,
@@ -16,7 +16,7 @@ public class ExitCommandTests
         });
         var command = new ExitCommand(console);
 
-        var result = await command.ExecuteAsync("");
+        SlashCommandResult result = await command.ExecuteAsync("");
 
         Assert.Equal(SlashCommandResult.ExitRequested, result);
     }

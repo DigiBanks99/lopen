@@ -4,27 +4,21 @@ using Spectre.Console;
 
 namespace Lopen.Tui.Commands;
 
-public sealed class ModelCommand : ISlashCommand
+public sealed class ModelCommand(IAnsiConsole console, IOptions<LopenOptions> options) : ISlashCommand
 {
-    private readonly IAnsiConsole _console;
-    private readonly IOptions<LopenOptions> _options;
-
-    public ModelCommand(IAnsiConsole console, IOptions<LopenOptions> options)
-    {
-        _console = console;
-        _options = options;
-    }
+    private readonly IAnsiConsole _console = console;
+    private readonly IOptions<LopenOptions> _options = options;
 
     public string Name => "model";
     public string Description => "Show or switch model";
 
     public Task<SlashCommandResult> ExecuteAsync(string args, CancellationToken cancellationToken = default)
     {
-        var models = _options.Value.Models;
+        ModelOptions models = _options.Value.Models;
 
         if (string.IsNullOrWhiteSpace(args))
         {
-            var table = new Table()
+            Table table = new Table()
                 .Border(TableBorder.Rounded)
                 .BorderColor(LopenTheme.Muted)
                 .AddColumn(new TableColumn(LopenTheme.Bold("Phase", LopenTheme.Secondary)))

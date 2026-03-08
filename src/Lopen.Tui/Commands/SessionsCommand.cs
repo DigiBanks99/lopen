@@ -3,16 +3,10 @@ using Spectre.Console;
 
 namespace Lopen.Tui.Commands;
 
-public sealed class SessionsCommand : ISlashCommand
+public sealed class SessionsCommand(IAnsiConsole console, ISessionManager? sessionManager = null) : ISlashCommand
 {
-    private readonly IAnsiConsole _console;
-    private readonly ISessionManager? _sessionManager;
-
-    public SessionsCommand(IAnsiConsole console, ISessionManager? sessionManager = null)
-    {
-        _console = console;
-        _sessionManager = sessionManager;
-    }
+    private readonly IAnsiConsole _console = console;
+    private readonly ISessionManager? _sessionManager = sessionManager;
 
     public string Name => "sessions";
     public string Description => "Browse previous sessions";
@@ -25,7 +19,7 @@ public sealed class SessionsCommand : ISlashCommand
             return SlashCommandResult.Handled;
         }
 
-        var sessions = await _sessionManager.ListSessionsAsync(cancellationToken);
+        IReadOnlyList<SessionId> sessions = await _sessionManager.ListSessionsAsync(cancellationToken);
 
         if (sessions.Count == 0)
         {
@@ -33,12 +27,12 @@ public sealed class SessionsCommand : ISlashCommand
             return SlashCommandResult.Handled;
         }
 
-        var table = new Table()
+        Table table = new Table()
             .Border(TableBorder.Rounded)
             .BorderColor(LopenTheme.Muted)
             .AddColumn(new TableColumn(LopenTheme.Bold("Session ID", LopenTheme.Accent)));
 
-        foreach (var session in sessions)
+        foreach (SessionId session in sessions)
         {
             table.AddRow(Markup.Escape(session.ToString()));
         }

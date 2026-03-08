@@ -17,8 +17,8 @@ public class ModelCommandTests
     [Fact]
     public async Task Execute_NoArgs_ReturnsHandled()
     {
-        var command = CreateCommand();
-        var result = await command.ExecuteAsync("");
+        ModelCommand command = CreateCommand();
+        SlashCommandResult result = await command.ExecuteAsync("");
         Assert.Equal(SlashCommandResult.Handled, result);
     }
 
@@ -26,7 +26,7 @@ public class ModelCommandTests
     public async Task Execute_WithModel_SwitchesAllPhases()
     {
         var options = new LopenOptions();
-        var command = CreateCommand(options);
+        ModelCommand command = CreateCommand(options);
 
         await command.ExecuteAsync("gpt-4.1");
 
@@ -39,8 +39,8 @@ public class ModelCommandTests
     [Fact]
     public async Task Execute_WithModel_ReturnsHandled()
     {
-        var command = CreateCommand();
-        var result = await command.ExecuteAsync("gpt-4.1");
+        ModelCommand command = CreateCommand();
+        SlashCommandResult result = await command.ExecuteAsync("gpt-4.1");
         Assert.Equal(SlashCommandResult.Handled, result);
     }
 

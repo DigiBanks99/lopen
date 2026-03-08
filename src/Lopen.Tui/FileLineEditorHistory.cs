@@ -52,8 +52,8 @@ public sealed class FileLineEditorHistory : ILineEditorHistory
 
         try
         {
-            var lines = File.ReadAllLines(_filePath);
-            foreach (var line in lines)
+            string[] lines = File.ReadAllLines(_filePath);
+            foreach (string line in lines)
             {
                 if (!string.IsNullOrWhiteSpace(line))
                 {
@@ -75,7 +75,7 @@ public sealed class FileLineEditorHistory : ILineEditorHistory
     {
         try
         {
-            var directory = Path.GetDirectoryName(_filePath);
+            string? directory = Path.GetDirectoryName(_filePath);
             if (directory is not null && !Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);

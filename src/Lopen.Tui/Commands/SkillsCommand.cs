@@ -2,14 +2,9 @@ using Spectre.Console;
 
 namespace Lopen.Tui.Commands;
 
-public sealed class SkillsCommand : ISlashCommand
+public sealed class SkillsCommand(IAnsiConsole console) : ISlashCommand
 {
-    private readonly IAnsiConsole _console;
-
-    public SkillsCommand(IAnsiConsole console)
-    {
-        _console = console;
-    }
+    private readonly IAnsiConsole _console = console;
 
     public string Name => "skills";
     public string Description => "List available skills";

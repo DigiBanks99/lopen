@@ -7,7 +7,7 @@ public class StatsBarTests
     [Fact]
     public void Render_DoesNotThrow()
     {
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.No,
             Interactive = InteractionSupport.No,
@@ -21,7 +21,7 @@ public class StatsBarTests
     [Fact]
     public void Render_LargeTokenCount_DoesNotThrow()
     {
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.No,
             Interactive = InteractionSupport.No,

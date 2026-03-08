@@ -3,16 +3,10 @@ using Spectre.Console;
 
 namespace Lopen.Tui.Commands;
 
-public sealed class ResumeCommand : ISlashCommand
+public sealed class ResumeCommand(IAnsiConsole console, ISessionManager? sessionManager = null) : ISlashCommand
 {
-    private readonly IAnsiConsole _console;
-    private readonly ISessionManager? _sessionManager;
-
-    public ResumeCommand(IAnsiConsole console, ISessionManager? sessionManager = null)
-    {
-        _console = console;
-        _sessionManager = sessionManager;
-    }
+    private readonly IAnsiConsole _console = console;
+    private readonly ISessionManager? _sessionManager = sessionManager;
 
     public string Name => "resume";
     public string Description => "Resume last session";
@@ -25,7 +19,7 @@ public sealed class ResumeCommand : ISlashCommand
             return SlashCommandResult.Handled;
         }
 
-        var latestId = await _sessionManager.GetLatestSessionIdAsync(cancellationToken);
+        SessionId? latestId = await _sessionManager.GetLatestSessionIdAsync(cancellationToken);
         if (latestId is null)
         {
             _console.MarkupLine(LopenTheme.Styled("No incomplete sessions found.", LopenTheme.Muted));

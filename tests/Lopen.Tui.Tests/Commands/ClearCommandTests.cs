@@ -8,7 +8,7 @@ public class ClearCommandTests
     [Fact]
     public async Task Execute_ReturnsHandled()
     {
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.No,
             Interactive = InteractionSupport.No,
@@ -16,7 +16,7 @@ public class ClearCommandTests
         });
         var command = new ClearCommand(console);
 
-        var result = await command.ExecuteAsync("");
+        SlashCommandResult result = await command.ExecuteAsync("");
 
         Assert.Equal(SlashCommandResult.Handled, result);
     }

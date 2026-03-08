@@ -9,7 +9,7 @@ public class TogglePauseCommandTests
     [Fact]
     public void Execute_CallsToggleOnPauseController()
     {
-        var pauseController = Substitute.For<IPauseController>();
+        IPauseController pauseController = Substitute.For<IPauseController>();
         var command = new TogglePauseCommand(pauseController);
 
         LineBuffer buffer = new();
@@ -24,7 +24,7 @@ public class TogglePauseCommandTests
     [Fact]
     public void Execute_WithNonEmptyBuffer_StillCallsToggle()
     {
-        var pauseController = Substitute.For<IPauseController>();
+        IPauseController pauseController = Substitute.For<IPauseController>();
         var command = new TogglePauseCommand(pauseController);
 
         LineBuffer buffer = new();

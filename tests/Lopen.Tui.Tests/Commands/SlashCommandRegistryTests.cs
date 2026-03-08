@@ -15,11 +15,11 @@ public class SlashCommandRegistryTests
     [Fact]
     public async Task Dispatch_RoutesToCorrectCommand()
     {
-        var console = CreateTestConsole();
+        IAnsiConsole console = CreateTestConsole();
         var command = new TestCommand("help");
         var registry = new SlashCommandRegistry(console, [command]);
 
-        var result = await registry.DispatchAsync("/help");
+        SlashCommandResult result = await registry.DispatchAsync("/help");
 
         Assert.Equal(SlashCommandResult.Handled, result);
         Assert.True(command.WasExecuted);
@@ -28,10 +28,10 @@ public class SlashCommandRegistryTests
     [Fact]
     public async Task Dispatch_NonSlashInput_ReturnsNotACommand()
     {
-        var console = CreateTestConsole();
+        IAnsiConsole console = CreateTestConsole();
         var registry = new SlashCommandRegistry(console, []);
 
-        var result = await registry.DispatchAsync("hello world");
+        SlashCommandResult result = await registry.DispatchAsync("hello world");
 
         Assert.Equal(SlashCommandResult.NotACommand, result);
     }
@@ -39,10 +39,10 @@ public class SlashCommandRegistryTests
     [Fact]
     public async Task Dispatch_UnknownCommand_ReturnsHandled()
     {
-        var console = CreateTestConsole();
+        IAnsiConsole console = CreateTestConsole();
         var registry = new SlashCommandRegistry(console, []);
 
-        var result = await registry.DispatchAsync("/unknown");
+        SlashCommandResult result = await registry.DispatchAsync("/unknown");
 
         Assert.Equal(SlashCommandResult.Handled, result);
     }
@@ -50,7 +50,7 @@ public class SlashCommandRegistryTests
     [Fact]
     public async Task Dispatch_ParsesArguments()
     {
-        var console = CreateTestConsole();
+        IAnsiConsole console = CreateTestConsole();
         var command = new TestCommand("model");
         var registry = new SlashCommandRegistry(console, [command]);
 
@@ -62,11 +62,11 @@ public class SlashCommandRegistryTests
     [Fact]
     public async Task Dispatch_CaseInsensitive()
     {
-        var console = CreateTestConsole();
+        IAnsiConsole console = CreateTestConsole();
         var command = new TestCommand("help");
         var registry = new SlashCommandRegistry(console, [command]);
 
-        var result = await registry.DispatchAsync("/HELP");
+        SlashCommandResult result = await registry.DispatchAsync("/HELP");
 
         Assert.Equal(SlashCommandResult.Handled, result);
         Assert.True(command.WasExecuted);
@@ -75,7 +75,7 @@ public class SlashCommandRegistryTests
     [Fact]
     public void GetCommands_ReturnsAllRegistered()
     {
-        var console = CreateTestConsole();
+        IAnsiConsole console = CreateTestConsole();
         var commands = new ISlashCommand[]
         {
             new TestCommand("help"),
@@ -84,7 +84,7 @@ public class SlashCommandRegistryTests
         };
         var registry = new SlashCommandRegistry(console, commands);
 
-        var descriptors = registry.GetCommands();
+        IReadOnlyList<SlashCommandDescriptor> descriptors = registry.GetCommands();
 
         Assert.Equal(3, descriptors.Count);
         Assert.Contains(descriptors, d => d.Name == "help");
@@ -95,10 +95,10 @@ public class SlashCommandRegistryTests
     [Fact]
     public async Task Dispatch_EmptyInput_ReturnsNotACommand()
     {
-        var console = CreateTestConsole();
+        IAnsiConsole console = CreateTestConsole();
         var registry = new SlashCommandRegistry(console, []);
 
-        var result = await registry.DispatchAsync("");
+        SlashCommandResult result = await registry.DispatchAsync("");
 
         Assert.Equal(SlashCommandResult.NotACommand, result);
     }
@@ -106,11 +106,11 @@ public class SlashCommandRegistryTests
     [Fact]
     public async Task Dispatch_ExitCommand_ReturnsExitRequested()
     {
-        var console = CreateTestConsole();
+        IAnsiConsole console = CreateTestConsole();
         var command = new ExitReturningCommand("exit");
         var registry = new SlashCommandRegistry(console, [command]);
 
-        var result = await registry.DispatchAsync("/exit");
+        SlashCommandResult result = await registry.DispatchAsync("/exit");
 
         Assert.Equal(SlashCommandResult.ExitRequested, result);
     }

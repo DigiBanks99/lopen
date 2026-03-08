@@ -10,33 +10,22 @@ namespace Lopen.Tui;
 /// Runs the TUI REPL loop: renders overview, reads input, dispatches commands or enqueues prompts.
 /// Implements two-tier cancellation: per-turn CTS for step cancellation and global exit on double Ctrl+C.
 /// </summary>
-public sealed class TuiRunner
+public sealed class TuiRunner(
+    IAnsiConsole console,
+    LopenLineEditor lineEditor,
+    TuiUserPromptQueue promptQueue,
+    IOutputRenderer renderer,
+    SlashCommandRegistry commandRegistry,
+    IWorkflowOrchestrator? orchestrator = null,
+    WorkflowOverviewBlock? overviewBlock = null)
 {
-    private readonly IAnsiConsole _console;
-    private readonly LopenLineEditor _lineEditor;
-    private readonly TuiUserPromptQueue _promptQueue;
-    private readonly IOutputRenderer _renderer;
-    private readonly SlashCommandRegistry _commandRegistry;
-    private readonly IWorkflowOrchestrator? _orchestrator;
-    private readonly WorkflowOverviewBlock? _overviewBlock;
-
-    public TuiRunner(
-        IAnsiConsole console,
-        LopenLineEditor lineEditor,
-        TuiUserPromptQueue promptQueue,
-        IOutputRenderer renderer,
-        SlashCommandRegistry commandRegistry,
-        IWorkflowOrchestrator? orchestrator = null,
-        WorkflowOverviewBlock? overviewBlock = null)
-    {
-        _console = console ?? throw new ArgumentNullException(nameof(console));
-        _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
-        _promptQueue = promptQueue ?? throw new ArgumentNullException(nameof(promptQueue));
-        _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
-        _commandRegistry = commandRegistry ?? throw new ArgumentNullException(nameof(commandRegistry));
-        _orchestrator = orchestrator;
-        _overviewBlock = overviewBlock;
-    }
+    private readonly IAnsiConsole _console = console ?? throw new ArgumentNullException(nameof(console));
+    private readonly LopenLineEditor _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
+    private readonly TuiUserPromptQueue _promptQueue = promptQueue ?? throw new ArgumentNullException(nameof(promptQueue));
+    private readonly IOutputRenderer _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
+    private readonly SlashCommandRegistry _commandRegistry = commandRegistry ?? throw new ArgumentNullException(nameof(commandRegistry));
+    private readonly IWorkflowOrchestrator? _orchestrator = orchestrator;
+    private readonly WorkflowOverviewBlock? _overviewBlock = overviewBlock;
 
     /// <summary>
     /// Runs the TUI REPL loop until the user exits.
@@ -71,7 +60,7 @@ public sealed class TuiRunner
             // Dispatch slash commands
             if (input.StartsWith('/'))
             {
-                var result = await _commandRegistry.DispatchAsync(input, cancellationToken);
+                SlashCommandResult result = await _commandRegistry.DispatchAsync(input, cancellationToken);
                 if (result == SlashCommandResult.ExitRequested)
                     return 0;
                 continue;
@@ -91,9 +80,9 @@ public sealed class TuiRunner
     /// </summary>
     internal async Task ProcessTurnAsync(CancellationToken globalToken)
     {
-        using var turnCts = CancellationTokenSource.CreateLinkedTokenSource(globalToken);
+        using CancellationTokenSource turnCts = CancellationTokenSource.CreateLinkedTokenSource(globalToken);
 
-        using var sigintRegistration = PosixSignalRegistration.Create(
+        using PosixSignalRegistration sigintRegistration = PosixSignalRegistration.Create(
             PosixSignal.SIGINT,
             _ => HandleCancelDuringProcessing(turnCts));
 

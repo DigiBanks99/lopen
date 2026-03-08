@@ -7,29 +7,23 @@ namespace Lopen.Tui;
 /// TUI implementation of IOutputRenderer using Spectre.Console.
 /// Renders progress, errors, results, and prompts with themed styling.
 /// </summary>
-public sealed class TuiOutputRenderer : IOutputRenderer
+public sealed class TuiOutputRenderer(IAnsiConsole console, LopenLineEditor lineEditor) : IOutputRenderer
 {
-    private readonly IAnsiConsole _console;
-    private readonly LopenLineEditor _lineEditor;
-
-    public TuiOutputRenderer(IAnsiConsole console, LopenLineEditor lineEditor)
-    {
-        _console = console ?? throw new ArgumentNullException(nameof(console));
-        _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
-    }
+    private readonly IAnsiConsole _console = console ?? throw new ArgumentNullException(nameof(console));
+    private readonly LopenLineEditor _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
 
     public Task RenderProgressAsync(string phase, string step, double progress, CancellationToken cancellationToken = default)
     {
-        var phaseText = LopenTheme.Bold(phase, LopenTheme.Secondary);
-        var stepText = LopenTheme.Styled(step, LopenTheme.Muted);
-        var pct = progress >= 0 ? $" ({progress:P0})" : "";
+        string phaseText = LopenTheme.Bold(phase, LopenTheme.Secondary);
+        string stepText = LopenTheme.Styled(step, LopenTheme.Muted);
+        string pct = progress >= 0 ? $" ({progress:P0})" : "";
         _console.MarkupLine($"{LopenTheme.SectionMarker} {phaseText} {stepText}{Markup.Escape(pct)}");
         return Task.CompletedTask;
     }
 
     public Task RenderErrorAsync(string message, Exception? exception = null, CancellationToken cancellationToken = default)
     {
-        var panel = new Panel(Markup.Escape(message))
+        Panel panel = new Panel(Markup.Escape(message))
         {
             Border = BoxBorder.Rounded,
             BorderStyle = new Style(LopenTheme.Error),

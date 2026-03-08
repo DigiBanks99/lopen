@@ -6,24 +6,19 @@ namespace Lopen.Tui;
 /// <summary>
 /// Renders tool call execution with spinner, result, and timing.
 /// </summary>
-public sealed class ToolCallRenderer
+public sealed class ToolCallRenderer(IAnsiConsole console)
 {
-    private readonly IAnsiConsole _console;
-
-    public ToolCallRenderer(IAnsiConsole console)
-    {
-        _console = console ?? throw new ArgumentNullException(nameof(console));
-    }
+    private readonly IAnsiConsole _console = console ?? throw new ArgumentNullException(nameof(console));
 
     /// <summary>
     /// Renders a tool call with a spinner while executing, then shows result.
     /// </summary>
     public async Task<T> RenderToolCallAsync<T>(string toolName, Func<Task<T>> execute)
     {
-        var sw = Stopwatch.StartNew();
+        Stopwatch sw = Stopwatch.StartNew();
         try
         {
-            var result = await execute();
+            T? result = await execute();
             sw.Stop();
             RenderSuccess(toolName, sw.Elapsed);
             return result;
@@ -46,7 +41,7 @@ public sealed class ToolCallRenderer
 
         if (output is not null && !string.IsNullOrWhiteSpace(output))
         {
-            var panel = new Panel(Markup.Escape(TruncateOutput(output)))
+            Panel panel = new Panel(Markup.Escape(TruncateOutput(output)))
             {
                 Border = BoxBorder.Rounded,
                 BorderStyle = new Style(LopenTheme.Muted),
@@ -74,7 +69,7 @@ public sealed class ToolCallRenderer
 
     private static string TruncateOutput(string output, int maxLines = 20)
     {
-        var lines = output.Split('\n');
+        string[] lines = output.Split('\n');
         if (lines.Length <= maxLines)
             return output;
 

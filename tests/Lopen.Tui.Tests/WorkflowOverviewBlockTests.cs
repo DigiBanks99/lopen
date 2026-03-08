@@ -22,7 +22,7 @@ public class WorkflowOverviewBlockTests
     [Fact]
     public void MapPhases_RequirementGathering_AssessIsActive()
     {
-        var phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.RequirementGathering, false);
+        IReadOnlyList<DisplayPhase> phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.RequirementGathering, false);
 
         Assert.Equal(4, phases.Count);
         Assert.Equal(DisplayPhaseState.Active, phases[0].State);  // Assess
@@ -34,7 +34,7 @@ public class WorkflowOverviewBlockTests
     [Fact]
     public void MapPhases_Planning_PlanIsActive()
     {
-        var phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.Planning, false);
+        IReadOnlyList<DisplayPhase> phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.Planning, false);
 
         Assert.Equal(DisplayPhaseState.Complete, phases[0].State); // Assess
         Assert.Equal(DisplayPhaseState.Active, phases[1].State);   // Plan
@@ -45,7 +45,7 @@ public class WorkflowOverviewBlockTests
     [Fact]
     public void MapPhases_Building_BuildIsActive()
     {
-        var phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.Building, false);
+        IReadOnlyList<DisplayPhase> phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.Building, false);
 
         Assert.Equal(DisplayPhaseState.Complete, phases[0].State);
         Assert.Equal(DisplayPhaseState.Complete, phases[1].State);
@@ -56,7 +56,7 @@ public class WorkflowOverviewBlockTests
     [Fact]
     public void MapPhases_IsComplete_AllComplete()
     {
-        var phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.Building, true);
+        IReadOnlyList<DisplayPhase> phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.Building, true);
 
         Assert.All(phases, p => Assert.Equal(DisplayPhaseState.Complete, p.State));
     }
@@ -68,7 +68,7 @@ public class WorkflowOverviewBlockTests
     [InlineData("Verify")]
     public void MapPhases_AllFourPhasesNamed(string expectedName)
     {
-        var phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.RequirementGathering, false);
+        IReadOnlyList<DisplayPhase> phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.RequirementGathering, false);
         Assert.Contains(phases, p => p.Name == expectedName);
     }
 
@@ -103,7 +103,7 @@ public class WorkflowOverviewBlockTests
     [Fact]
     public void CountTasks_EmptyList_ReturnsZero()
     {
-        var (completed, total, active) = WorkflowOverviewBlock.CountTasks([]);
+        (int completed, int total, string? active) = WorkflowOverviewBlock.CountTasks([]);
         Assert.Equal(0, completed);
         Assert.Equal(0, total);
         Assert.Null(active);
@@ -119,7 +119,7 @@ public class WorkflowOverviewBlockTests
             new() { Id = "3", Name = "task-three", State = "Pending", NodeType = "task" },
         };
 
-        var (completed, total, active) = WorkflowOverviewBlock.CountTasks(tasks);
+        (int completed, int total, string? active) = WorkflowOverviewBlock.CountTasks(tasks);
         Assert.Equal(1, completed);
         Assert.Equal(3, total);
         Assert.Equal("task-two", active);
@@ -141,7 +141,7 @@ public class WorkflowOverviewBlockTests
             },
         };
 
-        var (completed, total, active) = WorkflowOverviewBlock.CountTasks(tasks);
+        (int completed, int total, string? active) = WorkflowOverviewBlock.CountTasks(tasks);
         Assert.Equal(1, completed);
         Assert.Equal(2, total);
         Assert.Equal("sub-task-2", active);
@@ -152,14 +152,14 @@ public class WorkflowOverviewBlockTests
     [Fact]
     public void Render_NoWorkflow_DoesNotThrow()
     {
-        var block = CreateBlock();
+        WorkflowOverviewBlock block = CreateBlock();
         block.Render(); // Should not throw
     }
 
     [Fact]
     public void Render_WithSessionState_DoesNotThrow()
     {
-        var block = CreateBlock();
+        WorkflowOverviewBlock block = CreateBlock();
         var state = new SessionState
         {
             SessionId = "test-session",
@@ -182,8 +182,8 @@ public class WorkflowOverviewBlockTests
 
     private static WorkflowOverviewBlock CreateBlock()
     {
-        var console = CreateTestConsole();
-        var options = Options.Create(new LopenOptions());
+        IAnsiConsole console = CreateTestConsole();
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions());
         return new WorkflowOverviewBlock(console, options);
     }
 
@@ -193,14 +193,14 @@ public class WorkflowOverviewBlockTests
     public void Render_WhenPaused_OutputContainsPausedIndicator()
     {
         var writer = new StringWriter();
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.No,
             Interactive = InteractionSupport.No,
             Out = new AnsiConsoleOutput(writer),
         });
-        var options = Options.Create(new LopenOptions());
-        var pauseController = Substitute.For<IPauseController>();
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions());
+        IPauseController pauseController = Substitute.For<IPauseController>();
         pauseController.IsPaused.Returns(true);
 
         var block = new WorkflowOverviewBlock(console, options, pauseController: pauseController);
@@ -214,14 +214,14 @@ public class WorkflowOverviewBlockTests
     public void Render_WhenNotPaused_OutputDoesNotContainPausedIndicator()
     {
         var writer = new StringWriter();
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.No,
             Interactive = InteractionSupport.No,
             Out = new AnsiConsoleOutput(writer),
         });
-        var options = Options.Create(new LopenOptions());
-        var pauseController = Substitute.For<IPauseController>();
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions());
+        IPauseController pauseController = Substitute.For<IPauseController>();
         pauseController.IsPaused.Returns(false);
 
         var block = new WorkflowOverviewBlock(console, options, pauseController: pauseController);
@@ -235,14 +235,14 @@ public class WorkflowOverviewBlockTests
     public void Render_PauseAndResume_IndicatorAppearsAndDisappears()
     {
         var writer = new StringWriter();
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.No,
             Interactive = InteractionSupport.No,
             Out = new AnsiConsoleOutput(writer),
         });
-        var options = Options.Create(new LopenOptions());
-        var pauseController = Substitute.For<IPauseController>();
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions());
+        IPauseController pauseController = Substitute.For<IPauseController>();
 
         var block = new WorkflowOverviewBlock(console, options, pauseController: pauseController);
 

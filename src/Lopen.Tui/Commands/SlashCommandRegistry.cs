@@ -13,7 +13,7 @@ public sealed class SlashCommandRegistry : ISlashCommandRegistry
     public SlashCommandRegistry(IAnsiConsole console, IEnumerable<ISlashCommand> commands)
     {
         _console = console ?? throw new ArgumentNullException(nameof(console));
-        foreach (var cmd in commands)
+        foreach (ISlashCommand cmd in commands)
         {
             _commands[cmd.Name] = cmd;
         }
@@ -35,12 +35,12 @@ public sealed class SlashCommandRegistry : ISlashCommandRegistry
         if (string.IsNullOrWhiteSpace(input) || !input.StartsWith('/'))
             return SlashCommandResult.NotACommand;
 
-        var trimmed = input[1..];
-        var spaceIndex = trimmed.IndexOf(' ');
-        var name = spaceIndex >= 0 ? trimmed[..spaceIndex] : trimmed;
-        var args = spaceIndex >= 0 ? trimmed[(spaceIndex + 1)..].Trim() : string.Empty;
+        string trimmed = input[1..];
+        int spaceIndex = trimmed.IndexOf(' ');
+        string name = spaceIndex >= 0 ? trimmed[..spaceIndex] : trimmed;
+        string args = spaceIndex >= 0 ? trimmed[(spaceIndex + 1)..].Trim() : string.Empty;
 
-        if (_commands.TryGetValue(name, out var command))
+        if (_commands.TryGetValue(name, out ISlashCommand? command))
         {
             return await command.ExecuteAsync(args, cancellationToken);
         }

@@ -1,3 +1,4 @@
+using System.Text;
 using Spectre.Console;
 
 namespace Lopen.Tui;
@@ -7,14 +8,9 @@ namespace Lopen.Tui;
 /// Handles code blocks, bullet lists, bold text, and regular text.
 /// All output uses Markup.Escape() to prevent injection.
 /// </summary>
-public sealed class ResponseRenderer
+public sealed class ResponseRenderer(IAnsiConsole console)
 {
-    private readonly IAnsiConsole _console;
-
-    public ResponseRenderer(IAnsiConsole console)
-    {
-        _console = console ?? throw new ArgumentNullException(nameof(console));
-    }
+    private readonly IAnsiConsole _console = console ?? throw new ArgumentNullException(nameof(console));
 
     /// <summary>
     /// Renders a complete response message with markdown formatting.
@@ -24,12 +20,12 @@ public sealed class ResponseRenderer
         if (string.IsNullOrEmpty(content))
             return;
 
-        var lines = content.Split('\n');
-        var inCodeBlock = false;
-        var codeBlockLines = new List<string>();
+        string[] lines = content.Split('\n');
+        bool inCodeBlock = false;
+        List<string> codeBlockLines = new List<string>();
         string? codeBlockLanguage = null;
 
-        foreach (var line in lines)
+        foreach (string line in lines)
         {
             if (line.TrimStart().StartsWith("```"))
             {
@@ -45,7 +41,7 @@ public sealed class ResponseRenderer
                 {
                     // Start code block
                     inCodeBlock = true;
-                    var lang = line.TrimStart()[3..].Trim();
+                    string lang = line.TrimStart()[3..].Trim();
                     codeBlockLanguage = string.IsNullOrEmpty(lang) ? null : lang;
                 }
                 continue;
@@ -60,7 +56,7 @@ public sealed class ResponseRenderer
             // Bullet list items
             if (line.TrimStart().StartsWith("- ") || line.TrimStart().StartsWith("* "))
             {
-                var bulletText = line.TrimStart()[2..];
+                string bulletText = line.TrimStart()[2..];
                 _console.MarkupLine($"  {LopenTheme.Styled(LopenTheme.Bullet, LopenTheme.Accent)} {RenderInlineMarkdown(bulletText)}");
                 continue;
             }
@@ -78,12 +74,12 @@ public sealed class ResponseRenderer
 
     private void RenderCodeBlock(List<string> lines, string? language)
     {
-        var code = string.Join("\n", lines);
-        var header = language is not null
+        string code = string.Join("\n", lines);
+        string header = language is not null
             ? LopenTheme.Bold(language, LopenTheme.Muted)
             : LopenTheme.Styled("Code", LopenTheme.Muted);
 
-        var panel = new Panel(Markup.Escape(code))
+        Panel panel = new Panel(Markup.Escape(code))
         {
             Border = BoxBorder.Rounded,
             BorderStyle = new Style(LopenTheme.Muted),
@@ -102,18 +98,18 @@ public sealed class ResponseRenderer
         if (string.IsNullOrEmpty(text))
             return string.Empty;
 
-        var result = new System.Text.StringBuilder();
-        var i = 0;
+        StringBuilder result = new System.Text.StringBuilder();
+        int i = 0;
 
         while (i < text.Length)
         {
             // Check for **bold**
             if (i + 1 < text.Length && text[i] == '*' && text[i + 1] == '*')
             {
-                var closeIndex = text.IndexOf("**", i + 2, StringComparison.Ordinal);
+                int closeIndex = text.IndexOf("**", i + 2, StringComparison.Ordinal);
                 if (closeIndex >= 0)
                 {
-                    var boldText = text[(i + 2)..closeIndex];
+                    string boldText = text[(i + 2)..closeIndex];
                     result.Append($"[bold]{Markup.Escape(boldText)}[/]");
                     i = closeIndex + 2;
                     continue;
