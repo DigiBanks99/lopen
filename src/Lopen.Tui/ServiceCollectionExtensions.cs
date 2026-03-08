@@ -4,6 +4,7 @@ using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Storage;
 using Lopen.Tui.Commands;
+using Lopen.Tui.Gallery;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -127,6 +128,15 @@ public static class ServiceCollectionExtensions
             ISessionManager? sessionManager = sp.GetService<ISessionManager>();
             return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator, overviewBlock, commandPalette, sessionManager);
         });
+
+        // Gallery components for visual testing (TUI-34 through TUI-36)
+        services.AddSingleton<IGalleryComponent, WorkflowOverviewGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, PromptInputGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, CommandPaletteGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, ResponseRenderingGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, SessionListGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, ErrorPanelGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, HelpOutputGalleryComponent>();
 
         return services;
     }
