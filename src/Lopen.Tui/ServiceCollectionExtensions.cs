@@ -87,6 +87,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TuiUserPromptQueue>();
         services.AddSingleton<IUserPromptQueue>(sp => sp.GetRequiredService<TuiUserPromptQueue>());
 
+        // Response rendering components
+        services.TryAddSingleton<ResponseRenderer>();
+        services.TryAddSingleton<ToolCallRenderer>();
+        services.TryAddSingleton<StatsBar>();
+
         // Workflow overview block
         services.TryAddSingleton<WorkflowOverviewBlock>(sp =>
         {
