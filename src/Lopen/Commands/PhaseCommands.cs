@@ -409,18 +409,14 @@ public static class PhaseCommands
     }
 
     /// <summary>
-    /// Resolves which session to use based on --resume/--no-resume flags.
+    /// Resolves which session to use based on --resume flag.
     /// Returns (sessionId, errorMessage). If sessionId is null and errorMessage is not null, an error occurred.
-    /// If both are null, no session and --no-resume was specified (start fresh).
+    /// If both are null, no session was resolved (start fresh).
     /// </summary>
     internal static async Task<(SessionId? sessionId, string? errorMessage)> ResolveSessionAsync(
         IServiceProvider services, ParseResult parseResult, CancellationToken cancellationToken)
     {
         string? resumeId = parseResult.GetValue(GlobalOptions.Resume);
-        if (string.IsNullOrEmpty(resumeId))
-        {
-            return (null, null);
-        }
 
         ISessionManager? sessionManager = services.GetService<ISessionManager>();
         if (sessionManager is null)

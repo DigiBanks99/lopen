@@ -79,7 +79,7 @@ public class GlobalOptionsTests
     }
 
     [Fact]
-    public void AddTo_RegistersAllEightOptions()
+    public void AddTo_RegistersAllSevenOptions()
     {
         var root = new RootCommand("test");
         GlobalOptions.AddTo(root);
@@ -88,7 +88,6 @@ public class GlobalOptionsTests
         Assert.Contains("--headless", optionNames);
         Assert.Contains("--prompt", optionNames);
         Assert.Contains("--resume", optionNames);
-        Assert.Contains("--no-resume", optionNames);
         Assert.Contains("--no-welcome", optionNames);
         Assert.Contains("--model", optionNames);
         Assert.Contains("--unattended", optionNames);
