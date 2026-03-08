@@ -10,14 +10,14 @@ namespace Lopen.Tui;
 public sealed class LopenLineEditor
 {
     private readonly LineEditor _editor;
+    private readonly ExitRequestedFlag _exitFlag = new();
 
     public LopenLineEditor(
         IAnsiConsole console,
         ILineEditorHistory history,
         ITextCompletion? completion = null)
     {
-        // RadLine's History property is read-only; inject via IServiceProvider
-        var provider = new HistoryServiceProvider(history);
+        var provider = new EditorServiceProvider(history, _exitFlag);
 
         _editor = new LineEditor(console, provider: provider)
         {
@@ -25,11 +25,19 @@ public sealed class LopenLineEditor
             MultiLine = true,
             Completion = completion,
         };
+
+        // Ctrl+D: exit on empty prompt
+        _editor.KeyBindings.Add(ConsoleKey.D, ConsoleModifiers.Control, () => new ExitOnEmptyCommand(_exitFlag));
     }
 
     /// <summary>
+    /// Indicates Ctrl+D was pressed on an empty prompt, signaling the TUI should exit.
+    /// </summary>
+    public bool ExitRequested => _exitFlag.IsSet;
+
+    /// <summary>
     /// Reads a line of input from the user.
-    /// Returns null if the user cancels (Ctrl+C).
+    /// Returns null if the user cancels (Ctrl+C) or exits (Ctrl+D on empty).
     /// </summary>
     public Task<string?> ReadLineAsync(CancellationToken cancellationToken = default)
     {
@@ -37,13 +45,23 @@ public sealed class LopenLineEditor
     }
 
     /// <summary>
-    /// Minimal service provider that resolves ILineEditorHistory for RadLine.
+    /// Shared flag set by <see cref="ExitOnEmptyCommand"/> to signal an exit request.
     /// </summary>
-    private sealed class HistoryServiceProvider(ILineEditorHistory history) : IServiceProvider
+    internal sealed class ExitRequestedFlag
+    {
+        public bool IsSet { get; set; }
+    }
+
+    /// <summary>
+    /// Minimal service provider that resolves ILineEditorHistory and ExitRequestedFlag for RadLine.
+    /// </summary>
+    private sealed class EditorServiceProvider(ILineEditorHistory history, ExitRequestedFlag exitFlag) : IServiceProvider
     {
         public object? GetService(Type serviceType)
         {
-            return serviceType == typeof(ILineEditorHistory) ? history : null;
+            if (serviceType == typeof(ILineEditorHistory)) return history;
+            if (serviceType == typeof(ExitRequestedFlag)) return exitFlag;
+            return null;
         }
     }
 }

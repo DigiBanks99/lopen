@@ -22,6 +22,22 @@ public class LopenLineEditorTests
     }
 
     [Fact]
+    public void ExitRequested_DefaultsFalse()
+    {
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(TextWriter.Null),
+        });
+        FileLineEditorHistory history = new(
+            Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
+
+        LopenLineEditor editor = new(console, history);
+        Assert.False(editor.ExitRequested);
+    }
+
+    [Fact]
     public void Constructor_WithCompletion_DoesNotThrow()
     {
         IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
