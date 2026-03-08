@@ -7,7 +7,6 @@ using Lopen.Configuration;
 using Lopen.Core;
 using Lopen.Llm;
 using Lopen.Storage;
-using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -27,7 +26,6 @@ public class CliIntegrationTests
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
-        builder.Services.AddLopenTui();
         var host = builder.Build();
 
         var output = new StringWriter();
@@ -42,7 +40,6 @@ public class CliIntegrationTests
         rootCommand.Add(PhaseCommands.CreateSpec(host.Services, output));
         rootCommand.Add(PhaseCommands.CreatePlan(host.Services, output));
         rootCommand.Add(PhaseCommands.CreateBuild(host.Services, output));
-        rootCommand.Add(TestCommand.Create(host.Services, output));
 
         return (new CommandLineConfiguration(rootCommand), output);
     }
@@ -58,7 +55,6 @@ public class CliIntegrationTests
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
-        builder.Services.AddLopenTui();
 
         using var host = builder.Build();
 
@@ -75,7 +71,6 @@ public class CliIntegrationTests
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
-        builder.Services.AddLopenTui();
 
         using var host = builder.Build();
 
@@ -104,13 +99,13 @@ public class CliIntegrationTests
     // ==================== AC-1: Root Command ====================
 
     [Fact]
-    public async Task RootCommand_NoArgs_ReturnsSuccess()
+    public async Task RootCommand_NoArgs_ReturnsTuiNotImplemented()
     {
         var (config, output) = CreateFullConfig();
 
         var exitCode = await config.InvokeAsync([]);
 
-        Assert.Equal(0, exitCode);
+        Assert.Equal(1, exitCode);
     }
 
     // ==================== Command Registration ====================

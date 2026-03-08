@@ -7,7 +7,6 @@ using Lopen.Core;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Storage;
-using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -367,7 +366,6 @@ public class FizzBuzzE2ETests : IDisposable
         builder.Services.AddLopenStorage(_tempDir);
         builder.Services.AddLopenCore(_tempDir);
         builder.Services.AddLopenLlm();
-        builder.Services.AddLopenTui();
 
         // Replace the real ILlmService with our scripted fake
         var descriptor = builder.Services.FirstOrDefault(d => d.ServiceType == typeof(ILlmService));

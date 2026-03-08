@@ -6,7 +6,6 @@ using Lopen.Core;
 using Lopen.Llm;
 using Lopen.Otel;
 using Lopen.Storage;
-using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -24,14 +23,6 @@ if (projectRoot is not null)
     builder.Services.AddSingleton<ISessionStateSaver, Lopen.SessionStateSaverBridge>();
 }
 builder.Services.AddLopenLlm();
-builder.Services.AddLopenTui();
-builder.Services.UseRealTui();
-builder.Services.AddTopPanelDataProvider();
-builder.Services.AddContextPanelDataProvider();
-builder.Services.AddActivityPanelDataProvider();
-builder.Services.AddUserPromptQueue();
-builder.Services.AddSessionDetector();
-builder.Services.AddTuiOutputRenderer();
 builder.Services.AddLopenOtel(builder.Configuration);
 
 using IHost host = builder.Build();
@@ -48,7 +39,6 @@ rootCommand.Add(RevertCommand.Create(host.Services));
 rootCommand.Add(PhaseCommands.CreateSpec(host.Services));
 rootCommand.Add(PhaseCommands.CreatePlan(host.Services));
 rootCommand.Add(PhaseCommands.CreateBuild(host.Services));
-rootCommand.Add(TestCommand.Create(host.Services));
 
 CommandLineConfiguration config = new(rootCommand);
 

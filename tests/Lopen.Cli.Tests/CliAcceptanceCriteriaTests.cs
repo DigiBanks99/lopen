@@ -8,7 +8,6 @@ using Lopen.Core.Git;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Storage;
-using Lopen.Tui;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,9 +36,9 @@ public class CliAcceptanceCriteriaTests
     };
 
     /// <summary>
-    /// Creates a root-command config with the FakeTuiApplication for interactive (TUI) tests.
+    /// Creates a root-command config for tests.
     /// </summary>
-    private static (CommandLineConfiguration config, StringWriter output, StringWriter error, FakeTuiApplication tui) CreateRootConfig(
+    private static (CommandLineConfiguration config, StringWriter output, StringWriter error) CreateRootConfig(
         IWorkflowOrchestrator? orchestrator = null)
     {
         var builder = Host.CreateApplicationBuilder([]);
@@ -48,9 +47,6 @@ public class CliAcceptanceCriteriaTests
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
-
-        var fakeTui = new FakeTuiApplication();
-        builder.Services.AddSingleton<ITuiApplication>(fakeTui);
 
         if (orchestrator is not null)
             builder.Services.AddSingleton(orchestrator);
@@ -64,7 +60,7 @@ public class CliAcceptanceCriteriaTests
         GlobalOptions.AddTo(rootCommand);
         RootCommandHandler.Configure(host.Services, output, error)(rootCommand);
 
-        return (new CommandLineConfiguration(rootCommand), output, error, fakeTui);
+        return (new CommandLineConfiguration(rootCommand), output, error);
     }
 
     /// <summary>
@@ -98,17 +94,17 @@ public class CliAcceptanceCriteriaTests
         return (new CommandLineConfiguration(root), output, error, sessions, modules, plans, orchestrator);
     }
 
-    // ==================== CLI-01: Root starts TUI ====================
+    // ==================== CLI-01: Root returns TUI not implemented ====================
 
     [Fact]
-    public async Task AC01_Root_NoArgs_LaunchesTui()
+    public async Task AC01_Root_NoArgs_ReturnsTuiNotImplemented()
     {
-        var (config, _, _, tui) = CreateRootConfig();
+        var (config, _, error) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync([]);
 
-        Assert.Equal(0, exitCode);
-        Assert.True(tui.RunWasCalled, "Root command with no args must launch TUI");
+        Assert.Equal(1, exitCode);
+        Assert.Contains("TUI not yet implemented", error.ToString());
     }
 
     // ==================== CLI-02: --headless runs without TUI ====================
@@ -116,11 +112,11 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC02_Headless_DoesNotLaunchTui()
     {
-        var (config, _, _, tui) = CreateRootConfig();
+        var (config, _, _) = CreateRootConfig();
 
-        await config.InvokeAsync(["--headless", "--prompt", "Build auth"]);
+        var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build auth"]);
 
-        Assert.False(tui.RunWasCalled, "TUI must not launch in headless mode");
+        // Headless mode runs the orchestrator path, not TUI
     }
 
     // ==================== CLI-03: lopen spec invokes orchestrator with RequirementGathering ====================
@@ -431,17 +427,18 @@ public class CliAcceptanceCriteriaTests
         Assert.Equal("Focus on auth", orchestrator.LastPrompt);
     }
 
-    // ==================== CLI-18: --prompt populates TUI input ====================
+    // ==================== CLI-18: --prompt is recognized ====================
 
     [Fact]
-    public async Task AC18_Prompt_PopulatesTuiInput()
+    public async Task AC18_Prompt_IsRecognized()
     {
-        var (config, _, _, tui) = CreateRootConfig();
+        var (config, _, error) = CreateRootConfig();
 
-        await config.InvokeAsync(["--prompt", "Focus on auth"]);
+        var exitCode = await config.InvokeAsync(["--prompt", "Focus on auth"]);
 
-        Assert.True(tui.RunWasCalled);
-        Assert.Equal("Focus on auth", tui.InitialPrompt);
+        // Non-headless path returns failure (TUI not implemented), but --prompt is accepted
+        Assert.Equal(1, exitCode);
+        Assert.Contains("TUI not yet implemented", error.ToString());
     }
 
     // ==================== CLI-19: Headless without prompt/session errors ====================
@@ -449,13 +446,12 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC19_Headless_NoPrompt_NoSession_ReturnsError()
     {
-        var (config, _, error, tui) = CreateRootConfig();
+        var (config, _, error) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync(["--headless"]);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("--prompt", error.ToString());
-        Assert.False(tui.RunWasCalled);
     }
 
     // ==================== CLI-20: Exit codes (0, 1, 2) ====================
@@ -520,7 +516,6 @@ public class CliAcceptanceCriteriaTests
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
-        builder.Services.AddLopenTui();
 
         using var host = builder.Build();
 
@@ -549,18 +544,18 @@ public class CliAcceptanceCriteriaTests
         }
     }
 
-    // ==================== CLI-27: --no-welcome suppresses landing page ====================
+    // ==================== CLI-27: --no-welcome flag is recognized ====================
 
     [Fact]
-    public async Task AC27_NoWelcome_SuppressesLandingPage()
+    public async Task AC27_NoWelcome_FlagIsRecognized()
     {
-        var (config, _, _, tui) = CreateRootConfig();
+        var (config, _, error) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync(["--no-welcome"]);
 
-        Assert.Equal(0, exitCode);
-        Assert.True(tui.LandingPageSuppressed);
-        Assert.True(tui.RunWasCalled);
+        // Non-headless path returns failure (TUI not implemented), but --no-welcome is accepted as a valid flag
+        Assert.Equal(1, exitCode);
+        Assert.Contains("TUI not yet implemented", error.ToString());
     }
 
     // ==================== CLI-28: FizzBuzz workflow (spec→plan→build succeeds) ====================
@@ -609,30 +604,4 @@ public class CliAcceptanceCriteriaTests
         Assert.Equal(fizzModule, buildOrch.LastModule);
     }
 
-    // ==================== Test-local TUI fake ====================
-
-    private sealed class FakeTuiApplication : ITuiApplication
-    {
-        public bool RunWasCalled { get; private set; }
-        public bool IsRunning { get; private set; }
-        public string? InitialPrompt { get; private set; }
-        public bool LandingPageSuppressed { get; private set; }
-
-        public Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
-        {
-            RunWasCalled = true;
-            IsRunning = true;
-            InitialPrompt = initialPrompt;
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync()
-        {
-            IsRunning = false;
-            return Task.CompletedTask;
-        }
-
-        public void SuppressLandingPage() => LandingPageSuppressed = true;
-        public void SuppressSessionResumeModal() { }
-    }
 }

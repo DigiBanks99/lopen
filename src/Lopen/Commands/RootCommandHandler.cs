@@ -3,14 +3,12 @@ using System.Diagnostics;
 using Lopen.Core.Workflow;
 using Lopen.Otel;
 using Lopen.Storage;
-using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Lopen.Commands;
 
 /// <summary>
-/// Root command handler: launches the TUI with full workflow and session resume offer,
-/// or runs headless if --headless is specified.
+/// Root command handler: launches headless workflow or reports TUI not yet implemented.
 /// </summary>
 public static class RootCommandHandler
 {
@@ -83,19 +81,8 @@ public static class RootCommandHandler
                             await stdout.WriteLineAsync($"Resuming session: {sessionId}");
                         }
 
-                        ITuiApplication app = services.GetRequiredService<ITuiApplication>();
-                        string? prompt = parseResult.GetValue(GlobalOptions.Prompt);
-                        if (parseResult.GetValue(GlobalOptions.NoWelcome))
-                        {
-                            app.SuppressLandingPage();
-                        }
-                        string? resumeId = parseResult.GetValue(GlobalOptions.Resume);
-                        if (!string.IsNullOrEmpty(resumeId))
-                        {
-                            app.SuppressSessionResumeModal();
-                        }
-                        await app.RunAsync(prompt, cancellationToken);
-                        exitCode = ExitCodes.Success;
+                        await stderr.WriteLineAsync("TUI not yet implemented. Use --headless mode.");
+                        exitCode = ExitCodes.Failure;
                     }
 
                     SpanFactory.SetCommandExitCode(activity, exitCode);

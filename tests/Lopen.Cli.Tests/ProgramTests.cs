@@ -6,7 +6,6 @@ using Lopen.Core;
 using Lopen.Llm;
 using Lopen.Otel;
 using Lopen.Storage;
-using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -26,14 +25,6 @@ public class ProgramTests : IDisposable
         builder.Services.AddLopenCore(null);
         builder.Services.AddLopenStorage(null);
         builder.Services.AddLopenLlm();
-        builder.Services.AddLopenTui();
-        builder.Services.UseRealTui();
-        builder.Services.AddTopPanelDataProvider();
-        builder.Services.AddContextPanelDataProvider();
-        builder.Services.AddActivityPanelDataProvider();
-        builder.Services.AddUserPromptQueue();
-        builder.Services.AddSessionDetector();
-        builder.Services.AddTuiOutputRenderer();
         builder.Services.AddLopenOtel(builder.Configuration);
         _host = builder.Build();
         _services = _host.Services;
@@ -144,13 +135,6 @@ public class ProgramTests : IDisposable
         Assert.Equal("build", build.Name);
     }
 
-    [Fact]
-    public void TestCommand_CreatesSuccessfully()
-    {
-        var cmd = TestCommand.Create(_services);
-        Assert.Equal("test", cmd.Name);
-    }
-
     // --- Full command tree ---
 
     [Fact]
@@ -166,7 +150,6 @@ public class ProgramTests : IDisposable
         Assert.Contains("spec", names);
         Assert.Contains("plan", names);
         Assert.Contains("build", names);
-        Assert.Contains("test", names);
     }
 
     // --- Help invocation ---
@@ -208,7 +191,6 @@ public class ProgramTests : IDisposable
         root.Add(PhaseCommands.CreateSpec(_services));
         root.Add(PhaseCommands.CreatePlan(_services));
         root.Add(PhaseCommands.CreateBuild(_services));
-        root.Add(TestCommand.Create(_services));
         return root;
     }
 }
