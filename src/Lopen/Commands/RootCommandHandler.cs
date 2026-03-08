@@ -84,7 +84,7 @@ public static class RootCommandHandler
                         var tuiRunner = services.GetService<Lopen.Tui.TuiRunner>();
                         if (tuiRunner is not null)
                         {
-                            exitCode = await tuiRunner.RunAsync(cancellationToken);
+                            exitCode = await tuiRunner.RunAsync(sessionId, cancellationToken);
                         }
                         else
                         {

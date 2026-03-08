@@ -46,7 +46,8 @@ public static class ServiceCollectionExtensions
             sp.GetService<ISessionManager>()));
         services.AddSingleton<ISlashCommand>(sp => new ResumeCommand(
             sp.GetRequiredService<IAnsiConsole>(),
-            sp.GetService<ISessionManager>()));
+            sp.GetService<ISessionManager>(),
+            sp.GetService<IWorkflowOrchestrator>()));
         services.AddSingleton<ISlashCommand, ClearCommand>();
         services.AddSingleton<ISlashCommand, ExitCommand>();
 
@@ -123,7 +124,8 @@ public static class ServiceCollectionExtensions
             IWorkflowOrchestrator? orchestrator = sp.GetService<IWorkflowOrchestrator>();
             WorkflowOverviewBlock? overviewBlock = sp.GetService<WorkflowOverviewBlock>();
             CommandPalette? commandPalette = sp.GetService<CommandPalette>();
-            return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator, overviewBlock, commandPalette);
+            ISessionManager? sessionManager = sp.GetService<ISessionManager>();
+            return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator, overviewBlock, commandPalette, sessionManager);
         });
 
         return services;

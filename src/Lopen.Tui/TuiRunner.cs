@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Lopen.Core;
 using Lopen.Core.Workflow;
+using Lopen.Storage;
 using Lopen.Tui.Commands;
 using Spectre.Console;
 
@@ -18,7 +19,8 @@ public sealed class TuiRunner(
     SlashCommandRegistry commandRegistry,
     IWorkflowOrchestrator? orchestrator = null,
     WorkflowOverviewBlock? overviewBlock = null,
-    CommandPalette? commandPalette = null)
+    CommandPalette? commandPalette = null,
+    ISessionManager? sessionManager = null)
 {
     private readonly IAnsiConsole _console = console ?? throw new ArgumentNullException(nameof(console));
     private readonly LopenLineEditor _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
@@ -28,12 +30,15 @@ public sealed class TuiRunner(
     private readonly IWorkflowOrchestrator? _orchestrator = orchestrator;
     private readonly WorkflowOverviewBlock? _overviewBlock = overviewBlock;
     private readonly CommandPalette? _commandPalette = commandPalette;
+    private readonly ISessionManager? _sessionManager = sessionManager;
 
     /// <summary>
     /// Runs the TUI REPL loop until the user exits.
     /// </summary>
-    public async Task<int> RunAsync(CancellationToken cancellationToken = default)
+    public async Task<int> RunAsync(SessionId? initialSessionId = null, CancellationToken cancellationToken = default)
     {
+        await HandleStartupSessionDetectionAsync(initialSessionId, cancellationToken);
+
         while (!cancellationToken.IsCancellationRequested)
         {
             _overviewBlock?.Render();
@@ -94,6 +99,45 @@ public sealed class TuiRunner(
     }
 
     /// <summary>
+    /// Detects open sessions on startup and either auto-resumes or shows a hint line.
+    /// </summary>
+    internal async Task HandleStartupSessionDetectionAsync(SessionId? initialSessionId, CancellationToken cancellationToken)
+    {
+        // Auto-resume: --resume flag resolved a session before TuiRunner started
+        if (initialSessionId is not null && _orchestrator is not null && _sessionManager is not null)
+        {
+            SessionState? state = await _sessionManager.LoadSessionStateAsync(initialSessionId, cancellationToken);
+            if (state is not null)
+            {
+                await _orchestrator.InitializeAsync(state.Module, initialSessionId, cancellationToken);
+                _console.MarkupLine(LopenTheme.Styled(
+                    $"{LopenTheme.InfoHint} Resuming session {initialSessionId} at {state.Phase}/{state.Step}",
+                    LopenTheme.Accent));
+            }
+
+            return;
+        }
+
+        // Hint line: notify user about incomplete sessions
+        if (_sessionManager is not null)
+        {
+            IReadOnlyList<SessionId> sessions = await _sessionManager.ListSessionsAsync(cancellationToken);
+
+            foreach (SessionId session in sessions)
+            {
+                SessionState? state = await _sessionManager.LoadSessionStateAsync(session, cancellationToken);
+                if (state is not null && !state.IsComplete)
+                {
+                    _console.MarkupLine(LopenTheme.Styled(
+                        $"{LopenTheme.InfoHint} Open session found. Use /resume to continue or /sessions to browse.",
+                        LopenTheme.Accent));
+                    break;
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Shows the command palette and dispatches the selected command.
     /// Returns true if the selected command requests exit.
     /// </summary>
@@ -140,7 +184,7 @@ public sealed class TuiRunner(
         {
             if (_orchestrator is not null)
             {
-                await _orchestrator.RunStepAsync(string.Empty, cancellationToken: turnCts.Token);
+                await _orchestrator.RunStepAsync(_orchestrator.ActiveModule ?? string.Empty, cancellationToken: turnCts.Token);
             }
             else
             {
