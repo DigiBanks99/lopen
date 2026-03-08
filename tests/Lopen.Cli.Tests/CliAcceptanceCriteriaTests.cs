@@ -97,14 +97,14 @@ public class CliAcceptanceCriteriaTests
     // ==================== CLI-01: Root returns TUI not implemented ====================
 
     [Fact]
-    public async Task AC01_Root_NoArgs_ReturnsTuiNotImplemented()
+    public async Task AC01_Root_NoArgs_ReturnsTuiNotAvailable()
     {
         var (config, _, error) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync([]);
 
         Assert.Equal(1, exitCode);
-        Assert.Contains("TUI not yet implemented", error.ToString());
+        Assert.Contains("TUI not available", error.ToString());
     }
 
     // ==================== CLI-02: --headless runs without TUI ====================
@@ -436,9 +436,9 @@ public class CliAcceptanceCriteriaTests
 
         var exitCode = await config.InvokeAsync(["--prompt", "Focus on auth"]);
 
-        // Non-headless path returns failure (TUI not implemented), but --prompt is accepted
+        // Non-headless path returns failure (TUI not available), but --prompt is accepted
         Assert.Equal(1, exitCode);
-        Assert.Contains("TUI not yet implemented", error.ToString());
+        Assert.Contains("TUI not available", error.ToString());
     }
 
     // ==================== CLI-19: Headless without prompt/session errors ====================
@@ -553,9 +553,9 @@ public class CliAcceptanceCriteriaTests
 
         var exitCode = await config.InvokeAsync(["--no-welcome"]);
 
-        // Non-headless path returns failure (TUI not implemented), but --no-welcome is accepted as a valid flag
+        // Non-headless path returns failure (TUI not available), but --no-welcome is accepted as a valid flag
         Assert.Equal(1, exitCode);
-        Assert.Contains("TUI not yet implemented", error.ToString());
+        Assert.Contains("TUI not available", error.ToString());
     }
 
     // ==================== CLI-28: FizzBuzz workflow (spec→plan→build succeeds) ====================

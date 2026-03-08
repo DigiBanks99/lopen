@@ -21,14 +21,14 @@ public class FileLineEditorHistoryTests : IDisposable
     [Fact]
     public void NewHistory_HasZeroCount()
     {
-        var history = new FileLineEditorHistory(_historyPath);
+        FileLineEditorHistory history = new(_historyPath);
         Assert.Equal(0, history.Count);
     }
 
     [Fact]
     public void Add_IncrementsCount()
     {
-        var history = new FileLineEditorHistory(_historyPath);
+        FileLineEditorHistory history = new(_historyPath);
         history.Add("test command");
         Assert.Equal(1, history.Count);
     }
@@ -36,7 +36,7 @@ public class FileLineEditorHistoryTests : IDisposable
     [Fact]
     public void Add_EmptyString_IsIgnored()
     {
-        var history = new FileLineEditorHistory(_historyPath);
+        FileLineEditorHistory history = new(_historyPath);
         history.Add("");
         history.Add("   ");
         Assert.Equal(0, history.Count);
@@ -45,7 +45,7 @@ public class FileLineEditorHistoryTests : IDisposable
     [Fact]
     public void Add_ConsecutiveDuplicate_IsIgnored()
     {
-        var history = new FileLineEditorHistory(_historyPath);
+        FileLineEditorHistory history = new(_historyPath);
         history.Add("same");
         history.Add("same");
         history.Add("same");
@@ -55,7 +55,7 @@ public class FileLineEditorHistoryTests : IDisposable
     [Fact]
     public void Add_NonConsecutiveDuplicate_IsKept()
     {
-        var history = new FileLineEditorHistory(_historyPath);
+        FileLineEditorHistory history = new(_historyPath);
         history.Add("first");
         history.Add("second");
         history.Add("first");
@@ -65,11 +65,11 @@ public class FileLineEditorHistoryTests : IDisposable
     [Fact]
     public void History_PersistsAcrossInstances()
     {
-        var history1 = new FileLineEditorHistory(_historyPath);
+        FileLineEditorHistory history1 = new(_historyPath);
         history1.Add("command one");
         history1.Add("command two");
 
-        var history2 = new FileLineEditorHistory(_historyPath);
+        FileLineEditorHistory history2 = new(_historyPath);
         Assert.Equal(2, history2.Count);
     }
 
@@ -77,7 +77,7 @@ public class FileLineEditorHistoryTests : IDisposable
     public void History_CreatesMissingDirectory()
     {
         var nestedPath = Path.Combine(_tempDir, "sub", "dir", "history.txt");
-        var history = new FileLineEditorHistory(nestedPath);
+        FileLineEditorHistory history = new(nestedPath);
         history.Add("test");
         Assert.True(File.Exists(nestedPath));
     }
@@ -88,7 +88,7 @@ public class FileLineEditorHistoryTests : IDisposable
         // Write a file with consecutive duplicates
         File.WriteAllLines(_historyPath, ["a", "a", "b", "b", "a"]);
 
-        var history = new FileLineEditorHistory(_historyPath);
+        FileLineEditorHistory history = new(_historyPath);
         Assert.Equal(3, history.Count); // a, b, a (deduped consecutives)
     }
 

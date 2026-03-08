@@ -45,17 +45,17 @@ public class RootCommandTests
         return (new CommandLineConfiguration(rootCommand), output, error);
     }
 
-    // ==================== Non-headless mode (TUI not yet implemented) ====================
+    // ==================== Non-headless mode (TUI not available) ====================
 
     [Fact]
-    public async Task RootCommand_NoArgs_ReturnsTuiNotImplemented()
+    public async Task RootCommand_NoArgs_ReturnsTuiNotAvailable()
     {
         var (config, _, error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync([]);
 
         Assert.Equal(1, exitCode);
-        Assert.Contains("TUI not yet implemented", error.ToString());
+        Assert.Contains("TUI not available", error.ToString());
     }
 
     // ==================== AC-2: Headless mode ====================
@@ -120,14 +120,14 @@ public class RootCommandTests
     }
 
     [Fact]
-    public async Task RootCommand_Resume_NoSessionManager_ReturnsTuiNotImplemented()
+    public async Task RootCommand_Resume_NoSessionManager_ReturnsTuiNotAvailable()
     {
         var (config, output, error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["--resume", "bad-id"]);
 
         Assert.Equal(1, exitCode);
-        Assert.Contains("TUI not yet implemented", error.ToString());
+        Assert.Contains("TUI not available", error.ToString());
     }
 
     [Fact]

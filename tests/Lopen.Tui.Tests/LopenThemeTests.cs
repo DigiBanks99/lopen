@@ -1,5 +1,6 @@
 using Spectre.Console;
 using Lopen.Tui;
+using System.Reflection;
 
 namespace Lopen.Tui.Tests;
 
@@ -18,7 +19,7 @@ public class LopenThemeTests
     [InlineData(nameof(LopenTheme.Text))]
     public void SemanticColour_FieldExists(string fieldName)
     {
-        var field = typeof(LopenTheme).GetField(fieldName,
+        FieldInfo? field = typeof(LopenTheme).GetField(fieldName,
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
         Assert.NotNull(field);
         Assert.Equal(typeof(Color), field!.FieldType);
@@ -35,16 +36,16 @@ public class LopenThemeTests
     [InlineData(nameof(LopenTheme.Text), "white")]
     public void SemanticColour_MapsToExpectedAnsiColour(string fieldName, string expectedMarkup)
     {
-        var field = typeof(LopenTheme).GetField(fieldName,
+        FieldInfo? field = typeof(LopenTheme).GetField(fieldName,
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-        var color = (Color)field!.GetValue(null)!;
+        Color color = (Color)field!.GetValue(null)!;
         Assert.Equal(expectedMarkup, color.ToMarkup());
     }
 
     [Fact]
     public void AllEightSemanticColoursAreDefined()
     {
-        var colorFields = typeof(LopenTheme)
+        List<FieldInfo> colorFields = typeof(LopenTheme)
             .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
             .Where(f => f.FieldType == typeof(Color))
             .ToList();
@@ -136,7 +137,7 @@ public class LopenThemeTests
     [Fact]
     public void AllEightStylesAreDefined()
     {
-        var styleFields = typeof(LopenTheme)
+        List<FieldInfo> styleFields = typeof(LopenTheme)
             .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
             .Where(f => f.FieldType == typeof(Style))
             .ToList();
@@ -159,7 +160,7 @@ public class LopenThemeTests
     [InlineData(nameof(LopenTheme.InfoHint), "ℹ")]
     public void Glyph_HasExpectedUnicodeCharacter(string fieldName, string expectedChar)
     {
-        var field = typeof(LopenTheme).GetField(fieldName,
+        FieldInfo? field = typeof(LopenTheme).GetField(fieldName,
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
         Assert.NotNull(field);
         var value = (string)field!.GetValue(null)!;
@@ -169,7 +170,7 @@ public class LopenThemeTests
     [Fact]
     public void AllTenGlyphsAreDefined()
     {
-        var glyphFields = typeof(LopenTheme)
+        List<FieldInfo> glyphFields = typeof(LopenTheme)
             .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
             .Where(f => f.FieldType == typeof(string) && f.IsLiteral)
             .ToList();
@@ -209,7 +210,7 @@ public class LopenThemeTests
     {
         var result = LopenTheme.Styled("hello world", LopenTheme.Primary);
         // Should not throw - validates markup is well-formed
-        var markup = new Markup(result);
+        Markup markup = new(result);
         Assert.NotNull(markup);
     }
 
@@ -232,7 +233,7 @@ public class LopenThemeTests
     public void Bold_CanBeParsedBySpectre()
     {
         var result = LopenTheme.Bold("test [markup] text", LopenTheme.Error);
-        var markup = new Markup(result);
+        Markup markup = new(result);
         Assert.NotNull(markup);
     }
 
@@ -248,7 +249,7 @@ public class LopenThemeTests
     public void Dim_CanBeParsedBySpectre()
     {
         var result = LopenTheme.Dim("test [markup] text", LopenTheme.Muted);
-        var markup = new Markup(result);
+        Markup markup = new(result);
         Assert.NotNull(markup);
     }
 }

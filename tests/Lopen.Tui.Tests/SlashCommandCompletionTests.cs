@@ -4,7 +4,7 @@ public class SlashCommandCompletionTests
 {
     private static SlashCommandCompletion CreateCompletion(params (string Name, string Desc)[] commands)
     {
-        var registry = new TestSlashCommandRegistry(
+        TestSlashCommandRegistry registry = new(
             commands.Select(c => new SlashCommandDescriptor(c.Name, c.Desc)).ToList());
         return new SlashCommandCompletion(registry);
     }
@@ -12,11 +12,11 @@ public class SlashCommandCompletionTests
     [Fact]
     public void SlashH_SuggestsHelp()
     {
-        var completion = CreateCompletion(
+        SlashCommandCompletion completion = CreateCompletion(
             ("help", "Show help"),
             ("model", "Switch model"));
 
-        var results = completion.GetCompletions("/", "h", "");
+        IEnumerable<string>? results = completion.GetCompletions("/", "h", "");
         Assert.NotNull(results);
         Assert.Contains("/help", results!);
     }
@@ -24,11 +24,11 @@ public class SlashCommandCompletionTests
     [Fact]
     public void SlashM_SuggestsModel()
     {
-        var completion = CreateCompletion(
+        SlashCommandCompletion completion = CreateCompletion(
             ("help", "Show help"),
             ("model", "Switch model"));
 
-        var results = completion.GetCompletions("/", "m", "");
+        IEnumerable<string>? results = completion.GetCompletions("/", "m", "");
         Assert.NotNull(results);
         Assert.Contains("/model", results!);
     }
@@ -36,22 +36,22 @@ public class SlashCommandCompletionTests
     [Fact]
     public void NonSlashInput_ReturnsNull()
     {
-        var completion = CreateCompletion(
+        SlashCommandCompletion completion = CreateCompletion(
             ("help", "Show help"));
 
-        var results = completion.GetCompletions("", "hello", "");
+        IEnumerable<string>? results = completion.GetCompletions("", "hello", "");
         Assert.Null(results);
     }
 
     [Fact]
     public void SlashAlone_SuggestsAllCommands()
     {
-        var completion = CreateCompletion(
+        SlashCommandCompletion completion = CreateCompletion(
             ("help", "Show help"),
             ("model", "Switch model"),
             ("exit", "Exit lopen"));
 
-        var results = completion.GetCompletions("", "/", "");
+        IEnumerable<string>? results = completion.GetCompletions("", "/", "");
         Assert.NotNull(results);
         Assert.Equal(3, results!.Count());
     }
@@ -59,10 +59,10 @@ public class SlashCommandCompletionTests
     [Fact]
     public void NoMatch_ReturnsNull()
     {
-        var completion = CreateCompletion(
+        SlashCommandCompletion completion = CreateCompletion(
             ("help", "Show help"));
 
-        var results = completion.GetCompletions("/", "xyz", "");
+        IEnumerable<string>? results = completion.GetCompletions("/", "xyz", "");
         Assert.Null(results);
     }
 

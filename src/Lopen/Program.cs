@@ -6,6 +6,7 @@ using Lopen.Core;
 using Lopen.Llm;
 using Lopen.Otel;
 using Lopen.Storage;
+using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -13,9 +14,20 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 var projectRoot = Lopen.ProjectRootDiscovery.FindProjectRoot(Directory.GetCurrentDirectory());
 
+// Check if running in headless mode before registering services
+bool isHeadless = args.Contains("--headless") || args.Contains("-q");
+
 builder.Services.AddLopenConfiguration();
 builder.Services.AddLopenAuth();
 builder.Services.AddSingleton<IGitHubTokenProvider, Lopen.AuthBridgeTokenProvider>();
+
+// Register TUI before Core so TuiOutputRenderer takes precedence over HeadlessRenderer
+// via TryAddSingleton<IOutputRenderer> in Core.
+if (!isHeadless)
+{
+    builder.Services.AddLopenTui();
+}
+
 builder.Services.AddLopenCore(projectRoot);
 builder.Services.AddLopenStorage(projectRoot);
 if (projectRoot is not null)

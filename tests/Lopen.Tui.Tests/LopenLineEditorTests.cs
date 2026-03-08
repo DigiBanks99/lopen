@@ -8,34 +8,34 @@ public class LopenLineEditorTests
     public void Constructor_WithAnsiConsole_DoesNotThrow()
     {
         // RadLine requires ANSI support; create a console that reports ANSI capability
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.Yes,
             Interactive = InteractionSupport.Yes,
             Out = new AnsiConsoleOutput(TextWriter.Null),
         });
-        var history = new FileLineEditorHistory(
+        FileLineEditorHistory history = new(
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
 
-        var editor = new LopenLineEditor(console, history);
+        LopenLineEditor editor = new(console, history);
         Assert.NotNull(editor);
     }
 
     [Fact]
     public void Constructor_WithCompletion_DoesNotThrow()
     {
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
         {
             Ansi = AnsiSupport.Yes,
             Interactive = InteractionSupport.Yes,
             Out = new AnsiConsoleOutput(TextWriter.Null),
         });
-        var history = new FileLineEditorHistory(
+        FileLineEditorHistory history = new(
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
-        var registry = new TestSlashCommandRegistry([]);
-        var completion = new SlashCommandCompletion(registry);
+        TestSlashCommandRegistry registry = new([]);
+        SlashCommandCompletion completion = new(registry);
 
-        var editor = new LopenLineEditor(console, history, completion);
+        LopenLineEditor editor = new(console, history, completion);
         Assert.NotNull(editor);
     }
 

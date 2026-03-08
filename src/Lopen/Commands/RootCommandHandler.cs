@@ -81,8 +81,16 @@ public static class RootCommandHandler
                             await stdout.WriteLineAsync($"Resuming session: {sessionId}");
                         }
 
-                        await stderr.WriteLineAsync("TUI not yet implemented. Use --headless mode.");
-                        exitCode = ExitCodes.Failure;
+                        var tuiRunner = services.GetService<Lopen.Tui.TuiRunner>();
+                        if (tuiRunner is not null)
+                        {
+                            exitCode = await tuiRunner.RunAsync(cancellationToken);
+                        }
+                        else
+                        {
+                            await stderr.WriteLineAsync("TUI not available. Use --headless mode.");
+                            exitCode = ExitCodes.Failure;
+                        }
                     }
 
                     SpanFactory.SetCommandExitCode(activity, exitCode);
