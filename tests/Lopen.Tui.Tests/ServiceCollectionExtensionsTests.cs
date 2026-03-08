@@ -1,6 +1,6 @@
 using Lopen.Core;
-using Microsoft.Extensions.DependencyInjection;
 using Lopen.Tui;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Lopen.Tui.Tests;
 

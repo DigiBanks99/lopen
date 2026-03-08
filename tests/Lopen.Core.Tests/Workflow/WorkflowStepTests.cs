@@ -7,7 +7,7 @@ public class WorkflowStepTests
     [Fact]
     public void WorkflowStep_HasSevenSteps()
     {
-        var values = Enum.GetValues<WorkflowStep>();
+        WorkflowStep[] values = Enum.GetValues<WorkflowStep>();
         Assert.Equal(7, values.Length);
     }
 

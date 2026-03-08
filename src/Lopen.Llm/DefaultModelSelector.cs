@@ -47,7 +47,7 @@ internal sealed class DefaultModelSelector : IModelSelector
     public IReadOnlyList<string> GetFallbackChain(WorkflowPhase phase)
     {
         var primary = SelectModel(phase).SelectedModel;
-        var phaseFallbacks = phase switch
+        List<string> phaseFallbacks = phase switch
         {
             WorkflowPhase.RequirementGathering => _modelOptions.RequirementGatheringFallbacks,
             WorkflowPhase.Planning => _modelOptions.PlanningFallbacks,

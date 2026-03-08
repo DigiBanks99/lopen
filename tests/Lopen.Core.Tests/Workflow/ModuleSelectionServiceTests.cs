@@ -1,10 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Lopen.Core.Tests.Workflow;
-
 using Lopen.Core.Workflow;
 
+namespace Lopen.Core.Tests.Workflow;
 /// <summary>
 /// Tests for ModuleSelectionService. Covers JOB-074 (CORE-24) acceptance criteria.
 /// </summary>
@@ -26,7 +25,7 @@ public class ModuleSelectionServiceTests
     [Fact]
     public async Task SelectModuleAsync_NoModules_ReturnsNull()
     {
-        var service = CreateService(modules: []);
+        ModuleSelectionService service = CreateService(modules: []);
         var result = await service.SelectModuleAsync();
         Assert.Null(result);
     }
@@ -54,7 +53,7 @@ public class ModuleSelectionServiceTests
             new("auth", "docs/requirements/auth/SPECIFICATION.md", ModuleStatus.InProgress, 3, 10),
             new("core", "docs/requirements/core/SPECIFICATION.md", ModuleStatus.NotStarted, 0, 20),
         };
-        var service = CreateService(modules, promptResponse: "1");
+        ModuleSelectionService service = CreateService(modules, promptResponse: "1");
         var result = await service.SelectModuleAsync();
         Assert.Equal("auth", result);
     }
@@ -67,7 +66,7 @@ public class ModuleSelectionServiceTests
             new("auth", "path", ModuleStatus.InProgress, 3, 10),
             new("core", "path", ModuleStatus.NotStarted, 0, 20),
         };
-        var service = CreateService(modules, promptResponse: "2");
+        ModuleSelectionService service = CreateService(modules, promptResponse: "2");
         var result = await service.SelectModuleAsync();
         Assert.Equal("core", result);
     }
@@ -82,7 +81,7 @@ public class ModuleSelectionServiceTests
             new("auth", "path", ModuleStatus.InProgress, 3, 10),
             new("core", "path", ModuleStatus.NotStarted, 0, 20),
         };
-        var service = CreateService(modules, promptResponse: "core");
+        ModuleSelectionService service = CreateService(modules, promptResponse: "core");
         var result = await service.SelectModuleAsync();
         Assert.Equal("core", result);
     }
@@ -94,7 +93,7 @@ public class ModuleSelectionServiceTests
         {
             new("Auth", "path", ModuleStatus.InProgress, 3, 10),
         };
-        var service = CreateService(modules, promptResponse: "auth");
+        ModuleSelectionService service = CreateService(modules, promptResponse: "auth");
         var result = await service.SelectModuleAsync();
         Assert.Equal("Auth", result);
     }
@@ -108,7 +107,7 @@ public class ModuleSelectionServiceTests
         {
             new("auth", "path", ModuleStatus.InProgress, 3, 10),
         };
-        var service = CreateService(modules, promptResponse: "99");
+        ModuleSelectionService service = CreateService(modules, promptResponse: "99");
         var result = await service.SelectModuleAsync();
         Assert.Null(result);
     }
@@ -120,7 +119,7 @@ public class ModuleSelectionServiceTests
         {
             new("auth", "path", ModuleStatus.InProgress, 3, 10),
         };
-        var service = CreateService(modules, promptResponse: "nonexistent");
+        ModuleSelectionService service = CreateService(modules, promptResponse: "nonexistent");
         var result = await service.SelectModuleAsync();
         Assert.Null(result);
     }
@@ -132,7 +131,7 @@ public class ModuleSelectionServiceTests
         {
             new("auth", "path", ModuleStatus.InProgress, 3, 10),
         };
-        var service = CreateService(modules, promptResponse: "0");
+        ModuleSelectionService service = CreateService(modules, promptResponse: "0");
         var result = await service.SelectModuleAsync();
         Assert.Null(result);
     }
@@ -144,7 +143,7 @@ public class ModuleSelectionServiceTests
         {
             new("auth", "path", ModuleStatus.InProgress, 3, 10),
         };
-        var service = CreateService(modules, promptResponse: "-1");
+        ModuleSelectionService service = CreateService(modules, promptResponse: "-1");
         var result = await service.SelectModuleAsync();
         Assert.Null(result);
     }
@@ -158,7 +157,7 @@ public class ModuleSelectionServiceTests
         {
             new("auth", "path", ModuleStatus.InProgress, 3, 10),
         };
-        var service = CreateService(modules, promptResponse: null);
+        ModuleSelectionService service = CreateService(modules, promptResponse: null);
         var result = await service.SelectModuleAsync();
         Assert.Null(result);
     }
@@ -230,8 +229,8 @@ public class ModuleSelectionServiceTests
         services.AddSingleton<IOutputRenderer, StubOutputRenderer>();
         services.AddLopenCore("/tmp/test");
 
-        using var sp = services.BuildServiceProvider();
-        var selector = sp.GetService<IModuleSelectionService>();
+        using ServiceProvider sp = services.BuildServiceProvider();
+        IModuleSelectionService? selector = sp.GetService<IModuleSelectionService>();
         Assert.NotNull(selector);
     }
 

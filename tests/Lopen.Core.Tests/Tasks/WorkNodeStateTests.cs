@@ -7,7 +7,7 @@ public class WorkNodeStateTests
     [Fact]
     public void WorkNodeState_HasFourStates()
     {
-        var values = Enum.GetValues<WorkNodeState>();
+        WorkNodeState[] values = Enum.GetValues<WorkNodeState>();
         Assert.Equal(4, values.Length);
     }
 

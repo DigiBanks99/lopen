@@ -1,10 +1,10 @@
-using System.Text.Json;
 using Lopen.Core.Documents;
 using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
 
 namespace Lopen.Core.Tests.ToolHandlers;
 
@@ -39,9 +39,9 @@ public class ToolBindingIntegrationTests
         binder.BindAll(registry);
 
         // Assert: all tools should now have non-null handlers
-        var tools = registry.GetAllTools();
+        IReadOnlyList<LopenToolDefinition> tools = registry.GetAllTools();
         Assert.Equal(10, tools.Count);
-        foreach (var tool in tools)
+        foreach (LopenToolDefinition tool in tools)
         {
             Assert.NotNull(tool.Handler);
         }
@@ -54,8 +54,8 @@ public class ToolBindingIntegrationTests
         var specPath = Path.Combine("/test/project", "docs", "requirements", "core", "SPECIFICATION.md");
         fs.Files[specPath] = "# Core Specification\nThis is the spec content.";
 
-        var registry = CreateBoundRegistry(fs);
-        var handler = GetHandler(registry, "read_spec");
+        StoringToolRegistry registry = CreateBoundRegistry(fs);
+        Func<string, CancellationToken, Task<string>> handler = GetHandler(registry, "read_spec");
 
         var result = await handler("""{"module":"core"}""", CancellationToken.None);
 
@@ -72,8 +72,8 @@ public class ToolBindingIntegrationTests
         var researchPath = Path.Combine(researchDir, "RESEARCH.md");
         fs.Files[researchPath] = "# LLM Research\nFindings about LLM integration.";
 
-        var registry = CreateBoundRegistry(fs);
-        var handler = GetHandler(registry, "read_research");
+        StoringToolRegistry registry = CreateBoundRegistry(fs);
+        Func<string, CancellationToken, Task<string>> handler = GetHandler(registry, "read_research");
 
         var result = await handler("""{"module":"llm"}""", CancellationToken.None);
 
@@ -88,8 +88,8 @@ public class ToolBindingIntegrationTests
         var planPath = Path.Combine("/test/project", "docs", "requirements", "IMPLEMENTATION_PLAN.md");
         fs.Files[planPath] = "# Implementation Plan\n- [ ] Task 1\n- [ ] Task 2";
 
-        var registry = CreateBoundRegistry(fs);
-        var handler = GetHandler(registry, "read_plan");
+        StoringToolRegistry registry = CreateBoundRegistry(fs);
+        Func<string, CancellationToken, Task<string>> handler = GetHandler(registry, "read_plan");
 
         var result = await handler("{}", CancellationToken.None);
 
@@ -100,8 +100,8 @@ public class ToolBindingIntegrationTests
     [Fact]
     public async Task UpdateTaskStatus_NonComplete_ReturnsSuccess()
     {
-        var registry = CreateBoundRegistry();
-        var handler = GetHandler(registry, "update_task_status");
+        StoringToolRegistry registry = CreateBoundRegistry();
+        Func<string, CancellationToken, Task<string>> handler = GetHandler(registry, "update_task_status");
 
         var result = await handler("""{"task_id":"T-01","status":"in_progress"}""", CancellationToken.None);
 
@@ -113,13 +113,13 @@ public class ToolBindingIntegrationTests
     [Fact]
     public async Task GetCurrentContext_ReturnsWorkflowState()
     {
-        var registry = CreateBoundRegistry();
-        var handler = GetHandler(registry, "get_current_context");
+        StoringToolRegistry registry = CreateBoundRegistry();
+        Func<string, CancellationToken, Task<string>> handler = GetHandler(registry, "get_current_context");
 
         var result = await handler("{}", CancellationToken.None);
 
         var json = JsonDocument.Parse(result);
-        var root = json.RootElement;
+        JsonElement root = json.RootElement;
         Assert.True(root.TryGetProperty("step", out _));
         Assert.True(root.TryGetProperty("phase", out _));
         Assert.True(root.TryGetProperty("is_complete", out _));
@@ -130,8 +130,8 @@ public class ToolBindingIntegrationTests
     public async Task LogResearch_WritesFileAndReturnsSuccess()
     {
         var fs = new StubFileSystem();
-        var registry = CreateBoundRegistry(fs);
-        var handler = GetHandler(registry, "log_research");
+        StoringToolRegistry registry = CreateBoundRegistry(fs);
+        Func<string, CancellationToken, Task<string>> handler = GetHandler(registry, "log_research");
 
         var result = await handler(
             """{"module":"core","topic":"caching","content":"# Caching Research\nDetails here"}""",
@@ -147,8 +147,8 @@ public class ToolBindingIntegrationTests
     [Fact]
     public async Task ReportProgress_ReturnsSuccess()
     {
-        var registry = CreateBoundRegistry();
-        var handler = GetHandler(registry, "report_progress");
+        StoringToolRegistry registry = CreateBoundRegistry();
+        Func<string, CancellationToken, Task<string>> handler = GetHandler(registry, "report_progress");
 
         var result = await handler("""{"summary":"Phase 1 complete"}""", CancellationToken.None);
 
@@ -185,7 +185,7 @@ public class ToolBindingIntegrationTests
     private static Func<string, CancellationToken, Task<string>> GetHandler(
         StoringToolRegistry registry, string toolName)
     {
-        var tool = registry.GetAllTools().First(t => t.Name == toolName);
+        LopenToolDefinition tool = registry.GetAllTools().First(t => t.Name == toolName);
         Assert.NotNull(tool.Handler);
         return tool.Handler;
     }

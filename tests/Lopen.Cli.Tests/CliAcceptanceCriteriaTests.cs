@@ -1,4 +1,3 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Lopen.Cli.Tests.Fakes;
 using Lopen.Commands;
@@ -11,6 +10,7 @@ using Lopen.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests;
 
@@ -41,7 +41,7 @@ public class CliAcceptanceCriteriaTests
     private static (CommandLineConfiguration config, StringWriter output, StringWriter error) CreateRootConfig(
         IWorkflowOrchestrator? orchestrator = null)
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
         builder.Services.AddLopenCore();
@@ -51,7 +51,7 @@ public class CliAcceptanceCriteriaTests
         if (orchestrator is not null)
             builder.Services.AddSingleton(orchestrator);
 
-        var host = builder.Build();
+        IHost host = builder.Build();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -80,7 +80,7 @@ public class CliAcceptanceCriteriaTests
         services.AddSingleton<IModuleScanner>(modules);
         services.AddSingleton<IPlanManager>(plans);
         services.AddSingleton<IWorkflowOrchestrator>(orchestrator);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -99,7 +99,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC01_Root_NoArgs_ReturnsTuiNotAvailable()
     {
-        var (config, _, error) = CreateRootConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync([]);
 
@@ -112,7 +112,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC02_Headless_DoesNotLaunchTui()
     {
-        var (config, _, _) = CreateRootConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build auth"]);
 
@@ -124,7 +124,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC03_Spec_InvokesOrchestrator()
     {
-        var (config, output, _, sessions, _, _, orchestrator) = CreatePhaseConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _, FakeSessionManager? sessions, FakeModuleScanner _, FakePlanManager _, FakeWorkflowOrchestrator? orchestrator) = CreatePhaseConfig();
         sessions.AddSession(TestSession, ActiveState);
         sessions.SetLatestSessionId(TestSession);
 
@@ -140,7 +140,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC04_Plan_WithoutSpec_ReturnsError()
     {
-        var (config, _, error, sessions, _, _, _) = CreatePhaseConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error, FakeSessionManager? sessions, FakeModuleScanner _, FakePlanManager _, FakeWorkflowOrchestrator _) = CreatePhaseConfig();
         sessions.AddSession(TestSession, ActiveState);
         sessions.SetLatestSessionId(TestSession);
 
@@ -155,7 +155,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC05_Build_WithoutSpecOrPlan_ReturnsError()
     {
-        var (config, _, error, sessions, _, _, _) = CreatePhaseConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error, FakeSessionManager? sessions, FakeModuleScanner _, FakePlanManager _, FakeWorkflowOrchestrator _) = CreatePhaseConfig();
         sessions.AddSession(TestSession, ActiveState);
         sessions.SetLatestSessionId(TestSession);
 
@@ -173,7 +173,7 @@ public class CliAcceptanceCriteriaTests
         var fakeAuth = new FakeAuthService();
         var services = new ServiceCollection();
         services.AddSingleton<IAuthService>(fakeAuth);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -197,7 +197,7 @@ public class CliAcceptanceCriteriaTests
         };
         var services = new ServiceCollection();
         services.AddSingleton<IAuthService>(fakeAuth);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -218,7 +218,7 @@ public class CliAcceptanceCriteriaTests
         var fakeAuth = new FakeAuthService();
         var services = new ServiceCollection();
         services.AddSingleton<IAuthService>(fakeAuth);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -241,7 +241,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton(new LopenOptions());
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -265,7 +265,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton(new LopenOptions());
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -289,7 +289,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton(new LopenOptions());
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -313,7 +313,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton(new LopenOptions());
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -337,7 +337,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton(new LopenOptions());
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -355,13 +355,13 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC14_ConfigShow_DisplaysConfig()
     {
-        var configRoot = new ConfigurationBuilder()
+        IConfigurationRoot configRoot = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Lopen:Models:Primary"] = "gpt-5" })
             .Build();
 
         var services = new ServiceCollection();
         services.AddSingleton<IConfigurationRoot>(configRoot);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -387,7 +387,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton<IRevertService>(revertSvc);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -406,7 +406,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public void AC16_Headless_HasAliases()
     {
-        var aliases = GlobalOptions.Headless.Aliases;
+        ICollection<string> aliases = GlobalOptions.Headless.Aliases;
         Assert.Contains("-q", aliases);
         Assert.Contains("--quiet", aliases);
     }
@@ -416,7 +416,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC17_Prompt_PassedToOrchestrator()
     {
-        var (config, _, _, sessions, modules, _, orchestrator) = CreatePhaseConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _, FakeSessionManager? sessions, FakeModuleScanner? modules, FakePlanManager _, FakeWorkflowOrchestrator? orchestrator) = CreatePhaseConfig();
         sessions.AddSession(TestSession, ActiveState);
         sessions.SetLatestSessionId(TestSession);
         modules.AddModule("auth", hasSpec: true);
@@ -432,7 +432,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC18_Prompt_IsRecognized()
     {
-        var (config, _, error) = CreateRootConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync(["--prompt", "Focus on auth"]);
 
@@ -446,7 +446,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC19_Headless_NoPrompt_NoSession_ReturnsError()
     {
-        var (config, _, error) = CreateRootConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync(["--headless"]);
 
@@ -510,14 +510,14 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public void AC25_DI_ResolvesServices()
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
 
-        using var host = builder.Build();
+        using IHost host = builder.Build();
 
         Assert.NotNull(host.Services.GetService<IAuthService>());
         Assert.NotNull(host.Services.GetService<IFileSystem>());
@@ -549,7 +549,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC27_NoWelcome_FlagIsRecognized()
     {
-        var (config, _, error) = CreateRootConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync(["--no-welcome"]);
 
@@ -576,7 +576,7 @@ public class CliAcceptanceCriteriaTests
         };
 
         // Phase 1: Spec
-        var (specConfig, specOut, _, specSessions, specModules, _, specOrch) = CreatePhaseConfig();
+        (CommandLineConfiguration? specConfig, StringWriter? specOut, StringWriter _, FakeSessionManager? specSessions, FakeModuleScanner? specModules, FakePlanManager _, FakeWorkflowOrchestrator? specOrch) = CreatePhaseConfig();
         specSessions.AddSession(fizzSession, fizzState);
         specSessions.SetLatestSessionId(fizzSession);
         specModules.AddModule(fizzModule, hasSpec: false);
@@ -585,7 +585,7 @@ public class CliAcceptanceCriteriaTests
         Assert.Equal(fizzModule, specOrch.LastModule);
 
         // Phase 2: Plan (spec now exists)
-        var (planConfig, _, _, planSessions, planModules, _, planOrch) = CreatePhaseConfig();
+        (CommandLineConfiguration? planConfig, StringWriter _, StringWriter _, FakeSessionManager? planSessions, FakeModuleScanner? planModules, FakePlanManager _, FakeWorkflowOrchestrator? planOrch) = CreatePhaseConfig();
         planSessions.AddSession(fizzSession, fizzState);
         planSessions.SetLatestSessionId(fizzSession);
         planModules.AddModule(fizzModule, hasSpec: true);
@@ -594,7 +594,7 @@ public class CliAcceptanceCriteriaTests
         Assert.Equal(fizzModule, planOrch.LastModule);
 
         // Phase 3: Build (spec + plan exist)
-        var (buildConfig, _, _, buildSessions, buildModules, buildPlans, buildOrch) = CreatePhaseConfig();
+        (CommandLineConfiguration? buildConfig, StringWriter _, StringWriter _, FakeSessionManager? buildSessions, FakeModuleScanner? buildModules, FakePlanManager? buildPlans, FakeWorkflowOrchestrator? buildOrch) = CreatePhaseConfig();
         buildSessions.AddSession(fizzSession, fizzState);
         buildSessions.SetLatestSessionId(fizzSession);
         buildModules.AddModule(fizzModule, hasSpec: true);

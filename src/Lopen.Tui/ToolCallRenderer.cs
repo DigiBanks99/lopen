@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using Spectre.Console;
+using System.Diagnostics;
 
 namespace Lopen.Tui;
 

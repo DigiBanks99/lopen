@@ -1,3 +1,4 @@
+
 namespace Lopen.Configuration.Tests;
 
 public class LopenOptionsValidatorTests
@@ -7,7 +8,7 @@ public class LopenOptionsValidatorTests
     {
         var options = new LopenOptions();
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.Empty(errors);
     }
@@ -18,7 +19,7 @@ public class LopenOptionsValidatorTests
         var options = new LopenOptions();
         options.Budget.TokenBudgetPerModule = -1;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.Contains(errors, e => e.Contains("token_budget_per_module"));
     }
@@ -29,7 +30,7 @@ public class LopenOptionsValidatorTests
         var options = new LopenOptions();
         options.Budget.PremiumRequestBudget = -1;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.Contains(errors, e => e.Contains("premium_request_budget"));
     }
@@ -40,7 +41,7 @@ public class LopenOptionsValidatorTests
         var options = new LopenOptions();
         options.Budget.WarningThreshold = 1.5;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.Contains(errors, e => e.Contains("warning_threshold"));
     }
@@ -51,7 +52,7 @@ public class LopenOptionsValidatorTests
         var options = new LopenOptions();
         options.Budget.ConfirmationThreshold = -0.1;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.Contains(errors, e => e.Contains("confirmation_threshold"));
     }
@@ -63,7 +64,7 @@ public class LopenOptionsValidatorTests
         options.Budget.WarningThreshold = 0.9;
         options.Budget.ConfirmationThreshold = 0.9;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.Contains(errors, e => e.Contains("warning_threshold must be less than"));
     }
@@ -74,7 +75,7 @@ public class LopenOptionsValidatorTests
         var options = new LopenOptions();
         options.Workflow.MaxIterations = 0;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.Contains(errors, e => e.Contains("max_iterations"));
     }
@@ -85,7 +86,7 @@ public class LopenOptionsValidatorTests
         var options = new LopenOptions();
         options.Workflow.FailureThreshold = 0;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.Contains(errors, e => e.Contains("failure_threshold"));
     }
@@ -96,7 +97,7 @@ public class LopenOptionsValidatorTests
         var options = new LopenOptions();
         options.Session.SessionRetention = -1;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.Contains(errors, e => e.Contains("session_retention"));
     }
@@ -107,7 +108,7 @@ public class LopenOptionsValidatorTests
         var options = new LopenOptions();
         options.ToolDiscipline.MaxFileReads = 0;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.Contains(errors, e => e.Contains("max_file_reads"));
     }
@@ -118,7 +119,7 @@ public class LopenOptionsValidatorTests
         var options = new LopenOptions();
         options.ToolDiscipline.MaxCommandRetries = 0;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.Contains(errors, e => e.Contains("max_command_retries"));
     }
@@ -131,7 +132,7 @@ public class LopenOptionsValidatorTests
         options.Budget.PremiumRequestBudget = -1;
         options.Workflow.MaxIterations = 0;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.True(errors.Count >= 3);
     }

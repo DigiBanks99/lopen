@@ -1,7 +1,7 @@
-using System.CommandLine;
 using Lopen.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Commands;
 
@@ -12,8 +12,8 @@ public static class ConfigCommand
 {
     public static Command Create(IServiceProvider services, TextWriter? output = null, TextWriter? error = null)
     {
-        var stdout = output ?? Console.Out;
-        var stderr = error ?? Console.Error;
+        TextWriter stdout = output ?? Console.Out;
+        TextWriter stderr = error ?? Console.Error;
 
         var config = new Command("config", "Configuration management");
 
@@ -32,8 +32,8 @@ public static class ConfigCommand
         {
             try
             {
-                var configRoot = services.GetRequiredService<IConfigurationRoot>();
-                var entries = ConfigurationDiagnostics.GetEntries(configRoot);
+                IConfigurationRoot configRoot = services.GetRequiredService<IConfigurationRoot>();
+                IReadOnlyList<ConfigurationEntry> entries = ConfigurationDiagnostics.GetEntries(configRoot);
                 var useJson = parseResult.GetValue(jsonOption);
 
                 var formatted = useJson

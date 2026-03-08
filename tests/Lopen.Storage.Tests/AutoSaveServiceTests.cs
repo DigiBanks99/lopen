@@ -44,7 +44,7 @@ public sealed class AutoSaveServiceTests
     [Fact]
     public async Task SaveAsync_NullSessionId_Throws()
     {
-        var service = CreateService();
+        AutoSaveService service = CreateService();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             service.SaveAsync(AutoSaveTrigger.TaskCompletion, null!, CreateState()));
@@ -53,7 +53,7 @@ public sealed class AutoSaveServiceTests
     [Fact]
     public async Task SaveAsync_NullState_Throws()
     {
-        var service = CreateService();
+        AutoSaveService service = CreateService();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             service.SaveAsync(AutoSaveTrigger.TaskCompletion, TestSessionId, null!));
@@ -65,8 +65,8 @@ public sealed class AutoSaveServiceTests
     public async Task SaveAsync_SavesSessionState()
     {
         var manager = new FakeSessionManager();
-        var service = CreateService(manager);
-        var state = CreateState();
+        AutoSaveService service = CreateService(manager);
+        SessionState state = CreateState();
 
         await service.SaveAsync(AutoSaveTrigger.TaskCompletion, TestSessionId, state);
 
@@ -78,9 +78,9 @@ public sealed class AutoSaveServiceTests
     public async Task SaveAsync_UpdatesTimestamp()
     {
         var manager = new FakeSessionManager();
-        var service = CreateService(manager);
-        var state = CreateState();
-        var before = DateTimeOffset.UtcNow;
+        AutoSaveService service = CreateService(manager);
+        SessionState state = CreateState();
+        DateTimeOffset before = DateTimeOffset.UtcNow;
 
         await service.SaveAsync(AutoSaveTrigger.StepCompletion, TestSessionId, state);
 
@@ -98,7 +98,7 @@ public sealed class AutoSaveServiceTests
     public async Task SaveAsync_AllTriggers_SaveState(AutoSaveTrigger trigger)
     {
         var manager = new FakeSessionManager();
-        var service = CreateService(manager);
+        AutoSaveService service = CreateService(manager);
 
         await service.SaveAsync(trigger, TestSessionId, CreateState());
 
@@ -111,7 +111,7 @@ public sealed class AutoSaveServiceTests
     public async Task SaveAsync_WithMetrics_SavesBoth()
     {
         var manager = new FakeSessionManager();
-        var service = CreateService(manager);
+        AutoSaveService service = CreateService(manager);
         var metrics = new SessionMetrics
         {
             SessionId = TestSessionId.ToString(),
@@ -132,7 +132,7 @@ public sealed class AutoSaveServiceTests
     public async Task SaveAsync_WithoutMetrics_OnlySavesState()
     {
         var manager = new FakeSessionManager();
-        var service = CreateService(manager);
+        AutoSaveService service = CreateService(manager);
 
         await service.SaveAsync(AutoSaveTrigger.TaskCompletion, TestSessionId, CreateState());
 
@@ -146,7 +146,7 @@ public sealed class AutoSaveServiceTests
     public async Task SaveAsync_StorageException_DoesNotThrow()
     {
         var manager = new ThrowingSessionManager();
-        var service = CreateService(manager);
+        AutoSaveService service = CreateService(manager);
 
         // Should not throw - auto-save failures should not crash the workflow
         await service.SaveAsync(AutoSaveTrigger.TaskCompletion, TestSessionId, CreateState());
@@ -156,7 +156,7 @@ public sealed class AutoSaveServiceTests
     public async Task SaveAsync_CriticalStorageException_Throws()
     {
         var manager = new CriticalThrowingSessionManager();
-        var service = CreateService(manager);
+        AutoSaveService service = CreateService(manager);
 
         // STOR-16: Critical write failures must propagate
         await Assert.ThrowsAsync<StorageException>(() =>

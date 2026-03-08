@@ -51,7 +51,7 @@ public sealed class SectionCacheTests
     [Fact]
     public async Task GetAsync_NotCached_ReturnsNull()
     {
-        var result = await _sut.GetAsync("/some/file.md", "Introduction");
+        SectionCacheEntry? result = await _sut.GetAsync("/some/file.md", "Introduction");
         Assert.Null(result);
     }
 
@@ -77,7 +77,7 @@ public sealed class SectionCacheTests
         CreateSourceFile("/src/spec.md", "spec content");
 
         await _sut.SetAsync("/src/spec.md", "Overview", "Section content here");
-        var result = await _sut.GetAsync("/src/spec.md", "Overview");
+        SectionCacheEntry? result = await _sut.GetAsync("/src/spec.md", "Overview");
 
         Assert.NotNull(result);
         Assert.Equal("Section content here", result.Content);
@@ -117,7 +117,7 @@ public sealed class SectionCacheTests
         await Task.Delay(10); // ensure different timestamp
         CreateSourceFile("/src/spec.md", "modified");
 
-        var result = await _sut.GetAsync("/src/spec.md", "Overview");
+        SectionCacheEntry? result = await _sut.GetAsync("/src/spec.md", "Overview");
         Assert.Null(result);
     }
 
@@ -172,7 +172,7 @@ public sealed class SectionCacheTests
 
         // Create a new instance (fresh in-memory cache)
         var freshCache = new SectionCache(_fs, NullLogger<SectionCache>.Instance, ProjectRoot);
-        var result = await freshCache.GetAsync("/src/spec.md", "Overview");
+        SectionCacheEntry? result = await freshCache.GetAsync("/src/spec.md", "Overview");
 
         Assert.NotNull(result);
         Assert.Equal("persisted", result.Content);
@@ -195,7 +195,7 @@ public sealed class SectionCacheTests
         await _fs.WriteAllTextAsync(files[0], "not valid json{{{");
 
         var freshCache = new SectionCache(_fs, NullLogger<SectionCache>.Instance, ProjectRoot);
-        var result = await freshCache.GetAsync("/src/spec.md", "Overview");
+        SectionCacheEntry? result = await freshCache.GetAsync("/src/spec.md", "Overview");
 
         Assert.Null(result); // Silently invalidated
     }
@@ -235,11 +235,11 @@ public sealed class SectionCacheTests
     public async Task SetAsync_RecordsTimestamps()
     {
         CreateSourceFile("/src/spec.md", "content");
-        var before = DateTime.UtcNow;
+        DateTime before = DateTime.UtcNow;
 
         await _sut.SetAsync("/src/spec.md", "Overview", "cached");
 
-        var result = await _sut.GetAsync("/src/spec.md", "Overview");
+        SectionCacheEntry? result = await _sut.GetAsync("/src/spec.md", "Overview");
         Assert.NotNull(result);
         Assert.True(result.CachedAtUtc >= before);
         Assert.True(result.FileModifiedUtc > DateTime.MinValue);
@@ -265,7 +265,7 @@ public sealed class SectionCacheTests
 
         throwingFs.ThrowOnDelete = true;
 
-        var exception = await Record.ExceptionAsync(() => cache.InvalidateFileAsync("/src/spec.md"));
+        Exception exception = await Record.ExceptionAsync(() => cache.InvalidateFileAsync("/src/spec.md"));
         Assert.Null(exception);
 
         Assert.Contains(logger.Entries, e =>

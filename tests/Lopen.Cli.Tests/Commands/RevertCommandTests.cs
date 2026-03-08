@@ -1,9 +1,9 @@
-using System.CommandLine;
 using Lopen.Cli.Tests.Fakes;
 using Lopen.Commands;
 using Lopen.Core.Git;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -40,7 +40,7 @@ public class RevertCommandTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(_fakeSessionManager);
         services.AddSingleton<IRevertService>(_fakeRevert);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -57,7 +57,7 @@ public class RevertCommandTests
     {
         _fakeSessionManager.AddSession(Session1, StateWithCommit);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["revert"]);
 
@@ -72,11 +72,11 @@ public class RevertCommandTests
     {
         _fakeSessionManager.AddSession(Session1, StateWithCommit);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, _, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig();
 
         await config.InvokeAsync(["revert"]);
 
-        var updatedState = await _fakeSessionManager.LoadSessionStateAsync(Session1);
+        SessionState? updatedState = await _fakeSessionManager.LoadSessionStateAsync(Session1);
         Assert.NotNull(updatedState);
         Assert.Null(updatedState!.LastTaskCompletionCommitSha);
     }
@@ -84,7 +84,7 @@ public class RevertCommandTests
     [Fact]
     public async Task Revert_NoActiveSession_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["revert"]);
 
@@ -97,7 +97,7 @@ public class RevertCommandTests
     {
         _fakeSessionManager.AddSession(Session1, StateWithoutCommit);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["revert"]);
 
@@ -111,7 +111,7 @@ public class RevertCommandTests
         _fakeSessionManager.AddSession(Session1, StateWithCommit);
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeRevert.Result = new RevertResult(false, null, "Working tree has uncommitted changes.");
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["revert"]);
 
@@ -125,7 +125,7 @@ public class RevertCommandTests
         _fakeSessionManager.AddSession(Session1, StateWithCommit);
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeRevert.RevertException = new InvalidOperationException("Git not available");
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["revert"]);
 
@@ -138,7 +138,7 @@ public class RevertCommandTests
     {
         _fakeSessionManager.SetLatestSessionId(Session1);
         // Session1 is set as latest but has no state
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["revert"]);
 
@@ -151,7 +151,7 @@ public class RevertCommandTests
     private (CommandLineConfiguration config, StringWriter output, StringWriter error) CreateConfigWithoutServices()
     {
         var services = new ServiceCollection();
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         var output = new StringWriter();
         var error = new StringWriter();
         var root = new RootCommand("test");
@@ -163,7 +163,7 @@ public class RevertCommandTests
     [Fact]
     public async Task Revert_NoServiceRegistered_ReturnsFailureWithMessage()
     {
-        var (config, _, error) = CreateConfigWithoutServices();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfigWithoutServices();
 
         var exitCode = await config.InvokeAsync(["revert"]);
 

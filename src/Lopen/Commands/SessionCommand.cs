@@ -1,7 +1,8 @@
-using System.CommandLine;
-using System.Text.Json;
+using Lopen.Configuration;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
+using System.Text.Json;
 
 namespace Lopen.Commands;
 
@@ -18,8 +19,8 @@ public static class SessionCommand
 
     public static Command Create(IServiceProvider services, TextWriter? output = null, TextWriter? error = null)
     {
-        var stdout = output ?? Console.Out;
-        var stderr = error ?? Console.Error;
+        TextWriter stdout = output ?? Console.Out;
+        TextWriter stderr = error ?? Console.Error;
 
         var session = new Command("session", "Manage workflow sessions");
 
@@ -39,14 +40,14 @@ public static class SessionCommand
         {
             try
             {
-                var sessionManager = services.GetService<ISessionManager>();
+                ISessionManager? sessionManager = services.GetService<ISessionManager>();
                 if (sessionManager is null)
                 {
                     await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
                     return 1;
                 }
-                var sessions = await sessionManager.ListSessionsAsync(cancellationToken);
-                var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
+                IReadOnlyList<SessionId> sessions = await sessionManager.ListSessionsAsync(cancellationToken);
+                SessionId? latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
 
                 if (sessions.Count == 0)
                 {
@@ -54,9 +55,9 @@ public static class SessionCommand
                     return 0;
                 }
 
-                foreach (var id in sessions)
+                foreach (SessionId id in sessions)
                 {
-                    var state = await sessionManager.LoadSessionStateAsync(id, cancellationToken);
+                    SessionState? state = await sessionManager.LoadSessionStateAsync(id, cancellationToken);
                     var marker = id.Equals(latestId) ? " *" : "";
                     var status = state?.IsComplete == true ? "complete" : "active";
                     await stdout.WriteLineAsync($"{id}  [{status}]  {state?.Phase ?? "unknown"}/{state?.Step ?? "unknown"}{marker}");
@@ -87,7 +88,7 @@ public static class SessionCommand
         {
             try
             {
-                var sessionManager = services.GetService<ISessionManager>();
+                ISessionManager? sessionManager = services.GetService<ISessionManager>();
                 if (sessionManager is null)
                 {
                     await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
@@ -116,14 +117,14 @@ public static class SessionCommand
                     }
                 }
 
-                var state = await sessionManager.LoadSessionStateAsync(sessionId, cancellationToken);
+                SessionState? state = await sessionManager.LoadSessionStateAsync(sessionId, cancellationToken);
                 if (state is null)
                 {
                     await stderr.WriteLineAsync($"Session not found: {sessionId}");
                     return 1;
                 }
 
-                var metrics = await sessionManager.LoadSessionMetricsAsync(sessionId, cancellationToken);
+                SessionMetrics? metrics = await sessionManager.LoadSessionMetricsAsync(sessionId, cancellationToken);
                 var output = FormatSession(state, metrics, format);
                 await stdout.WriteLineAsync(output);
                 return 0;
@@ -147,7 +148,7 @@ public static class SessionCommand
         {
             try
             {
-                var sessionManager = services.GetService<ISessionManager>();
+                ISessionManager? sessionManager = services.GetService<ISessionManager>();
                 if (sessionManager is null)
                 {
                     await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
@@ -175,7 +176,7 @@ public static class SessionCommand
                     }
                 }
 
-                var state = await sessionManager.LoadSessionStateAsync(sessionId, cancellationToken);
+                SessionState? state = await sessionManager.LoadSessionStateAsync(sessionId, cancellationToken);
                 if (state is null)
                 {
                     await stderr.WriteLineAsync($"Session not found: {sessionId}");
@@ -211,7 +212,7 @@ public static class SessionCommand
         {
             try
             {
-                var sessionManager = services.GetService<ISessionManager>();
+                ISessionManager? sessionManager = services.GetService<ISessionManager>();
                 if (sessionManager is null)
                 {
                     await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
@@ -250,14 +251,14 @@ public static class SessionCommand
         {
             try
             {
-                var sessionManager = services.GetService<ISessionManager>();
+                ISessionManager? sessionManager = services.GetService<ISessionManager>();
                 if (sessionManager is null)
                 {
                     await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
                     return 1;
                 }
 
-                var options = services.GetService<Configuration.LopenOptions>();
+                LopenOptions? options = services.GetService<Configuration.LopenOptions>();
                 if (options is null)
                 {
                     await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");

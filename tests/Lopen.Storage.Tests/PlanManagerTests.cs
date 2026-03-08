@@ -212,7 +212,7 @@ public sealed class PlanManagerTests
     {
         await _sut.WritePlanAsync("auth", "- [ ] Task A\n- [x] Task B\n- [ ] Task C");
 
-        var tasks = await _sut.ReadTasksAsync("auth");
+        IReadOnlyList<PlanTask> tasks = await _sut.ReadTasksAsync("auth");
 
         Assert.Equal(3, tasks.Count);
         Assert.Equal("Task A", tasks[0].Text);
@@ -226,7 +226,7 @@ public sealed class PlanManagerTests
     {
         await _sut.WritePlanAsync("auth", "- [ ] Top\n  - [ ] Child\n    - [ ] Grandchild");
 
-        var tasks = await _sut.ReadTasksAsync("auth");
+        IReadOnlyList<PlanTask> tasks = await _sut.ReadTasksAsync("auth");
 
         Assert.Equal(3, tasks.Count);
         Assert.Equal(0, tasks[0].Level);
@@ -239,7 +239,7 @@ public sealed class PlanManagerTests
     {
         await _sut.WritePlanAsync("auth", "# Plan\n\nSome text\n- [ ] Only task\n\n---");
 
-        var tasks = await _sut.ReadTasksAsync("auth");
+        IReadOnlyList<PlanTask> tasks = await _sut.ReadTasksAsync("auth");
 
         Assert.Single(tasks);
         Assert.Equal("Only task", tasks[0].Text);
@@ -248,7 +248,7 @@ public sealed class PlanManagerTests
     [Fact]
     public async Task ReadTasksAsync_NoPlan_ReturnsEmpty()
     {
-        var tasks = await _sut.ReadTasksAsync("nonexistent");
+        IReadOnlyList<PlanTask> tasks = await _sut.ReadTasksAsync("nonexistent");
         Assert.Empty(tasks);
     }
 
@@ -264,7 +264,7 @@ public sealed class PlanManagerTests
     {
         await _sut.WritePlanAsync("auth", "- [X] Task with uppercase X");
 
-        var tasks = await _sut.ReadTasksAsync("auth");
+        IReadOnlyList<PlanTask> tasks = await _sut.ReadTasksAsync("auth");
 
         Assert.Single(tasks);
         Assert.True(tasks[0].IsCompleted);
@@ -291,7 +291,7 @@ public sealed class PlanManagerTests
         await _sut.WritePlanAsync("auth", plan);
 
         // Check initial state
-        var tasks = await _sut.ReadTasksAsync("auth");
+        IReadOnlyList<PlanTask> tasks = await _sut.ReadTasksAsync("auth");
         Assert.Equal(4, tasks.Count);
         Assert.True(tasks.All(t => !t.IsCompleted));
 

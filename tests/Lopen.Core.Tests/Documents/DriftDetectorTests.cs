@@ -18,12 +18,12 @@ public class DriftDetectorTests
     public void DetectDrift_NoDrift_ReturnsEmpty()
     {
         var content = "# Overview\n\nSome content\n\n# Details\n\nMore content";
-        var sections = _parser.ExtractSections(content);
+        IReadOnlyList<DocumentSection> sections = _parser.ExtractSections(content);
         var cached = sections.Select(s =>
             new CachedSection("spec.md", s.Header, s.Content, _hasher.ComputeHash(s.Content), DateTimeOffset.UtcNow))
             .ToList();
 
-        var results = _detector.DetectDrift("spec.md", content, cached);
+        IReadOnlyList<DriftResult> results = _detector.DetectDrift("spec.md", content, cached);
 
         Assert.Empty(results);
     }
@@ -33,12 +33,12 @@ public class DriftDetectorTests
     {
         var original = "# Overview\n\nOriginal content";
         var modified = "# Overview\n\nModified content";
-        var sections = _parser.ExtractSections(original);
+        IReadOnlyList<DocumentSection> sections = _parser.ExtractSections(original);
         var cached = sections.Select(s =>
             new CachedSection("spec.md", s.Header, s.Content, _hasher.ComputeHash(s.Content), DateTimeOffset.UtcNow))
             .ToList();
 
-        var results = _detector.DetectDrift("spec.md", modified, cached);
+        IReadOnlyList<DriftResult> results = _detector.DetectDrift("spec.md", modified, cached);
 
         Assert.Single(results);
         Assert.Equal("Overview", results[0].Header);
@@ -51,12 +51,12 @@ public class DriftDetectorTests
     {
         var original = "# Overview\n\nContent";
         var updated = "# Overview\n\nContent\n\n# New Section\n\nNew stuff";
-        var sections = _parser.ExtractSections(original);
+        IReadOnlyList<DocumentSection> sections = _parser.ExtractSections(original);
         var cached = sections.Select(s =>
             new CachedSection("spec.md", s.Header, s.Content, _hasher.ComputeHash(s.Content), DateTimeOffset.UtcNow))
             .ToList();
 
-        var results = _detector.DetectDrift("spec.md", updated, cached);
+        IReadOnlyList<DriftResult> results = _detector.DetectDrift("spec.md", updated, cached);
 
         Assert.Single(results);
         Assert.Equal("New Section", results[0].Header);
@@ -68,12 +68,12 @@ public class DriftDetectorTests
     {
         var original = "# Overview\n\nContent\n\n# Details\n\nMore";
         var updated = "# Overview\n\nContent";
-        var sections = _parser.ExtractSections(original);
+        IReadOnlyList<DocumentSection> sections = _parser.ExtractSections(original);
         var cached = sections.Select(s =>
             new CachedSection("spec.md", s.Header, s.Content, _hasher.ComputeHash(s.Content), DateTimeOffset.UtcNow))
             .ToList();
 
-        var results = _detector.DetectDrift("spec.md", updated, cached);
+        IReadOnlyList<DriftResult> results = _detector.DetectDrift("spec.md", updated, cached);
 
         Assert.Single(results);
         Assert.Equal("Details", results[0].Header);
@@ -85,7 +85,7 @@ public class DriftDetectorTests
     {
         var content = "# Overview\n\nContent\n\n# Details\n\nMore";
 
-        var results = _detector.DetectDrift("spec.md", content, []);
+        IReadOnlyList<DriftResult> results = _detector.DetectDrift("spec.md", content, []);
 
         Assert.Equal(2, results.Count);
         Assert.All(results, r => Assert.True(r.IsNew));
@@ -100,7 +100,7 @@ public class DriftDetectorTests
             new("other.md", "Overview", "Content", _hasher.ComputeHash("Content"), DateTimeOffset.UtcNow),
         };
 
-        var results = _detector.DetectDrift("spec.md", content, cached);
+        IReadOnlyList<DriftResult> results = _detector.DetectDrift("spec.md", content, cached);
 
         Assert.Single(results);
         Assert.True(results[0].IsNew);

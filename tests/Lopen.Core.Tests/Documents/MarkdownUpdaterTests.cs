@@ -61,7 +61,7 @@ public class MarkdownUpdaterTests
     {
         var content = "- [ ] Task 1\n- [ ] Task 2\n- [ ] Task 3";
 
-        var (total, completed) = MarkdownUpdater.CountCheckboxes(content);
+        (int total, int completed) = MarkdownUpdater.CountCheckboxes(content);
 
         Assert.Equal(3, total);
         Assert.Equal(0, completed);
@@ -72,7 +72,7 @@ public class MarkdownUpdaterTests
     {
         var content = "- [x] Task 1\n- [ ] Task 2\n- [x] Task 3";
 
-        var (total, completed) = MarkdownUpdater.CountCheckboxes(content);
+        (int total, int completed) = MarkdownUpdater.CountCheckboxes(content);
 
         Assert.Equal(3, total);
         Assert.Equal(2, completed);
@@ -81,7 +81,7 @@ public class MarkdownUpdaterTests
     [Fact]
     public void CountCheckboxes_Empty()
     {
-        var (total, completed) = MarkdownUpdater.CountCheckboxes("No checkboxes here");
+        (int total, int completed) = MarkdownUpdater.CountCheckboxes("No checkboxes here");
 
         Assert.Equal(0, total);
         Assert.Equal(0, completed);

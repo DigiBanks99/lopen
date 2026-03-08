@@ -1,9 +1,10 @@
-using System.CommandLine;
-using System.Diagnostics;
 using Lopen.Core.Workflow;
 using Lopen.Otel;
 using Lopen.Storage;
+using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
+using System.Diagnostics;
 
 namespace Lopen.Commands;
 
@@ -81,7 +82,7 @@ public static class RootCommandHandler
                             await stdout.WriteLineAsync($"Resuming session: {sessionId}");
                         }
 
-                        var tuiRunner = services.GetService<Lopen.Tui.TuiRunner>();
+                        TuiRunner? tuiRunner = services.GetService<Lopen.Tui.TuiRunner>();
                         if (tuiRunner is not null)
                         {
                             exitCode = await tuiRunner.RunAsync(sessionId, cancellationToken);

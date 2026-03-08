@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Lopen.Configuration;
 using Lopen.Core.Documents;
 using Lopen.Core.ToolHandlers;
@@ -6,6 +5,7 @@ using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
 
 namespace Lopen.Core.Tests.ToolHandlers;
 
@@ -46,7 +46,7 @@ public class OracleVerificationIntegrationTests
 
     private static async Task<string> InvokeVerifyTask(TrackingToolRegistry registry, string taskId = "t1")
     {
-        var handler = registry.BoundHandlers["verify_task_completion"];
+        Func<string, CancellationToken, Task<string>> handler = registry.BoundHandlers["verify_task_completion"];
         return await handler(
             JsonSerializer.Serialize(new { task_id = taskId, evidence = "diff output", acceptance_criteria = "tests pass" }),
             CancellationToken.None);
@@ -54,7 +54,7 @@ public class OracleVerificationIntegrationTests
 
     private static async Task<string> InvokeVerifyComponent(TrackingToolRegistry registry, string componentId = "c1")
     {
-        var handler = registry.BoundHandlers["verify_component_completion"];
+        Func<string, CancellationToken, Task<string>> handler = registry.BoundHandlers["verify_component_completion"];
         return await handler(
             JsonSerializer.Serialize(new { component_id = componentId, evidence = "diff output", acceptance_criteria = "tests pass" }),
             CancellationToken.None);
@@ -62,7 +62,7 @@ public class OracleVerificationIntegrationTests
 
     private static async Task<string> InvokeVerifyModule(TrackingToolRegistry registry, string moduleId = "m1")
     {
-        var handler = registry.BoundHandlers["verify_module_completion"];
+        Func<string, CancellationToken, Task<string>> handler = registry.BoundHandlers["verify_module_completion"];
         return await handler(
             JsonSerializer.Serialize(new { module_id = moduleId, evidence = "diff output", acceptance_criteria = "tests pass" }),
             CancellationToken.None);
@@ -70,7 +70,7 @@ public class OracleVerificationIntegrationTests
 
     private static async Task<string> InvokeUpdateTaskStatus(TrackingToolRegistry registry, string taskId = "t1", string status = "complete")
     {
-        var handler = registry.BoundHandlers["update_task_status"];
+        Func<string, CancellationToken, Task<string>> handler = registry.BoundHandlers["update_task_status"];
         return await handler(
             JsonSerializer.Serialize(new { task_id = taskId, status }),
             CancellationToken.None);
@@ -85,7 +85,7 @@ public class OracleVerificationIntegrationTests
     [Fact]
     public async Task FullPipeline_OraclePass_ThenTaskComplete_Accepted()
     {
-        var (registry, llm, _) = CreatePipeline();
+        (TrackingToolRegistry? registry, FakeLlmService? llm, VerificationTracker _) = CreatePipeline();
         llm.NextResponse = OraclePass();
 
         var verifyResult = await InvokeVerifyTask(registry);
@@ -98,7 +98,7 @@ public class OracleVerificationIntegrationTests
     [Fact]
     public async Task FullPipeline_OracleFail_ThenTaskComplete_Rejected()
     {
-        var (registry, llm, _) = CreatePipeline();
+        (TrackingToolRegistry? registry, FakeLlmService? llm, VerificationTracker _) = CreatePipeline();
         llm.NextResponse = OracleFail();
 
         var verifyResult = await InvokeVerifyTask(registry);
@@ -111,7 +111,7 @@ public class OracleVerificationIntegrationTests
     [Fact]
     public async Task TaskComplete_WithoutVerification_Rejected()
     {
-        var (registry, _, _) = CreatePipeline();
+        (TrackingToolRegistry? registry, FakeLlmService _, VerificationTracker _) = CreatePipeline();
 
         var updateResult = await InvokeUpdateTaskStatus(registry);
         Assert.Equal("error", GetStatus(updateResult));
@@ -120,7 +120,7 @@ public class OracleVerificationIntegrationTests
     [Fact]
     public async Task FullPipeline_ComponentScope_OraclePass_ThenComplete_Accepted()
     {
-        var (registry, llm, tracker) = CreatePipeline();
+        (TrackingToolRegistry? registry, FakeLlmService? llm, VerificationTracker? tracker) = CreatePipeline();
         llm.NextResponse = OraclePass();
 
         var verifyResult = await InvokeVerifyComponent(registry);
@@ -131,7 +131,7 @@ public class OracleVerificationIntegrationTests
     [Fact]
     public async Task FullPipeline_ModuleScope_OraclePass_ThenComplete_Accepted()
     {
-        var (registry, llm, tracker) = CreatePipeline();
+        (TrackingToolRegistry? registry, FakeLlmService? llm, VerificationTracker? tracker) = CreatePipeline();
         llm.NextResponse = OraclePass();
 
         var verifyResult = await InvokeVerifyModule(registry);
@@ -142,7 +142,7 @@ public class OracleVerificationIntegrationTests
     [Fact]
     public async Task FullPipeline_OracleMalformedJson_ThenTaskComplete_Rejected()
     {
-        var (registry, llm, _) = CreatePipeline();
+        (TrackingToolRegistry? registry, FakeLlmService? llm, VerificationTracker _) = CreatePipeline();
         llm.NextResponse = OracleMalformed();
 
         var verifyResult = await InvokeVerifyTask(registry);
@@ -155,7 +155,7 @@ public class OracleVerificationIntegrationTests
     [Fact]
     public async Task FullPipeline_ResetClearsVerification_ThenRejected()
     {
-        var (registry, llm, tracker) = CreatePipeline();
+        (TrackingToolRegistry? registry, FakeLlmService? llm, VerificationTracker? tracker) = CreatePipeline();
         llm.NextResponse = OraclePass();
 
         var verifyResult = await InvokeVerifyTask(registry);
@@ -170,7 +170,7 @@ public class OracleVerificationIntegrationTests
     [Fact]
     public async Task FullPipeline_OraclePassForTask_DoesNotAllowDifferentTask()
     {
-        var (registry, llm, _) = CreatePipeline();
+        (TrackingToolRegistry? registry, FakeLlmService? llm, VerificationTracker _) = CreatePipeline();
         llm.NextResponse = OraclePass();
 
         var verifyResult = await InvokeVerifyTask(registry, taskId: "task-A");
@@ -183,7 +183,7 @@ public class OracleVerificationIntegrationTests
     [Fact]
     public async Task FullPipeline_OraclePass_ThenRetryVerification_OracleFail_ThenTaskComplete_Rejected()
     {
-        var (registry, llm, _) = CreatePipeline();
+        (TrackingToolRegistry? registry, FakeLlmService? llm, VerificationTracker _) = CreatePipeline();
 
         // First verify passes
         llm.NextResponse = OraclePass();
@@ -202,7 +202,7 @@ public class OracleVerificationIntegrationTests
     [Fact]
     public async Task FullPipeline_OracleFail_ThenRetryVerification_OraclePass_ThenTaskComplete_Accepted()
     {
-        var (registry, llm, _) = CreatePipeline();
+        (TrackingToolRegistry? registry, FakeLlmService? llm, VerificationTracker _) = CreatePipeline();
 
         // First verify fails
         llm.NextResponse = OracleFail();

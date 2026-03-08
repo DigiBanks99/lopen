@@ -17,7 +17,7 @@ public class LopenTelemetryDiagnosticsTests
     [InlineData("Lopen.Git")]
     public void ActivitySource_HasCorrectName(string expectedName)
     {
-        var source = expectedName switch
+        ActivitySource source = expectedName switch
         {
             "Lopen.Workflow" => LopenTelemetryDiagnostics.Workflow,
             "Lopen.Sdk" => LopenTelemetryDiagnostics.Sdk,
@@ -172,7 +172,7 @@ public class LopenTelemetryDiagnosticsTests
     public void Counters_CanRecordValues()
     {
         // Counters should not throw when recording values, even without a listener
-        var exception = Record.Exception(() =>
+        Exception exception = Record.Exception(() =>
         {
             LopenTelemetryDiagnostics.CommandCount.Add(1,
                 new KeyValuePair<string, object?>("command.name", "test"));
@@ -203,7 +203,7 @@ public class LopenTelemetryDiagnosticsTests
     [Fact]
     public void Histograms_CanRecordValues()
     {
-        var exception = Record.Exception(() =>
+        Exception exception = Record.Exception(() =>
         {
             LopenTelemetryDiagnostics.SdkInvocationDuration.Record(150.5,
                 new KeyValuePair<string, object?>("model", "test-model"));
@@ -223,7 +223,7 @@ public class LopenTelemetryDiagnosticsTests
     [Fact]
     public void Gauges_CanRecordValues()
     {
-        var exception = Record.Exception(() =>
+        Exception exception = Record.Exception(() =>
         {
             LopenTelemetryDiagnostics.SessionIteration.Record(5);
             LopenTelemetryDiagnostics.ContextWindowUtilization.Record(0.73);
@@ -240,7 +240,7 @@ public class LopenTelemetryDiagnosticsTests
         // A fresh ActivitySource with no registered listener returns null (zero overhead)
         using var isolatedSource = new ActivitySource("Lopen.Tests.Isolated." + Guid.NewGuid().ToString("N"));
 
-        var activity = isolatedSource.StartActivity("test.operation");
+        Activity? activity = isolatedSource.StartActivity("test.operation");
         Assert.Null(activity);
     }
 
@@ -254,7 +254,7 @@ public class LopenTelemetryDiagnosticsTests
         };
         ActivitySource.AddActivityListener(listener);
 
-        using var activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.command");
+        using Activity? activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.command");
         Assert.NotNull(activity);
         Assert.Equal("lopen.command", activity.DisplayName);
     }
@@ -269,7 +269,7 @@ public class LopenTelemetryDiagnosticsTests
         };
         ActivitySource.AddActivityListener(listener);
 
-        using var activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.command");
+        using Activity? activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.command");
         activity?.SetTag("lopen.command.name", "build");
         activity?.SetTag("lopen.command.headless", true);
         activity?.SetTag("lopen.command.exit_code", 0);
@@ -289,10 +289,10 @@ public class LopenTelemetryDiagnosticsTests
         };
         ActivitySource.AddActivityListener(listener);
 
-        using var parent = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.command");
+        using Activity? parent = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.command");
         Assert.NotNull(parent);
 
-        using var child = LopenTelemetryDiagnostics.Sdk.StartActivity("lopen.sdk.invocation");
+        using Activity? child = LopenTelemetryDiagnostics.Sdk.StartActivity("lopen.sdk.invocation");
         Assert.NotNull(child);
         Assert.Equal(parent.TraceId, child.TraceId);
         Assert.Equal(parent.SpanId, child.ParentSpanId);

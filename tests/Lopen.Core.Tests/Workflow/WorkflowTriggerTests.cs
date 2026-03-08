@@ -7,7 +7,7 @@ public class WorkflowTriggerTests
     [Fact]
     public void WorkflowTrigger_HasExpectedTriggerCount()
     {
-        var values = Enum.GetValues<WorkflowTrigger>();
+        WorkflowTrigger[] values = Enum.GetValues<WorkflowTrigger>();
         Assert.Equal(9, values.Length);
     }
 

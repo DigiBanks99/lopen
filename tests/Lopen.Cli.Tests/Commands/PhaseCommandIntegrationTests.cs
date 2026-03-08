@@ -1,8 +1,8 @@
-using System.CommandLine;
 using Lopen.Commands;
 using Lopen.Core.Workflow;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -56,7 +56,7 @@ public class PhaseCommandIntegrationTests
         if (registerOrchestrator && orchestrator is not null)
             services.AddSingleton<IWorkflowOrchestrator>(orchestrator);
 
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         var output = new StringWriter();
         var error = new StringWriter();
 
@@ -75,7 +75,7 @@ public class PhaseCommandIntegrationTests
     public async Task Spec_OrchestratorFailure_ReturnsErrorExitCode()
     {
         var orchestrator = new ThrowingOrchestrator(new InvalidOperationException("LLM service unavailable"));
-        var (config, _, error) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator);
 
         var exitCode = await config.InvokeAsync(["spec"]);
 
@@ -88,7 +88,7 @@ public class PhaseCommandIntegrationTests
     {
         var orchestrator = new ConfigurableOrchestrator(
             OrchestrationResult.Interrupted(1, WorkflowStep.DraftSpecification, "User input needed"));
-        var (config, output, _) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig(orchestrator);
 
         var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", "test", "--resume", Session1.ToString()]);
 
@@ -103,7 +103,7 @@ public class PhaseCommandIntegrationTests
     {
         var orchestrator = new ConfigurableOrchestrator(
             OrchestrationResult.Completed(1, WorkflowStep.DraftSpecification, "Done"));
-        var (config, _, _) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator);
 
         await config.InvokeAsync(["plan", "--prompt", "Focus on security"]);
 
@@ -115,7 +115,7 @@ public class PhaseCommandIntegrationTests
     public async Task Plan_OrchestratorFailure_ReturnsErrorExitCode()
     {
         var orchestrator = new ThrowingOrchestrator(new InvalidOperationException("Plan generation failed"));
-        var (config, _, error) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator);
 
         var exitCode = await config.InvokeAsync(["plan"]);
 
@@ -130,7 +130,7 @@ public class PhaseCommandIntegrationTests
     {
         var orchestrator = new ConfigurableOrchestrator(
             OrchestrationResult.Completed(1, WorkflowStep.DraftSpecification, "Done"));
-        var (config, _, _) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator);
 
         await config.InvokeAsync(["build", "--prompt", "Skip tests"]);
 
@@ -142,7 +142,7 @@ public class PhaseCommandIntegrationTests
     public async Task Build_OrchestratorFailure_ReturnsErrorExitCode()
     {
         var orchestrator = new ThrowingOrchestrator(new InvalidOperationException("Build step crashed"));
-        var (config, _, error) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator);
 
         var exitCode = await config.InvokeAsync(["build"]);
 
@@ -158,7 +158,7 @@ public class PhaseCommandIntegrationTests
     [InlineData("build")]
     public async Task AllPhaseCommands_NullOrchestrator_ReturnsFailure(string command)
     {
-        var (config, _, error) = CreateConfig(orchestrator: null, registerOrchestrator: false);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator: null, registerOrchestrator: false);
 
         var exitCode = await config.InvokeAsync([command]);
 

@@ -36,7 +36,7 @@ internal sealed class FakePlanManager : IPlanManager
 
     public Task<IReadOnlyList<PlanTask>> ReadTasksAsync(string module, CancellationToken cancellationToken = default)
     {
-        if (_tasks.TryGetValue(module, out var tasks))
+        if (_tasks.TryGetValue(module, out List<PlanTask>? tasks))
             return Task.FromResult<IReadOnlyList<PlanTask>>(tasks);
         return Task.FromResult<IReadOnlyList<PlanTask>>(Array.Empty<PlanTask>());
     }

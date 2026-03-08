@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Text.Json;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
 using Lopen.Core.Workflow;
@@ -7,6 +5,8 @@ using Lopen.Llm;
 using Lopen.Otel;
 using Lopen.Storage;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.Text.Json;
 
 namespace Lopen.Core.ToolHandlers;
 
@@ -76,7 +76,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
     {
         return async (parameters, ct) =>
         {
-            using var activity = SpanFactory.StartTool(toolName);
+            using Activity? activity = SpanFactory.StartTool(toolName);
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
@@ -106,7 +106,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
     {
         return async (parameters, ct) =>
         {
-            using var activity = SpanFactory.StartOracleVerification(
+            using Activity? activity = SpanFactory.StartOracleVerification(
                 toolName.Replace("verify_", "").Replace("_completion", ""), "oracle", 1);
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             try
@@ -134,7 +134,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
 
     internal async Task<string> HandleReadSpec(string parameters, CancellationToken ct)
     {
-        var args = ParseArgs(parameters);
+        Dictionary<string, string> args = ParseArgs(parameters);
         var module = args.GetValueOrDefault("module") ?? _engine.CurrentStep.ToString();
         var section = args.GetValueOrDefault("section");
 
@@ -146,7 +146,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
 
         if (!string.IsNullOrWhiteSpace(section))
         {
-            var sections = _sectionExtractor.ExtractRelevantSections(content, [section]);
+            IReadOnlyList<ExtractedSection> sections = _sectionExtractor.ExtractRelevantSections(content, [section]);
             if (sections.Count > 0)
                 return string.Join("\n\n", sections.Select(s => s.Content));
             return JsonResult("error", $"Section '{section}' not found in specification");
@@ -157,7 +157,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
 
     internal async Task<string> HandleReadResearch(string parameters, CancellationToken ct)
     {
-        var args = ParseArgs(parameters);
+        Dictionary<string, string> args = ParseArgs(parameters);
         var module = args.GetValueOrDefault("module") ?? "";
         var topic = args.GetValueOrDefault("topic");
 
@@ -193,7 +193,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
 
     internal async Task<string> HandleUpdateTaskStatus(string parameters, CancellationToken ct)
     {
-        var args = ParseArgs(parameters);
+        Dictionary<string, string> args = ParseArgs(parameters);
         var taskId = args.GetValueOrDefault("task_id") ?? "";
         var status = args.GetValueOrDefault("status") ?? "";
         var module = args.GetValueOrDefault("module") ?? "";
@@ -208,7 +208,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
             // Use ITaskStatusGate if available, otherwise fall back to direct tracker check
             if (_taskStatusGate is not null)
             {
-                var gateResult = _taskStatusGate.ValidateCompletion(VerificationScope.Task, taskId);
+                TaskStatusGateResult gateResult = _taskStatusGate.ValidateCompletion(VerificationScope.Task, taskId);
                 if (!gateResult.IsAllowed)
                 {
                     _logger.LogWarning("Task completion rejected by gate: {TaskId} — {Reason}", taskId, gateResult.RejectionReason);
@@ -232,7 +232,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
             // Auto-commit on task completion if git is enabled
             if (_gitWorkflowService is not null && !string.IsNullOrWhiteSpace(module))
             {
-                var commitResult = await _gitWorkflowService.CommitTaskCompletionAsync(
+                GitResult? commitResult = await _gitWorkflowService.CommitTaskCompletionAsync(
                     module, component, taskId, ct);
                 if (commitResult is not null)
                 {
@@ -257,7 +257,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
             ["is_complete"] = _engine.IsComplete.ToString(),
         };
 
-        var permitted = _engine.GetPermittedTriggers();
+        IReadOnlyList<WorkflowTrigger> permitted = _engine.GetPermittedTriggers();
         context["permitted_triggers"] = string.Join(", ", permitted);
 
         return Task.FromResult(JsonSerializer.Serialize(context));
@@ -265,7 +265,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
 
     internal async Task<string> HandleLogResearch(string parameters, CancellationToken ct)
     {
-        var args = ParseArgs(parameters);
+        Dictionary<string, string> args = ParseArgs(parameters);
         var module = args.GetValueOrDefault("module") ?? "";
         var topic = args.GetValueOrDefault("topic") ?? "general";
         var content = args.GetValueOrDefault("content") ?? "";
@@ -323,7 +323,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
 
     internal Task<string> HandleReportProgress(string parameters, CancellationToken ct)
     {
-        var args = ParseArgs(parameters);
+        Dictionary<string, string> args = ParseArgs(parameters);
         var summary = args.GetValueOrDefault("summary") ?? parameters;
 
         _logger.LogInformation("Progress reported: {Summary}", summary);
@@ -332,7 +332,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
 
     internal async Task<string> HandleVerifyTaskCompletion(string parameters, CancellationToken ct)
     {
-        var args = ParseArgs(parameters);
+        Dictionary<string, string> args = ParseArgs(parameters);
         var taskId = args.GetValueOrDefault("task_id") ?? "";
 
         if (string.IsNullOrWhiteSpace(taskId))
@@ -345,7 +345,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
             && !string.IsNullOrWhiteSpace(evidence)
             && !string.IsNullOrWhiteSpace(acceptanceCriteria))
         {
-            var verdict = await _oracleVerifier.VerifyAsync(
+            OracleVerdict verdict = await _oracleVerifier.VerifyAsync(
                 VerificationScope.Task, evidence, acceptanceCriteria, ct);
             _verificationTracker.RecordVerification(VerificationScope.Task, taskId, verdict.Passed);
             _logger.LogInformation("Oracle task verification for {TaskId}: Passed={Passed}, Gaps={GapCount}",
@@ -368,7 +368,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
 
     internal async Task<string> HandleVerifyComponentCompletion(string parameters, CancellationToken ct)
     {
-        var args = ParseArgs(parameters);
+        Dictionary<string, string> args = ParseArgs(parameters);
         var componentId = args.GetValueOrDefault("component_id") ?? "";
 
         if (string.IsNullOrWhiteSpace(componentId))
@@ -381,7 +381,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
             && !string.IsNullOrWhiteSpace(evidence)
             && !string.IsNullOrWhiteSpace(acceptanceCriteria))
         {
-            var verdict = await _oracleVerifier.VerifyAsync(
+            OracleVerdict verdict = await _oracleVerifier.VerifyAsync(
                 VerificationScope.Component, evidence, acceptanceCriteria, ct);
             _verificationTracker.RecordVerification(VerificationScope.Component, componentId, verdict.Passed);
             _logger.LogInformation("Oracle component verification for {ComponentId}: Passed={Passed}, Gaps={GapCount}",
@@ -403,7 +403,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
 
     internal async Task<string> HandleVerifyModuleCompletion(string parameters, CancellationToken ct)
     {
-        var args = ParseArgs(parameters);
+        Dictionary<string, string> args = ParseArgs(parameters);
         var moduleId = args.GetValueOrDefault("module_id") ?? "";
 
         if (string.IsNullOrWhiteSpace(moduleId))
@@ -416,7 +416,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
             && !string.IsNullOrWhiteSpace(evidence)
             && !string.IsNullOrWhiteSpace(acceptanceCriteria))
         {
-            var verdict = await _oracleVerifier.VerifyAsync(
+            OracleVerdict verdict = await _oracleVerifier.VerifyAsync(
                 VerificationScope.Module, evidence, acceptanceCriteria, ct);
             _verificationTracker.RecordVerification(VerificationScope.Module, moduleId, verdict.Passed);
             _logger.LogInformation("Oracle module verification for {ModuleId}: Passed={Passed}, Gaps={GapCount}",
@@ -443,7 +443,7 @@ internal sealed class ToolHandlerBinder : IToolHandlerBinder
 
         try
         {
-            var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(parameters);
+            Dictionary<string, string>? parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(parameters);
             return parsed is not null
                 ? new Dictionary<string, string>(parsed, StringComparer.OrdinalIgnoreCase)
                 : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

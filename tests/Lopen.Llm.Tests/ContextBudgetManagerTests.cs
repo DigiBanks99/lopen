@@ -15,7 +15,7 @@ public sealed class ContextBudgetManagerTests
             new("Research", "more content", EstimatedTokens: 100),
         };
 
-        var result = _manager.FitToBudget(sections, budgetTokens: 500);
+        IReadOnlyList<ContextSection> result = _manager.FitToBudget(sections, budgetTokens: 500);
 
         Assert.Equal(2, result.Count);
     }
@@ -29,7 +29,7 @@ public sealed class ContextBudgetManagerTests
             new("Low Priority", "less important", EstimatedTokens: 300),
         };
 
-        var result = _manager.FitToBudget(sections, budgetTokens: 400);
+        IReadOnlyList<ContextSection> result = _manager.FitToBudget(sections, budgetTokens: 400);
 
         Assert.Equal(2, result.Count);
         Assert.Equal("High Priority", result[0].Title);
@@ -46,7 +46,7 @@ public sealed class ContextBudgetManagerTests
             new("B", "content", EstimatedTokens: 250),
         };
 
-        var result = _manager.FitToBudget(sections, budgetTokens: 500);
+        IReadOnlyList<ContextSection> result = _manager.FitToBudget(sections, budgetTokens: 500);
 
         Assert.Equal(2, result.Count);
     }
@@ -60,7 +60,7 @@ public sealed class ContextBudgetManagerTests
             new("Big", longContent, EstimatedTokens: 500),
         };
 
-        var result = _manager.FitToBudget(sections, budgetTokens: 200);
+        IReadOnlyList<ContextSection> result = _manager.FitToBudget(sections, budgetTokens: 200);
 
         Assert.Single(result);
         Assert.True(result[0].Content.Length < longContent.Length);
@@ -70,7 +70,7 @@ public sealed class ContextBudgetManagerTests
     [Fact]
     public void FitToBudget_EmptySections_ReturnsEmpty()
     {
-        var result = _manager.FitToBudget([], budgetTokens: 500);
+        IReadOnlyList<ContextSection> result = _manager.FitToBudget([], budgetTokens: 500);
 
         Assert.Empty(result);
     }
@@ -99,7 +99,7 @@ public sealed class ContextBudgetManagerTests
             new("Third", "c", EstimatedTokens: 100),
         };
 
-        var result = _manager.FitToBudget(sections, budgetTokens: 300);
+        IReadOnlyList<ContextSection> result = _manager.FitToBudget(sections, budgetTokens: 300);
 
         Assert.Equal("First", result[0].Title);
         Assert.Equal("Second", result[1].Title);

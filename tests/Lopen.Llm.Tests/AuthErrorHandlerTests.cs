@@ -51,7 +51,7 @@ public class AuthErrorHandlerTests
             Recoverable = true,
         };
 
-        var result = await _handler.HandleErrorAsync(input);
+        ErrorOccurredHookOutput? result = await _handler.HandleErrorAsync(input);
 
         Assert.NotNull(result);
         Assert.Equal("retry", result!.ErrorHandling);
@@ -68,11 +68,11 @@ public class AuthErrorHandlerTests
         };
 
         // First retry succeeds
-        var first = await _handler.HandleErrorAsync(input);
+        ErrorOccurredHookOutput? first = await _handler.HandleErrorAsync(input);
         Assert.Equal("retry", first!.ErrorHandling);
 
         // Second retry exhausted → abort
-        var second = await _handler.HandleErrorAsync(input);
+        ErrorOccurredHookOutput? second = await _handler.HandleErrorAsync(input);
         Assert.Equal("abort", second!.ErrorHandling);
         Assert.True(_stateSaver.WasCalled);
     }
@@ -86,7 +86,7 @@ public class AuthErrorHandlerTests
             Recoverable = false,
         };
 
-        var result = await _handler.HandleErrorAsync(input);
+        ErrorOccurredHookOutput? result = await _handler.HandleErrorAsync(input);
 
         Assert.NotNull(result);
         Assert.Equal("abort", result!.ErrorHandling);
@@ -121,7 +121,7 @@ public class AuthErrorHandlerTests
             Recoverable = true,
         };
 
-        var result = await _handler.HandleErrorAsync(input);
+        ErrorOccurredHookOutput? result = await _handler.HandleErrorAsync(input);
 
         Assert.Null(result);
         Assert.False(_stateSaver.WasCalled);
@@ -136,7 +136,7 @@ public class AuthErrorHandlerTests
             Recoverable = false,
         };
 
-        var result = await _handler.HandleErrorAsync(input);
+        ErrorOccurredHookOutput? result = await _handler.HandleErrorAsync(input);
 
         Assert.NotNull(result!.UserNotification);
         Assert.Contains("GH_TOKEN", result.UserNotification);
@@ -157,7 +157,7 @@ public class AuthErrorHandlerTests
             Recoverable = false,
         };
 
-        var result = await handler.HandleErrorAsync(input);
+        ErrorOccurredHookOutput? result = await handler.HandleErrorAsync(input);
 
         Assert.Equal("abort", result!.ErrorHandling);
     }
@@ -171,12 +171,12 @@ public class AuthErrorHandlerTests
             Recoverable = true,
         };
 
-        var first = await _handler.HandleErrorAsync(input);
+        ErrorOccurredHookOutput? first = await _handler.HandleErrorAsync(input);
         Assert.Equal("retry", first!.ErrorHandling);
 
         _handler.ResetRetryCount();
 
-        var afterReset = await _handler.HandleErrorAsync(input);
+        ErrorOccurredHookOutput? afterReset = await _handler.HandleErrorAsync(input);
         Assert.Equal("retry", afterReset!.ErrorHandling);
     }
 

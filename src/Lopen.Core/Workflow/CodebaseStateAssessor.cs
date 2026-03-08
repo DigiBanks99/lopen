@@ -30,8 +30,8 @@ internal sealed class CodebaseStateAssessor : IStateAssessor
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
 
         // Check if spec exists — if not, still at drafting
-        var modules = _moduleScanner.ScanModules();
-        var module = modules.FirstOrDefault(m =>
+        IReadOnlyList<ModuleInfo> modules = _moduleScanner.ScanModules();
+        ModuleInfo? module = modules.FirstOrDefault(m =>
             string.Equals(m.Name, moduleName, StringComparison.OrdinalIgnoreCase));
 
         if (module is null || !module.HasSpecification)
@@ -52,7 +52,7 @@ internal sealed class CodebaseStateAssessor : IStateAssessor
             return Task.FromResult(WorkflowStep.DraftSpecification);
         }
 
-        var (total, completed) = MarkdownUpdater.CountCheckboxes(content);
+        (int total, int completed) = MarkdownUpdater.CountCheckboxes(content);
 
         // If all criteria are met, the module is complete (Repeat step)
         if (total > 0 && completed == total)
@@ -71,7 +71,7 @@ internal sealed class CodebaseStateAssessor : IStateAssessor
         }
 
         // If persisted state is available, use it as a hint
-        if (_persistedSteps.TryGetValue(moduleName, out var persisted))
+        if (_persistedSteps.TryGetValue(moduleName, out WorkflowStep persisted))
         {
             _logger.LogInformation("Module {Module}: using persisted step {Step}", moduleName, persisted);
             return Task.FromResult(persisted);
@@ -100,8 +100,8 @@ internal sealed class CodebaseStateAssessor : IStateAssessor
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
 
-        var modules = _moduleScanner.ScanModules();
-        var module = modules.FirstOrDefault(m =>
+        IReadOnlyList<ModuleInfo> modules = _moduleScanner.ScanModules();
+        ModuleInfo? module = modules.FirstOrDefault(m =>
             string.Equals(m.Name, moduleName, StringComparison.OrdinalIgnoreCase));
 
         return Task.FromResult(module is { HasSpecification: true });
@@ -111,8 +111,8 @@ internal sealed class CodebaseStateAssessor : IStateAssessor
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
 
-        var modules = _moduleScanner.ScanModules();
-        var module = modules.FirstOrDefault(m =>
+        IReadOnlyList<ModuleInfo> modules = _moduleScanner.ScanModules();
+        ModuleInfo? module = modules.FirstOrDefault(m =>
             string.Equals(m.Name, moduleName, StringComparison.OrdinalIgnoreCase));
 
         if (module is null || !module.HasSpecification)
@@ -121,7 +121,7 @@ internal sealed class CodebaseStateAssessor : IStateAssessor
         try
         {
             var content = _fileSystem.ReadAllTextAsync(module.SpecificationPath).GetAwaiter().GetResult();
-            var (total, completed) = MarkdownUpdater.CountCheckboxes(content);
+            (int total, int completed) = MarkdownUpdater.CountCheckboxes(content);
             return Task.FromResult(total > 0 && completed < total);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

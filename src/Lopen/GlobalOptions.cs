@@ -1,6 +1,6 @@
-using System.CommandLine;
 using Lopen.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Commands;
 
@@ -86,7 +86,7 @@ public static class GlobalOptions
 
         if (model is not null)
         {
-            var modelOptions = services.GetRequiredService<ModelOptions>();
+            ModelOptions modelOptions = services.GetRequiredService<ModelOptions>();
             modelOptions.RequirementGathering = model;
             modelOptions.Planning = model;
             modelOptions.Building = model;
@@ -95,13 +95,13 @@ public static class GlobalOptions
 
         if (unattended)
         {
-            var workflowOptions = services.GetRequiredService<WorkflowOptions>();
+            WorkflowOptions workflowOptions = services.GetRequiredService<WorkflowOptions>();
             workflowOptions.Unattended = true;
         }
 
         if (maxIterations is not null)
         {
-            var workflowOptions = services.GetRequiredService<WorkflowOptions>();
+            WorkflowOptions workflowOptions = services.GetRequiredService<WorkflowOptions>();
             workflowOptions.MaxIterations = maxIterations.Value;
         }
     }

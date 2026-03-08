@@ -72,8 +72,8 @@ internal sealed class CopilotClientProvider : ICopilotClientProvider
 
         try
         {
-            var client = await GetClientAsync(cancellationToken);
-            var authStatus = await client.GetAuthStatusAsync(cancellationToken);
+            CopilotClient client = await GetClientAsync(cancellationToken);
+            GetAuthStatusResponse authStatus = await client.GetAuthStatusAsync(cancellationToken);
             return authStatus.IsAuthenticated;
         }
         catch (LlmException)

@@ -26,7 +26,7 @@ internal static class ToolConversion
     {
         // Wrap the Lopen handler delegate so AIFunctionFactory can bind it.
         // The SDK calls the delegate with (string arguments, CancellationToken ct).
-        var handler = tool.Handler!;
+        Func<string, CancellationToken, Task<string>> handler = tool.Handler!;
         return AIFunctionFactory.Create(
             async (string arguments, CancellationToken ct) => await handler(arguments, ct),
             tool.Name,

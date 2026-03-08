@@ -33,7 +33,7 @@ public sealed class SectionExtractorTests
     {
         var headers = new List<string> { "Authentication" };
 
-        var result = _extractor.ExtractRelevantSections(SampleSpec, headers);
+        IReadOnlyList<ExtractedSection> result = _extractor.ExtractRelevantSections(SampleSpec, headers);
 
         Assert.Single(result);
         Assert.Equal("Authentication", result[0].Header);
@@ -45,7 +45,7 @@ public sealed class SectionExtractorTests
     {
         var headers = new List<string> { "Overview", "Authentication" };
 
-        var result = _extractor.ExtractRelevantSections(SampleSpec, headers);
+        IReadOnlyList<ExtractedSection> result = _extractor.ExtractRelevantSections(SampleSpec, headers);
 
         Assert.Equal(2, result.Count);
     }
@@ -55,7 +55,7 @@ public sealed class SectionExtractorTests
     {
         var headers = new List<string> { "authentication" };
 
-        var result = _extractor.ExtractRelevantSections(SampleSpec, headers);
+        IReadOnlyList<ExtractedSection> result = _extractor.ExtractRelevantSections(SampleSpec, headers);
 
         Assert.Single(result);
     }
@@ -65,7 +65,7 @@ public sealed class SectionExtractorTests
     {
         var headers = new List<string> { "Nonexistent" };
 
-        var result = _extractor.ExtractRelevantSections(SampleSpec, headers);
+        IReadOnlyList<ExtractedSection> result = _extractor.ExtractRelevantSections(SampleSpec, headers);
 
         Assert.Empty(result);
     }
@@ -73,7 +73,7 @@ public sealed class SectionExtractorTests
     [Fact]
     public void ExtractRelevantSections_EmptyHeaders_ReturnsEmpty()
     {
-        var result = _extractor.ExtractRelevantSections(SampleSpec, []);
+        IReadOnlyList<ExtractedSection> result = _extractor.ExtractRelevantSections(SampleSpec, []);
 
         Assert.Empty(result);
     }
@@ -83,7 +83,7 @@ public sealed class SectionExtractorTests
     {
         var headers = new List<string> { "Authentication" };
 
-        var result = _extractor.ExtractRelevantSections(SampleSpec, headers);
+        IReadOnlyList<ExtractedSection> result = _extractor.ExtractRelevantSections(SampleSpec, headers);
 
         Assert.True(result[0].EstimatedTokens > 0);
     }
@@ -91,7 +91,7 @@ public sealed class SectionExtractorTests
     [Fact]
     public void ExtractAllSections_ReturnsAllSections()
     {
-        var result = _extractor.ExtractAllSections(SampleSpec);
+        IReadOnlyList<ExtractedSection> result = _extractor.ExtractAllSections(SampleSpec);
 
         Assert.Equal(3, result.Count);
         Assert.Equal("Overview", result[0].Header);
@@ -102,7 +102,7 @@ public sealed class SectionExtractorTests
     [Fact]
     public void ExtractAllSections_HasTokenEstimates()
     {
-        var result = _extractor.ExtractAllSections(SampleSpec);
+        IReadOnlyList<ExtractedSection> result = _extractor.ExtractAllSections(SampleSpec);
 
         Assert.All(result, s => Assert.True(s.EstimatedTokens > 0));
     }

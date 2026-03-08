@@ -1,6 +1,6 @@
 using Aspire.Hosting;
 
-var builder = DistributedApplication.CreateBuilder(args);
+IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddProject<Projects.Lopen>("lopen");
 

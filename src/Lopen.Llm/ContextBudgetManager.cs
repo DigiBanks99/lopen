@@ -29,7 +29,7 @@ internal sealed class ContextBudgetManager : IContextBudgetManager
         var result = new List<ContextSection>();
         var remainingTokens = budgetTokens;
 
-        foreach (var section in sections)
+        foreach (ContextSection section in sections)
         {
             if (remainingTokens <= 0)
             {
@@ -45,7 +45,7 @@ internal sealed class ContextBudgetManager : IContextBudgetManager
             else
             {
                 // Truncate to fit remaining budget
-                var truncated = TruncateToTokens(section, remainingTokens);
+                ContextSection? truncated = TruncateToTokens(section, remainingTokens);
                 if (truncated is not null)
                 {
                     result.Add(truncated);

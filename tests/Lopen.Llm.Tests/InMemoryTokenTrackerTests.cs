@@ -7,7 +7,7 @@ public class InMemoryTokenTrackerTests
     {
         var tracker = new InMemoryTokenTracker();
 
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Empty(metrics.PerIterationTokens);
         Assert.Equal(0, metrics.CumulativeInputTokens);
@@ -22,7 +22,7 @@ public class InMemoryTokenTrackerTests
         var usage = new TokenUsage(100, 50, 150, 128000, true);
 
         tracker.RecordUsage(usage);
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Single(metrics.PerIterationTokens);
         Assert.Equal(100, metrics.CumulativeInputTokens);
@@ -38,7 +38,7 @@ public class InMemoryTokenTrackerTests
         tracker.RecordUsage(new TokenUsage(200, 100, 300, 128000, false));
         tracker.RecordUsage(new TokenUsage(300, 150, 450, 128000, true));
 
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Equal(3, metrics.PerIterationTokens.Count);
         Assert.Equal(600, metrics.CumulativeInputTokens);
@@ -52,7 +52,7 @@ public class InMemoryTokenTrackerTests
         var tracker = new InMemoryTokenTracker();
         tracker.RecordUsage(new TokenUsage(100, 50, 150, 64000, false));
 
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Equal(0, metrics.PremiumRequestCount);
     }
@@ -65,7 +65,7 @@ public class InMemoryTokenTrackerTests
         tracker.RecordUsage(new TokenUsage(200, 100, 300, 128000, true));
 
         tracker.ResetSession();
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Empty(metrics.PerIterationTokens);
         Assert.Equal(0, metrics.CumulativeInputTokens);
@@ -81,7 +81,7 @@ public class InMemoryTokenTrackerTests
         tracker.ResetSession();
         tracker.RecordUsage(new TokenUsage(200, 100, 300, 128000, false));
 
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Single(metrics.PerIterationTokens);
         Assert.Equal(200, metrics.CumulativeInputTokens);
@@ -102,9 +102,9 @@ public class InMemoryTokenTrackerTests
         var tracker = new InMemoryTokenTracker();
         tracker.RecordUsage(new TokenUsage(100, 50, 150, 128000, true));
 
-        var first = tracker.GetSessionMetrics();
+        SessionTokenMetrics first = tracker.GetSessionMetrics();
         tracker.RecordUsage(new TokenUsage(200, 100, 300, 128000, false));
-        var second = tracker.GetSessionMetrics();
+        SessionTokenMetrics second = tracker.GetSessionMetrics();
 
         Assert.Single(first.PerIterationTokens);
         Assert.Equal(2, second.PerIterationTokens.Count);
@@ -118,7 +118,7 @@ public class InMemoryTokenTrackerTests
         var tracker = new InMemoryTokenTracker();
         tracker.RestoreMetrics(1000, 500, 3);
 
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Equal(1000, metrics.CumulativeInputTokens);
         Assert.Equal(500, metrics.CumulativeOutputTokens);
@@ -133,7 +133,7 @@ public class InMemoryTokenTrackerTests
         tracker.RestoreMetrics(1000, 500, 2);
         tracker.RecordUsage(new TokenUsage(100, 50, 150, 128000, true));
 
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Equal(1100, metrics.CumulativeInputTokens);
         Assert.Equal(550, metrics.CumulativeOutputTokens);
@@ -149,7 +149,7 @@ public class InMemoryTokenTrackerTests
         // First session: record some usage
         tracker.RecordUsage(new TokenUsage(500, 200, 700, 128000, true));
         tracker.RecordUsage(new TokenUsage(300, 100, 400, 128000, false));
-        var saved = tracker.GetSessionMetrics();
+        SessionTokenMetrics saved = tracker.GetSessionMetrics();
 
         // Simulate save → new tracker → restore
         var tracker2 = new InMemoryTokenTracker();
@@ -158,7 +158,7 @@ public class InMemoryTokenTrackerTests
         // Record more usage in new session
         tracker2.RecordUsage(new TokenUsage(200, 50, 250, 64000, true));
 
-        var final_ = tracker2.GetSessionMetrics();
+        SessionTokenMetrics final_ = tracker2.GetSessionMetrics();
 
         // Values should be strictly greater than saved
         Assert.True(final_.CumulativeInputTokens > saved.CumulativeInputTokens);
@@ -178,7 +178,7 @@ public class InMemoryTokenTrackerTests
         tracker.RestoreMetrics(1000, 500, 3);
         tracker.ResetSession();
 
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Equal(0, metrics.CumulativeInputTokens);
         Assert.Equal(0, metrics.CumulativeOutputTokens);
@@ -198,7 +198,7 @@ public class InMemoryTokenTrackerTests
         };
 
         tracker.RestoreMetrics(700, 350, 1, priorIterations);
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Equal(2, metrics.PerIterationTokens.Count);
         Assert.Equal(400, metrics.PerIterationTokens[0].InputTokens);
@@ -218,7 +218,7 @@ public class InMemoryTokenTrackerTests
 
         tracker.RestoreMetrics(400, 200, 1, priorIterations);
         tracker.RecordUsage(new TokenUsage(100, 50, 150, 64000, false));
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Equal(2, metrics.PerIterationTokens.Count);
         Assert.Equal(400, metrics.PerIterationTokens[0].InputTokens);
@@ -234,7 +234,7 @@ public class InMemoryTokenTrackerTests
         tracker.RecordUsage(new TokenUsage(100, 50, 150, 128000, false));
 
         tracker.RestoreMetrics(1000, 500, 2, null);
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Single(metrics.PerIterationTokens);
         Assert.Equal(1000, metrics.CumulativeInputTokens);
@@ -246,7 +246,7 @@ public class InMemoryTokenTrackerTests
         var tracker = new InMemoryTokenTracker();
         tracker.RecordUsage(new TokenUsage(500, 200, 700, 128000, true));
         tracker.RecordUsage(new TokenUsage(300, 100, 400, 128000, false));
-        var saved = tracker.GetSessionMetrics();
+        SessionTokenMetrics saved = tracker.GetSessionMetrics();
 
         var tracker2 = new InMemoryTokenTracker();
         tracker2.RestoreMetrics(
@@ -256,7 +256,7 @@ public class InMemoryTokenTrackerTests
             saved.PerIterationTokens.ToList());
         tracker2.RecordUsage(new TokenUsage(200, 50, 250, 64000, true));
 
-        var final_ = tracker2.GetSessionMetrics();
+        SessionTokenMetrics final_ = tracker2.GetSessionMetrics();
 
         Assert.Equal(3, final_.PerIterationTokens.Count);
         Assert.Equal(500, final_.PerIterationTokens[0].InputTokens);

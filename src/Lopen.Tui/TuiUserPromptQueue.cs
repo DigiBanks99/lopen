@@ -1,5 +1,5 @@
-using System.Threading.Channels;
 using Lopen.Core;
+using System.Threading.Channels;
 
 namespace Lopen.Tui;
 

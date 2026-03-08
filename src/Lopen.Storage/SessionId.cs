@@ -42,7 +42,7 @@ public sealed partial class SessionId : IEquatable<SessionId>
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
 
-        var match = SessionIdPattern().Match(value);
+        Match match = SessionIdPattern().Match(value);
         if (!match.Success)
         {
             throw new FormatException($"Invalid session ID format: '{value}'. Expected '{{module}}-YYYYMMDD-{{counter}}'.");
@@ -52,7 +52,7 @@ public sealed partial class SessionId : IEquatable<SessionId>
         var dateStr = match.Groups["date"].Value;
         var counterStr = match.Groups["counter"].Value;
 
-        if (!DateOnly.TryParseExact(dateStr, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+        if (!DateOnly.TryParseExact(dateStr, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly date))
         {
             throw new FormatException($"Invalid date in session ID: '{dateStr}'.");
         }

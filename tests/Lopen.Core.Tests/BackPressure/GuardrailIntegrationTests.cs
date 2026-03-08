@@ -13,22 +13,22 @@ public class GuardrailIntegrationTests
         var pipeline = new GuardrailPipeline([churn]);
 
         // Iteration 1 — Pass
-        var results1 = await pipeline.EvaluateAsync(new GuardrailContext("mod", "task-1", IterationCount: 1, ToolCallCount: 5));
+        IReadOnlyList<GuardrailResult> results1 = await pipeline.EvaluateAsync(new GuardrailContext("mod", "task-1", IterationCount: 1, ToolCallCount: 5));
         Assert.Single(results1);
         Assert.IsType<GuardrailResult.Pass>(results1[0]);
 
         // Iteration 2 — Warn (threshold - 1)
-        var results2 = await pipeline.EvaluateAsync(new GuardrailContext("mod", "task-1", IterationCount: 2, ToolCallCount: 5));
+        IReadOnlyList<GuardrailResult> results2 = await pipeline.EvaluateAsync(new GuardrailContext("mod", "task-1", IterationCount: 2, ToolCallCount: 5));
         Assert.Single(results2);
         Assert.IsType<GuardrailResult.Warn>(results2[0]);
 
         // Iteration 3 — Block (at threshold)
-        var results3 = await pipeline.EvaluateAsync(new GuardrailContext("mod", "task-1", IterationCount: 3, ToolCallCount: 5));
+        IReadOnlyList<GuardrailResult> results3 = await pipeline.EvaluateAsync(new GuardrailContext("mod", "task-1", IterationCount: 3, ToolCallCount: 5));
         Assert.Single(results3);
         Assert.IsType<GuardrailResult.Block>(results3[0]);
 
         // Iteration 5 — Block (above threshold)
-        var results5 = await pipeline.EvaluateAsync(new GuardrailContext("mod", "task-1", IterationCount: 5, ToolCallCount: 5));
+        IReadOnlyList<GuardrailResult> results5 = await pipeline.EvaluateAsync(new GuardrailContext("mod", "task-1", IterationCount: 5, ToolCallCount: 5));
         Assert.Single(results5);
         Assert.IsType<GuardrailResult.Block>(results5[0]);
     }
@@ -43,12 +43,12 @@ public class GuardrailIntegrationTests
         var pipeline = new GuardrailPipeline([churn, qualityGate]);
         var context = new GuardrailContext("mod", "unverified-task", IterationCount: 1, ToolCallCount: 2);
 
-        var results = await pipeline.EvaluateAsync(context);
+        IReadOnlyList<GuardrailResult> results = await pipeline.EvaluateAsync(context);
 
         // Churn passes (iteration 1, well below threshold 10), then QualityGate blocks
         Assert.Equal(2, results.Count);
         Assert.IsType<GuardrailResult.Pass>(results[0]);
-        var block = Assert.IsType<GuardrailResult.Block>(results[1]);
+        GuardrailResult.Block block = Assert.IsType<GuardrailResult.Block>(results[1]);
         Assert.Contains("unverified-task", block.Message);
     }
 
@@ -63,7 +63,7 @@ public class GuardrailIntegrationTests
         var pipeline = new GuardrailPipeline([qualityGate, counter]);
         var context = new GuardrailContext("mod", "task", IterationCount: 1, ToolCallCount: 0);
 
-        var results = await pipeline.EvaluateAsync(context);
+        IReadOnlyList<GuardrailResult> results = await pipeline.EvaluateAsync(context);
 
         // QualityGate blocks with short-circuit — downstream guardrail never called
         Assert.Single(results);
@@ -80,7 +80,7 @@ public class GuardrailIntegrationTests
         var pipeline = new GuardrailPipeline([churn, counter]);
         var context = new GuardrailContext("mod", "task", IterationCount: 1, ToolCallCount: 0);
 
-        var results = await pipeline.EvaluateAsync(context);
+        IReadOnlyList<GuardrailResult> results = await pipeline.EvaluateAsync(context);
 
         // Churn blocks but does NOT short-circuit — downstream guardrail runs
         Assert.Equal(2, results.Count);
@@ -96,8 +96,8 @@ public class GuardrailIntegrationTests
         services.AddLogging();
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
-        var pipeline = provider.GetRequiredService<IGuardrailPipeline>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IGuardrailPipeline pipeline = provider.GetRequiredService<IGuardrailPipeline>();
 
         Assert.NotNull(pipeline);
         // Verify multiple guardrails are registered

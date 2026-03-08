@@ -28,18 +28,18 @@ internal sealed class DriftDetector : IDriftDetector
         ArgumentNullException.ThrowIfNull(currentContent);
         ArgumentNullException.ThrowIfNull(cachedSections);
 
-        var currentSections = _parser.ExtractSections(currentContent);
+        IReadOnlyList<DocumentSection> currentSections = _parser.ExtractSections(currentContent);
         var cachedByHeader = cachedSections
             .Where(c => c.FilePath == specificationPath)
             .ToDictionary(c => c.Header, c => c, StringComparer.OrdinalIgnoreCase);
 
         var results = new List<DriftResult>();
 
-        foreach (var section in currentSections)
+        foreach (DocumentSection section in currentSections)
         {
             var currentHash = _hasher.ComputeHash(section.Content);
 
-            if (cachedByHeader.TryGetValue(section.Header, out var cached))
+            if (cachedByHeader.TryGetValue(section.Header, out CachedSection? cached))
             {
                 if (_hasher.HasDrifted(section.Content, cached.ContentHash))
                 {
@@ -56,7 +56,7 @@ internal sealed class DriftDetector : IDriftDetector
         }
 
         // Remaining cached sections were removed
-        foreach (var removed in cachedByHeader.Values)
+        foreach (CachedSection? removed in cachedByHeader.Values)
         {
             _logger.LogWarning("Section '{Header}' removed from {Path}", removed.Header, specificationPath);
             results.Add(new DriftResult(removed.Header, removed.ContentHash, CurrentHash: null, IsNew: false, IsRemoved: true));

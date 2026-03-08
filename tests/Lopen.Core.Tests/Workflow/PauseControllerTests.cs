@@ -1,7 +1,7 @@
-namespace Lopen.Core.Tests.Workflow;
 
 using Lopen.Core.Workflow;
 
+namespace Lopen.Core.Tests.Workflow;
 /// <summary>
 /// Tests for PauseController. Covers JOB-037 (TUI-41) acceptance criteria.
 /// </summary>
@@ -88,7 +88,7 @@ public class PauseControllerTests
     public async Task WaitIfPausedAsync_WhenNotPaused_ReturnsImmediately()
     {
         var controller = new PauseController();
-        var task = controller.WaitIfPausedAsync();
+        Task task = controller.WaitIfPausedAsync();
         await task.WaitAsync(TimeSpan.FromMilliseconds(100));
         Assert.True(task.IsCompletedSuccessfully);
     }
@@ -132,7 +132,7 @@ public class PauseControllerTests
         controller.Pause();
         controller.Resume();
 
-        var task = controller.WaitIfPausedAsync();
+        Task task = controller.WaitIfPausedAsync();
         await task.WaitAsync(TimeSpan.FromMilliseconds(100));
         Assert.True(task.IsCompletedSuccessfully);
     }
@@ -163,7 +163,7 @@ public class PauseControllerTests
     public async Task ConcurrentToggle_DoesNotThrow()
     {
         var controller = new PauseController();
-        var tasks = Enumerable.Range(0, 100).Select(_ => Task.Run(() =>
+        IEnumerable<Task> tasks = Enumerable.Range(0, 100).Select(_ => Task.Run(() =>
         {
             controller.Toggle();
         }));

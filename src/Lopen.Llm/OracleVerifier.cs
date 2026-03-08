@@ -1,6 +1,6 @@
-using System.Text.Json;
 using Lopen.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace Lopen.Llm;
 
@@ -62,7 +62,7 @@ internal sealed class OracleVerifier : IOracleVerifier
                 Scope: scope);
         }
 
-        var verdict = ParseVerdict(result.Output, scope);
+        OracleVerdict verdict = ParseVerdict(result.Output, scope);
 
         _logger.LogInformation(
             "Oracle verdict for scope {Scope}: Passed={Passed}, Gaps={GapCount}",
@@ -119,7 +119,7 @@ internal sealed class OracleVerifier : IOracleVerifier
 
         try
         {
-            var parsed = JsonSerializer.Deserialize<OracleResponseDto>(json, JsonOptions);
+            OracleResponseDto? parsed = JsonSerializer.Deserialize<OracleResponseDto>(json, JsonOptions);
             if (parsed is null)
             {
                 return new OracleVerdict(
@@ -128,7 +128,7 @@ internal sealed class OracleVerifier : IOracleVerifier
                     Scope: scope);
             }
 
-            var gaps = parsed.Gaps ?? [];
+            List<string> gaps = parsed.Gaps ?? [];
             return new OracleVerdict(
                 Passed: parsed.Pass && gaps.Count == 0,
                 Gaps: gaps,

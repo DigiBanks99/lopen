@@ -11,7 +11,7 @@ public class ToolDisciplineGuardrailTests
         var guardrail = new ToolDisciplineGuardrail(toolCallThreshold: 50);
         var context = new GuardrailContext("mod", "task", IterationCount: 1, ToolCallCount: 30);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }
@@ -22,7 +22,7 @@ public class ToolDisciplineGuardrailTests
         var guardrail = new ToolDisciplineGuardrail(toolCallThreshold: 50);
         var context = new GuardrailContext("mod", "task", IterationCount: 1, ToolCallCount: 60);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Warn>(result);
     }
@@ -33,9 +33,9 @@ public class ToolDisciplineGuardrailTests
         var guardrail = new ToolDisciplineGuardrail(toolCallThreshold: 50);
         var context = new GuardrailContext("mod", "task", IterationCount: 1, ToolCallCount: 110);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
-        var warn = Assert.IsType<GuardrailResult.Warn>(result);
+        GuardrailResult.Warn warn = Assert.IsType<GuardrailResult.Warn>(result);
         Assert.Contains("Excessive", warn.Message);
     }
 
@@ -45,7 +45,7 @@ public class ToolDisciplineGuardrailTests
         var guardrail = new ToolDisciplineGuardrail(toolCallThreshold: 50);
         var context = new GuardrailContext("mod", "task", IterationCount: 1, ToolCallCount: 50);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }
@@ -56,9 +56,9 @@ public class ToolDisciplineGuardrailTests
         var guardrail = new ToolDisciplineGuardrail(toolCallThreshold: 50);
         var context = new GuardrailContext("mod", "task", IterationCount: 1, ToolCallCount: 75);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
-        var warn = Assert.IsType<GuardrailResult.Warn>(result);
+        GuardrailResult.Warn warn = Assert.IsType<GuardrailResult.Warn>(result);
         Assert.Contains("75", warn.Message);
     }
 
@@ -98,9 +98,9 @@ public class ToolDisciplineGuardrailTests
         var fileReads = new Dictionary<string, int> { ["src/Program.cs"] = 5 };
         var context = new GuardrailContext("mod", "task", 1, 10, FileReadCounts: fileReads);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
-        var warn = Assert.IsType<GuardrailResult.Warn>(result);
+        GuardrailResult.Warn warn = Assert.IsType<GuardrailResult.Warn>(result);
         Assert.Contains("Program.cs", warn.Message);
         Assert.Contains("5", warn.Message);
     }
@@ -112,7 +112,7 @@ public class ToolDisciplineGuardrailTests
         var fileReads = new Dictionary<string, int> { ["src/Program.cs"] = 3 };
         var context = new GuardrailContext("mod", "task", 1, 10, FileReadCounts: fileReads);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }
@@ -124,9 +124,9 @@ public class ToolDisciplineGuardrailTests
         var cmdRetries = new Dictionary<string, int> { ["dotnet test"] = 5 };
         var context = new GuardrailContext("mod", "task", 1, 10, CommandRetryCounts: cmdRetries);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
-        var warn = Assert.IsType<GuardrailResult.Warn>(result);
+        GuardrailResult.Warn warn = Assert.IsType<GuardrailResult.Warn>(result);
         Assert.Contains("dotnet test", warn.Message);
         Assert.Contains("5", warn.Message);
     }
@@ -138,7 +138,7 @@ public class ToolDisciplineGuardrailTests
         var cmdRetries = new Dictionary<string, int> { ["dotnet test"] = 3 };
         var context = new GuardrailContext("mod", "task", 1, 10, CommandRetryCounts: cmdRetries);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }
@@ -152,9 +152,9 @@ public class ToolDisciplineGuardrailTests
         var cmdRetries = new Dictionary<string, int> { ["npm test"] = 4 };
         var context = new GuardrailContext("mod", "task", 1, 25, fileReads, cmdRetries);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
-        var warn = Assert.IsType<GuardrailResult.Warn>(result);
+        GuardrailResult.Warn warn = Assert.IsType<GuardrailResult.Warn>(result);
         Assert.Contains("file.cs", warn.Message);
         Assert.Contains("npm test", warn.Message);
         Assert.Contains("25", warn.Message);
@@ -181,7 +181,7 @@ public class ToolDisciplineGuardrailTests
         var fileReads = new Dictionary<string, int> { ["file.cs"] = 4 };
         var context = new GuardrailContext("mod", "task", 1, 10, FileReadCounts: fileReads);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }
@@ -194,7 +194,7 @@ public class ToolDisciplineGuardrailTests
         var cmdRetries = new Dictionary<string, int> { ["cmd"] = 2 };
         var context = new GuardrailContext("mod", "task", 1, 10, CommandRetryCounts: cmdRetries);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Warn>(result);
     }
@@ -219,7 +219,7 @@ public class ToolDisciplineGuardrailTests
         var guardrail = new ToolDisciplineGuardrail(maxFileReads: 1);
         var context = new GuardrailContext("mod", "task", 1, 10, FileReadCounts: null);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }
@@ -230,7 +230,7 @@ public class ToolDisciplineGuardrailTests
         var guardrail = new ToolDisciplineGuardrail(maxCommandRetries: 1);
         var context = new GuardrailContext("mod", "task", 1, 10, CommandRetryCounts: null);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }

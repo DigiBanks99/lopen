@@ -1,3 +1,4 @@
+using GitHub.Copilot.SDK;
 using Lopen.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,7 +30,7 @@ public class LlmAcceptanceCriteriaTests
         var clientProvider = new CopilotClientProvider(
             tokenProvider, NullLogger<CopilotClientProvider>.Instance);
 
-        var client = clientProvider.CreateClient();
+        CopilotClient client = clientProvider.CreateClient();
         Assert.NotNull(client);
         await clientProvider.DisposeAsync();
     }
@@ -41,7 +42,7 @@ public class LlmAcceptanceCriteriaTests
         services.AddLogging();
         services.AddLopenLlm();
 
-        var sp = services.BuildServiceProvider();
+        ServiceProvider sp = services.BuildServiceProvider();
         Assert.NotNull(sp.GetService<IGitHubTokenProvider>());
         Assert.NotNull(sp.GetService<ICopilotClientProvider>());
     }
@@ -108,7 +109,7 @@ public class LlmAcceptanceCriteriaTests
             new("low", new string('x', 100_000), ContextBudgetManager.EstimateTokens(new string('x', 100_000))),
         };
 
-        var result = manager.FitToBudget(sections, budgetTokens: 100);
+        IReadOnlyList<ContextSection> result = manager.FitToBudget(sections, budgetTokens: 100);
         Assert.Contains(result, s => s.Title == "high");
     }
 
@@ -119,7 +120,7 @@ public class LlmAcceptanceCriteriaTests
     public void AC5_AllSpecifiedTools_AreRegistered()
     {
         var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        var allTools = registry.GetAllTools();
+        IReadOnlyList<LopenToolDefinition> allTools = registry.GetAllTools();
         var toolNames = allTools.Select(t => t.Name).ToHashSet();
 
         Assert.Contains("read_spec", toolNames);
@@ -138,7 +139,7 @@ public class LlmAcceptanceCriteriaTests
     public void AC6_VerificationTools_AreRegistered()
     {
         var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        var allTools = registry.GetAllTools();
+        IReadOnlyList<LopenToolDefinition> allTools = registry.GetAllTools();
         var toolNames = allTools.Select(t => t.Name).ToHashSet();
 
         Assert.Contains("verify_task_completion", toolNames);
@@ -187,7 +188,7 @@ public class LlmAcceptanceCriteriaTests
         var tracker = new VerificationTracker();
         var gate = new TaskStatusGate(tracker, NullLogger<TaskStatusGate>.Instance);
 
-        var result = gate.ValidateCompletion(VerificationScope.Task, "my-task");
+        TaskStatusGateResult result = gate.ValidateCompletion(VerificationScope.Task, "my-task");
         Assert.False(result.IsAllowed);
         Assert.Contains("verify_task_completion", result.RejectionReason!);
     }
@@ -199,7 +200,7 @@ public class LlmAcceptanceCriteriaTests
         var gate = new TaskStatusGate(tracker, NullLogger<TaskStatusGate>.Instance);
 
         tracker.RecordVerification(VerificationScope.Task, "my-task", passed: true);
-        var result = gate.ValidateCompletion(VerificationScope.Task, "my-task");
+        TaskStatusGateResult result = gate.ValidateCompletion(VerificationScope.Task, "my-task");
         Assert.True(result.IsAllowed);
     }
 
@@ -210,7 +211,7 @@ public class LlmAcceptanceCriteriaTests
     public void AC9_ResearchPhase_IncludesLogResearch_ExcludesVerification()
     {
         var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        var tools = registry.GetToolsForPhase(WorkflowPhase.Research);
+        IReadOnlyList<LopenToolDefinition> tools = registry.GetToolsForPhase(WorkflowPhase.Research);
         var names = tools.Select(t => t.Name).ToHashSet();
 
         Assert.Contains("log_research", names);
@@ -222,7 +223,7 @@ public class LlmAcceptanceCriteriaTests
     public void AC9_BuildingPhase_IncludesVerification_ExcludesLogResearch()
     {
         var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        var tools = registry.GetToolsForPhase(WorkflowPhase.Building);
+        IReadOnlyList<LopenToolDefinition> tools = registry.GetToolsForPhase(WorkflowPhase.Building);
         var names = tools.Select(t => t.Name).ToHashSet();
 
         Assert.Contains("verify_task_completion", names);
@@ -236,7 +237,7 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC10_DifferentPhases_CanUseDifferentModels()
     {
-        var options = Options.Create(new LopenOptions
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions
         {
             Models = new ModelOptions
             {
@@ -262,13 +263,13 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC11_EmptyModelConfig_FallsBackWithWarning()
     {
-        var options = Options.Create(new LopenOptions
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions
         {
             Models = new ModelOptions { Building = "" },
         });
 
         var selector = new DefaultModelSelector(options, NullLogger<DefaultModelSelector>.Instance);
-        var result = selector.SelectModel(WorkflowPhase.Building);
+        ModelFallbackResult result = selector.SelectModel(WorkflowPhase.Building);
 
         Assert.True(result.WasFallback);
         Assert.Equal(DefaultModelSelector.FallbackModel, result.SelectedModel);
@@ -285,7 +286,7 @@ public class LlmAcceptanceCriteriaTests
         tracker.RecordUsage(new TokenUsage(100, 50, 150, 8192, true));
         tracker.RecordUsage(new TokenUsage(200, 75, 275, 8192, false));
 
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
         Assert.Equal(300, metrics.CumulativeInputTokens);
         Assert.Equal(125, metrics.CumulativeOutputTokens);
         Assert.Equal(1, metrics.PremiumRequestCount);
@@ -311,11 +312,11 @@ public class LlmAcceptanceCriteriaTests
         services.AddLogging();
         services.AddLopenLlm();
 
-        var sp = services.BuildServiceProvider();
-        var tracker = sp.GetRequiredService<ITokenTracker>();
+        ServiceProvider sp = services.BuildServiceProvider();
+        ITokenTracker tracker = sp.GetRequiredService<ITokenTracker>();
 
         tracker.RecordUsage(new TokenUsage(500, 200, 700, 16384, true));
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Equal(500, metrics.CumulativeInputTokens);
         Assert.Equal(200, metrics.CumulativeOutputTokens);
@@ -344,7 +345,7 @@ public class LlmAcceptanceCriteriaTests
             new("notes", new string('c', 400), ContextBudgetManager.EstimateTokens(new string('c', 400))),
         };
 
-        var result = manager.FitToBudget(sections, budgetTokens: 150);
+        IReadOnlyList<ContextSection> result = manager.FitToBudget(sections, budgetTokens: 150);
 
         Assert.True(result.Count <= sections.Length);
         if (result.Count > 0)

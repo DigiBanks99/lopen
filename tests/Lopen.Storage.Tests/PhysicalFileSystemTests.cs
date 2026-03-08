@@ -121,7 +121,7 @@ public class PhysicalFileSystemTests : IDisposable
         var path = Path.Combine(_tempDir, "timed.txt");
         File.WriteAllText(path, "content");
 
-        var time = _fileSystem.GetLastWriteTimeUtc(path);
+        DateTime time = _fileSystem.GetLastWriteTimeUtc(path);
 
         Assert.True(time > DateTime.MinValue);
         Assert.True(time <= DateTime.UtcNow);

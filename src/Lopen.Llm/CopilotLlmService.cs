@@ -1,4 +1,5 @@
 using GitHub.Copilot.SDK;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
 namespace Lopen.Llm;
@@ -52,7 +53,7 @@ internal sealed class CopilotLlmService : ILlmService
         }
 
         // Verify auth before creating session
-        var authStatus = await client.GetAuthStatusAsync(cancellationToken);
+        GetAuthStatusResponse authStatus = await client.GetAuthStatusAsync(cancellationToken);
         if (!authStatus.IsAuthenticated)
         {
             throw new LlmException(
@@ -60,7 +61,7 @@ internal sealed class CopilotLlmService : ILlmService
                 model);
         }
 
-        var aiFunctions = ToolConversion.ToAiFunctions(tools);
+        List<AIFunction> aiFunctions = ToolConversion.ToAiFunctions(tools);
         _logger.LogDebug("Converted {BoundToolCount}/{TotalToolCount} tools to AIFunction instances",
             aiFunctions.Count, tools.Count);
 
@@ -78,7 +79,7 @@ internal sealed class CopilotLlmService : ILlmService
             {
                 OnErrorOccurred = async (input, _) =>
                 {
-                    var result = await _authErrorHandler.HandleErrorAsync(input, cancellationToken);
+                    ErrorOccurredHookOutput? result = await _authErrorHandler.HandleErrorAsync(input, cancellationToken);
                     return result ?? new ErrorOccurredHookOutput();
                 },
             },
@@ -88,9 +89,9 @@ internal sealed class CopilotLlmService : ILlmService
         int inputTokens = 0, outputTokens = 0, toolCallCount = 0;
         int contextWindowSize = 0;
 
-        await using var session = await client.CreateSessionAsync(config, cancellationToken);
+        await using CopilotSession session = await client.CreateSessionAsync(config, cancellationToken);
 
-        using var eventSub = session.On(evt =>
+        using IDisposable eventSub = session.On(evt =>
         {
             switch (evt)
             {
@@ -115,7 +116,7 @@ internal sealed class CopilotLlmService : ILlmService
         {
             _logger.LogDebug("Sending prompt to session {SessionId}", session.SessionId);
 
-            var response = await session.SendAndWaitAsync(
+            AssistantMessageEvent? response = await session.SendAndWaitAsync(
                 new MessageOptions { Prompt = "" },
                 DefaultTimeout,
                 cancellationToken);

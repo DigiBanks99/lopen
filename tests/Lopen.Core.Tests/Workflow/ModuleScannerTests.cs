@@ -11,7 +11,7 @@ public class ModuleScannerTests
         var fs = new TestFileSystem();
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, "/project");
 
-        var modules = scanner.ScanModules();
+        IReadOnlyList<ModuleInfo> modules = scanner.ScanModules();
 
         Assert.Empty(modules);
     }
@@ -23,7 +23,7 @@ public class ModuleScannerTests
         fs.AddDirectory("/project/docs/requirements");
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, "/project");
 
-        var modules = scanner.ScanModules();
+        IReadOnlyList<ModuleInfo> modules = scanner.ScanModules();
 
         Assert.Empty(modules);
     }
@@ -37,7 +37,7 @@ public class ModuleScannerTests
         fs.AddFile("/project/docs/requirements/auth/SPECIFICATION.md");
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, "/project");
 
-        var modules = scanner.ScanModules();
+        IReadOnlyList<ModuleInfo> modules = scanner.ScanModules();
 
         Assert.Single(modules);
         Assert.Equal("auth", modules[0].Name);
@@ -52,7 +52,7 @@ public class ModuleScannerTests
         fs.AddDirectory("/project/docs/requirements/auth");
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, "/project");
 
-        var modules = scanner.ScanModules();
+        IReadOnlyList<ModuleInfo> modules = scanner.ScanModules();
 
         Assert.Single(modules);
         Assert.Equal("auth", modules[0].Name);
@@ -71,7 +71,7 @@ public class ModuleScannerTests
         fs.AddDirectory("/project/docs/requirements/llm");
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, "/project");
 
-        var modules = scanner.ScanModules();
+        IReadOnlyList<ModuleInfo> modules = scanner.ScanModules();
 
         Assert.Equal(3, modules.Count);
         Assert.Contains(modules, m => m.Name == "auth" && m.HasSpecification);
@@ -88,7 +88,7 @@ public class ModuleScannerTests
         fs.AddFile("/project/docs/requirements/core/SPECIFICATION.md");
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, "/project");
 
-        var modules = scanner.ScanModules();
+        IReadOnlyList<ModuleInfo> modules = scanner.ScanModules();
 
         Assert.Contains("SPECIFICATION.md", modules[0].SpecificationPath);
         Assert.Contains("core", modules[0].SpecificationPath);

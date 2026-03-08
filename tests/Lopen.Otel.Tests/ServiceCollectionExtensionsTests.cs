@@ -26,9 +26,9 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_RegistersWithoutError()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration();
+        IConfiguration config = BuildConfiguration();
 
-        var exception = Record.Exception(() => services.AddLopenOtel(config));
+        Exception exception = Record.Exception(() => services.AddLopenOtel(config));
 
         Assert.Null(exception);
     }
@@ -37,9 +37,9 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_ReturnsServiceCollection()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration();
+        IConfiguration config = BuildConfiguration();
 
-        var result = services.AddLopenOtel(config);
+        IServiceCollection result = services.AddLopenOtel(config);
 
         Assert.Same(services, result);
     }
@@ -48,12 +48,12 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_ServiceProviderBuildsWithoutError()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration();
+        IConfiguration config = BuildConfiguration();
         services.AddLopenOtel(config);
 
-        var exception = Record.Exception(() =>
+        Exception exception = Record.Exception(() =>
         {
-            using var provider = services.BuildServiceProvider();
+            using ServiceProvider provider = services.BuildServiceProvider();
         });
 
         Assert.Null(exception);
@@ -65,7 +65,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_MasterDisabled_SkipsRegistration()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:enabled"] = "false"
         });
@@ -73,8 +73,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLopenOtel(config);
 
         // When master is disabled, no OTEL services should be registered
-        using var provider = services.BuildServiceProvider();
-        var tracerProvider = provider.GetService<TracerProvider>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        TracerProvider? tracerProvider = provider.GetService<TracerProvider>();
         Assert.Null(tracerProvider);
     }
 
@@ -82,15 +82,15 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_MasterEnabled_RegistersTracerProvider()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:enabled"] = "true"
         });
 
         services.AddLopenOtel(config);
 
-        using var provider = services.BuildServiceProvider();
-        var tracerProvider = provider.GetService<TracerProvider>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        TracerProvider? tracerProvider = provider.GetService<TracerProvider>();
         Assert.NotNull(tracerProvider);
     }
 
@@ -98,12 +98,12 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_DefaultEnabled_RegistersTracerProvider()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration();
+        IConfiguration config = BuildConfiguration();
 
         services.AddLopenOtel(config);
 
-        using var provider = services.BuildServiceProvider();
-        var tracerProvider = provider.GetService<TracerProvider>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        TracerProvider? tracerProvider = provider.GetService<TracerProvider>();
         Assert.NotNull(tracerProvider);
     }
 
@@ -113,7 +113,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_TracesDisabled_NoTracerProvider()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:traces:enabled"] = "false",
             ["otel:metrics:enabled"] = "false",
@@ -122,8 +122,8 @@ public class ServiceCollectionExtensionsTests
 
         services.AddLopenOtel(config);
 
-        using var provider = services.BuildServiceProvider();
-        var tracerProvider = provider.GetService<TracerProvider>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        TracerProvider? tracerProvider = provider.GetService<TracerProvider>();
         // WithTracing not called, so no TracerProvider
         Assert.Null(tracerProvider);
     }
@@ -132,7 +132,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_TracesEnabled_RegistersTracerProvider()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:traces:enabled"] = "true",
             ["otel:metrics:enabled"] = "false",
@@ -141,8 +141,8 @@ public class ServiceCollectionExtensionsTests
 
         services.AddLopenOtel(config);
 
-        using var provider = services.BuildServiceProvider();
-        var tracerProvider = provider.GetService<TracerProvider>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        TracerProvider? tracerProvider = provider.GetService<TracerProvider>();
         Assert.NotNull(tracerProvider);
     }
 
@@ -150,7 +150,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_MetricsDisabled_NoMeterProvider()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:traces:enabled"] = "false",
             ["otel:metrics:enabled"] = "false",
@@ -159,8 +159,8 @@ public class ServiceCollectionExtensionsTests
 
         services.AddLopenOtel(config);
 
-        using var provider = services.BuildServiceProvider();
-        var meterProvider = provider.GetService<MeterProvider>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        MeterProvider? meterProvider = provider.GetService<MeterProvider>();
         Assert.Null(meterProvider);
     }
 
@@ -168,7 +168,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_MetricsEnabled_RegistersMeterProvider()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:traces:enabled"] = "false",
             ["otel:metrics:enabled"] = "true",
@@ -177,8 +177,8 @@ public class ServiceCollectionExtensionsTests
 
         services.AddLopenOtel(config);
 
-        using var provider = services.BuildServiceProvider();
-        var meterProvider = provider.GetService<MeterProvider>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        MeterProvider? meterProvider = provider.GetService<MeterProvider>();
         Assert.NotNull(meterProvider);
     }
 
@@ -186,7 +186,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_LogsEnabled_RegistersOtelLogProvider()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:traces:enabled"] = "false",
             ["otel:metrics:enabled"] = "false",
@@ -195,12 +195,12 @@ public class ServiceCollectionExtensionsTests
 
         services.AddLopenOtel(config);
 
-        using var provider = services.BuildServiceProvider();
-        var loggerFactory = provider.GetService<ILoggerFactory>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        ILoggerFactory? loggerFactory = provider.GetService<ILoggerFactory>();
         Assert.NotNull(loggerFactory);
 
         // Verify logger can be created without error
-        var logger = loggerFactory.CreateLogger("TestCategory");
+        ILogger logger = loggerFactory.CreateLogger("TestCategory");
         Assert.NotNull(logger);
     }
 
@@ -208,7 +208,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_LogsDisabled_DoesNotRegisterOtelLogProvider()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:traces:enabled"] = "false",
             ["otel:metrics:enabled"] = "false",
@@ -218,8 +218,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLopenOtel(config);
 
         // Should still build without error even with all signals disabled
-        using var provider = services.BuildServiceProvider();
-        var exception = Record.Exception(() => provider.GetService<ILoggerFactory>());
+        using ServiceProvider provider = services.BuildServiceProvider();
+        Exception exception = Record.Exception(() => provider.GetService<ILoggerFactory>());
         Assert.Null(exception);
     }
 
@@ -229,14 +229,14 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_NoEndpoint_DoesNotThrow()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration();
+        IConfiguration config = BuildConfiguration();
 
         services.AddLopenOtel(config);
 
         // No OTLP endpoint set — should not attempt to export, no errors
-        var exception = Record.Exception(() =>
+        Exception exception = Record.Exception(() =>
         {
-            using var provider = services.BuildServiceProvider();
+            using ServiceProvider provider = services.BuildServiceProvider();
         });
 
         Assert.Null(exception);
@@ -246,7 +246,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_WithEndpointEnvVar_DoesNotThrow()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4317"
         });
@@ -254,9 +254,9 @@ public class ServiceCollectionExtensionsTests
         services.AddLopenOtel(config);
 
         // With endpoint set — UseOtlpExporter is called, should still build
-        var exception = Record.Exception(() =>
+        Exception exception = Record.Exception(() =>
         {
-            using var provider = services.BuildServiceProvider();
+            using ServiceProvider provider = services.BuildServiceProvider();
         });
 
         Assert.Null(exception);
@@ -266,16 +266,16 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_WithConfigEndpoint_DoesNotThrow()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:export:endpoint"] = "http://localhost:4317"
         });
 
         services.AddLopenOtel(config);
 
-        var exception = Record.Exception(() =>
+        Exception exception = Record.Exception(() =>
         {
-            using var provider = services.BuildServiceProvider();
+            using ServiceProvider provider = services.BuildServiceProvider();
         });
 
         Assert.Null(exception);
@@ -287,14 +287,14 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_DefaultServiceName_IsLopen()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration();
+        IConfiguration config = BuildConfiguration();
 
         // Default service name should be "lopen" — we verify by building without error
         services.AddLopenOtel(config);
 
-        var exception = Record.Exception(() =>
+        Exception exception = Record.Exception(() =>
         {
-            using var provider = services.BuildServiceProvider();
+            using ServiceProvider provider = services.BuildServiceProvider();
         });
 
         Assert.Null(exception);
@@ -304,16 +304,16 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_CustomServiceNameFromConfig_DoesNotThrow()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:service_name"] = "custom-lopen"
         });
 
         services.AddLopenOtel(config);
 
-        var exception = Record.Exception(() =>
+        Exception exception = Record.Exception(() =>
         {
-            using var provider = services.BuildServiceProvider();
+            using ServiceProvider provider = services.BuildServiceProvider();
         });
 
         Assert.Null(exception);
@@ -323,7 +323,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_OtelServiceNameEnvVar_TakesPrecedence()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["OTEL_SERVICE_NAME"] = "env-lopen",
             ["otel:service_name"] = "config-lopen"
@@ -332,9 +332,9 @@ public class ServiceCollectionExtensionsTests
         // OTEL_SERVICE_NAME should take precedence over otel:service_name
         services.AddLopenOtel(config);
 
-        var exception = Record.Exception(() =>
+        Exception exception = Record.Exception(() =>
         {
-            using var provider = services.BuildServiceProvider();
+            using ServiceProvider provider = services.BuildServiceProvider();
         });
 
         Assert.Null(exception);
@@ -344,7 +344,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_OtelServiceNameEnvVar_ValueTakesPrecedence()
     {
         // OTEL_SERVICE_NAME must take precedence over otel:service_name (OTEL-16)
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["OTEL_SERVICE_NAME"] = "env-lopen",
             ["otel:service_name"] = "config-lopen"
@@ -357,7 +357,7 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public void AddLopenOtel_NoEnvVar_FallsToConfigServiceName()
     {
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:service_name"] = "config-lopen"
         });
@@ -369,7 +369,7 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public void AddLopenOtel_NoServiceName_DefaultsToLopen()
     {
-        var config = BuildConfiguration();
+        IConfiguration config = BuildConfiguration();
 
         var resolved = config["OTEL_SERVICE_NAME"] ?? config["otel:service_name"] ?? "lopen";
         Assert.Equal("lopen", resolved);
@@ -381,7 +381,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_AllSignalsEnabled_BuildsSuccessfully()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:enabled"] = "true",
             ["otel:traces:enabled"] = "true",
@@ -391,7 +391,7 @@ public class ServiceCollectionExtensionsTests
 
         services.AddLopenOtel(config);
 
-        using var provider = services.BuildServiceProvider();
+        using ServiceProvider provider = services.BuildServiceProvider();
         Assert.NotNull(provider.GetService<TracerProvider>());
         Assert.NotNull(provider.GetService<MeterProvider>());
         Assert.NotNull(provider.GetService<ILoggerFactory>());
@@ -401,7 +401,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_AllSignalsDisabled_BuildsSuccessfully()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:enabled"] = "true",
             ["otel:traces:enabled"] = "false",
@@ -411,7 +411,7 @@ public class ServiceCollectionExtensionsTests
 
         services.AddLopenOtel(config);
 
-        using var provider = services.BuildServiceProvider();
+        using ServiceProvider provider = services.BuildServiceProvider();
         // No providers registered when all signals disabled
         Assert.Null(provider.GetService<TracerProvider>());
         Assert.Null(provider.GetService<MeterProvider>());
@@ -423,15 +423,15 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenOtel_LogsEnabled_ConfiguresActivityTrackingOptions()
     {
         var services = new ServiceCollection();
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:logs:enabled"] = "true"
         });
 
         services.AddLopenOtel(config);
 
-        using var provider = services.BuildServiceProvider();
-        var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>().Value;
+        using ServiceProvider provider = services.BuildServiceProvider();
+        LoggerFactoryOptions options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>().Value;
         Assert.True(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.TraceId),
             "ActivityTrackingOptions should include TraceId for non-OTLP sink correlation");
         Assert.True(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.SpanId),
@@ -443,15 +443,15 @@ public class ServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
         services.AddLogging(); // Register default logging
-        var config = BuildConfiguration(new Dictionary<string, string?>
+        IConfiguration config = BuildConfiguration(new Dictionary<string, string?>
         {
             ["otel:logs:enabled"] = "false"
         });
 
         services.AddLopenOtel(config);
 
-        using var provider = services.BuildServiceProvider();
-        var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>().Value;
+        using ServiceProvider provider = services.BuildServiceProvider();
+        LoggerFactoryOptions options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>().Value;
         Assert.False(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.TraceId),
             "ActivityTrackingOptions should NOT include TraceId when logs are disabled");
     }
@@ -461,7 +461,7 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public void AddLopenOtel_OverheadUnder5ms()
     {
-        var config = BuildConfiguration();
+        IConfiguration config = BuildConfiguration();
 
         // Warm up
         var warmup = new ServiceCollection();
@@ -477,7 +477,7 @@ public class ServiceCollectionExtensionsTests
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddLopenOtel(config);
-            using var provider = services.BuildServiceProvider();
+            using ServiceProvider provider = services.BuildServiceProvider();
         }
         sw.Stop();
 

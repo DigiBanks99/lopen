@@ -45,9 +45,9 @@ public sealed class RevertServiceTests
     public async Task RevertToCommit_ValidSha_ResetsSuccessfully()
     {
         var git = new FakeGitService();
-        var service = CreateService(git);
+        RevertService service = CreateService(git);
 
-        var result = await service.RevertToCommitAsync("abc123");
+        RevertResult result = await service.RevertToCommitAsync("abc123");
 
         Assert.True(result.Success);
         Assert.Equal("abc123", result.RevertedToCommitSha);
@@ -60,9 +60,9 @@ public sealed class RevertServiceTests
     {
         var git = new FakeGitService();
         var options = new GitOptions { Enabled = false };
-        var service = CreateService(git, options);
+        RevertService service = CreateService(git, options);
 
-        var result = await service.RevertToCommitAsync("abc123");
+        RevertResult result = await service.RevertToCommitAsync("abc123");
 
         Assert.False(result.Success);
         Assert.Null(result.RevertedToCommitSha);
@@ -76,7 +76,7 @@ public sealed class RevertServiceTests
     [InlineData("   ")]
     public async Task RevertToCommit_InvalidSha_Throws(string? sha)
     {
-        var service = CreateService();
+        RevertService service = CreateService();
 
         await Assert.ThrowsAnyAsync<ArgumentException>(
             () => service.RevertToCommitAsync(sha!));
@@ -86,9 +86,9 @@ public sealed class RevertServiceTests
     public async Task RevertToCommit_GitResetFails_ReturnsFalse()
     {
         var git = new FailingResetGitService();
-        var service = CreateService(git);
+        RevertService service = CreateService(git);
 
-        var result = await service.RevertToCommitAsync("abc123");
+        RevertResult result = await service.RevertToCommitAsync("abc123");
 
         Assert.False(result.Success);
         Assert.Null(result.RevertedToCommitSha);
@@ -99,9 +99,9 @@ public sealed class RevertServiceTests
     public async Task RevertToCommit_GitThrowsException_ReturnsFalse()
     {
         var git = new ThrowingGitService();
-        var service = CreateService(git);
+        RevertService service = CreateService(git);
 
-        var result = await service.RevertToCommitAsync("abc123");
+        RevertResult result = await service.RevertToCommitAsync("abc123");
 
         Assert.False(result.Success);
         Assert.Null(result.RevertedToCommitSha);
@@ -113,7 +113,7 @@ public sealed class RevertServiceTests
     {
         IRevertService service = CreateService();
 
-        var result = await service.RevertToCommitAsync("abc123");
+        RevertResult result = await service.RevertToCommitAsync("abc123");
 
         Assert.True(result.Success);
     }

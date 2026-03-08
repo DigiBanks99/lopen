@@ -1,7 +1,7 @@
-using System.CommandLine;
 using Lopen.Core.Git;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Commands;
 
@@ -12,35 +12,35 @@ public static class RevertCommand
 {
     public static Command Create(IServiceProvider services, TextWriter? output = null, TextWriter? error = null)
     {
-        var stdout = output ?? Console.Out;
-        var stderr = error ?? Console.Error;
+        TextWriter stdout = output ?? Console.Out;
+        TextWriter stderr = error ?? Console.Error;
 
         var revert = new Command("revert", "Roll back to the last task-completion commit");
         revert.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
         {
             try
             {
-                var revertService = services.GetService<IRevertService>();
+                IRevertService? revertService = services.GetService<IRevertService>();
                 if (revertService is null)
                 {
                     await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
                     return 1;
                 }
 
-                var sessionManager = services.GetService<ISessionManager>();
+                ISessionManager? sessionManager = services.GetService<ISessionManager>();
                 if (sessionManager is null)
                 {
                     await stderr.WriteLineAsync("No project found. Run from a directory with a .lopen/ or .git/ folder.");
                     return 1;
                 }
-                var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
+                SessionId? latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
                 if (latestId is null)
                 {
                     await stderr.WriteLineAsync("No active session found.");
                     return 1;
                 }
 
-                var state = await sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
+                SessionState? state = await sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
                 if (state is null)
                 {
                     await stderr.WriteLineAsync($"Session state not found: {latestId}");
@@ -53,12 +53,12 @@ public static class RevertCommand
                     return 1;
                 }
 
-                var result = await revertService.RevertToCommitAsync(state.LastTaskCompletionCommitSha, cancellationToken);
+                RevertResult result = await revertService.RevertToCommitAsync(state.LastTaskCompletionCommitSha, cancellationToken);
 
                 if (result.Success)
                 {
                     // Update session state to reflect the rollback
-                    var updatedState = state with
+                    SessionState updatedState = state with
                     {
                         LastTaskCompletionCommitSha = null,
                         UpdatedAt = DateTimeOffset.UtcNow,

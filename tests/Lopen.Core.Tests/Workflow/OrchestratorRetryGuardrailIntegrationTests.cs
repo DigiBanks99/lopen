@@ -56,11 +56,11 @@ public sealed class OrchestratorRetryGuardrailIntegrationTests
         var engine = new FakeWorkflowEngine(WorkflowStep.DetermineDependencies, completeAfterFires: 1);
         var assessor = new FakeStateAssessor();
         var guardrails = new GuardrailPipeline(new IGuardrail[] { new PassGuardrail() });
-        var retryingLlm = CreateRetryingLlmService();
-        var orchestrator = CreateOrchestrator(retryingLlm, guardrails, engine, assessor);
+        RetryingLlmService retryingLlm = CreateRetryingLlmService();
+        WorkflowOrchestrator orchestrator = CreateOrchestrator(retryingLlm, guardrails, engine, assessor);
 
         // Act
-        var result = await orchestrator.RunAsync("test-module");
+        OrchestrationResult result = await orchestrator.RunAsync("test-module");
 
         // Assert: orchestrator completed and inner LLM was called through RetryingLlmService
         Assert.True(result.IsComplete);
@@ -74,11 +74,11 @@ public sealed class OrchestratorRetryGuardrailIntegrationTests
         var engine = new FakeWorkflowEngine(WorkflowStep.DetermineDependencies, completeAfterFires: 1);
         var assessor = new FakeStateAssessor();
         var guardrails = new GuardrailPipeline(new IGuardrail[] { new BlockingGuardrail("Resource limit exceeded") });
-        var retryingLlm = CreateRetryingLlmService();
-        var orchestrator = CreateOrchestrator(retryingLlm, guardrails, engine, assessor);
+        RetryingLlmService retryingLlm = CreateRetryingLlmService();
+        WorkflowOrchestrator orchestrator = CreateOrchestrator(retryingLlm, guardrails, engine, assessor);
 
         // Act
-        var result = await orchestrator.RunAsync("test-module");
+        OrchestrationResult result = await orchestrator.RunAsync("test-module");
 
         // Assert: orchestrator was interrupted, inner LLM was never called
         Assert.True(result.WasInterrupted);
@@ -95,11 +95,11 @@ public sealed class OrchestratorRetryGuardrailIntegrationTests
         var engine = new FakeWorkflowEngine(WorkflowStep.DetermineDependencies, completeAfterFires: 1);
         var assessor = new FakeStateAssessor();
         var guardrails = new GuardrailPipeline(new IGuardrail[] { new PassGuardrail() });
-        var retryingLlm = CreateRetryingLlmService();
-        var orchestrator = CreateOrchestrator(retryingLlm, guardrails, engine, assessor);
+        RetryingLlmService retryingLlm = CreateRetryingLlmService();
+        WorkflowOrchestrator orchestrator = CreateOrchestrator(retryingLlm, guardrails, engine, assessor);
 
         // Act
-        var result = await orchestrator.RunAsync("test-module");
+        OrchestrationResult result = await orchestrator.RunAsync("test-module");
 
         // Assert: completed via fallback model
         Assert.True(result.IsComplete);
@@ -118,11 +118,11 @@ public sealed class OrchestratorRetryGuardrailIntegrationTests
             new WarningGuardrail("High iteration count detected"),
             new PassGuardrail()
         });
-        var retryingLlm = CreateRetryingLlmService();
-        var orchestrator = CreateOrchestrator(retryingLlm, guardrails, engine, assessor);
+        RetryingLlmService retryingLlm = CreateRetryingLlmService();
+        WorkflowOrchestrator orchestrator = CreateOrchestrator(retryingLlm, guardrails, engine, assessor);
 
         // Act
-        var result = await orchestrator.RunAsync("test-module");
+        OrchestrationResult result = await orchestrator.RunAsync("test-module");
 
         // Assert: completed despite warning, LLM was called
         Assert.True(result.IsComplete);
@@ -140,11 +140,11 @@ public sealed class OrchestratorRetryGuardrailIntegrationTests
         var engine = new FakeWorkflowEngine(WorkflowStep.DetermineDependencies, completeAfterFires: 1);
         var assessor = new FakeStateAssessor();
         var guardrails = new GuardrailPipeline(new IGuardrail[] { new PassGuardrail() });
-        var retryingLlm = CreateRetryingLlmService();
-        var orchestrator = CreateOrchestrator(retryingLlm, guardrails, engine, assessor);
+        RetryingLlmService retryingLlm = CreateRetryingLlmService();
+        WorkflowOrchestrator orchestrator = CreateOrchestrator(retryingLlm, guardrails, engine, assessor);
 
         // Act
-        var result = await orchestrator.RunAsync("test-module");
+        OrchestrationResult result = await orchestrator.RunAsync("test-module");
 
         // Assert: LLM failure causes step failure — orchestrator handles via self-correct loop
         // (with high FailureThreshold=50 it will retry, but all models fail each time)

@@ -1,10 +1,10 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Lopen.Cli.Tests.Fakes;
 using Lopen.Commands;
 using Lopen.Core.Workflow;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -34,7 +34,7 @@ public class PhaseCommandTests
         services.AddSingleton<IModuleScanner>(_fakeModuleScanner);
         services.AddSingleton<IPlanManager>(_fakePlanManager);
         services.AddSingleton<IWorkflowOrchestrator>(_fakeOrchestrator);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -54,7 +54,7 @@ public class PhaseCommandTests
     [Fact]
     public async Task Spec_Succeeds()
     {
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec"]);
 
@@ -67,7 +67,7 @@ public class PhaseCommandTests
     [Fact]
     public async Task Plan_NoSession_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["plan"]);
 
@@ -81,7 +81,7 @@ public class PhaseCommandTests
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
         // Module scanner has no modules
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["plan"]);
 
@@ -96,7 +96,7 @@ public class PhaseCommandTests
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["plan"]);
 
@@ -110,7 +110,7 @@ public class PhaseCommandTests
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeModuleScanner.AddModule("auth", hasSpec: false);
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["plan"]);
 
@@ -123,7 +123,7 @@ public class PhaseCommandTests
     [Fact]
     public async Task Build_NoSession_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["build"]);
 
@@ -136,7 +136,7 @@ public class PhaseCommandTests
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["build"]);
 
@@ -151,7 +151,7 @@ public class PhaseCommandTests
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
         // No plan added
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["build"]);
 
@@ -167,7 +167,7 @@ public class PhaseCommandTests
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
         _fakePlanManager.AddPlan("auth", "# Plan\n- [x] Task 1\n- [ ] Task 2");
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["build"]);
 
@@ -182,7 +182,7 @@ public class PhaseCommandTests
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, _, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig();
 
         await config.InvokeAsync(["spec"]);
 
@@ -195,7 +195,7 @@ public class PhaseCommandTests
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
-        var (config, _, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig();
 
         await config.InvokeAsync(["plan"]);
 
@@ -209,7 +209,7 @@ public class PhaseCommandTests
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
         _fakePlanManager.AddPlan("auth", "# Plan");
-        var (config, _, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig();
 
         await config.InvokeAsync(["build"]);
 
@@ -224,7 +224,7 @@ public class PhaseCommandTests
     [InlineData("build")]
     public async Task Headless_NoPrompt_NoSession_ReturnsExitCode1(string command)
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync([command, "--headless"]);
 
@@ -235,7 +235,7 @@ public class PhaseCommandTests
     [Fact]
     public async Task Spec_Headless_WithPrompt_Succeeds()
     {
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", "Build an auth module"]);
 
@@ -248,7 +248,7 @@ public class PhaseCommandTests
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec", "--headless"]);
 
@@ -259,7 +259,7 @@ public class PhaseCommandTests
     [Fact]
     public async Task Spec_Quiet_Alias_Works()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec", "-q"]);
 
@@ -283,7 +283,7 @@ public class PhaseCommandTests
     public async Task Spec_Resume_SpecificSession_Succeeds()
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec", "--resume", Session1.ToString()]);
 
@@ -295,7 +295,7 @@ public class PhaseCommandTests
     [Fact]
     public async Task Spec_Resume_InvalidFormat_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec", "--resume", "not-valid-id"]);
 
@@ -306,7 +306,7 @@ public class PhaseCommandTests
     [Fact]
     public async Task Spec_Resume_NotFound_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec", "--resume", "auth-20260214-99"]);
 
@@ -327,7 +327,7 @@ public class PhaseCommandTests
             UpdatedAt = new DateTimeOffset(2026, 2, 14, 12, 0, 0, TimeSpan.Zero),
         };
         _fakeSessionManager.AddSession(Session1, completedState);
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec", "--resume", Session1.ToString()]);
 
@@ -340,7 +340,7 @@ public class PhaseCommandTests
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec"]);
 
@@ -362,7 +362,7 @@ public class PhaseCommandTests
         };
         _fakeSessionManager.AddSession(Session1, completedState);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec"]);
 
@@ -377,7 +377,7 @@ public class PhaseCommandTests
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", "Build auth"]);
 
@@ -393,7 +393,7 @@ public class PhaseCommandTests
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec", "--prompt", "Focus on auth module"]);
 
@@ -407,7 +407,7 @@ public class PhaseCommandTests
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec"]);
 
@@ -420,14 +420,14 @@ public class PhaseCommandTests
     private (CommandLineConfiguration config, StringWriter output, StringWriter error, FakeAuthService auth) CreateConfigWithAuth(
         FakeAuthService? authService = null)
     {
-        var auth = authService ?? new FakeAuthService();
+        FakeAuthService auth = authService ?? new FakeAuthService();
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(_fakeSessionManager);
         services.AddSingleton<IModuleScanner>(_fakeModuleScanner);
         services.AddSingleton<IPlanManager>(_fakePlanManager);
         services.AddSingleton<IWorkflowOrchestrator>(_fakeOrchestrator);
         services.AddSingleton<IAuthService>(auth);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -452,7 +452,7 @@ public class PhaseCommandTests
         {
             ValidateException = new AuthenticationException("Not authenticated. Run 'lopen auth login' or set GH_TOKEN.")
         };
-        var (config, _, error, _) = CreateConfigWithAuth(auth);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error, FakeAuthService _) = CreateConfigWithAuth(auth);
 
         var exitCode = await config.InvokeAsync([command]);
 
@@ -467,7 +467,7 @@ public class PhaseCommandTests
     [InlineData("build")]
     public async Task Command_AuthSucceeds_CallsValidate(string command)
     {
-        var (config, _, error, auth) = CreateConfigWithAuth();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error, FakeAuthService? auth) = CreateConfigWithAuth();
 
         await config.InvokeAsync([command]);
 
@@ -480,7 +480,7 @@ public class PhaseCommandTests
     public async Task Spec_NoAuthService_SkipsAuthCheck()
     {
         // Default CreateConfig() does not register IAuthService
-        var (config, output, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["spec"]);
 
@@ -497,7 +497,7 @@ public class PhaseCommandTests
         };
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, _, _, _) = CreateConfigWithAuth(auth);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _, FakeAuthService _) = CreateConfigWithAuth(auth);
 
         await config.InvokeAsync(["spec"]);
 
@@ -513,7 +513,7 @@ public class PhaseCommandTests
         services.AddSingleton<IModuleScanner>(_fakeModuleScanner);
         services.AddSingleton<IPlanManager>(_fakePlanManager);
         // Intentionally NOT registering IWorkflowOrchestrator
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -531,7 +531,7 @@ public class PhaseCommandTests
     [Fact]
     public async Task Spec_NoOrchestrator_ReturnsFailure()
     {
-        var (config, _, error) = CreateConfigWithoutOrchestrator();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfigWithoutOrchestrator();
 
         var exitCode = await config.InvokeAsync(["spec"]);
 
@@ -545,7 +545,7 @@ public class PhaseCommandTests
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
-        var (config, _, error) = CreateConfigWithoutOrchestrator();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfigWithoutOrchestrator();
 
         var exitCode = await config.InvokeAsync(["plan"]);
 
@@ -560,7 +560,7 @@ public class PhaseCommandTests
         _fakeSessionManager.SetLatestSessionId(Session1);
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
         _fakePlanManager.AddPlan("auth", "# Plan\n- [ ] Task 1");
-        var (config, _, error) = CreateConfigWithoutOrchestrator();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfigWithoutOrchestrator();
 
         var exitCode = await config.InvokeAsync(["build"]);
 

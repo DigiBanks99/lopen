@@ -48,7 +48,7 @@ public sealed class OracleVerifierTests
     [InlineData("   ")]
     public async Task VerifyAsync_EmptyOrWhitespaceEvidence_Throws(string evidence)
     {
-        var verifier = CreateVerifier();
+        OracleVerifier verifier = CreateVerifier();
 
         await Assert.ThrowsAsync<ArgumentException>(
             () => verifier.VerifyAsync(VerificationScope.Task, evidence, SampleCriteria));
@@ -57,7 +57,7 @@ public sealed class OracleVerifierTests
     [Fact]
     public async Task VerifyAsync_NullEvidence_Throws()
     {
-        var verifier = CreateVerifier();
+        OracleVerifier verifier = CreateVerifier();
 
         await Assert.ThrowsAsync<ArgumentNullException>(
             () => verifier.VerifyAsync(VerificationScope.Task, null!, SampleCriteria));
@@ -68,7 +68,7 @@ public sealed class OracleVerifierTests
     [InlineData("   ")]
     public async Task VerifyAsync_EmptyOrWhitespaceAcceptanceCriteria_Throws(string criteria)
     {
-        var verifier = CreateVerifier();
+        OracleVerifier verifier = CreateVerifier();
 
         await Assert.ThrowsAsync<ArgumentException>(
             () => verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, criteria));
@@ -77,7 +77,7 @@ public sealed class OracleVerifierTests
     [Fact]
     public async Task VerifyAsync_NullAcceptanceCriteria_Throws()
     {
-        var verifier = CreateVerifier();
+        OracleVerifier verifier = CreateVerifier();
 
         await Assert.ThrowsAsync<ArgumentNullException>(
             () => verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, null!));
@@ -89,9 +89,9 @@ public sealed class OracleVerifierTests
     public async Task VerifyAsync_OracleReturnsPassing_VerdictIsPass()
     {
         var llm = new FakeLlmService("""{"pass": true, "gaps": []}""");
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
 
-        var verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
+        OracleVerdict verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
 
         Assert.True(verdict.Passed);
         Assert.Empty(verdict.Gaps);
@@ -105,9 +105,9 @@ public sealed class OracleVerifierTests
     public async Task VerifyAsync_AllScopes_PreservedInVerdict(VerificationScope scope)
     {
         var llm = new FakeLlmService("""{"pass": true, "gaps": []}""");
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
 
-        var verdict = await verifier.VerifyAsync(scope, SampleEvidence, SampleCriteria);
+        OracleVerdict verdict = await verifier.VerifyAsync(scope, SampleEvidence, SampleCriteria);
 
         Assert.Equal(scope, verdict.Scope);
     }
@@ -118,9 +118,9 @@ public sealed class OracleVerifierTests
     public async Task VerifyAsync_OracleReturnsFailing_VerdictIsFailWithGaps()
     {
         var llm = new FakeLlmService("""{"pass": false, "gaps": ["Missing test for login", "No error handling"]}""");
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
 
-        var verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
+        OracleVerdict verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
 
         Assert.False(verdict.Passed);
         Assert.Equal(2, verdict.Gaps.Count);
@@ -133,9 +133,9 @@ public sealed class OracleVerifierTests
     {
         // Even if oracle says pass=true, gaps presence means failure
         var llm = new FakeLlmService("""{"pass": true, "gaps": ["Something missed"]}""");
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
 
-        var verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
+        OracleVerdict verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
 
         Assert.False(verdict.Passed);
         Assert.Single(verdict.Gaps);
@@ -148,7 +148,7 @@ public sealed class OracleVerifierTests
     {
         var llm = new FakeLlmService("""{"pass": true, "gaps": []}""");
         var options = new OracleOptions { Model = "gpt-4.1" };
-        var verifier = CreateVerifier(llm, options);
+        OracleVerifier verifier = CreateVerifier(llm, options);
 
         await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
 
@@ -159,7 +159,7 @@ public sealed class OracleVerifierTests
     public async Task VerifyAsync_DefaultOracleModel_IsGpt5Mini()
     {
         var llm = new FakeLlmService("""{"pass": true, "gaps": []}""");
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
 
         await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
 
@@ -170,7 +170,7 @@ public sealed class OracleVerifierTests
     public async Task VerifyAsync_NoToolsRegistered()
     {
         var llm = new FakeLlmService("""{"pass": true, "gaps": []}""");
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
 
         await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
 
@@ -184,9 +184,9 @@ public sealed class OracleVerifierTests
     public async Task VerifyAsync_LlmThrows_ReturnsFailVerdictWithMessage()
     {
         var llm = new ThrowingLlmService("SDK connection failed");
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
 
-        var verdict = await verifier.VerifyAsync(VerificationScope.Component, SampleEvidence, SampleCriteria);
+        OracleVerdict verdict = await verifier.VerifyAsync(VerificationScope.Component, SampleEvidence, SampleCriteria);
 
         Assert.False(verdict.Passed);
         Assert.Single(verdict.Gaps);
@@ -198,9 +198,9 @@ public sealed class OracleVerifierTests
     public async Task VerifyAsync_EmptyResponse_ReturnsFailVerdict()
     {
         var llm = new FakeLlmService("");
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
 
-        var verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
+        OracleVerdict verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
 
         Assert.False(verdict.Passed);
         Assert.Contains(verdict.Gaps, g => g.Contains("empty response"));
@@ -210,9 +210,9 @@ public sealed class OracleVerifierTests
     public async Task VerifyAsync_InvalidJson_ReturnsFailVerdict()
     {
         var llm = new FakeLlmService("This is not JSON at all");
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
 
-        var verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
+        OracleVerdict verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
 
         Assert.False(verdict.Passed);
         Assert.Contains(verdict.Gaps, g => g.Contains("not valid JSON"));
@@ -224,9 +224,9 @@ public sealed class OracleVerifierTests
     public async Task VerifyAsync_JsonInMarkdownCodeFence_ParsesCorrectly()
     {
         var llm = new FakeLlmService("```json\n{\"pass\": true, \"gaps\": []}\n```");
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
 
-        var verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
+        OracleVerdict verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
 
         Assert.True(verdict.Passed);
     }
@@ -235,9 +235,9 @@ public sealed class OracleVerifierTests
     public async Task VerifyAsync_JsonWithSurroundingText_ParsesCorrectly()
     {
         var llm = new FakeLlmService("Here is my analysis:\n{\"pass\": false, \"gaps\": [\"No tests\"]}\nEnd.");
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
 
-        var verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
+        OracleVerdict verdict = await verifier.VerifyAsync(VerificationScope.Task, SampleEvidence, SampleCriteria);
 
         Assert.False(verdict.Passed);
         Assert.Single(verdict.Gaps);
@@ -288,7 +288,7 @@ public sealed class OracleVerifierTests
     [Fact]
     public void ParseVerdict_NullOutput_ReturnsFailure()
     {
-        var verdict = OracleVerifier.ParseVerdict(null, VerificationScope.Task);
+        OracleVerdict verdict = OracleVerifier.ParseVerdict(null, VerificationScope.Task);
 
         Assert.False(verdict.Passed);
         Assert.Contains(verdict.Gaps, g => g.Contains("empty response"));
@@ -297,7 +297,7 @@ public sealed class OracleVerifierTests
     [Fact]
     public void ParseVerdict_ValidPassingJson_ReturnsPassed()
     {
-        var verdict = OracleVerifier.ParseVerdict("""{"pass": true, "gaps": []}""", VerificationScope.Task);
+        OracleVerdict verdict = OracleVerifier.ParseVerdict("""{"pass": true, "gaps": []}""", VerificationScope.Task);
 
         Assert.True(verdict.Passed);
         Assert.Empty(verdict.Gaps);
@@ -306,7 +306,7 @@ public sealed class OracleVerifierTests
     [Fact]
     public void ParseVerdict_ValidFailingJson_ReturnsFailed()
     {
-        var verdict = OracleVerifier.ParseVerdict(
+        OracleVerdict verdict = OracleVerifier.ParseVerdict(
             """{"pass": false, "gaps": ["gap1"]}""", VerificationScope.Component);
 
         Assert.False(verdict.Passed);
@@ -343,7 +343,7 @@ public sealed class OracleVerifierTests
     public async Task VerifyAsync_CancellationRequested_ThrowsOperationCanceled()
     {
         var llm = new CancellingLlmService();
-        var verifier = CreateVerifier(llm);
+        OracleVerifier verifier = CreateVerifier(llm);
         var cts = new CancellationTokenSource();
         cts.Cancel();
 

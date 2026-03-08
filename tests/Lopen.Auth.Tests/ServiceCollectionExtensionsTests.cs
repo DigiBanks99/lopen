@@ -11,8 +11,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenAuth();
 
-        using var provider = services.BuildServiceProvider();
-        var resolver = provider.GetService<ITokenSourceResolver>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        ITokenSourceResolver? resolver = provider.GetService<ITokenSourceResolver>();
 
         Assert.NotNull(resolver);
         Assert.IsType<EnvironmentTokenSourceResolver>(resolver);
@@ -25,8 +25,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenAuth();
 
-        using var provider = services.BuildServiceProvider();
-        var authService = provider.GetService<IAuthService>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IAuthService? authService = provider.GetService<IAuthService>();
 
         Assert.NotNull(authService);
         Assert.IsType<CopilotAuthService>(authService);
@@ -39,8 +39,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenAuth();
 
-        using var provider = services.BuildServiceProvider();
-        var adapter = provider.GetService<IGhCliAdapter>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IGhCliAdapter? adapter = provider.GetService<IGhCliAdapter>();
 
         Assert.NotNull(adapter);
         Assert.IsType<GhCliAdapter>(adapter);
@@ -51,7 +51,7 @@ public class ServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        var result = services.AddLopenAuth();
+        IServiceCollection result = services.AddLopenAuth();
 
         Assert.Same(services, result);
     }
@@ -63,9 +63,9 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenAuth();
 
-        using var provider = services.BuildServiceProvider();
-        var first = provider.GetRequiredService<ITokenSourceResolver>();
-        var second = provider.GetRequiredService<ITokenSourceResolver>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        ITokenSourceResolver first = provider.GetRequiredService<ITokenSourceResolver>();
+        ITokenSourceResolver second = provider.GetRequiredService<ITokenSourceResolver>();
 
         Assert.Same(first, second);
     }
@@ -77,9 +77,9 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenAuth();
 
-        using var provider = services.BuildServiceProvider();
-        var first = provider.GetRequiredService<IAuthService>();
-        var second = provider.GetRequiredService<IAuthService>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IAuthService first = provider.GetRequiredService<IAuthService>();
+        IAuthService second = provider.GetRequiredService<IAuthService>();
 
         Assert.Same(first, second);
     }

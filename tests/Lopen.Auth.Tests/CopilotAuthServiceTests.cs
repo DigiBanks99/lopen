@@ -19,7 +19,7 @@ public class CopilotAuthServiceTests
         _ghCli.Available = true;
         _ghCli.LoginUsername = "testuser";
 
-        var service = CreateService(isInteractive: true);
+        CopilotAuthService service = CreateService(isInteractive: true);
         await service.LoginAsync();
 
         Assert.True(_ghCli.LoginCalled);
@@ -28,9 +28,9 @@ public class CopilotAuthServiceTests
     [Fact]
     public async Task LoginAsync_NonInteractive_ThrowsHeadlessError()
     {
-        var service = CreateService(isInteractive: false);
+        CopilotAuthService service = CreateService(isInteractive: false);
 
-        var ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.LoginAsync());
+        AuthenticationException ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.LoginAsync());
 
         Assert.Contains("non-interactive", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("GH_TOKEN", ex.Message);
@@ -40,9 +40,9 @@ public class CopilotAuthServiceTests
     public async Task LoginAsync_GhNotAvailable_ThrowsGhCliNotFoundError()
     {
         _ghCli.Available = false;
-        var service = CreateService(isInteractive: true);
+        CopilotAuthService service = CreateService(isInteractive: true);
 
-        var ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.LoginAsync());
+        AuthenticationException ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.LoginAsync());
 
         Assert.Contains("gh", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("cli.github.com", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -54,7 +54,7 @@ public class CopilotAuthServiceTests
         _ghCli.Available = true;
         _ghCli.LoginThrows = true;
 
-        var service = CreateService(isInteractive: true);
+        CopilotAuthService service = CreateService(isInteractive: true);
         await Assert.ThrowsAsync<AuthenticationException>(() => service.LoginAsync());
     }
 
@@ -65,8 +65,8 @@ public class CopilotAuthServiceTests
     {
         _tokenResolver.SetResult(AuthCredentialSource.GhToken, "token123");
 
-        var service = CreateService();
-        var status = await service.GetStatusAsync();
+        CopilotAuthService service = CreateService();
+        AuthStatusResult status = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.Authenticated, status.State);
         Assert.Equal(AuthCredentialSource.GhToken, status.Source);
@@ -77,8 +77,8 @@ public class CopilotAuthServiceTests
     {
         _tokenResolver.SetResult(AuthCredentialSource.GitHubToken, "token456");
 
-        var service = CreateService();
-        var status = await service.GetStatusAsync();
+        CopilotAuthService service = CreateService();
+        AuthStatusResult status = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.Authenticated, status.State);
         Assert.Equal(AuthCredentialSource.GitHubToken, status.Source);
@@ -89,8 +89,8 @@ public class CopilotAuthServiceTests
     {
         _tokenResolver.SetResult(AuthCredentialSource.GhToken, "gh_token");
 
-        var service = CreateService();
-        var status = await service.GetStatusAsync();
+        CopilotAuthService service = CreateService();
+        AuthStatusResult status = await service.GetStatusAsync();
 
         Assert.Equal(AuthCredentialSource.GhToken, status.Source);
         Assert.False(_ghCli.GetStatusCalled, "Should not call gh CLI when env var is available");
@@ -102,8 +102,8 @@ public class CopilotAuthServiceTests
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
         _ghCli.StatusInfo = new GhAuthStatusInfo("ghuser", IsActive: true, "copilot, repo");
 
-        var service = CreateService();
-        var status = await service.GetStatusAsync();
+        CopilotAuthService service = CreateService();
+        AuthStatusResult status = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.Authenticated, status.State);
         Assert.Equal(AuthCredentialSource.SdkCredentials, status.Source);
@@ -116,8 +116,8 @@ public class CopilotAuthServiceTests
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
         _ghCli.StatusInfo = null;
 
-        var service = CreateService();
-        var status = await service.GetStatusAsync();
+        CopilotAuthService service = CreateService();
+        AuthStatusResult status = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.NotAuthenticated, status.State);
         Assert.Equal(AuthCredentialSource.None, status.Source);
@@ -130,7 +130,7 @@ public class CopilotAuthServiceTests
     {
         _tokenResolver.SetResult(AuthCredentialSource.GhToken, "token");
 
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
         await service.GetStatusAsync();
 
         Assert.False(_ghCli.GetStatusCalled);
@@ -143,7 +143,7 @@ public class CopilotAuthServiceTests
     {
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
 
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
         await service.LogoutAsync();
 
         Assert.True(_ghCli.LogoutCalled);
@@ -194,7 +194,7 @@ public class CopilotAuthServiceTests
     {
         _tokenResolver.SetResult(AuthCredentialSource.GhToken, "token");
 
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
         await service.ValidateAsync();
     }
 
@@ -204,8 +204,8 @@ public class CopilotAuthServiceTests
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
         _ghCli.StatusInfo = null;
 
-        var service = CreateService();
-        var ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.ValidateAsync());
+        CopilotAuthService service = CreateService();
+        AuthenticationException ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.ValidateAsync());
 
         Assert.Contains("lopen auth login", ex.Message);
         Assert.Contains("GH_TOKEN", ex.Message);
@@ -218,7 +218,7 @@ public class CopilotAuthServiceTests
         _ghCli.StatusInfo = new GhAuthStatusInfo("user", IsActive: true);
         _ghCli.CredentialsValid = true;
 
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
         await service.ValidateAsync();
     }
 
@@ -231,8 +231,8 @@ public class CopilotAuthServiceTests
         _ghCli.StatusInfo = new GhAuthStatusInfo("user", IsActive: true);
         _ghCli.CredentialsValid = false;
 
-        var service = CreateService();
-        var status = await service.GetStatusAsync();
+        CopilotAuthService service = CreateService();
+        AuthStatusResult status = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.InvalidCredentials, status.State);
         Assert.Equal(AuthCredentialSource.SdkCredentials, status.Source);
@@ -247,8 +247,8 @@ public class CopilotAuthServiceTests
         _ghCli.StatusInfo = new GhAuthStatusInfo("user", IsActive: true);
         _ghCli.CredentialsValid = false;
 
-        var service = CreateService();
-        var ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.ValidateAsync());
+        CopilotAuthService service = CreateService();
+        AuthenticationException ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.ValidateAsync());
 
         Assert.Contains("invalid", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("lopen auth login", ex.Message);
@@ -259,9 +259,9 @@ public class CopilotAuthServiceTests
     [Fact]
     public async Task HeadlessError_IncludesWhatWhyAndHowToFix()
     {
-        var service = CreateService(isInteractive: false);
+        CopilotAuthService service = CreateService(isInteractive: false);
 
-        var ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.LoginAsync());
+        AuthenticationException ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.LoginAsync());
 
         // What
         Assert.Contains("Interactive login", ex.Message);
@@ -278,8 +278,8 @@ public class CopilotAuthServiceTests
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
         _ghCli.StatusInfo = null;
 
-        var service = CreateService();
-        var status = await service.GetStatusAsync();
+        CopilotAuthService service = CreateService();
+        AuthStatusResult status = await service.GetStatusAsync();
 
         Assert.NotNull(status.ErrorMessage);
         // What

@@ -35,7 +35,7 @@ public sealed class ScriptedLlmService : ILlmService
         CancellationToken cancellationToken = default)
     {
         Invocations.Add((systemPrompt, model, tools));
-        var response = _responses.Count > 0 ? _responses.Dequeue() : _defaultResponse;
+        LlmInvocationResult response = _responses.Count > 0 ? _responses.Dequeue() : _defaultResponse;
         return Task.FromResult(response);
     }
 

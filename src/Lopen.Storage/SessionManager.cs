@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace Lopen.Storage;
 
@@ -37,7 +37,7 @@ internal sealed class SessionManager : ISessionManager
         var sessionDir = StoragePaths.GetSessionDirectory(_projectRoot, sessionId);
         _fileSystem.CreateDirectory(sessionDir);
 
-        var now = DateTimeOffset.UtcNow;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var state = new SessionState
         {
             SessionId = sessionId.ToString(),
@@ -253,7 +253,7 @@ internal sealed class SessionManager : ISessionManager
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(retentionCount);
 
-        var sessions = await ListSessionsAsync(cancellationToken);
+        IReadOnlyList<SessionId> sessions = await ListSessionsAsync(cancellationToken);
         if (sessions.Count <= retentionCount)
         {
             return 0;
@@ -267,7 +267,7 @@ internal sealed class SessionManager : ISessionManager
             .ToList();
 
         var pruned = 0;
-        foreach (var session in toPrune)
+        foreach (SessionId? session in toPrune)
         {
             var sessionDir = StoragePaths.GetSessionDirectory(_projectRoot, session);
             if (_fileSystem.DirectoryExists(sessionDir))

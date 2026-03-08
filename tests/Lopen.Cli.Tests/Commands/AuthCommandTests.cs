@@ -1,8 +1,8 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Lopen.Cli.Tests.Fakes;
 using Lopen.Commands;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -14,7 +14,7 @@ public class AuthCommandTests
     {
         var services = new ServiceCollection();
         services.AddSingleton<IAuthService>(_fakeAuth);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -30,7 +30,7 @@ public class AuthCommandTests
     [Fact]
     public async Task Login_CallsLoginAsync()
     {
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["auth", "login"]);
 
@@ -43,7 +43,7 @@ public class AuthCommandTests
     public async Task Login_ReturnsExitCode1_OnException()
     {
         _fakeAuth.LoginException = new AuthenticationException("Auth failed");
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["auth", "login"]);
 
@@ -58,7 +58,7 @@ public class AuthCommandTests
             AuthState.Authenticated,
             AuthCredentialSource.SdkCredentials,
             "testuser");
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["auth", "status"]);
 
@@ -75,7 +75,7 @@ public class AuthCommandTests
         _fakeAuth.StatusResult = new AuthStatusResult(
             AuthState.NotAuthenticated,
             AuthCredentialSource.None);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["auth", "status"]);
 
@@ -93,7 +93,7 @@ public class AuthCommandTests
             AuthState.InvalidCredentials,
             AuthCredentialSource.GhToken,
             ErrorMessage: "Token expired");
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["auth", "status"]);
 
@@ -107,7 +107,7 @@ public class AuthCommandTests
     public async Task Status_ReturnsExitCode1_OnException()
     {
         _fakeAuth.StatusException = new InvalidOperationException("Service unavailable");
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["auth", "status"]);
 
@@ -118,7 +118,7 @@ public class AuthCommandTests
     [Fact]
     public async Task Logout_CallsLogoutAsync()
     {
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["auth", "logout"]);
 
@@ -131,7 +131,7 @@ public class AuthCommandTests
     public async Task Logout_ReturnsExitCode1_OnException()
     {
         _fakeAuth.LogoutException = new AuthenticationException("Logout failed");
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["auth", "logout"]);
 
@@ -142,7 +142,7 @@ public class AuthCommandTests
     [Fact]
     public async Task Login_WithHeadlessFlag_ReturnsError()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["--headless", "auth", "login"]);
 
@@ -155,7 +155,7 @@ public class AuthCommandTests
     [Fact]
     public async Task Login_WithQuietAlias_ReturnsError()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["-q", "auth", "login"]);
 

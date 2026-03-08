@@ -95,12 +95,12 @@ public sealed class LopenConfigurationBuilder
             configBuilder.AddInMemoryCollection(_overrides);
         }
 
-        var configRoot = configBuilder.Build();
+        IConfigurationRoot configRoot = configBuilder.Build();
 
         var options = new LopenOptions();
         configRoot.Bind(options);
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
         if (errors.Count > 0)
         {
             throw new InvalidOperationException(

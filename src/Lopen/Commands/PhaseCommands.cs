@@ -1,10 +1,10 @@
-using System.CommandLine;
-using System.Diagnostics;
 using Lopen.Auth;
 using Lopen.Core.Workflow;
 using Lopen.Otel;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
+using System.Diagnostics;
 
 namespace Lopen.Commands;
 

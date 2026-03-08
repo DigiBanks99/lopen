@@ -5,7 +5,7 @@ public class WorkflowPhaseTests
     [Fact]
     public void WorkflowPhase_HasFourValues()
     {
-        var values = Enum.GetValues<WorkflowPhase>();
+        WorkflowPhase[] values = Enum.GetValues<WorkflowPhase>();
         Assert.Equal(4, values.Length);
     }
 

@@ -1,4 +1,3 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Lopen.Commands;
 using Lopen.Configuration;
@@ -9,6 +8,7 @@ using Lopen.Storage;
 using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.CommandLine;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 

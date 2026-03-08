@@ -1,6 +1,6 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Commands;
 
@@ -11,8 +11,8 @@ public static class AuthCommand
 {
     public static Command Create(IServiceProvider services, TextWriter? output = null, TextWriter? error = null)
     {
-        var stdout = output ?? Console.Out;
-        var stderr = error ?? Console.Error;
+        TextWriter stdout = output ?? Console.Out;
+        TextWriter stderr = error ?? Console.Error;
 
         var auth = new Command("auth", "Manage authentication");
 
@@ -35,7 +35,7 @@ public static class AuthCommand
                 return 1;
             }
 
-            var authService = services.GetRequiredService<IAuthService>();
+            IAuthService authService = services.GetRequiredService<IAuthService>();
             try
             {
                 await authService.LoginAsync(cancellationToken);
@@ -56,10 +56,10 @@ public static class AuthCommand
         var status = new Command("status", "Check current authentication state");
         status.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
         {
-            var authService = services.GetRequiredService<IAuthService>();
+            IAuthService authService = services.GetRequiredService<IAuthService>();
             try
             {
-                var result = await authService.GetStatusAsync(cancellationToken);
+                AuthStatusResult result = await authService.GetStatusAsync(cancellationToken);
                 await stdout.WriteLineAsync($"State:  {result.State}");
                 await stdout.WriteLineAsync($"Source: {result.Source}");
                 if (result.Username is not null)
@@ -82,7 +82,7 @@ public static class AuthCommand
         var logout = new Command("logout", "Clear stored credentials");
         logout.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
         {
-            var authService = services.GetRequiredService<IAuthService>();
+            IAuthService authService = services.GetRequiredService<IAuthService>();
             try
             {
                 await authService.LogoutAsync(cancellationToken);

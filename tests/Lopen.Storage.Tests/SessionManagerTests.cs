@@ -49,7 +49,7 @@ public class SessionManagerTests
     [Fact]
     public async Task CreateSessionAsync_ReturnsSessionIdWithCorrectModule()
     {
-        var sessionId = await _manager.CreateSessionAsync("auth");
+        SessionId sessionId = await _manager.CreateSessionAsync("auth");
 
         Assert.Equal("auth", sessionId.Module);
         Assert.Equal(1, sessionId.Counter);
@@ -58,7 +58,7 @@ public class SessionManagerTests
     [Fact]
     public async Task CreateSessionAsync_CreatesSessionDirectory()
     {
-        var sessionId = await _manager.CreateSessionAsync("auth");
+        SessionId sessionId = await _manager.CreateSessionAsync("auth");
 
         var sessionDir = StoragePaths.GetSessionDirectory(_projectRoot, sessionId);
         Assert.True(_fileSystem.DirectoryExists(sessionDir));
@@ -67,9 +67,9 @@ public class SessionManagerTests
     [Fact]
     public async Task CreateSessionAsync_SavesInitialState()
     {
-        var sessionId = await _manager.CreateSessionAsync("auth");
+        SessionId sessionId = await _manager.CreateSessionAsync("auth");
 
-        var state = await _manager.LoadSessionStateAsync(sessionId);
+        SessionState? state = await _manager.LoadSessionStateAsync(sessionId);
         Assert.NotNull(state);
         Assert.Equal(sessionId.ToString(), state.SessionId);
         Assert.Equal("auth", state.Module);
@@ -80,9 +80,9 @@ public class SessionManagerTests
     [Fact]
     public async Task CreateSessionAsync_SetsLatestSymlink()
     {
-        var sessionId = await _manager.CreateSessionAsync("auth");
+        SessionId sessionId = await _manager.CreateSessionAsync("auth");
 
-        var latest = await _manager.GetLatestSessionIdAsync();
+        SessionId? latest = await _manager.GetLatestSessionIdAsync();
         Assert.NotNull(latest);
         Assert.Equal(sessionId, latest);
     }
@@ -90,8 +90,8 @@ public class SessionManagerTests
     [Fact]
     public async Task CreateSessionAsync_IncrementsCounter()
     {
-        var first = await _manager.CreateSessionAsync("auth");
-        var second = await _manager.CreateSessionAsync("auth");
+        SessionId first = await _manager.CreateSessionAsync("auth");
+        SessionId second = await _manager.CreateSessionAsync("auth");
 
         Assert.Equal(1, first.Counter);
         Assert.Equal(2, second.Counter);
@@ -121,7 +121,7 @@ public class SessionManagerTests
         };
 
         await _manager.SaveSessionStateAsync(sessionId, state);
-        var loaded = await _manager.LoadSessionStateAsync(sessionId);
+        SessionState? loaded = await _manager.LoadSessionStateAsync(sessionId);
 
         Assert.NotNull(loaded);
         Assert.Equal("building", loaded.Phase);
@@ -134,7 +134,7 @@ public class SessionManagerTests
     {
         var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 99);
 
-        var result = await _manager.LoadSessionStateAsync(sessionId);
+        SessionState? result = await _manager.LoadSessionStateAsync(sessionId);
 
         Assert.Null(result);
     }
@@ -154,7 +154,7 @@ public class SessionManagerTests
         };
 
         await _manager.SaveSessionMetricsAsync(sessionId, metrics);
-        var loaded = await _manager.LoadSessionMetricsAsync(sessionId);
+        SessionMetrics? loaded = await _manager.LoadSessionMetricsAsync(sessionId);
 
         Assert.NotNull(loaded);
         Assert.Equal(1000, loaded.CumulativeInputTokens);
@@ -185,7 +185,7 @@ public class SessionManagerTests
         };
 
         await _manager.SaveSessionMetricsAsync(sessionId, metrics);
-        var loaded = await _manager.LoadSessionMetricsAsync(sessionId);
+        SessionMetrics? loaded = await _manager.LoadSessionMetricsAsync(sessionId);
 
         ItShouldRoundTripCumulativeMetrics(loaded, metrics);
         ItShouldRoundTripPerIterationMetrics(loaded, iterations);
@@ -206,7 +206,7 @@ public class SessionManagerTests
         };
 
         await _manager.SaveSessionMetricsAsync(sessionId, metricsWithoutIterations);
-        var loaded = await _manager.LoadSessionMetricsAsync(sessionId);
+        SessionMetrics? loaded = await _manager.LoadSessionMetricsAsync(sessionId);
 
         Assert.NotNull(loaded);
         Assert.Empty(loaded.Iterations);
@@ -234,7 +234,7 @@ public class SessionManagerTests
         };
 
         await _manager.SaveSessionMetricsAsync(sessionId, metrics);
-        var loaded = await _manager.LoadSessionMetricsAsync(sessionId);
+        SessionMetrics? loaded = await _manager.LoadSessionMetricsAsync(sessionId);
 
         Assert.NotNull(loaded);
         Assert.Equal(loaded.CumulativeInputTokens, loaded.Iterations.Sum(i => i.InputTokens));
@@ -269,7 +269,7 @@ public class SessionManagerTests
     {
         var sessionId = SessionId.Generate("auth", new DateOnly(2026, 2, 14), 99);
 
-        var result = await _manager.LoadSessionMetricsAsync(sessionId);
+        SessionMetrics? result = await _manager.LoadSessionMetricsAsync(sessionId);
 
         Assert.Null(result);
     }
@@ -277,7 +277,7 @@ public class SessionManagerTests
     [Fact]
     public async Task ListSessionsAsync_ReturnsEmpty_WhenNoSessions()
     {
-        var sessions = await _manager.ListSessionsAsync();
+        IReadOnlyList<SessionId> sessions = await _manager.ListSessionsAsync();
 
         Assert.Empty(sessions);
     }
@@ -288,7 +288,7 @@ public class SessionManagerTests
         await _manager.CreateSessionAsync("auth");
         await _manager.CreateSessionAsync("core");
 
-        var sessions = await _manager.ListSessionsAsync();
+        IReadOnlyList<SessionId> sessions = await _manager.ListSessionsAsync();
 
         Assert.Equal(2, sessions.Count);
         Assert.Contains(sessions, s => s.Module == "auth");
@@ -298,11 +298,11 @@ public class SessionManagerTests
     [Fact]
     public async Task SetLatestAsync_UpdatesSymlink()
     {
-        var first = await _manager.CreateSessionAsync("auth");
-        var second = await _manager.CreateSessionAsync("core");
+        SessionId first = await _manager.CreateSessionAsync("auth");
+        SessionId second = await _manager.CreateSessionAsync("core");
 
         await _manager.SetLatestAsync(first);
-        var latest = await _manager.GetLatestSessionIdAsync();
+        SessionId? latest = await _manager.GetLatestSessionIdAsync();
 
         Assert.Equal(first, latest);
     }
@@ -310,7 +310,7 @@ public class SessionManagerTests
     [Fact]
     public async Task GetLatestSessionIdAsync_ReturnsNull_WhenNoSymlink()
     {
-        var result = await _manager.GetLatestSessionIdAsync();
+        SessionId? result = await _manager.GetLatestSessionIdAsync();
 
         Assert.Null(result);
     }
@@ -371,7 +371,7 @@ public class SessionManagerTests
     [Fact]
     public async Task QuarantineCorruptedSessionAsync_MovesSessionToCorruptedDir()
     {
-        var sessionId = await _manager.CreateSessionAsync("auth");
+        SessionId sessionId = await _manager.CreateSessionAsync("auth");
 
         await _manager.QuarantineCorruptedSessionAsync(sessionId);
 
@@ -405,7 +405,7 @@ public class SessionManagerTests
         var pruned = await _manager.PruneSessionsAsync(5);
 
         Assert.Equal(0, pruned);
-        var sessions = await _manager.ListSessionsAsync();
+        IReadOnlyList<SessionId> sessions = await _manager.ListSessionsAsync();
         Assert.Equal(2, sessions.Count);
     }
 
@@ -445,11 +445,11 @@ public class SessionManagerTests
     [Fact]
     public async Task DeleteSessionAsync_ExistingSession_RemovesDirectory()
     {
-        var session = await _manager.CreateSessionAsync("auth");
+        SessionId session = await _manager.CreateSessionAsync("auth");
         await _manager.DeleteSessionAsync(session);
 
         // Session should no longer appear in list
-        var sessions = await _manager.ListSessionsAsync();
+        IReadOnlyList<SessionId> sessions = await _manager.ListSessionsAsync();
         Assert.DoesNotContain(sessions, s => s.Equals(session));
     }
 
@@ -538,11 +538,11 @@ public class SessionManagerTests
     [Fact]
     public async Task LoadSessionStateAsync_TruncatedJson_ThrowsStorageException()
     {
-        var sessionId = await _manager.CreateSessionAsync("auth");
+        SessionId sessionId = await _manager.CreateSessionAsync("auth");
         var statePath = StoragePaths.GetSessionStatePath(_projectRoot, sessionId);
         await _fileSystem.WriteAllTextAsync(statePath, "{\"SessionId\":", default);
 
-        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+        StorageException ex = await Assert.ThrowsAsync<StorageException>(() =>
             _manager.LoadSessionStateAsync(sessionId));
         Assert.IsType<System.Text.Json.JsonException>(ex.InnerException);
     }
@@ -550,11 +550,11 @@ public class SessionManagerTests
     [Fact]
     public async Task LoadSessionStateAsync_BinaryGarbage_ThrowsStorageException()
     {
-        var sessionId = await _manager.CreateSessionAsync("auth");
+        SessionId sessionId = await _manager.CreateSessionAsync("auth");
         var statePath = StoragePaths.GetSessionStatePath(_projectRoot, sessionId);
         await _fileSystem.WriteAllTextAsync(statePath, "\x00\x01\x02\xFF garbage", default);
 
-        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+        StorageException ex = await Assert.ThrowsAsync<StorageException>(() =>
             _manager.LoadSessionStateAsync(sessionId));
         Assert.IsType<System.Text.Json.JsonException>(ex.InnerException);
     }
@@ -562,7 +562,7 @@ public class SessionManagerTests
     [Fact]
     public async Task LoadSessionStateAsync_EmptyFile_ThrowsStorageException()
     {
-        var sessionId = await _manager.CreateSessionAsync("auth");
+        SessionId sessionId = await _manager.CreateSessionAsync("auth");
         var statePath = StoragePaths.GetSessionStatePath(_projectRoot, sessionId);
         await _fileSystem.WriteAllTextAsync(statePath, "", default);
 
@@ -573,12 +573,12 @@ public class SessionManagerTests
     [Fact]
     public async Task LoadSessionMetricsAsync_CorruptJson_ThrowsStorageException()
     {
-        var sessionId = await _manager.CreateSessionAsync("auth");
+        SessionId sessionId = await _manager.CreateSessionAsync("auth");
         var metricsPath = StoragePaths.GetSessionMetricsPath(_projectRoot, sessionId);
         _fileSystem.CreateDirectory(Path.GetDirectoryName(metricsPath)!);
         await _fileSystem.WriteAllTextAsync(metricsPath, "not json", default);
 
-        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+        StorageException ex = await Assert.ThrowsAsync<StorageException>(() =>
             _manager.LoadSessionMetricsAsync(sessionId));
         Assert.IsType<System.Text.Json.JsonException>(ex.InnerException);
     }
@@ -586,8 +586,8 @@ public class SessionManagerTests
     [Fact]
     public async Task CorruptSession_DetectAndQuarantine_FilesMovedToCorruptedDir()
     {
-        var goodId = await _manager.CreateSessionAsync("auth");
-        var badId = await _manager.CreateSessionAsync("auth");
+        SessionId goodId = await _manager.CreateSessionAsync("auth");
+        SessionId badId = await _manager.CreateSessionAsync("auth");
 
         // Corrupt the bad session
         var statePath = StoragePaths.GetSessionStatePath(_projectRoot, badId);
@@ -605,7 +605,7 @@ public class SessionManagerTests
         Assert.True(_fileSystem.DirectoryExists(Path.Combine(corruptedDir, badId.ToString())));
 
         // Good session still loads
-        var goodState = await _manager.LoadSessionStateAsync(goodId);
+        SessionState? goodState = await _manager.LoadSessionStateAsync(goodId);
         Assert.NotNull(goodState);
     }
 
@@ -637,7 +637,7 @@ public class SessionManagerTests
             UpdatedAt = DateTimeOffset.UtcNow,
         };
 
-        var ex = await Assert.ThrowsAsync<StorageException>(() =>
+        StorageException ex = await Assert.ThrowsAsync<StorageException>(() =>
             mgr.SaveSessionStateAsync(sessionId, state));
         Assert.IsType<IOException>(ex.InnerException);
         Assert.Contains("Disk full", ex.InnerException!.Message);
@@ -648,9 +648,9 @@ public class SessionManagerTests
     [Fact]
     public async Task CreateSession_SequentialCallsSameModule_ProduceUniqueIds()
     {
-        var id1 = await _manager.CreateSessionAsync("auth");
-        var id2 = await _manager.CreateSessionAsync("auth");
-        var id3 = await _manager.CreateSessionAsync("auth");
+        SessionId id1 = await _manager.CreateSessionAsync("auth");
+        SessionId id2 = await _manager.CreateSessionAsync("auth");
+        SessionId id3 = await _manager.CreateSessionAsync("auth");
 
         Assert.NotEqual(id1, id2);
         Assert.NotEqual(id2, id3);
@@ -665,8 +665,8 @@ public class SessionManagerTests
     [Fact]
     public async Task CreateSession_DifferentModules_ProduceIndependentCounters()
     {
-        var authId = await _manager.CreateSessionAsync("auth");
-        var coreId = await _manager.CreateSessionAsync("core");
+        SessionId authId = await _manager.CreateSessionAsync("auth");
+        SessionId coreId = await _manager.CreateSessionAsync("core");
 
         Assert.Equal(1, authId.Counter);
         Assert.Equal(1, coreId.Counter);

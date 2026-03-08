@@ -1,4 +1,3 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Lopen.Cli.Tests.Fakes;
 using Lopen.Commands;
@@ -9,6 +8,7 @@ using Lopen.Llm;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -54,7 +54,7 @@ public class FizzBuzzE2ETests : IDisposable
         var scriptedLlm = new ScriptedLlmService(
             ScriptedLlmService.CreateResponse("# FizzBuzz Specification\n\nDrafted by LLM."));
 
-        var (config, output, error, host, sessionId) = await CreateE2EConfigAsync(scriptedLlm);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter? error, IHost? host, SessionId? sessionId) = await CreateE2EConfigAsync(scriptedLlm);
 
         // Act
         var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt, "--resume", sessionId.ToString()]);
@@ -77,7 +77,7 @@ public class FizzBuzzE2ETests : IDisposable
         var scriptedLlm = new ScriptedLlmService(
             ScriptedLlmService.CreateResponse("# FizzBuzz Specification\n\nHeadless draft."));
 
-        var (config, output, _, _, sessionId) = await CreateE2EConfigAsync(scriptedLlm);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _, IHost _, SessionId? sessionId) = await CreateE2EConfigAsync(scriptedLlm);
 
         // Act
         var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt, "--resume", sessionId.ToString()]);
@@ -111,7 +111,7 @@ public class FizzBuzzE2ETests : IDisposable
             ScriptedLlmService.CreateResponse("Repeat check"),
             ScriptedLlmService.CreateResponse("All components complete"));
 
-        var (config, output, error, _, sessionId) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter? error, IHost _, SessionId? sessionId) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
 
         // Act
         var exitCode = await config.InvokeAsync(["plan", "--headless", "--prompt", "Plan the fizzbuzz module", "--resume", sessionId.ToString()]);
@@ -140,7 +140,7 @@ public class FizzBuzzE2ETests : IDisposable
         var scriptedLlm = new ScriptedLlmService(
             ScriptedLlmService.CreateResponse("Assessment: all components complete"));
 
-        var (config, output, error, _, sessionId) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter? error, IHost _, SessionId? sessionId) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
 
         // Act
         var exitCode = await config.InvokeAsync(["build", "--headless", "--prompt", "Build the fizzbuzz application", "--resume", sessionId.ToString()]);
@@ -169,7 +169,7 @@ public class FizzBuzzE2ETests : IDisposable
             Enumerable.Range(0, 20).Select(i =>
                 ScriptedLlmService.CreateResponse($"Working on task iteration {i}")).ToArray());
 
-        var (config2, output2, error2, _, sessionId2) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
+        (CommandLineConfiguration? config2, StringWriter? output2, StringWriter? error2, IHost _, SessionId? sessionId2) = await CreateE2EConfigAsync(scriptedLlm, approveSpec: true);
 
         // Act
         var exitCode = await config2.InvokeAsync(["build", "--headless", "--prompt", "Build the fizzbuzz application", "--resume", sessionId2.ToString()]);
@@ -190,7 +190,7 @@ public class FizzBuzzE2ETests : IDisposable
         var specLlm = new ScriptedLlmService(
             ScriptedLlmService.CreateResponse("# FizzBuzz Specification\n\nDrafted spec content."));
 
-        var (specConfig, specOutput, _, _, specSessionId) = await CreateE2EConfigAsync(specLlm);
+        (CommandLineConfiguration? specConfig, StringWriter? specOutput, StringWriter _, IHost _, SessionId? specSessionId) = await CreateE2EConfigAsync(specLlm);
 
         var specExit = await specConfig.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt, "--resume", specSessionId.ToString()]);
 
@@ -209,7 +209,7 @@ public class FizzBuzzE2ETests : IDisposable
             ScriptedLlmService.CreateResponse("Iterating tasks"),
             ScriptedLlmService.CreateResponse("Complete"));
 
-        var (planConfig, planOutput, _, _, planSessionId) = await CreateE2EConfigAsync(planLlm, approveSpec: true);
+        (CommandLineConfiguration? planConfig, StringWriter? planOutput, StringWriter _, IHost _, SessionId? planSessionId) = await CreateE2EConfigAsync(planLlm, approveSpec: true);
 
         var planExit = await planConfig.InvokeAsync(["plan", "--headless", "--prompt", "Plan the module", "--resume", planSessionId.ToString()]);
 
@@ -234,7 +234,7 @@ public class FizzBuzzE2ETests : IDisposable
             ScriptedLlmService.CreateResponse(
                 "# FizzBuzz Module\n\nA module that prints numbers 1-100, replacing multiples of 3 with Fizz, 5 with Buzz, and both with FizzBuzz.\n\n## Components\n- [ ] FizzBuzz logic\n- [ ] Console output\n- [ ] Unit tests"));
 
-        var (specConfig, specOutput, specError, specHost, specSessionId) = await CreateE2EConfigAsync(specLlm);
+        (CommandLineConfiguration? specConfig, StringWriter? specOutput, StringWriter? specError, IHost? specHost, SessionId? specSessionId) = await CreateE2EConfigAsync(specLlm);
 
         var specExitCode = await specConfig.InvokeAsync(["spec", "--headless", "--prompt", "Create a FizzBuzz module", "--resume", specSessionId.ToString()]);
 
@@ -251,7 +251,7 @@ public class FizzBuzzE2ETests : IDisposable
         var planLlm = new ScriptedLlmService(
             ScriptedLlmService.CreateResponse("Assessment: all components planned"));
 
-        var (planConfig, planOutput, planError, planHost, planSessionId) = await CreateE2EConfigAsync(planLlm, approveSpec: true);
+        (CommandLineConfiguration? planConfig, StringWriter? planOutput, StringWriter? planError, IHost? planHost, SessionId? planSessionId) = await CreateE2EConfigAsync(planLlm, approveSpec: true);
 
         var planExitCode = await planConfig.InvokeAsync(["plan", "--headless", "--prompt", "Plan the FizzBuzz module", "--resume", planSessionId.ToString()]);
 
@@ -266,7 +266,7 @@ public class FizzBuzzE2ETests : IDisposable
         var buildLlm = new ScriptedLlmService(
             ScriptedLlmService.CreateResponse("Assessment: all components complete"));
 
-        var (buildConfig, buildOutput, buildError, buildHost, buildSessionId) = await CreateE2EConfigAsync(buildLlm, approveSpec: true);
+        (CommandLineConfiguration? buildConfig, StringWriter? buildOutput, StringWriter? buildError, IHost? buildHost, SessionId? buildSessionId) = await CreateE2EConfigAsync(buildLlm, approveSpec: true);
 
         var buildExitCode = await buildConfig.InvokeAsync(["build", "--headless", "--prompt", "Build the FizzBuzz module", "--resume", buildSessionId.ToString()]);
 
@@ -360,7 +360,7 @@ public class FizzBuzzE2ETests : IDisposable
         // Configure with a high failure threshold to avoid churn guardrail blocking during multi-step tests
         var options = new LopenOptions { Workflow = new WorkflowOptions { FailureThreshold = 50 } };
 
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration(options);
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
         builder.Services.AddLopenStorage(_tempDir);
@@ -368,21 +368,21 @@ public class FizzBuzzE2ETests : IDisposable
         builder.Services.AddLopenLlm();
 
         // Replace the real ILlmService with our scripted fake
-        var descriptor = builder.Services.FirstOrDefault(d => d.ServiceType == typeof(ILlmService));
+        ServiceDescriptor? descriptor = builder.Services.FirstOrDefault(d => d.ServiceType == typeof(ILlmService));
         if (descriptor != null)
             builder.Services.Remove(descriptor);
         builder.Services.AddSingleton<ILlmService>(scriptedLlm);
 
-        var host = builder.Build();
+        IHost host = builder.Build();
 
         // Create a session so ResolveModuleNameAsync can find the module
-        var sessionManager = host.Services.GetRequiredService<ISessionManager>();
-        var sessionId = await sessionManager.CreateSessionAsync(FizzBuzzModule);
+        ISessionManager sessionManager = host.Services.GetRequiredService<ISessionManager>();
+        SessionId sessionId = await sessionManager.CreateSessionAsync(FizzBuzzModule);
 
         // Optionally approve the spec to allow planning transitions
         if (approveSpec)
         {
-            var phaseController = host.Services.GetRequiredService<IPhaseTransitionController>();
+            IPhaseTransitionController phaseController = host.Services.GetRequiredService<IPhaseTransitionController>();
             phaseController.ApproveSpecification();
         }
 

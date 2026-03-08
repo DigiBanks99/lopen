@@ -56,7 +56,7 @@ internal sealed class WorkflowEngine : IWorkflowEngine
             return false;
         }
 
-        var previousStep = CurrentStep;
+        WorkflowStep previousStep = CurrentStep;
         _machine.Fire(trigger);
 
         _logger.LogInformation(

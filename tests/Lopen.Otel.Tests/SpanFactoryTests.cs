@@ -30,7 +30,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void StartCommand_CreatesActivityWithCorrectName()
     {
-        using var cmd = SpanFactory.StartCommand("spec");
+        using Activity? cmd = SpanFactory.StartCommand("spec");
         Assert.NotNull(cmd);
         Assert.Equal("lopen.command", cmd!.OperationName);
     }
@@ -38,7 +38,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void StartCommand_SetsRequiredAttributes()
     {
-        using var cmd = SpanFactory.StartCommand("build", headless: true, hasPrompt: true);
+        using Activity? cmd = SpanFactory.StartCommand("build", headless: true, hasPrompt: true);
         Assert.Equal("build", cmd!.GetTagItem("lopen.command.name"));
         Assert.Equal(true, cmd.GetTagItem("lopen.command.headless"));
         Assert.Equal(true, cmd.GetTagItem("lopen.command.has_prompt"));
@@ -47,7 +47,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void SetCommandExitCode_SetsAttribute()
     {
-        using var cmd = SpanFactory.StartCommand("plan");
+        using Activity? cmd = SpanFactory.StartCommand("plan");
         SpanFactory.SetCommandExitCode(cmd, 42);
         Assert.Equal(42, cmd!.GetTagItem("lopen.command.exit_code"));
     }
@@ -57,8 +57,8 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void StartWorkflowPhase_CreatesActivityWithAttributes()
     {
-        using var cmd = SpanFactory.StartCommand("spec");
-        using var phase = SpanFactory.StartWorkflowPhase("spec", "auth", iteration: 2);
+        using Activity? cmd = SpanFactory.StartCommand("spec");
+        using Activity? phase = SpanFactory.StartWorkflowPhase("spec", "auth", iteration: 2);
 
         Assert.NotNull(phase);
         Assert.Equal("lopen.workflow.phase", phase!.OperationName);
@@ -70,8 +70,8 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void WorkflowPhase_IsChildOfCommand()
     {
-        using var cmd = SpanFactory.StartCommand("spec");
-        using var phase = SpanFactory.StartWorkflowPhase("spec", "auth");
+        using Activity? cmd = SpanFactory.StartCommand("spec");
+        using Activity? phase = SpanFactory.StartWorkflowPhase("spec", "auth");
 
         Assert.Equal(cmd!.Context.TraceId, phase!.Context.TraceId);
         Assert.Equal(cmd.Context.SpanId, phase.ParentSpanId);
@@ -82,7 +82,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void StartSdkInvocation_CreatesWithModel()
     {
-        using var sdk = SpanFactory.StartSdkInvocation("claude-opus-4.6");
+        using Activity? sdk = SpanFactory.StartSdkInvocation("claude-opus-4.6");
         Assert.NotNull(sdk);
         Assert.Equal("lopen.sdk.invocation", sdk!.OperationName);
         Assert.Equal("claude-opus-4.6", sdk.GetTagItem("lopen.sdk.model"));
@@ -91,7 +91,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void SetSdkResult_SetsAllTokenAttributes()
     {
-        using var sdk = SpanFactory.StartSdkInvocation("gpt-4o");
+        using Activity? sdk = SpanFactory.StartSdkInvocation("gpt-4o");
         SpanFactory.SetSdkResult(sdk, inputTokens: 500, outputTokens: 200, isPremium: true, toolCalls: 3);
 
         Assert.Equal(500, sdk!.GetTagItem("lopen.sdk.tokens.input"));
@@ -104,9 +104,9 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void SdkInvocation_IsChildOfPhase()
     {
-        using var cmd = SpanFactory.StartCommand("build");
-        using var phase = SpanFactory.StartWorkflowPhase("build", "core");
-        using var sdk = SpanFactory.StartSdkInvocation("claude-sonnet-4");
+        using Activity? cmd = SpanFactory.StartCommand("build");
+        using Activity? phase = SpanFactory.StartWorkflowPhase("build", "core");
+        using Activity? sdk = SpanFactory.StartSdkInvocation("claude-sonnet-4");
 
         Assert.Equal(phase!.Context.SpanId, sdk!.ParentSpanId);
     }
@@ -116,7 +116,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void StartTool_CreatesWithToolName()
     {
-        using var tool = SpanFactory.StartTool("read_spec", module: "auth");
+        using Activity? tool = SpanFactory.StartTool("read_spec", module: "auth");
         Assert.NotNull(tool);
         Assert.Contains("lopen.tool.read_spec", tool!.OperationName);
         Assert.Equal("read_spec", tool.GetTagItem("lopen.tool.name"));
@@ -126,7 +126,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void SetToolResult_Success()
     {
-        using var tool = SpanFactory.StartTool("update_task_status");
+        using Activity? tool = SpanFactory.StartTool("update_task_status");
         SpanFactory.SetToolResult(tool, success: true);
 
         Assert.Equal(true, tool!.GetTagItem("lopen.tool.success"));
@@ -136,7 +136,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void SetToolResult_Failure()
     {
-        using var tool = SpanFactory.StartTool("verify_task_completion");
+        using Activity? tool = SpanFactory.StartTool("verify_task_completion");
         SpanFactory.SetToolResult(tool, success: false, error: "Test failed");
 
         Assert.Equal(false, tool!.GetTagItem("lopen.tool.success"));
@@ -146,10 +146,10 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void Tool_IsChildOfSdkInvocation()
     {
-        using var cmd = SpanFactory.StartCommand("build");
-        using var phase = SpanFactory.StartWorkflowPhase("build", "core");
-        using var sdk = SpanFactory.StartSdkInvocation("claude-opus-4.6");
-        using var tool = SpanFactory.StartTool("read_spec");
+        using Activity? cmd = SpanFactory.StartCommand("build");
+        using Activity? phase = SpanFactory.StartWorkflowPhase("build", "core");
+        using Activity? sdk = SpanFactory.StartSdkInvocation("claude-opus-4.6");
+        using Activity? tool = SpanFactory.StartTool("read_spec");
 
         Assert.Equal(sdk!.Context.SpanId, tool!.ParentSpanId);
     }
@@ -159,7 +159,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void StartOracleVerification_CreatesWithAttributes()
     {
-        using var oracle = SpanFactory.StartOracleVerification("task", "gpt-4o", attempt: 2);
+        using Activity? oracle = SpanFactory.StartOracleVerification("task", "gpt-4o", attempt: 2);
         Assert.NotNull(oracle);
         Assert.Equal("lopen.oracle.verification", oracle!.OperationName);
         Assert.Equal("task", oracle.GetTagItem("lopen.oracle.scope"));
@@ -170,7 +170,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void SetOracleVerdict_SetsAttribute()
     {
-        using var oracle = SpanFactory.StartOracleVerification("component", "gpt-4o");
+        using Activity? oracle = SpanFactory.StartOracleVerification("component", "gpt-4o");
         SpanFactory.SetOracleVerdict(oracle, "pass");
         Assert.Equal("pass", oracle!.GetTagItem("lopen.oracle.verdict"));
     }
@@ -180,7 +180,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void StartTask_CreatesWithAttributes()
     {
-        using var task = SpanFactory.StartTask("Implement login flow", "auth_handler", "auth");
+        using Activity? task = SpanFactory.StartTask("Implement login flow", "auth_handler", "auth");
         Assert.NotNull(task);
         Assert.Equal("lopen.task.execution", task!.OperationName);
         Assert.Equal("Implement login flow", task.GetTagItem("lopen.task.name"));
@@ -191,7 +191,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void SetTaskResult_SetsOutcomeAndIterations()
     {
-        using var task = SpanFactory.StartTask("Build feature", "comp", "mod");
+        using Activity? task = SpanFactory.StartTask("Build feature", "comp", "mod");
         SpanFactory.SetTaskResult(task, "complete", iterations: 3);
 
         Assert.Equal("complete", task!.GetTagItem("lopen.task.outcome"));
@@ -203,7 +203,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void StartSession_CreatesWithAttributes()
     {
-        using var session = SpanFactory.StartSession("sess-123", "save");
+        using Activity? session = SpanFactory.StartSession("sess-123", "save");
         Assert.NotNull(session);
         Assert.Equal("lopen.session.save", session!.OperationName);
         Assert.Equal("sess-123", session.GetTagItem("lopen.session.id"));
@@ -215,7 +215,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void StartGit_CreatesWithAttributes()
     {
-        using var git = SpanFactory.StartGit("commit", branch: "main");
+        using Activity? git = SpanFactory.StartGit("commit", branch: "main");
         Assert.NotNull(git);
         Assert.Equal("lopen.git.commit", git!.OperationName);
         Assert.Equal("commit", git.GetTagItem("lopen.git.operation"));
@@ -227,7 +227,7 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void StartBackpressure_CreatesWithAttributes()
     {
-        using var bp = SpanFactory.StartBackpressure("resource_limits", "budget_warning", "warn");
+        using Activity? bp = SpanFactory.StartBackpressure("resource_limits", "budget_warning", "warn");
         Assert.NotNull(bp);
         Assert.Equal("lopen.backpressure.event", bp!.OperationName);
         Assert.Equal("resource_limits", bp.GetTagItem("lopen.backpressure.category"));
@@ -240,10 +240,10 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void FullHierarchy_Command_Phase_Sdk_Tool()
     {
-        using var cmd = SpanFactory.StartCommand("build");
-        using var phase = SpanFactory.StartWorkflowPhase("build", "auth");
-        using var sdk = SpanFactory.StartSdkInvocation("claude-opus-4.6");
-        using var tool = SpanFactory.StartTool("read_spec");
+        using Activity? cmd = SpanFactory.StartCommand("build");
+        using Activity? phase = SpanFactory.StartWorkflowPhase("build", "auth");
+        using Activity? sdk = SpanFactory.StartSdkInvocation("claude-opus-4.6");
+        using Activity? tool = SpanFactory.StartTool("read_spec");
 
         // All share the same trace
         Assert.Equal(cmd!.Context.TraceId, phase!.Context.TraceId);
@@ -259,17 +259,17 @@ public class SpanFactoryTests : IDisposable
     [Fact]
     public void FullHierarchy_Command_Phase_Task_Sdk_Git()
     {
-        using var cmd = SpanFactory.StartCommand("build");
-        using var phase = SpanFactory.StartWorkflowPhase("build", "core");
-        using var task = SpanFactory.StartTask("Implement feature", "comp", "core");
-        using var sdk = SpanFactory.StartSdkInvocation("gpt-4o");
+        using Activity? cmd = SpanFactory.StartCommand("build");
+        using Activity? phase = SpanFactory.StartWorkflowPhase("build", "core");
+        using Activity? task = SpanFactory.StartTask("Implement feature", "comp", "core");
+        using Activity? sdk = SpanFactory.StartSdkInvocation("gpt-4o");
 
         Assert.Equal(phase!.Context.SpanId, task!.ParentSpanId);
         Assert.Equal(task.Context.SpanId, sdk!.ParentSpanId);
 
         sdk.Dispose();
 
-        using var git = SpanFactory.StartGit("commit", "feat/x");
+        using Activity? git = SpanFactory.StartGit("commit", "feat/x");
         Assert.Equal(task.Context.SpanId, git!.ParentSpanId);
     }
 

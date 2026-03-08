@@ -1,5 +1,5 @@
-using Spectre.Console;
 using Lopen.Tui;
+using Spectre.Console;
 using System.Reflection;
 
 namespace Lopen.Tui.Tests;

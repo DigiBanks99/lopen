@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace Lopen.Core.Git;
 
@@ -22,7 +22,7 @@ internal sealed class GitCliService : IGitService
     public async Task<GitResult> CommitAllAsync(string message, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
-        var addResult = await RunGitAsync("add -A", cancellationToken).ConfigureAwait(false);
+        GitResult addResult = await RunGitAsync("add -A", cancellationToken).ConfigureAwait(false);
         if (!addResult.Success)
             return addResult;
 
@@ -46,32 +46,32 @@ internal sealed class GitCliService : IGitService
     /// <inheritdoc />
     public async Task<DateTimeOffset?> GetLastCommitDateAsync(CancellationToken cancellationToken = default)
     {
-        var result = await RunGitAsync("log -1 --format=%aI", cancellationToken).ConfigureAwait(false);
+        GitResult result = await RunGitAsync("log -1 --format=%aI", cancellationToken).ConfigureAwait(false);
 
         if (!result.Success || string.IsNullOrWhiteSpace(result.StdOut))
             return null;
 
-        return DateTimeOffset.TryParse(result.StdOut.Trim(), out var date) ? date : null;
+        return DateTimeOffset.TryParse(result.StdOut.Trim(), out DateTimeOffset date) ? date : null;
     }
 
     /// <inheritdoc />
     public async Task<string> GetDiffAsync(CancellationToken cancellationToken = default)
     {
-        var result = await RunGitAsync("diff", cancellationToken).ConfigureAwait(false);
+        GitResult result = await RunGitAsync("diff", cancellationToken).ConfigureAwait(false);
         return result.StdOut;
     }
 
     /// <inheritdoc />
     public async Task<string?> GetCurrentCommitShaAsync(CancellationToken cancellationToken = default)
     {
-        var result = await RunGitAsync("rev-parse HEAD", cancellationToken).ConfigureAwait(false);
+        GitResult result = await RunGitAsync("rev-parse HEAD", cancellationToken).ConfigureAwait(false);
         return result.Success ? result.StdOut.Trim() : null;
     }
 
     /// <inheritdoc />
     public async Task<string?> GetCurrentBranchAsync(CancellationToken cancellationToken = default)
     {
-        var result = await RunGitAsync("branch --show-current", cancellationToken).ConfigureAwait(false);
+        GitResult result = await RunGitAsync("branch --show-current", cancellationToken).ConfigureAwait(false);
         if (!result.Success || string.IsNullOrWhiteSpace(result.StdOut))
             return null;
         return result.StdOut.Trim();
@@ -94,7 +94,7 @@ internal sealed class GitCliService : IGitService
 
         try
         {
-            using var process = Process.Start(psi)
+            using Process process = Process.Start(psi)
                 ?? throw new GitException("Failed to start git process.", $"git {arguments}");
 
             var stdout = await process.StandardOutput.ReadToEndAsync(cancellationToken).ConfigureAwait(false);

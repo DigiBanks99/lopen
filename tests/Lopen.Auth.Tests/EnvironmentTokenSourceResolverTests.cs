@@ -11,7 +11,7 @@ public class EnvironmentTokenSourceResolverTests
             _ => null,
         });
 
-        var result = resolver.Resolve();
+        TokenSourceResult result = resolver.Resolve();
 
         Assert.Equal(AuthCredentialSource.GhToken, result.Source);
         Assert.Equal("gho_test_token_123", result.Token);
@@ -26,7 +26,7 @@ public class EnvironmentTokenSourceResolverTests
             _ => null,
         });
 
-        var result = resolver.Resolve();
+        TokenSourceResult result = resolver.Resolve();
 
         Assert.Equal(AuthCredentialSource.GitHubToken, result.Source);
         Assert.Equal("github_pat_abc123", result.Token);
@@ -42,7 +42,7 @@ public class EnvironmentTokenSourceResolverTests
             _ => null,
         });
 
-        var result = resolver.Resolve();
+        TokenSourceResult result = resolver.Resolve();
 
         Assert.Equal(AuthCredentialSource.GhToken, result.Source);
         Assert.Equal("gh_token_value", result.Token);
@@ -53,7 +53,7 @@ public class EnvironmentTokenSourceResolverTests
     {
         var resolver = new EnvironmentTokenSourceResolver(_ => null);
 
-        var result = resolver.Resolve();
+        TokenSourceResult result = resolver.Resolve();
 
         Assert.Equal(AuthCredentialSource.None, result.Source);
         Assert.Null(result.Token);
@@ -69,7 +69,7 @@ public class EnvironmentTokenSourceResolverTests
             _ => null,
         });
 
-        var result = resolver.Resolve();
+        TokenSourceResult result = resolver.Resolve();
 
         Assert.Equal(AuthCredentialSource.GitHubToken, result.Source);
         Assert.Equal("fallback_token", result.Token);
@@ -85,7 +85,7 @@ public class EnvironmentTokenSourceResolverTests
             _ => null,
         });
 
-        var result = resolver.Resolve();
+        TokenSourceResult result = resolver.Resolve();
 
         Assert.Equal(AuthCredentialSource.None, result.Source);
         Assert.Null(result.Token);
@@ -101,7 +101,7 @@ public class EnvironmentTokenSourceResolverTests
             _ => null,
         });
 
-        var result = resolver.Resolve();
+        TokenSourceResult result = resolver.Resolve();
 
         Assert.Equal(AuthCredentialSource.GitHubToken, result.Source);
         Assert.Equal("valid_token", result.Token);
@@ -118,7 +118,7 @@ public class EnvironmentTokenSourceResolverTests
     {
         // Should not throw — validates default constructor wiring
         var resolver = new EnvironmentTokenSourceResolver();
-        var result = resolver.Resolve();
+        TokenSourceResult result = resolver.Resolve();
 
         // Result depends on actual environment, but should not be null
         Assert.NotNull(result);

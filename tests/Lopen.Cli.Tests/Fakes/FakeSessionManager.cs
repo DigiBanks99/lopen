@@ -41,7 +41,7 @@ internal sealed class FakeSessionManager : ISessionManager
     {
         if (ShowException is not null)
             throw ShowException;
-        _states.TryGetValue(sessionId.ToString(), out var state);
+        _states.TryGetValue(sessionId.ToString(), out SessionState? state);
         return Task.FromResult(state);
     }
 
@@ -53,7 +53,7 @@ internal sealed class FakeSessionManager : ISessionManager
 
     public Task<SessionMetrics?> LoadSessionMetricsAsync(SessionId sessionId, CancellationToken ct = default)
     {
-        _metrics.TryGetValue(sessionId.ToString(), out var metrics);
+        _metrics.TryGetValue(sessionId.ToString(), out SessionMetrics? metrics);
         return Task.FromResult(metrics);
     }
 

@@ -1,3 +1,4 @@
+using GitHub.Copilot.SDK;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Lopen.Llm.Tests;
@@ -35,7 +36,7 @@ public class CopilotClientProviderTests : IAsyncDisposable
             new NullGitHubTokenProvider(),
             NullLogger<CopilotClientProvider>.Instance);
 
-        var client = _provider.CreateClient();
+        CopilotClient client = _provider.CreateClient();
 
         Assert.NotNull(client);
         client.Dispose();
@@ -49,7 +50,7 @@ public class CopilotClientProviderTests : IAsyncDisposable
             tokenProvider,
             NullLogger<CopilotClientProvider>.Instance);
 
-        var client = _provider.CreateClient();
+        CopilotClient client = _provider.CreateClient();
 
         Assert.NotNull(client);
         client.Dispose();

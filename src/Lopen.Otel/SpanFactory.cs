@@ -13,7 +13,7 @@ public static class SpanFactory
     /// </summary>
     public static Activity? StartCommand(string commandName, bool headless = false, bool hasPrompt = false)
     {
-        var activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.command", ActivityKind.Internal);
+        Activity? activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.command", ActivityKind.Internal);
         if (activity is not null)
         {
             activity.SetTag("lopen.command.name", commandName);
@@ -36,7 +36,7 @@ public static class SpanFactory
     /// </summary>
     public static Activity? StartWorkflowPhase(string phase, string module, int iteration = 1)
     {
-        var activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.workflow.phase", ActivityKind.Internal);
+        Activity? activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.workflow.phase", ActivityKind.Internal);
         if (activity is not null)
         {
             activity.SetTag("lopen.workflow.phase", phase);
@@ -51,7 +51,7 @@ public static class SpanFactory
     /// </summary>
     public static Activity? StartSdkInvocation(string model)
     {
-        var activity = LopenTelemetryDiagnostics.Sdk.StartActivity("lopen.sdk.invocation", ActivityKind.Client);
+        Activity? activity = LopenTelemetryDiagnostics.Sdk.StartActivity("lopen.sdk.invocation", ActivityKind.Client);
         if (activity is not null)
         {
             activity.SetTag("lopen.sdk.model", model);
@@ -78,7 +78,7 @@ public static class SpanFactory
     /// </summary>
     public static Activity? StartTool(string toolName, string? module = null)
     {
-        var activity = LopenTelemetryDiagnostics.Tools.StartActivity($"lopen.tool.{toolName}", ActivityKind.Internal);
+        Activity? activity = LopenTelemetryDiagnostics.Tools.StartActivity($"lopen.tool.{toolName}", ActivityKind.Internal);
         if (activity is not null)
         {
             activity.SetTag("lopen.tool.name", toolName);
@@ -105,7 +105,7 @@ public static class SpanFactory
     /// </summary>
     public static Activity? StartOracleVerification(string scope, string model, int attempt = 1)
     {
-        var activity = LopenTelemetryDiagnostics.Oracle.StartActivity("lopen.oracle.verification", ActivityKind.Internal);
+        Activity? activity = LopenTelemetryDiagnostics.Oracle.StartActivity("lopen.oracle.verification", ActivityKind.Internal);
         if (activity is not null)
         {
             activity.SetTag("lopen.oracle.scope", scope);
@@ -128,7 +128,7 @@ public static class SpanFactory
     /// </summary>
     public static Activity? StartTask(string taskName, string component, string module)
     {
-        var activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.task.execution", ActivityKind.Internal);
+        Activity? activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.task.execution", ActivityKind.Internal);
         if (activity is not null)
         {
             activity.SetTag("lopen.task.name", taskName);
@@ -154,7 +154,7 @@ public static class SpanFactory
     /// </summary>
     public static Activity? StartSession(string sessionId, string operation)
     {
-        var activity = LopenTelemetryDiagnostics.Session.StartActivity("lopen.session.save", ActivityKind.Internal);
+        Activity? activity = LopenTelemetryDiagnostics.Session.StartActivity("lopen.session.save", ActivityKind.Internal);
         if (activity is not null)
         {
             activity.SetTag("lopen.session.id", sessionId);
@@ -168,7 +168,7 @@ public static class SpanFactory
     /// </summary>
     public static Activity? StartGit(string operation, string? branch = null)
     {
-        var activity = LopenTelemetryDiagnostics.Git.StartActivity("lopen.git.commit", ActivityKind.Internal);
+        Activity? activity = LopenTelemetryDiagnostics.Git.StartActivity("lopen.git.commit", ActivityKind.Internal);
         if (activity is not null)
         {
             activity.SetTag("lopen.git.operation", operation);
@@ -183,7 +183,7 @@ public static class SpanFactory
     /// </summary>
     public static Activity? StartBackpressure(string category, string trigger, string action)
     {
-        var activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.backpressure.event", ActivityKind.Internal);
+        Activity? activity = LopenTelemetryDiagnostics.Workflow.StartActivity("lopen.backpressure.event", ActivityKind.Internal);
         if (activity is not null)
         {
             activity.SetTag("lopen.backpressure.category", category);

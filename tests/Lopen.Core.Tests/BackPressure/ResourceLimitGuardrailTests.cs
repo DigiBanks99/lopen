@@ -18,9 +18,9 @@ public class ResourceLimitGuardrailTests
     public async Task EvaluateAsync_BelowWarn_ReturnsPass()
     {
         _tracker.PremiumRequests = 50;
-        var guardrail = CreateGuardrail(budget: 100);
+        ResourceLimitGuardrail guardrail = CreateGuardrail(budget: 100);
 
-        var result = await guardrail.EvaluateAsync(CreateContext());
+        GuardrailResult result = await guardrail.EvaluateAsync(CreateContext());
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }
@@ -29,9 +29,9 @@ public class ResourceLimitGuardrailTests
     public async Task EvaluateAsync_AtWarnThreshold_ReturnsWarn()
     {
         _tracker.PremiumRequests = 80;
-        var guardrail = CreateGuardrail(budget: 100);
+        ResourceLimitGuardrail guardrail = CreateGuardrail(budget: 100);
 
-        var result = await guardrail.EvaluateAsync(CreateContext());
+        GuardrailResult result = await guardrail.EvaluateAsync(CreateContext());
 
         Assert.IsType<GuardrailResult.Warn>(result);
     }
@@ -40,9 +40,9 @@ public class ResourceLimitGuardrailTests
     public async Task EvaluateAsync_AtBlockThreshold_ReturnsBlock()
     {
         _tracker.PremiumRequests = 90;
-        var guardrail = CreateGuardrail(budget: 100);
+        ResourceLimitGuardrail guardrail = CreateGuardrail(budget: 100);
 
-        var result = await guardrail.EvaluateAsync(CreateContext());
+        GuardrailResult result = await guardrail.EvaluateAsync(CreateContext());
 
         Assert.IsType<GuardrailResult.Block>(result);
     }
@@ -51,9 +51,9 @@ public class ResourceLimitGuardrailTests
     public async Task EvaluateAsync_AboveBlockThreshold_ReturnsBlock()
     {
         _tracker.PremiumRequests = 95;
-        var guardrail = CreateGuardrail(budget: 100);
+        ResourceLimitGuardrail guardrail = CreateGuardrail(budget: 100);
 
-        var result = await guardrail.EvaluateAsync(CreateContext());
+        GuardrailResult result = await guardrail.EvaluateAsync(CreateContext());
 
         Assert.IsType<GuardrailResult.Block>(result);
     }
@@ -61,9 +61,9 @@ public class ResourceLimitGuardrailTests
     [Fact]
     public async Task EvaluateAsync_ZeroUsage_ReturnsPass()
     {
-        var guardrail = CreateGuardrail(budget: 100);
+        ResourceLimitGuardrail guardrail = CreateGuardrail(budget: 100);
 
-        var result = await guardrail.EvaluateAsync(CreateContext());
+        GuardrailResult result = await guardrail.EvaluateAsync(CreateContext());
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }
@@ -72,11 +72,11 @@ public class ResourceLimitGuardrailTests
     public async Task EvaluateAsync_WarnMessage_ContainsBudgetInfo()
     {
         _tracker.PremiumRequests = 85;
-        var guardrail = CreateGuardrail(budget: 100);
+        ResourceLimitGuardrail guardrail = CreateGuardrail(budget: 100);
 
-        var result = await guardrail.EvaluateAsync(CreateContext());
+        GuardrailResult result = await guardrail.EvaluateAsync(CreateContext());
 
-        var warn = Assert.IsType<GuardrailResult.Warn>(result);
+        GuardrailResult.Warn warn = Assert.IsType<GuardrailResult.Warn>(result);
         Assert.Contains("85", warn.Message);
         Assert.Contains("100", warn.Message);
     }
@@ -85,11 +85,11 @@ public class ResourceLimitGuardrailTests
     public async Task EvaluateAsync_BlockMessage_ContainsBudgetInfo()
     {
         _tracker.PremiumRequests = 92;
-        var guardrail = CreateGuardrail(budget: 100);
+        ResourceLimitGuardrail guardrail = CreateGuardrail(budget: 100);
 
-        var result = await guardrail.EvaluateAsync(CreateContext());
+        GuardrailResult result = await guardrail.EvaluateAsync(CreateContext());
 
-        var block = Assert.IsType<GuardrailResult.Block>(result);
+        GuardrailResult.Block block = Assert.IsType<GuardrailResult.Block>(result);
         Assert.Contains("92", block.Message);
         Assert.Contains("100", block.Message);
     }
@@ -97,7 +97,7 @@ public class ResourceLimitGuardrailTests
     [Fact]
     public void Order_Returns100()
     {
-        var guardrail = CreateGuardrail();
+        ResourceLimitGuardrail guardrail = CreateGuardrail();
 
         Assert.Equal(100, guardrail.Order);
     }
@@ -105,7 +105,7 @@ public class ResourceLimitGuardrailTests
     [Fact]
     public void ShortCircuitOnBlock_ReturnsTrue()
     {
-        var guardrail = CreateGuardrail();
+        ResourceLimitGuardrail guardrail = CreateGuardrail();
 
         Assert.True(guardrail.ShortCircuitOnBlock);
     }
@@ -148,7 +148,7 @@ public class ResourceLimitGuardrailTests
     [Fact]
     public void ImplementsIGuardrail()
     {
-        var guardrail = CreateGuardrail();
+        ResourceLimitGuardrail guardrail = CreateGuardrail();
 
         Assert.IsAssignableFrom<IGuardrail>(guardrail);
     }

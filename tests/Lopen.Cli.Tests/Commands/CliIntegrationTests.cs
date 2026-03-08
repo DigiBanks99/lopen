@@ -1,5 +1,3 @@
-using System.CommandLine;
-using System.Reflection;
 using Lopen.Auth;
 using Lopen.Cli.Tests.Fakes;
 using Lopen.Commands;
@@ -9,6 +7,8 @@ using Lopen.Llm;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.CommandLine;
+using System.Reflection;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -20,13 +20,13 @@ public class CliIntegrationTests
 {
     private static (CommandLineConfiguration config, StringWriter output) CreateFullConfig()
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
-        var host = builder.Build();
+        IHost host = builder.Build();
 
         var output = new StringWriter();
         var rootCommand = new RootCommand("Lopen — AI-powered software engineering workflow");
@@ -49,14 +49,14 @@ public class CliIntegrationTests
     [Fact]
     public void Host_BuildsSuccessfully_WithAllModules()
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
 
-        using var host = builder.Build();
+        using IHost host = builder.Build();
 
         Assert.NotNull(host);
         Assert.NotNull(host.Services);
@@ -65,14 +65,14 @@ public class CliIntegrationTests
     [Fact]
     public void Host_ResolvesCoreCrossModuleServices()
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
 
-        using var host = builder.Build();
+        using IHost host = builder.Build();
 
         // Configuration services
         Assert.NotNull(host.Services.GetRequiredService<Lopen.Configuration.LopenOptions>());
@@ -101,7 +101,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task RootCommand_NoArgs_ReturnsTuiNotImplemented()
     {
-        var (config, output) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter? output) = CreateFullConfig();
 
         var exitCode = await config.InvokeAsync([]);
 
@@ -113,7 +113,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task AllSubcommands_AreRegistered()
     {
-        var (config, _) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter _) = CreateFullConfig();
 
         // Each recognized command should not result in a parse error
         string[] commands = ["auth", "session", "config", "revert", "spec", "plan", "build"];
@@ -129,7 +129,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task HelpFlag_OnRoot_ReturnsSuccess()
     {
-        var (config, _) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter _) = CreateFullConfig();
 
         var exitCode = await config.InvokeAsync(["--help"]);
 
@@ -139,7 +139,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task VersionFlag_OnRoot_ReturnsSuccess()
     {
-        var (config, _) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter _) = CreateFullConfig();
 
         var exitCode = await config.InvokeAsync(["--version"]);
 
@@ -149,7 +149,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task VersionFlag_OnRoot_OutputsVersionString()
     {
-        var (config, _) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter _) = CreateFullConfig();
         var versionWriter = new StringWriter();
         config.Output = versionWriter;
 
@@ -158,8 +158,8 @@ public class CliIntegrationTests
         Assert.Equal(0, exitCode);
         // In test context, --version reads from the entry assembly (test host),
         // so we verify the Lopen assembly carries the expected version attribute.
-        var asm = typeof(RootCommandHandler).Assembly;
-        var infoVersion = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+        Assembly asm = typeof(RootCommandHandler).Assembly;
+        AssemblyInformationalVersionAttribute? infoVersion = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
         Assert.NotNull(infoVersion);
         Assert.Matches(@"\d+\.\d+\.\d+", infoVersion.InformationalVersion);
     }
@@ -169,7 +169,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task HeadlessFlag_IsRecognized_OnSubcommands()
     {
-        var (config, _) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter _) = CreateFullConfig();
 
         // --headless on spec should be recognized (not a parse error)
         // Will return 1 because headless + no prompt + no session, but it's a validation error, not parse error
@@ -181,7 +181,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task PromptFlag_IsRecognized_OnSubcommands()
     {
-        var (config, output) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter? output) = CreateFullConfig();
 
         var exitCode = await config.InvokeAsync(["spec", "--prompt", "Build an auth module"]);
 
@@ -196,7 +196,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task UnrecognizedCommand_ReturnsNonZero()
     {
-        var (config, _) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter _) = CreateFullConfig();
 
         var exitCode = await config.InvokeAsync(["nonexistent-command"]);
 
@@ -208,7 +208,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task AuthLogin_Help_ReturnsSuccess()
     {
-        var (config, _) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter _) = CreateFullConfig();
 
         var exitCode = await config.InvokeAsync(["auth", "login", "--help"]);
 
@@ -218,7 +218,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task AuthStatus_Help_ReturnsSuccess()
     {
-        var (config, _) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter _) = CreateFullConfig();
 
         var exitCode = await config.InvokeAsync(["auth", "status", "--help"]);
 
@@ -230,7 +230,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task SessionList_Help_ReturnsSuccess()
     {
-        var (config, _) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter _) = CreateFullConfig();
 
         var exitCode = await config.InvokeAsync(["session", "list", "--help"]);
 
@@ -240,7 +240,7 @@ public class CliIntegrationTests
     [Fact]
     public async Task SessionDelete_Help_ReturnsSuccess()
     {
-        var (config, _) = CreateFullConfig();
+        (CommandLineConfiguration? config, StringWriter _) = CreateFullConfig();
 
         var exitCode = await config.InvokeAsync(["session", "delete", "--help"]);
 

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Reflection;
 
 namespace Lopen.Auth.Tests;
 
@@ -27,7 +28,7 @@ public class AuthAcceptanceCriteriaTests
         _ghCli.Available = true;
         _ghCli.LoginUsername = "copilot-user";
 
-        var service = CreateService(isInteractive: true);
+        CopilotAuthService service = CreateService(isInteractive: true);
         await service.LoginAsync();
 
         Assert.True(_ghCli.LoginCalled, "LoginAsync must delegate to IGhCliAdapter for device flow");
@@ -38,8 +39,8 @@ public class AuthAcceptanceCriteriaTests
     {
         _ghCli.Available = false;
 
-        var service = CreateService(isInteractive: true);
-        var ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.LoginAsync());
+        CopilotAuthService service = CreateService(isInteractive: true);
+        AuthenticationException ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.LoginAsync());
 
         Assert.Contains("gh", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -50,9 +51,9 @@ public class AuthAcceptanceCriteriaTests
     public async Task AC02_Status_Authenticated_ReportsCorrectState()
     {
         _tokenResolver.SetResult(AuthCredentialSource.GhToken, "token-123");
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
-        var result = await service.GetStatusAsync();
+        AuthStatusResult result = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.Authenticated, result.State);
         Assert.Equal(AuthCredentialSource.GhToken, result.Source);
@@ -63,9 +64,9 @@ public class AuthAcceptanceCriteriaTests
     {
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
         _ghCli.StatusInfo = null;
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
-        var result = await service.GetStatusAsync();
+        AuthStatusResult result = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.NotAuthenticated, result.State);
     }
@@ -76,9 +77,9 @@ public class AuthAcceptanceCriteriaTests
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
         _ghCli.StatusInfo = new GhAuthStatusInfo("user", true);
         _ghCli.CredentialsValid = false;
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
-        var result = await service.GetStatusAsync();
+        AuthStatusResult result = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.InvalidCredentials, result.State);
     }
@@ -88,7 +89,7 @@ public class AuthAcceptanceCriteriaTests
     [Fact]
     public async Task AC03_Logout_DelegatesToGhCli()
     {
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
         await service.LogoutAsync();
 
         Assert.True(_ghCli.LogoutCalled, "LogoutAsync must delegate credential clearing to gh CLI");
@@ -100,7 +101,7 @@ public class AuthAcceptanceCriteriaTests
     public async Task AC04_Logout_GhTokenStillSet_LogsWarning()
     {
         _tokenResolver.SetResult(AuthCredentialSource.GhToken, "some-token");
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
         await service.LogoutAsync();
 
@@ -111,7 +112,7 @@ public class AuthAcceptanceCriteriaTests
     public async Task AC04_Logout_GitHubTokenStillSet_LogsWarning()
     {
         _tokenResolver.SetResult(AuthCredentialSource.GitHubToken, "some-token");
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
         await service.LogoutAsync();
 
@@ -122,7 +123,7 @@ public class AuthAcceptanceCriteriaTests
     public async Task AC04_Logout_NoEnvVars_NoWarning()
     {
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
         await service.LogoutAsync();
 
@@ -136,9 +137,9 @@ public class AuthAcceptanceCriteriaTests
     [Fact]
     public async Task AC05_Login_Headless_ThrowsWithGhTokenGuidance()
     {
-        var service = CreateService(isInteractive: false);
+        CopilotAuthService service = CreateService(isInteractive: false);
 
-        var ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.LoginAsync());
+        AuthenticationException ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.LoginAsync());
 
         Assert.Contains("GH_TOKEN", ex.Message);
     }
@@ -149,9 +150,9 @@ public class AuthAcceptanceCriteriaTests
     public async Task AC06_GhToken_AuthenticatesWithoutInteractiveLogin()
     {
         _tokenResolver.SetResult(AuthCredentialSource.GhToken, "ghp_test-token");
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
-        var result = await service.GetStatusAsync();
+        AuthStatusResult result = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.Authenticated, result.State);
         Assert.Equal(AuthCredentialSource.GhToken, result.Source);
@@ -164,9 +165,9 @@ public class AuthAcceptanceCriteriaTests
     public async Task AC07_GitHubToken_WorksWhenGhTokenAbsent()
     {
         _tokenResolver.SetResult(AuthCredentialSource.GitHubToken, "ghs_test-token");
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
-        var result = await service.GetStatusAsync();
+        AuthStatusResult result = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.Authenticated, result.State);
         Assert.Equal(AuthCredentialSource.GitHubToken, result.Source);
@@ -184,7 +185,7 @@ public class AuthAcceptanceCriteriaTests
             _ => null,
         });
 
-        var result = resolver.Resolve();
+        TokenSourceResult result = resolver.Resolve();
 
         Assert.Equal(AuthCredentialSource.GhToken, result.Source);
         Assert.Equal("gh-token-value", result.Token);
@@ -198,9 +199,9 @@ public class AuthAcceptanceCriteriaTests
         _tokenResolver.SetResult(AuthCredentialSource.GhToken, "env-token");
         _ghCli.StatusInfo = new GhAuthStatusInfo("sdk-user", true);
         _ghCli.CredentialsValid = true;
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
-        var result = await service.GetStatusAsync();
+        AuthStatusResult result = await service.GetStatusAsync();
 
         Assert.Equal(AuthCredentialSource.GhToken, result.Source);
         Assert.False(_ghCli.GetStatusCalled, "When env var provides auth, SDK credentials should not be checked");
@@ -212,7 +213,7 @@ public class AuthAcceptanceCriteriaTests
     public async Task AC10_Validate_Authenticated_DoesNotThrow()
     {
         _tokenResolver.SetResult(AuthCredentialSource.GhToken, "valid-token");
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
         await service.ValidateAsync(); // Should not throw
     }
@@ -222,9 +223,9 @@ public class AuthAcceptanceCriteriaTests
     {
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
         _ghCli.StatusInfo = null;
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
-        var ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.ValidateAsync());
+        AuthenticationException ex = await Assert.ThrowsAsync<AuthenticationException>(() => service.ValidateAsync());
 
         Assert.Contains("lopen auth login", ex.Message);
         Assert.Contains("GH_TOKEN", ex.Message);
@@ -236,7 +237,7 @@ public class AuthAcceptanceCriteriaTests
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
         _ghCli.StatusInfo = new GhAuthStatusInfo("user", true);
         _ghCli.CredentialsValid = false;
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
         await Assert.ThrowsAsync<AuthenticationException>(() => service.ValidateAsync());
     }
@@ -251,9 +252,9 @@ public class AuthAcceptanceCriteriaTests
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
         _ghCli.StatusInfo = new GhAuthStatusInfo("sdk-user", true);
         _ghCli.CredentialsValid = true;
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
-        var status = await service.GetStatusAsync();
+        AuthStatusResult status = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.Authenticated, status.State);
         Assert.Equal(AuthCredentialSource.SdkCredentials, status.Source);
@@ -268,9 +269,9 @@ public class AuthAcceptanceCriteriaTests
         _tokenResolver.SetResult(AuthCredentialSource.None, null);
         _ghCli.StatusInfo = new GhAuthStatusInfo("user", true);
         _ghCli.CredentialsValid = false;
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
-        var status = await service.GetStatusAsync();
+        AuthStatusResult status = await service.GetStatusAsync();
 
         Assert.Equal(AuthState.InvalidCredentials, status.State);
         Assert.NotNull(status.ErrorMessage);
@@ -288,7 +289,7 @@ public class AuthAcceptanceCriteriaTests
     [InlineData(nameof(AuthErrorMessages.PreFlightFailed))]
     public void AC13_ErrorMessages_FollowWhatWhyFixPattern(string fieldName)
     {
-        var field = typeof(AuthErrorMessages).GetField(fieldName,
+        FieldInfo? field = typeof(AuthErrorMessages).GetField(fieldName,
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
         Assert.NotNull(field);
 
@@ -320,7 +321,7 @@ public class AuthAcceptanceCriteriaTests
     {
         _ghCli.Available = true;
         _ghCli.LoginUsername = "testuser";
-        var service = CreateService(isInteractive: true);
+        CopilotAuthService service = CreateService(isInteractive: true);
 
         await service.LoginAsync();
 
@@ -332,7 +333,7 @@ public class AuthAcceptanceCriteriaTests
     [Fact]
     public async Task AC15_LogoutAsync_NoCredentialDeletion()
     {
-        var service = CreateService();
+        CopilotAuthService service = CreateService();
 
         await service.LogoutAsync();
 

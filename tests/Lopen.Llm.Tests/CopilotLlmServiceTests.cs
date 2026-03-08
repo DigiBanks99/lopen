@@ -37,7 +37,7 @@ public class CopilotLlmServiceTests
     [Fact]
     public async Task InvokeAsync_NullSystemPrompt_ThrowsArgumentException()
     {
-        var service = CreateService();
+        CopilotLlmService service = CreateService();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             service.InvokeAsync(null!, "model", []));
@@ -46,7 +46,7 @@ public class CopilotLlmServiceTests
     [Fact]
     public async Task InvokeAsync_EmptySystemPrompt_ThrowsArgumentException()
     {
-        var service = CreateService();
+        CopilotLlmService service = CreateService();
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             service.InvokeAsync("", "model", []));
@@ -55,7 +55,7 @@ public class CopilotLlmServiceTests
     [Fact]
     public async Task InvokeAsync_NullModel_ThrowsArgumentException()
     {
-        var service = CreateService();
+        CopilotLlmService service = CreateService();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             service.InvokeAsync("prompt", null!, []));
@@ -64,7 +64,7 @@ public class CopilotLlmServiceTests
     [Fact]
     public async Task InvokeAsync_EmptyModel_ThrowsArgumentException()
     {
-        var service = CreateService();
+        CopilotLlmService service = CreateService();
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             service.InvokeAsync("prompt", "", []));
@@ -73,7 +73,7 @@ public class CopilotLlmServiceTests
     [Fact]
     public async Task InvokeAsync_NullTools_ThrowsArgumentNull()
     {
-        var service = CreateService();
+        CopilotLlmService service = CreateService();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             service.InvokeAsync("prompt", "model", null!));
@@ -83,9 +83,9 @@ public class CopilotLlmServiceTests
     public async Task InvokeAsync_ClientProviderFails_ThrowsLlmException()
     {
         var failingProvider = new FailingClientProvider();
-        var service = CreateService(failingProvider);
+        CopilotLlmService service = CreateService(failingProvider);
 
-        var ex = await Assert.ThrowsAsync<LlmException>(() =>
+        LlmException ex = await Assert.ThrowsAsync<LlmException>(() =>
             service.InvokeAsync("prompt", "claude-sonnet-4", []));
 
         Assert.Contains("Failed to get Copilot client", ex.Message);
@@ -98,7 +98,7 @@ public class CopilotLlmServiceTests
         // Verifies that each InvokeAsync call goes through GetClientAsync,
         // which leads to a new CreateSessionAsync (fresh context per invocation).
         var countingProvider = new CountingClientProvider();
-        var service = CreateService(countingProvider);
+        CopilotLlmService service = CreateService(countingProvider);
 
         // First invocation
         await Assert.ThrowsAsync<LlmException>(() =>
@@ -116,7 +116,7 @@ public class CopilotLlmServiceTests
     {
         // Each invocation with different parameters still creates fresh context
         var countingProvider = new CountingClientProvider();
-        var service = CreateService(countingProvider);
+        CopilotLlmService service = CreateService(countingProvider);
 
         await Assert.ThrowsAsync<LlmException>(() =>
             service.InvokeAsync("requirement gathering prompt", "claude-opus-4.6", []));
@@ -132,9 +132,9 @@ public class CopilotLlmServiceTests
     public async Task InvokeAsync_ClientProviderThrowsLlmException_PropagatesDirectly()
     {
         var failingProvider = new LlmExceptionClientProvider();
-        var service = CreateService(failingProvider);
+        CopilotLlmService service = CreateService(failingProvider);
 
-        var ex = await Assert.ThrowsAsync<LlmException>(() =>
+        LlmException ex = await Assert.ThrowsAsync<LlmException>(() =>
             service.InvokeAsync("prompt", "claude-sonnet-4", []));
 
         Assert.Equal("SDK auth failed", ex.Message);

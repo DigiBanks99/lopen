@@ -45,9 +45,9 @@ public sealed class GitWorkflowServiceTests
     public async Task EnsureModuleBranch_CreatesBranchWithPrefix()
     {
         var git = new FakeGitService();
-        var service = CreateService(git);
+        GitWorkflowService service = CreateService(git);
 
-        var result = await service.EnsureModuleBranchAsync("auth");
+        GitResult? result = await service.EnsureModuleBranchAsync("auth");
 
         Assert.NotNull(result);
         Assert.True(result!.Success);
@@ -59,9 +59,9 @@ public sealed class GitWorkflowServiceTests
     {
         var git = new FakeGitService();
         var options = new GitOptions { Enabled = false };
-        var service = CreateService(git, options);
+        GitWorkflowService service = CreateService(git, options);
 
-        var result = await service.EnsureModuleBranchAsync("auth");
+        GitResult? result = await service.EnsureModuleBranchAsync("auth");
 
         Assert.Null(result);
         Assert.Null(git.LastBranchCreated);
@@ -73,7 +73,7 @@ public sealed class GitWorkflowServiceTests
     [InlineData("   ")]
     public async Task EnsureModuleBranch_InvalidModuleName_Throws(string? moduleName)
     {
-        var service = CreateService();
+        GitWorkflowService service = CreateService();
 
         await Assert.ThrowsAnyAsync<ArgumentException>(
             () => service.EnsureModuleBranchAsync(moduleName!));
@@ -83,9 +83,9 @@ public sealed class GitWorkflowServiceTests
     public async Task EnsureModuleBranch_GitThrows_ReturnsErrorResult()
     {
         var git = new ThrowingGitService();
-        var service = CreateService(git);
+        GitWorkflowService service = CreateService(git);
 
-        var result = await service.EnsureModuleBranchAsync("auth");
+        GitResult? result = await service.EnsureModuleBranchAsync("auth");
 
         Assert.NotNull(result);
         Assert.False(result!.Success);
@@ -97,9 +97,9 @@ public sealed class GitWorkflowServiceTests
     public async Task CommitTaskCompletion_AutoCommitEnabled_Commits()
     {
         var git = new FakeGitService();
-        var service = CreateService(git);
+        GitWorkflowService service = CreateService(git);
 
-        var result = await service.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
+        GitResult? result = await service.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
 
         Assert.NotNull(result);
         Assert.True(result!.Success);
@@ -113,9 +113,9 @@ public sealed class GitWorkflowServiceTests
     {
         var git = new FakeGitService();
         var options = new GitOptions { Enabled = false };
-        var service = CreateService(git, options);
+        GitWorkflowService service = CreateService(git, options);
 
-        var result = await service.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
+        GitResult? result = await service.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
 
         Assert.Null(result);
         Assert.Null(git.LastCommitMessage);
@@ -126,9 +126,9 @@ public sealed class GitWorkflowServiceTests
     {
         var git = new FakeGitService();
         var options = new GitOptions { AutoCommit = false };
-        var service = CreateService(git, options);
+        GitWorkflowService service = CreateService(git, options);
 
-        var result = await service.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
+        GitResult? result = await service.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
 
         Assert.Null(result);
         Assert.Null(git.LastCommitMessage);
@@ -144,7 +144,7 @@ public sealed class GitWorkflowServiceTests
     public async Task CommitTaskCompletion_InvalidArgs_Throws(
         string? module, string? component, string? task)
     {
-        var service = CreateService();
+        GitWorkflowService service = CreateService();
 
         await Assert.ThrowsAnyAsync<ArgumentException>(
             () => service.CommitTaskCompletionAsync(module!, component!, task!));
@@ -154,9 +154,9 @@ public sealed class GitWorkflowServiceTests
     public async Task CommitTaskCompletion_GitThrows_ReturnsErrorResult()
     {
         var git = new ThrowingGitService();
-        var service = CreateService(git);
+        GitWorkflowService service = CreateService(git);
 
-        var result = await service.CommitTaskCompletionAsync("auth", "login", "task");
+        GitResult? result = await service.CommitTaskCompletionAsync("auth", "login", "task");
 
         Assert.NotNull(result);
         Assert.False(result!.Success);
@@ -167,7 +167,7 @@ public sealed class GitWorkflowServiceTests
     [Fact]
     public void FormatCommitMessage_Conventional_ReturnsConventionalFormat()
     {
-        var service = CreateService();
+        GitWorkflowService service = CreateService();
 
         var message = service.FormatCommitMessage("auth", "login", "implement-jwt");
 
@@ -178,7 +178,7 @@ public sealed class GitWorkflowServiceTests
     public void FormatCommitMessage_NonConventional_ReturnsBracketFormat()
     {
         var options = new GitOptions { Convention = "simple" };
-        var service = CreateService(gitOptions: options);
+        GitWorkflowService service = CreateService(gitOptions: options);
 
         var message = service.FormatCommitMessage("auth", "login", "implement-jwt");
 
@@ -192,7 +192,7 @@ public sealed class GitWorkflowServiceTests
     public void FormatCommitMessage_NullArgs_Throws(
         string? module, string? component, string? task)
     {
-        var service = CreateService();
+        GitWorkflowService service = CreateService();
 
         Assert.ThrowsAny<ArgumentException>(
             () => service.FormatCommitMessage(module!, component!, task!));

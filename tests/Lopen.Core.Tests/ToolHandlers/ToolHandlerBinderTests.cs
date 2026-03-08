@@ -1,11 +1,11 @@
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
-using System.Text.Json;
 using Lopen.Core.Documents;
 using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using System.Text.Json;
 
 namespace Lopen.Core.Tests.ToolHandlers;
 
@@ -30,7 +30,7 @@ public class ToolHandlerBinderTests
     public void BindAll_BindsAllTenTools()
     {
         var registry = new TrackingToolRegistry();
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         binder.BindAll(registry);
 
@@ -50,7 +50,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public void BindAll_ThrowsOnNullRegistry()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         Assert.Throws<ArgumentNullException>(() => binder.BindAll(null!));
     }
 
@@ -58,7 +58,7 @@ public class ToolHandlerBinderTests
     public async Task HandleReadSpec_ReturnsSpecContent()
     {
         _fileSystem.Files["/test/project/docs/requirements/core/SPECIFICATION.md"] = "# Core Spec\nContent here";
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleReadSpec("""{"module":"core"}""", CancellationToken.None);
         Assert.Contains("Core Spec", result);
     }
@@ -66,7 +66,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleReadSpec_ReturnsErrorWhenNotFound()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleReadSpec("""{"module":"missing"}""", CancellationToken.None);
         Assert.Contains("error", result);
     }
@@ -76,7 +76,7 @@ public class ToolHandlerBinderTests
     {
         _fileSystem.Files["/test/project/docs/requirements/core/SPECIFICATION.md"] = "# Spec\n## Overview\nHello";
         _sectionExtractor.Sections = [new ExtractedSection("Overview", "Hello", 1)];
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleReadSpec("""{"module":"core","section":"Overview"}""", CancellationToken.None);
         Assert.Equal("Hello", result);
@@ -87,7 +87,7 @@ public class ToolHandlerBinderTests
     {
         _fileSystem.Files["/test/project/docs/requirements/core/RESEARCH.md"] = "# Research";
         _fileSystem.Directories.Add("/test/project/docs/requirements/core");
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleReadResearch("""{"module":"core"}""", CancellationToken.None);
         Assert.Contains("Research", result);
@@ -98,7 +98,7 @@ public class ToolHandlerBinderTests
     {
         _fileSystem.Files["/test/project/docs/requirements/core/RESEARCH-api.md"] = "# API Research";
         _fileSystem.Directories.Add("/test/project/docs/requirements/core");
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleReadResearch("""{"module":"core","topic":"api"}""", CancellationToken.None);
         Assert.Contains("API Research", result);
@@ -108,7 +108,7 @@ public class ToolHandlerBinderTests
     public async Task HandleReadPlan_ReturnsPlanContent()
     {
         _fileSystem.Files["/test/project/docs/requirements/IMPLEMENTATION_PLAN.md"] = "# Plan";
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleReadPlan("", CancellationToken.None);
         Assert.Contains("Plan", result);
@@ -117,7 +117,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleReadPlan_ReturnsErrorWhenMissing()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleReadPlan("", CancellationToken.None);
         Assert.Contains("error", result);
     }
@@ -126,7 +126,7 @@ public class ToolHandlerBinderTests
     public async Task HandleUpdateTaskStatus_RejectsCompleteWithoutVerification()
     {
         _verificationTracker.VerifiedItems.Clear();
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-1","status":"complete"}""", CancellationToken.None);
@@ -138,7 +138,7 @@ public class ToolHandlerBinderTests
     public async Task HandleUpdateTaskStatus_AcceptsCompleteWithVerification()
     {
         _verificationTracker.VerifiedItems.Add(("Task", "task-1"));
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-1","status":"complete"}""", CancellationToken.None);
@@ -148,7 +148,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleUpdateTaskStatus_AcceptsNonCompleteStatus()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-1","status":"in-progress"}""", CancellationToken.None);
@@ -158,7 +158,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleUpdateTaskStatus_ReturnsErrorOnMissingParams()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleUpdateTaskStatus("", CancellationToken.None);
         Assert.Contains("error", result);
     }
@@ -168,7 +168,7 @@ public class ToolHandlerBinderTests
     {
         _verificationTracker.VerifiedItems.Add(("Task", "task-1"));
         var gitService = new StubGitWorkflowService();
-        var binder = CreateBinder(git: gitService);
+        ToolHandlerBinder binder = CreateBinder(git: gitService);
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-1","status":"complete","module":"core","component":"workflow"}""",
@@ -186,7 +186,7 @@ public class ToolHandlerBinderTests
     {
         _verificationTracker.VerifiedItems.Add(("Task", "task-2"));
         var gitService = new StubGitWorkflowService();
-        var binder = CreateBinder(git: gitService);
+        ToolHandlerBinder binder = CreateBinder(git: gitService);
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-2","status":"complete"}""", CancellationToken.None);
@@ -199,7 +199,7 @@ public class ToolHandlerBinderTests
     public async Task HandleUpdateTaskStatus_SkipsCommitWhenGitServiceNotProvided()
     {
         _verificationTracker.VerifiedItems.Add(("Task", "task-3"));
-        var binder = CreateBinder(); // No git service
+        ToolHandlerBinder binder = CreateBinder(); // No git service
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-3","status":"complete","module":"core"}""", CancellationToken.None);
@@ -211,7 +211,7 @@ public class ToolHandlerBinderTests
     public async Task HandleUpdateTaskStatus_DoesNotCommitForNonCompleteStatus()
     {
         var gitService = new StubGitWorkflowService();
-        var binder = CreateBinder(git: gitService);
+        ToolHandlerBinder binder = CreateBinder(git: gitService);
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-1","status":"in-progress","module":"core"}""", CancellationToken.None);
@@ -224,7 +224,7 @@ public class ToolHandlerBinderTests
     public async Task HandleGetCurrentContext_ReturnsWorkflowState()
     {
         _engine.CurrentStep = WorkflowStep.IdentifyComponents;
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleGetCurrentContext("", CancellationToken.None);
         Assert.Contains("IdentifyComponents", result);
@@ -234,7 +234,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleLogResearch_WritesFile()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleLogResearch(
             """{"module":"core","topic":"api","content":"# API findings"}""", CancellationToken.None);
@@ -245,7 +245,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleLogResearch_ReturnsErrorOnEmptyContent()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleLogResearch("""{"module":"core","topic":"api","content":""}""", CancellationToken.None);
         Assert.Contains("error", result);
     }
@@ -253,7 +253,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleReportProgress_ReturnsSuccess()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleReportProgress("""{"summary":"Made progress"}""", CancellationToken.None);
         Assert.Contains("success", result);
     }
@@ -261,7 +261,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleVerifyTaskCompletion_RecordsVerification()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleVerifyTaskCompletion("""{"task_id":"task-1"}""", CancellationToken.None);
         Assert.Contains("success", result);
         Assert.Contains(("Task", "task-1"), _verificationTracker.RecordedVerifications);
@@ -270,7 +270,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleVerifyTaskCompletion_ReturnsErrorOnMissingId()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleVerifyTaskCompletion("", CancellationToken.None);
         Assert.Contains("error", result);
     }
@@ -278,7 +278,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleVerifyComponentCompletion_RecordsVerification()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleVerifyComponentCompletion("""{"component_id":"comp-1"}""", CancellationToken.None);
         Assert.Contains("success", result);
         Assert.Contains(("Component", "comp-1"), _verificationTracker.RecordedVerifications);
@@ -287,7 +287,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleVerifyModuleCompletion_RecordsVerification()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleVerifyModuleCompletion("""{"module_id":"core"}""", CancellationToken.None);
         Assert.Contains("success", result);
         Assert.Contains(("Module", "core"), _verificationTracker.RecordedVerifications);
@@ -297,7 +297,7 @@ public class ToolHandlerBinderTests
     public async Task HandleReadSpec_HandlesInvalidJson()
     {
         _fileSystem.Files["/test/project/docs/requirements/DraftSpecification/SPECIFICATION.md"] = "# Spec";
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleReadSpec("not json", CancellationToken.None);
         Assert.NotNull(result);
     }
@@ -315,12 +315,12 @@ public class ToolHandlerBinderTests
         ActivitySource.AddActivityListener(listener);
 
         _fileSystem.Files["/test/project/docs/requirements/IMPLEMENTATION_PLAN.md"] = "# Plan";
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var registry = new TrackingToolRegistry();
         binder.BindAll(registry);
 
         // Invoke a traced handler through the registry
-        var handler = registry.BoundHandlers["read_plan"];
+        Func<string, CancellationToken, Task<string>> handler = registry.BoundHandlers["read_plan"];
         await handler("{}", CancellationToken.None);
 
         Assert.Contains(activities, a => a.OperationName == "lopen.tool.read_plan");
@@ -338,12 +338,12 @@ public class ToolHandlerBinderTests
         };
         ActivitySource.AddActivityListener(listener);
 
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var registry = new TrackingToolRegistry();
         binder.BindAll(registry);
 
         // Invoke verify handler
-        var handler = registry.BoundHandlers["verify_task_completion"];
+        Func<string, CancellationToken, Task<string>> handler = registry.BoundHandlers["verify_task_completion"];
         await handler("""{"task_id":"t1"}""", CancellationToken.None);
 
         Assert.Contains(activities, a => a.OperationName == "lopen.oracle.verification");
@@ -362,11 +362,11 @@ public class ToolHandlerBinderTests
         listener.SetMeasurementEventCallback<long>((_, measurement, _, _) => count += measurement);
         listener.Start();
 
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var registry = new TrackingToolRegistry();
         binder.BindAll(registry);
 
-        var handler = registry.BoundHandlers["read_spec"];
+        Func<string, CancellationToken, Task<string>> handler = registry.BoundHandlers["read_spec"];
         await handler("""{"module":"test"}""", CancellationToken.None);
         listener.RecordObservableInstruments();
 
@@ -386,11 +386,11 @@ public class ToolHandlerBinderTests
         listener.SetMeasurementEventCallback<double>((_, measurement, _, _) => duration = measurement);
         listener.Start();
 
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var registry = new TrackingToolRegistry();
         binder.BindAll(registry);
 
-        var handler = registry.BoundHandlers["read_spec"];
+        Func<string, CancellationToken, Task<string>> handler = registry.BoundHandlers["read_spec"];
         await handler("""{"module":"test"}""", CancellationToken.None);
         listener.RecordObservableInstruments();
 
@@ -410,11 +410,11 @@ public class ToolHandlerBinderTests
         listener.SetMeasurementEventCallback<long>((_, measurement, _, _) => count += measurement);
         listener.Start();
 
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var registry = new TrackingToolRegistry();
         binder.BindAll(registry);
 
-        var handler = registry.BoundHandlers["verify_task_completion"];
+        Func<string, CancellationToken, Task<string>> handler = registry.BoundHandlers["verify_task_completion"];
         await handler("""{"task_id":"t1"}""", CancellationToken.None);
         listener.RecordObservableInstruments();
 
@@ -425,7 +425,7 @@ public class ToolHandlerBinderTests
     public async Task HandleUpdateTaskStatus_UsesTaskStatusGateWhenProvided()
     {
         var gate = new StubTaskStatusGate { Result = TaskStatusGateResult.Rejected("Gate says no") };
-        var binder = CreateBinder(gate: gate);
+        ToolHandlerBinder binder = CreateBinder(gate: gate);
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-gate","status":"complete"}""", CancellationToken.None);
@@ -437,7 +437,7 @@ public class ToolHandlerBinderTests
     public async Task HandleUpdateTaskStatus_TaskStatusGateAllowed_Succeeds()
     {
         var gate = new StubTaskStatusGate { Result = TaskStatusGateResult.Allowed() };
-        var binder = CreateBinder(gate: gate);
+        ToolHandlerBinder binder = CreateBinder(gate: gate);
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-gate","status":"complete"}""", CancellationToken.None);
@@ -450,7 +450,7 @@ public class ToolHandlerBinderTests
     {
         _verificationTracker.VerifiedItems.Add(("Task", "task-plan"));
         var planManager = new StubPlanManager();
-        var binder = CreateBinder(planManager: planManager);
+        ToolHandlerBinder binder = CreateBinder(planManager: planManager);
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-plan","status":"complete","module":"core"}""", CancellationToken.None);
@@ -466,7 +466,7 @@ public class ToolHandlerBinderTests
     public async Task HandleUpdateTaskStatus_SkipsPlanManagerWhenNotProvided()
     {
         _verificationTracker.VerifiedItems.Add(("Task", "task-no-plan"));
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleUpdateTaskStatus(
             """{"task_id":"task-no-plan","status":"complete","module":"core"}""", CancellationToken.None);
@@ -478,7 +478,7 @@ public class ToolHandlerBinderTests
     public async Task HandleVerifyTaskCompletion_DispatchesOracleWhenAvailable()
     {
         var oracle = new StubOracleVerifier { Verdict = new Lopen.Llm.OracleVerdict(true, [], Lopen.Llm.VerificationScope.Task) };
-        var binder = CreateBinder(oracleVerifier: oracle);
+        ToolHandlerBinder binder = CreateBinder(oracleVerifier: oracle);
 
         var result = await binder.HandleVerifyTaskCompletion(
             """{"task_id":"task-1","evidence":"diff here","acceptance_criteria":"must pass"}""", CancellationToken.None);
@@ -498,7 +498,7 @@ public class ToolHandlerBinderTests
         {
             Verdict = new Lopen.Llm.OracleVerdict(false, ["Missing tests"], Lopen.Llm.VerificationScope.Task)
         };
-        var binder = CreateBinder(oracleVerifier: oracle);
+        ToolHandlerBinder binder = CreateBinder(oracleVerifier: oracle);
 
         var result = await binder.HandleVerifyTaskCompletion(
             """{"task_id":"task-1","evidence":"diff","acceptance_criteria":"criteria"}""", CancellationToken.None);
@@ -512,7 +512,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleVerifyTaskCompletion_NoOracle_AutoPasses()
     {
-        var binder = CreateBinder(); // No oracle
+        ToolHandlerBinder binder = CreateBinder(); // No oracle
         var result = await binder.HandleVerifyTaskCompletion(
             """{"task_id":"task-1","evidence":"diff","acceptance_criteria":"criteria"}""", CancellationToken.None);
 
@@ -524,7 +524,7 @@ public class ToolHandlerBinderTests
     public async Task HandleVerifyTaskCompletion_OraclePresent_NoEvidence_AutoPasses()
     {
         var oracle = new StubOracleVerifier();
-        var binder = CreateBinder(oracleVerifier: oracle);
+        ToolHandlerBinder binder = CreateBinder(oracleVerifier: oracle);
 
         var result = await binder.HandleVerifyTaskCompletion(
             """{"task_id":"task-1"}""", CancellationToken.None);
@@ -538,7 +538,7 @@ public class ToolHandlerBinderTests
     public async Task HandleVerifyComponentCompletion_DispatchesOracleWhenAvailable()
     {
         var oracle = new StubOracleVerifier { Verdict = new Lopen.Llm.OracleVerdict(true, [], Lopen.Llm.VerificationScope.Component) };
-        var binder = CreateBinder(oracleVerifier: oracle);
+        ToolHandlerBinder binder = CreateBinder(oracleVerifier: oracle);
 
         var result = await binder.HandleVerifyComponentCompletion(
             """{"component_id":"comp-1","evidence":"component diff","acceptance_criteria":"component criteria"}""", CancellationToken.None);
@@ -556,7 +556,7 @@ public class ToolHandlerBinderTests
         {
             Verdict = new Lopen.Llm.OracleVerdict(false, ["Regression found"], Lopen.Llm.VerificationScope.Component)
         };
-        var binder = CreateBinder(oracleVerifier: oracle);
+        ToolHandlerBinder binder = CreateBinder(oracleVerifier: oracle);
 
         var result = await binder.HandleVerifyComponentCompletion(
             """{"component_id":"comp-1","evidence":"diff","acceptance_criteria":"criteria"}""", CancellationToken.None);
@@ -569,7 +569,7 @@ public class ToolHandlerBinderTests
     public async Task HandleVerifyModuleCompletion_DispatchesOracleWhenAvailable()
     {
         var oracle = new StubOracleVerifier { Verdict = new Lopen.Llm.OracleVerdict(true, [], Lopen.Llm.VerificationScope.Module) };
-        var binder = CreateBinder(oracleVerifier: oracle);
+        ToolHandlerBinder binder = CreateBinder(oracleVerifier: oracle);
 
         var result = await binder.HandleVerifyModuleCompletion(
             """{"module_id":"core","evidence":"module diff","acceptance_criteria":"module criteria"}""", CancellationToken.None);
@@ -587,7 +587,7 @@ public class ToolHandlerBinderTests
         {
             Verdict = new Lopen.Llm.OracleVerdict(false, ["Spec not met"], Lopen.Llm.VerificationScope.Module)
         };
-        var binder = CreateBinder(oracleVerifier: oracle);
+        ToolHandlerBinder binder = CreateBinder(oracleVerifier: oracle);
 
         var result = await binder.HandleVerifyModuleCompletion(
             """{"module_id":"core","evidence":"diff","acceptance_criteria":"criteria"}""", CancellationToken.None);
@@ -601,7 +601,7 @@ public class ToolHandlerBinderTests
     public async Task HandleVerifyTaskCompletion_OraclePass_ThenUpdateTaskStatus_Succeeds()
     {
         var oracle = new StubOracleVerifier { Verdict = new Lopen.Llm.OracleVerdict(true, [], Lopen.Llm.VerificationScope.Task) };
-        var binder = CreateBinder(oracleVerifier: oracle);
+        ToolHandlerBinder binder = CreateBinder(oracleVerifier: oracle);
 
         // First, verify the task
         await binder.HandleVerifyTaskCompletion(
@@ -621,7 +621,7 @@ public class ToolHandlerBinderTests
         {
             Verdict = new Lopen.Llm.OracleVerdict(false, ["Gaps exist"], Lopen.Llm.VerificationScope.Task)
         };
-        var binder = CreateBinder(oracleVerifier: oracle);
+        ToolHandlerBinder binder = CreateBinder(oracleVerifier: oracle);
 
         // Verify the task (will fail)
         await binder.HandleVerifyTaskCompletion(
@@ -639,7 +639,7 @@ public class ToolHandlerBinderTests
     public async Task HandleReadResearch_TopicFileNotFound_ReturnsError()
     {
         _fileSystem.Directories.Add("/test/project/docs/requirements/core");
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleReadResearch("""{"module":"core","topic":"missing"}""", CancellationToken.None);
         Assert.Contains("error", result);
@@ -649,7 +649,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleReadResearch_DirectoryNotFound_ReturnsError()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleReadResearch("""{"module":"nonexistent"}""", CancellationToken.None);
         Assert.Contains("error", result);
         Assert.Contains("Research directory not found", result);
@@ -660,7 +660,7 @@ public class ToolHandlerBinderTests
     {
         _fileSystem.Files["/test/project/docs/requirements/core/SPECIFICATION.md"] = "# Spec\n## Other\nContent";
         _sectionExtractor.Sections = [];
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleReadSpec("""{"module":"core","section":"NonExistent"}""", CancellationToken.None);
         Assert.Contains("error", result);
@@ -671,7 +671,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleReadSpec_MissingModuleParam_ReturnsError()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleReadSpec("{}", CancellationToken.None);
         Assert.Contains("error", result);
         Assert.Contains("Specification not found", result);
@@ -680,7 +680,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleVerifyComponentCompletion_MissingComponentId_ReturnsError()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleVerifyComponentCompletion("{}", CancellationToken.None);
         Assert.Contains("error", result);
         Assert.Contains("component_id is required", result);
@@ -689,7 +689,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleVerifyModuleCompletion_MissingModuleId_ReturnsError()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleVerifyModuleCompletion("{}", CancellationToken.None);
         Assert.Contains("error", result);
         Assert.Contains("module_id is required", result);
@@ -698,7 +698,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleLogResearch_DefaultTopicWhenNotSpecified()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleLogResearch("""{"module":"core","content":"# Findings"}""", CancellationToken.None);
         Assert.Contains("success", result);
@@ -709,7 +709,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleLogResearch_MissingParams_ReturnsError()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleLogResearch("{}", CancellationToken.None);
         Assert.Contains("error", result);
         Assert.Contains("content is required", result);
@@ -718,7 +718,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleUpdateTaskStatus_MissingTaskId_ReturnsError()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleUpdateTaskStatus("""{"status":"in-progress"}""", CancellationToken.None);
         Assert.Contains("error", result);
         Assert.Contains("task_id and status are required", result);
@@ -727,7 +727,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleReportProgress_MissingSummary_FallsBackToRawParameters()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var result = await binder.HandleReportProgress("raw progress text", CancellationToken.None);
         Assert.Contains("success", result);
         Assert.Contains("raw progress text", result);
@@ -738,10 +738,10 @@ public class ToolHandlerBinderTests
     {
         _engine.CurrentStep = WorkflowStep.DraftSpecification;
         _engine.IsComplete = false;
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleGetCurrentContext("{}", CancellationToken.None);
-        var context = JsonSerializer.Deserialize<Dictionary<string, string>>(result);
+        Dictionary<string, string>? context = JsonSerializer.Deserialize<Dictionary<string, string>>(result);
 
         Assert.NotNull(context);
         Assert.Equal("DraftSpecification", context["step"]);
@@ -789,7 +789,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleLogResearch_SanitizesTopic_InFilename()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         var result = await binder.HandleLogResearch(
             """{"module":"core","topic":"my research topic","content":"# Content"}""", CancellationToken.None);
@@ -801,7 +801,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleLogResearch_CreatesResearchIndex()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         await binder.HandleLogResearch(
             """{"module":"core","topic":"api","content":"# API findings"}""", CancellationToken.None);
@@ -816,7 +816,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task HandleLogResearch_IndexContainsAllFiles()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
 
         await binder.HandleLogResearch(
             """{"module":"core","topic":"api","content":"# API"}""", CancellationToken.None);
@@ -832,7 +832,7 @@ public class ToolHandlerBinderTests
     [Fact]
     public async Task UpdateResearchIndex_EmptyDirectory_NoIndexCreated()
     {
-        var binder = CreateBinder();
+        ToolHandlerBinder binder = CreateBinder();
         var emptyDir = "/test/project/docs/requirements/empty";
 
         await binder.UpdateResearchIndexAsync(emptyDir, CancellationToken.None);

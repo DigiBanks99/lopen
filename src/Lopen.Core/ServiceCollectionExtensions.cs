@@ -4,6 +4,7 @@ using Lopen.Core.Documents;
 using Lopen.Core.Git;
 using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
+using Lopen.Llm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -41,7 +42,7 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
             services.AddSingleton<IFailureHandler>(sp =>
             {
-                var workflowOptions = sp.GetService<WorkflowOptions>();
+                WorkflowOptions? workflowOptions = sp.GetService<WorkflowOptions>();
                 var threshold = workflowOptions?.FailureThreshold ?? 3;
                 return new FailureHandler(
                     sp.GetRequiredService<ILogger<FailureHandler>>(),
@@ -170,14 +171,14 @@ public static class ServiceCollectionExtensions
         // Register guardrails
         services.AddSingleton<IGuardrail>(sp =>
         {
-            var options = sp.GetService<ToolDisciplineOptions>();
+            ToolDisciplineOptions? options = sp.GetService<ToolDisciplineOptions>();
             return options is not null
                 ? new ToolDisciplineGuardrail(options)
                 : new ToolDisciplineGuardrail();
         });
         services.AddSingleton<IGuardrail>(sp =>
         {
-            var tracker = sp.GetService<Lopen.Llm.IVerificationTracker>();
+            IVerificationTracker? tracker = sp.GetService<Lopen.Llm.IVerificationTracker>();
             if (tracker is null)
             {
                 return new QualityGateGuardrail(
@@ -195,8 +196,8 @@ public static class ServiceCollectionExtensions
         // Register ResourceLimitGuardrail (CORE-11) when token tracker and budget are available
         services.AddSingleton<IGuardrail>(sp =>
         {
-            var tokenTracker = sp.GetService<Lopen.Llm.ITokenTracker>();
-            var budgetOptions = sp.GetService<BudgetOptions>();
+            ITokenTracker? tokenTracker = sp.GetService<Lopen.Llm.ITokenTracker>();
+            BudgetOptions? budgetOptions = sp.GetService<BudgetOptions>();
             var budget = budgetOptions?.PremiumRequestBudget ?? 0;
             if (tokenTracker is not null && budget > 0)
             {
@@ -212,7 +213,7 @@ public static class ServiceCollectionExtensions
         // Register ChurnDetectionGuardrail (CORE-12)
         services.AddSingleton<IGuardrail>(sp =>
         {
-            var workflowOptions = sp.GetService<WorkflowOptions>();
+            WorkflowOptions? workflowOptions = sp.GetService<WorkflowOptions>();
             var threshold = workflowOptions?.FailureThreshold ?? 3;
             return new ChurnDetectionGuardrail(threshold);
         });

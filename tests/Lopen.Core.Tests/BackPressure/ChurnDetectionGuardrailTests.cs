@@ -10,7 +10,7 @@ public class ChurnDetectionGuardrailTests
         var guardrail = new ChurnDetectionGuardrail(failureThreshold: 3);
         var context = new GuardrailContext("mod", "task-1", IterationCount: 1, ToolCallCount: 5);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }
@@ -21,7 +21,7 @@ public class ChurnDetectionGuardrailTests
         var guardrail = new ChurnDetectionGuardrail(failureThreshold: 3);
         var context = new GuardrailContext("mod", "task-1", IterationCount: 2, ToolCallCount: 5);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Warn>(result);
     }
@@ -32,7 +32,7 @@ public class ChurnDetectionGuardrailTests
         var guardrail = new ChurnDetectionGuardrail(failureThreshold: 3);
         var context = new GuardrailContext("mod", "task-1", IterationCount: 3, ToolCallCount: 5);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Block>(result);
     }
@@ -43,7 +43,7 @@ public class ChurnDetectionGuardrailTests
         var guardrail = new ChurnDetectionGuardrail(failureThreshold: 3);
         var context = new GuardrailContext("mod", "task-1", IterationCount: 5, ToolCallCount: 5);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Block>(result);
     }
@@ -54,9 +54,9 @@ public class ChurnDetectionGuardrailTests
         var guardrail = new ChurnDetectionGuardrail(failureThreshold: 3);
         var context = new GuardrailContext("mod", "my-task", IterationCount: 3, ToolCallCount: 5);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
-        var block = Assert.IsType<GuardrailResult.Block>(result);
+        GuardrailResult.Block block = Assert.IsType<GuardrailResult.Block>(result);
         Assert.Contains("my-task", block.Message);
     }
 

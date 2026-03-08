@@ -1,6 +1,3 @@
-using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
@@ -9,6 +6,9 @@ using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace Lopen.Core.Tests.Workflow;
 
@@ -34,14 +34,14 @@ public class WorkflowOrchestratorTests
     [Fact]
     public async Task RunAsync_ThrowsOnNullModuleName()
     {
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.RunAsync(null!));
     }
 
     [Fact]
     public async Task RunAsync_ThrowsOnEmptyModuleName()
     {
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
         await Assert.ThrowsAsync<ArgumentException>(() => sut.RunAsync(""));
     }
 
@@ -49,7 +49,7 @@ public class WorkflowOrchestratorTests
     public async Task RunAsync_InitializesEngineWithModuleName()
     {
         _engine.IsComplete = true;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -60,9 +60,9 @@ public class WorkflowOrchestratorTests
     public async Task RunAsync_CompletesWhenEngineIsComplete()
     {
         _engine.IsComplete = true;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete);
         Assert.Equal(0, result.IterationCount);
@@ -73,9 +73,9 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _guardrailPipeline.Results = [new GuardrailResult.Block("Budget exceeded")];
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -87,7 +87,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.StepsBeforeComplete = 1;
         _guardrailPipeline.Results = [new GuardrailResult.Warn("Token usage high")];
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -99,9 +99,9 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DraftSpecification;
         _phaseController.SpecApproved = false;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -114,7 +114,7 @@ public class WorkflowOrchestratorTests
         _engine.CurrentStep = WorkflowStep.DraftSpecification;
         _engine.StepsBeforeComplete = 1;
         _phaseController.SpecApproved = true;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -126,7 +126,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _engine.StepsBeforeComplete = 1;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -138,9 +138,9 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _llmService.ThrowOnInvoke = true;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -152,9 +152,9 @@ public class WorkflowOrchestratorTests
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         using var cts = new CancellationTokenSource();
         cts.Cancel();
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
-        var result = await sut.RunAsync("test-module", cancellationToken: cts.Token);
+        OrchestrationResult result = await sut.RunAsync("test-module", cancellationToken: cts.Token);
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -166,7 +166,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.IdentifyComponents;
         _engine.StepsBeforeComplete = 1;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -178,7 +178,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _engine.StepsBeforeComplete = 1;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -189,7 +189,7 @@ public class WorkflowOrchestratorTests
     public async Task RunAsync_RendersCompletionResult()
     {
         _engine.IsComplete = true;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -199,7 +199,7 @@ public class WorkflowOrchestratorTests
     [Fact]
     public async Task RunStepAsync_ThrowsOnNullModuleName()
     {
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.RunStepAsync(null!));
     }
 
@@ -208,11 +208,11 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _engine.StepsBeforeComplete = 2;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunStepAsync("test-module");
         await sut.RunStepAsync("test-module");
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         // RunAsync resets iteration count
         Assert.True(result.IterationCount >= 0);
@@ -223,7 +223,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _engine.StepsBeforeComplete = 1;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -235,7 +235,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _engine.StepsBeforeComplete = 1;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -247,7 +247,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _engine.StepsBeforeComplete = 1;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -280,7 +280,7 @@ public class WorkflowOrchestratorTests
         _engine.CurrentStep = WorkflowStep.Repeat;
         _engine.StepsBeforeComplete = 1;
         _assessor.HasMoreComponents = false;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -293,7 +293,7 @@ public class WorkflowOrchestratorTests
         _engine.CurrentStep = WorkflowStep.Repeat;
         _engine.StepsBeforeComplete = 1;
         _assessor.HasMoreComponents = true;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -310,7 +310,7 @@ public class WorkflowOrchestratorTests
             new DriftResult("Acceptance Criteria", "abc", "xyz", false, false),
             new DriftResult("New Section", null, "def", true, false),
         ];
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunStepAsync("test-module");
 
@@ -323,9 +323,9 @@ public class WorkflowOrchestratorTests
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _engine.StepsBeforeComplete = 1;
         _driftService.DriftResults = [];
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
-        var result = await sut.RunStepAsync("test-module");
+        StepResult result = await sut.RunStepAsync("test-module");
 
         Assert.True(result.Success);
         Assert.DoesNotContain(_renderer.ErrorMessages,
@@ -352,9 +352,9 @@ public class WorkflowOrchestratorTests
     public async Task RunAsync_SkipsBranchCreationWhenNoGitService()
     {
         _engine.IsComplete = true;
-        var sut = CreateOrchestrator(); // No git service
+        WorkflowOrchestrator sut = CreateOrchestrator(); // No git service
 
-        var result = await sut.RunAsync("my-module");
+        OrchestrationResult result = await sut.RunAsync("my-module");
 
         Assert.True(result.IsComplete); // No exception
     }
@@ -457,7 +457,7 @@ public class WorkflowOrchestratorTests
             autoSaveService: autoSave, sessionManager: sessionMgr);
 
         // Should not throw even though auto-save fails
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
         Assert.True(result.IsComplete);
     }
 
@@ -515,7 +515,7 @@ public class WorkflowOrchestratorTests
         ActivitySource.AddActivityListener(listener);
 
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
         await sut.RunStepAsync("test-module");
 
         Assert.Contains(activities, a => a.OperationName == "lopen.workflow.phase");
@@ -534,7 +534,7 @@ public class WorkflowOrchestratorTests
         ActivitySource.AddActivityListener(listener);
 
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
         await sut.RunStepAsync("test-module");
 
         Assert.Contains(activities, a => a.OperationName == "lopen.sdk.invocation");
@@ -553,7 +553,7 @@ public class WorkflowOrchestratorTests
         ActivitySource.AddActivityListener(listener);
 
         _engine.CurrentStep = WorkflowStep.IterateThroughTasks;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
         await sut.RunStepAsync("test-module");
 
         Assert.Contains(activities, a => a.OperationName == "lopen.task.execution");
@@ -573,7 +573,7 @@ public class WorkflowOrchestratorTests
         listener.Start();
 
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
         await sut.RunStepAsync("test-module");
         listener.RecordObservableInstruments();
 
@@ -594,7 +594,7 @@ public class WorkflowOrchestratorTests
         listener.Start();
 
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
         await sut.RunStepAsync("test-module");
         listener.RecordObservableInstruments();
 
@@ -616,7 +616,7 @@ public class WorkflowOrchestratorTests
 
         _guardrailPipeline.Results = [new GuardrailResult.Block("test block")];
         _engine.CurrentStep = WorkflowStep.DraftSpecification;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
         await sut.RunStepAsync("test-module");
         listener.RecordObservableInstruments();
 
@@ -655,7 +655,7 @@ public class WorkflowOrchestratorTests
         histogramListener.Start();
 
         _engine.CurrentStep = WorkflowStep.IterateThroughTasks;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
         await sut.RunStepAsync("test-module");
         counterListener.RecordObservableInstruments();
         histogramListener.RecordObservableInstruments();
@@ -669,7 +669,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _engine.StepsBeforeComplete = 1;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module", userPrompt: "Focus on auth module");
 
@@ -682,7 +682,7 @@ public class WorkflowOrchestratorTests
     public async Task RunStepAsync_PassesUserPromptToPromptBuilder()
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunStepAsync("test-module", userPrompt: "Focus on auth module");
 
@@ -696,7 +696,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _engine.StepsBeforeComplete = 1;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -718,7 +718,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete);
         Assert.Equal(2, _llmService.InvokeCount); // Failed once, succeeded once
@@ -731,9 +731,9 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _llmService.ThrowOnInvoke = true;
-        var sut = CreateOrchestrator(); // No failure handler
+        WorkflowOrchestrator sut = CreateOrchestrator(); // No failure handler
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -751,7 +751,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -812,7 +812,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete);
         Assert.False(result.WasInterrupted);
@@ -833,7 +833,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete);
     }
@@ -851,7 +851,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -871,7 +871,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -893,7 +893,7 @@ public class WorkflowOrchestratorTests
             failureHandler: failureHandler,
             workflowOptions: options);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete);
         Assert.Empty(_renderer.PromptMessages); // No prompt in unattended mode
@@ -955,7 +955,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete);
     }
@@ -977,7 +977,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete);
         Assert.Contains(_renderer.ErrorMessages, m => m.Contains("82%"));
@@ -1003,7 +1003,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete);
         Assert.Single(_renderer.PromptMessages);
@@ -1027,7 +1027,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -1052,7 +1052,7 @@ public class WorkflowOrchestratorTests
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer,
             workflowOptions: options);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -1076,7 +1076,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -1099,7 +1099,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -1145,7 +1145,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete);
     }
@@ -1166,7 +1166,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             budgetEnforcer: budgetEnforcer);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete); // Budget enforcer never consulted
         Assert.Equal(0, budgetEnforcer.CheckCallCount);
@@ -1189,7 +1189,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -1210,7 +1210,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.IsCriticalError);
@@ -1304,9 +1304,9 @@ public class WorkflowOrchestratorTests
         _llmService.ThrowOnInvoke = true;
         _llmService.ExceptionToThrow = new IOException("Disk full");
         // No failure handler — falls through to normal interruption
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.False(result.IsComplete);
         Assert.True(result.WasInterrupted);
@@ -1329,7 +1329,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         // Non-critical exceptions still self-correct
         Assert.True(result.IsComplete);
@@ -1350,7 +1350,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsCriticalError);
         Assert.Contains("Access denied", result.InterruptionReason);
@@ -1369,7 +1369,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsCriticalError);
         Assert.Contains("Insufficient memory", result.InterruptionReason);
@@ -1413,7 +1413,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             planManager: planManager);
 
-        var result = await sut.RunStepAsync("test-module");
+        StepResult result = await sut.RunStepAsync("test-module");
 
         Assert.True(result.Success);
         Assert.Single(planManager.WrittenPlans);
@@ -1448,9 +1448,9 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.BreakIntoTasks;
         _engine.StepsBeforeComplete = 1;
-        var sut = CreateOrchestrator(); // No plan manager
+        WorkflowOrchestrator sut = CreateOrchestrator(); // No plan manager
 
-        var result = await sut.RunStepAsync("test-module");
+        StepResult result = await sut.RunStepAsync("test-module");
 
         Assert.True(result.Success); // No exception, gracefully skipped
     }
@@ -1467,7 +1467,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             planManager: planManager);
 
-        var result = await sut.RunStepAsync("test-module");
+        StepResult result = await sut.RunStepAsync("test-module");
 
         Assert.True(result.Success); // Workflow continues despite plan write failure
     }
@@ -1522,7 +1522,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             planManager: planManager);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete);
         Assert.Single(planManager.WrittenPlans);
@@ -1538,13 +1538,13 @@ public class WorkflowOrchestratorTests
         // receives its own system prompt — no accumulated conversation history.
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _engine.StepsBeforeComplete = 3;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
         Assert.True(_llmService.Invocations.Count >= 2, "Expected at least 2 LLM invocations");
         // Each invocation gets an independent system prompt string (not an appended conversation)
-        foreach (var invocation in _llmService.Invocations)
+        foreach ((string SystemPrompt, string Model, IReadOnlyList<LopenToolDefinition> Tools) invocation in _llmService.Invocations)
         {
             Assert.False(string.IsNullOrWhiteSpace(invocation.SystemPrompt),
                 "Each invocation must receive a non-empty system prompt");
@@ -1565,7 +1565,7 @@ public class WorkflowOrchestratorTests
         // Start at a Planning step, run enough steps to transition into Building.
         _engine.CurrentStep = WorkflowStep.BreakIntoTasks;
         _engine.StepsBeforeComplete = 3;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -1573,7 +1573,7 @@ public class WorkflowOrchestratorTests
         // Each call to ILlmService.InvokeAsync is stateless — it receives
         // (systemPrompt, model, tools) with no conversation history parameter.
         // Verify each invocation has exactly 3 discrete parameters (no history accumulation).
-        foreach (var invocation in _llmService.Invocations)
+        foreach ((string SystemPrompt, string Model, IReadOnlyList<LopenToolDefinition> Tools) invocation in _llmService.Invocations)
         {
             Assert.NotNull(invocation.SystemPrompt);
             Assert.NotNull(invocation.Model);
@@ -1593,7 +1593,7 @@ public class WorkflowOrchestratorTests
         // gets its own independent LLM call with no carried-over context.
         _engine.CurrentStep = WorkflowStep.IterateThroughTasks;
         _engine.StepsBeforeComplete = 3;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
 
@@ -1616,9 +1616,9 @@ public class WorkflowOrchestratorTests
         // Phase 1: RequirementGathering — DraftSpecification invokes LLM when spec not yet approved
         _engine.CurrentStep = WorkflowStep.DraftSpecification;
         _phaseController.SpecApproved = false;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
-        var specResult = await sut.RunAsync("test-module");
+        OrchestrationResult specResult = await sut.RunAsync("test-module");
 
         Assert.True(specResult.WasInterrupted, "Spec phase should interrupt for user confirmation");
         Assert.Contains(WorkflowPhase.RequirementGathering, _promptBuilder.PhasesInvoked);
@@ -1636,7 +1636,7 @@ public class WorkflowOrchestratorTests
         _engine.FiredTriggers.Clear();
         sut = CreateOrchestrator();
 
-        var planResult = await sut.RunAsync("test-module");
+        OrchestrationResult planResult = await sut.RunAsync("test-module");
 
         Assert.True(planResult.IsComplete);
         Assert.Contains(WorkflowPhase.Planning, _promptBuilder.PhasesInvoked);
@@ -1656,7 +1656,7 @@ public class WorkflowOrchestratorTests
         _engine.FiredTriggers.Clear();
         sut = CreateOrchestrator();
 
-        var buildResult = await sut.RunAsync("test-module");
+        OrchestrationResult buildResult = await sut.RunAsync("test-module");
 
         Assert.True(buildResult.IsComplete);
         Assert.Contains(WorkflowPhase.Building, _promptBuilder.PhasesInvoked);
@@ -1753,7 +1753,7 @@ public class WorkflowOrchestratorTests
             _modelSelector, _guardrailPipeline, _renderer, phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance);
 
-        var iterResult = await sut.RunAsync("test-module");
+        OrchestrationResult iterResult = await sut.RunAsync("test-module");
 
         Assert.True(iterResult.IsComplete);
         Assert.True(llmService.InvokeCount >= 1, "LLM should be invoked for task iteration");
@@ -1774,7 +1774,7 @@ public class WorkflowOrchestratorTests
             _modelSelector, _guardrailPipeline, _renderer, phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance);
 
-        var repeatResult = await sut.RunAsync("test-module");
+        OrchestrationResult repeatResult = await sut.RunAsync("test-module");
 
         Assert.True(repeatResult.IsComplete);
         // When no more components, the Repeat step fires ModuleComplete
@@ -2138,7 +2138,7 @@ public class WorkflowOrchestratorTests
         public BudgetCheckResult Check(long currentTokens, int currentRequests)
         {
             CheckCallCount++;
-            var status = CheckCallCount > 1 && ReturnOkAfterFirstCheck
+            BudgetStatus status = CheckCallCount > 1 && ReturnOkAfterFirstCheck
                 ? BudgetStatus.Ok
                 : StatusToReturn;
             var message = status == BudgetStatus.Ok ? "Budget usage is within limits." : MessageToReturn;
@@ -2198,7 +2198,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             pauseController: pauseController);
 
-        var runTask = sut.RunAsync("test-module");
+        Task<OrchestrationResult> runTask = sut.RunAsync("test-module");
 
         // Should not complete while paused
         await Task.Delay(100);
@@ -2206,7 +2206,7 @@ public class WorkflowOrchestratorTests
 
         // Resume should allow completion
         pauseController.Resume();
-        var result = await runTask.WaitAsync(TimeSpan.FromSeconds(5));
+        OrchestrationResult result = await runTask.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.True(result.IsComplete);
     }
 
@@ -2228,7 +2228,7 @@ public class WorkflowOrchestratorTests
             sessionManager: sessionMgr,
             pauseController: pauseController);
 
-        var runTask = sut.RunAsync("test-module");
+        Task<OrchestrationResult> runTask = sut.RunAsync("test-module");
         await Task.Delay(200);
 
         // Should have auto-saved with UserPause trigger
@@ -2252,7 +2252,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             pauseController: pauseController);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
         Assert.True(result.IsComplete);
     }
 
@@ -2261,9 +2261,9 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         _engine.StepsBeforeComplete = 1;
-        var sut = CreateOrchestrator();
+        WorkflowOrchestrator sut = CreateOrchestrator();
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
         Assert.True(result.IsComplete);
     }
 
@@ -2281,7 +2281,7 @@ public class WorkflowOrchestratorTests
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             pauseController: pauseController);
 
-        var runTask = sut.RunAsync("test-module");
+        Task<OrchestrationResult> runTask = sut.RunAsync("test-module");
         await Task.Delay(200);
 
         // Should have rendered pause message
@@ -2309,7 +2309,7 @@ public class WorkflowOrchestratorTests
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         var queue = new InMemoryUserPromptQueue();
         queue.Enqueue("Please focus on the auth module");
-        var sut = CreateOrchestratorWithQueue(queue);
+        WorkflowOrchestrator sut = CreateOrchestratorWithQueue(queue);
 
         await sut.RunStepAsync("test-module");
 
@@ -2326,7 +2326,7 @@ public class WorkflowOrchestratorTests
         queue.Enqueue("First message");
         queue.Enqueue("Second message");
         queue.Enqueue("Third message");
-        var sut = CreateOrchestratorWithQueue(queue);
+        WorkflowOrchestrator sut = CreateOrchestratorWithQueue(queue);
 
         await sut.RunStepAsync("test-module");
 
@@ -2340,7 +2340,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         var queue = new InMemoryUserPromptQueue();
-        var sut = CreateOrchestratorWithQueue(queue);
+        WorkflowOrchestrator sut = CreateOrchestratorWithQueue(queue);
 
         await sut.RunStepAsync("test-module");
 
@@ -2354,7 +2354,7 @@ public class WorkflowOrchestratorTests
         var queue = new InMemoryUserPromptQueue();
         queue.Enqueue("Message one");
         queue.Enqueue("Message two");
-        var sut = CreateOrchestratorWithQueue(queue);
+        WorkflowOrchestrator sut = CreateOrchestratorWithQueue(queue);
 
         await sut.RunStepAsync("test-module");
 
@@ -2365,7 +2365,7 @@ public class WorkflowOrchestratorTests
     public async Task RunStepAsync_NullQueue_WorksWithoutError()
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
-        var sut = CreateOrchestrator(); // No queue injected
+        WorkflowOrchestrator sut = CreateOrchestrator(); // No queue injected
 
         await sut.RunStepAsync("test-module");
 
@@ -2379,7 +2379,7 @@ public class WorkflowOrchestratorTests
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
         var queue = new InMemoryUserPromptQueue();
         queue.Enqueue("Queued message");
-        var sut = CreateOrchestratorWithQueue(queue);
+        WorkflowOrchestrator sut = CreateOrchestratorWithQueue(queue);
 
         await sut.RunStepAsync("test-module", userPrompt: "Direct prompt");
 
@@ -2411,9 +2411,9 @@ public class WorkflowOrchestratorTests
     public async Task RunAsync_WithoutToolHandlerBinder_CompletesWithoutError()
     {
         _engine.IsComplete = true;
-        var sut = CreateOrchestrator(); // No binder injected
+        WorkflowOrchestrator sut = CreateOrchestrator(); // No binder injected
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsComplete);
     }
@@ -2471,7 +2471,7 @@ public class WorkflowOrchestratorTests
             sessionManager: sessionManager,
             failureHandler: failureHandler);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         Assert.True(result.IsCriticalError);
         Assert.True(result.WasInterrupted);
@@ -2493,7 +2493,7 @@ public class WorkflowOrchestratorTests
             autoSaveService: autoSaveService,
             sessionManager: sessionManager);
 
-        var result = await sut.RunAsync("test-module");
+        OrchestrationResult result = await sut.RunAsync("test-module");
 
         // Non-critical error should be swallowed and workflow should complete
         Assert.True(result.IsComplete);

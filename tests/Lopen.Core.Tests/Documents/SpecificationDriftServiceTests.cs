@@ -21,9 +21,9 @@ public class SpecificationDriftServiceTests
     public async Task CheckDriftAsync_ReturnsEmpty_WhenModuleNotFound()
     {
         _moduleScanner.Modules = [];
-        var sut = CreateService();
+        SpecificationDriftService sut = CreateService();
 
-        var result = await sut.CheckDriftAsync("unknown");
+        IReadOnlyList<DriftResult> result = await sut.CheckDriftAsync("unknown");
 
         Assert.Empty(result);
     }
@@ -32,9 +32,9 @@ public class SpecificationDriftServiceTests
     public async Task CheckDriftAsync_ReturnsEmpty_WhenNoSpecification()
     {
         _moduleScanner.Modules = [new ModuleInfo("test", "/specs/test/SPEC.md", false)];
-        var sut = CreateService();
+        SpecificationDriftService sut = CreateService();
 
-        var result = await sut.CheckDriftAsync("test");
+        IReadOnlyList<DriftResult> result = await sut.CheckDriftAsync("test");
 
         Assert.Empty(result);
     }
@@ -44,9 +44,9 @@ public class SpecificationDriftServiceTests
     {
         _moduleScanner.Modules = [new ModuleInfo("test", "/specs/test/SPEC.md", true)];
         _fileSystem.ExistingFiles.Clear();
-        var sut = CreateService();
+        SpecificationDriftService sut = CreateService();
 
-        var result = await sut.CheckDriftAsync("test");
+        IReadOnlyList<DriftResult> result = await sut.CheckDriftAsync("test");
 
         Assert.Empty(result);
     }
@@ -57,7 +57,7 @@ public class SpecificationDriftServiceTests
         _moduleScanner.Modules = [new ModuleInfo("test", "/specs/test/SPEC.md", true)];
         _fileSystem.ExistingFiles["/specs/test/SPEC.md"] = "# Section\nContent here";
         _driftDetector.Results = [];
-        var sut = CreateService();
+        SpecificationDriftService sut = CreateService();
 
         await sut.CheckDriftAsync("test");
 
@@ -72,9 +72,9 @@ public class SpecificationDriftServiceTests
         _fileSystem.ExistingFiles["/specs/test/SPEC.md"] = "# Changed\nNew content";
         var drift = new DriftResult("Changed", "abc", "xyz", false, false);
         _driftDetector.Results = [drift];
-        var sut = CreateService();
+        SpecificationDriftService sut = CreateService();
 
-        var result = await sut.CheckDriftAsync("test");
+        IReadOnlyList<DriftResult> result = await sut.CheckDriftAsync("test");
 
         Assert.Single(result);
         Assert.Equal("Changed", result[0].Header);
@@ -88,10 +88,10 @@ public class SpecificationDriftServiceTests
         _parser.Sections = [new DocumentSection("Section", 1, "Original")];
         _hasher.Hash = "hash1";
         _driftDetector.Results = [];
-        var sut = CreateService();
+        SpecificationDriftService sut = CreateService();
 
         // First call — no cached sections, drift detector gets empty list
-        var firstResult = await sut.CheckDriftAsync("test");
+        IReadOnlyList<DriftResult> firstResult = await sut.CheckDriftAsync("test");
         Assert.Empty(firstResult);
 
         // Verify cached sections were populated (will be passed on next call)
@@ -102,7 +102,7 @@ public class SpecificationDriftServiceTests
         _fileSystem.ExistingFiles["/specs/test/SPEC.md"] = "# Section\nModified";
         _driftDetector.Results = [new DriftResult("Section", "hash1", "hash2", false, false)];
 
-        var secondResult = await sut.CheckDriftAsync("test");
+        IReadOnlyList<DriftResult> secondResult = await sut.CheckDriftAsync("test");
         Assert.Single(secondResult);
         Assert.Single(_driftDetector.LastCachedSections!);
         Assert.Equal("hash1", _driftDetector.LastCachedSections![0].ContentHash);
@@ -111,14 +111,14 @@ public class SpecificationDriftServiceTests
     [Fact]
     public async Task CheckDriftAsync_ThrowsOnNullModuleName()
     {
-        var sut = CreateService();
+        SpecificationDriftService sut = CreateService();
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.CheckDriftAsync(null!));
     }
 
     [Fact]
     public async Task CheckDriftAsync_ThrowsOnEmptyModuleName()
     {
-        var sut = CreateService();
+        SpecificationDriftService sut = CreateService();
         await Assert.ThrowsAsync<ArgumentException>(() => sut.CheckDriftAsync(""));
     }
 
@@ -128,9 +128,9 @@ public class SpecificationDriftServiceTests
         _moduleScanner.Modules = [new ModuleInfo("Core", "/specs/core/SPEC.md", true)];
         _fileSystem.ExistingFiles["/specs/core/SPEC.md"] = "# Section\nContent";
         _driftDetector.Results = [];
-        var sut = CreateService();
+        SpecificationDriftService sut = CreateService();
 
-        var result = await sut.CheckDriftAsync("core");
+        IReadOnlyList<DriftResult> result = await sut.CheckDriftAsync("core");
 
         Assert.NotNull(_driftDetector.LastSpecPath);
     }

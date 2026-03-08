@@ -1,5 +1,5 @@
-using System.Reflection;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Reflection;
 
 namespace Lopen.Auth.Tests;
 
@@ -50,13 +50,13 @@ public class AuthNoCredentialStorageTests
         tokenResolver.SetResult(AuthCredentialSource.None, null);
         var service = new CopilotAuthService(tokenResolver, ghCli, NullLogger<CopilotAuthService>.Instance, () => true);
 
-        var status1 = await service.GetStatusAsync();
+        AuthStatusResult status1 = await service.GetStatusAsync();
         Assert.Equal("user1", status1.Username);
 
         // Change the underlying state — second call should reflect new state (no caching)
         ghCli.StatusInfo = new GhAuthStatusInfo("user2", true);
 
-        var status2 = await service.GetStatusAsync();
+        AuthStatusResult status2 = await service.GetStatusAsync();
         Assert.Equal("user2", status2.Username);
         Assert.False(ghCli.AnyWriteOperationCalled, "GetStatusAsync must be read-only");
     }
@@ -69,10 +69,10 @@ public class AuthNoCredentialStorageTests
     [InlineData(typeof(BinaryWriter))]
     public void CopilotAuthService_HasNoFileIoFields(Type forbiddenType)
     {
-        var fields = typeof(CopilotAuthService)
+        FieldInfo[] fields = typeof(CopilotAuthService)
             .GetFields(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
 
-        foreach (var field in fields)
+        foreach (FieldInfo field in fields)
         {
             Assert.False(
                 forbiddenType.IsAssignableFrom(field.FieldType),
@@ -123,10 +123,10 @@ public class AuthNoCredentialStorageTests
     [Fact]
     public void EnvironmentTokenSourceResolver_HasNoFileIoFields()
     {
-        var fields = typeof(EnvironmentTokenSourceResolver)
+        FieldInfo[] fields = typeof(EnvironmentTokenSourceResolver)
             .GetFields(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
 
-        foreach (var field in fields)
+        foreach (FieldInfo field in fields)
         {
             Assert.False(
                 typeof(Stream).IsAssignableFrom(field.FieldType) || typeof(TextWriter).IsAssignableFrom(field.FieldType),

@@ -59,7 +59,7 @@ public sealed class AssessmentCacheTests
     [Fact]
     public async Task GetAsync_NotCached_ReturnsNull()
     {
-        var result = await _sut.GetAsync("module:auth");
+        AssessmentCacheEntry? result = await _sut.GetAsync("module:auth");
         Assert.Null(result);
     }
 
@@ -76,10 +76,10 @@ public sealed class AssessmentCacheTests
     public async Task SetAndGet_ReturnsCachedContent()
     {
         CreateSourceFile("/src/auth/login.cs", "code");
-        var timestamps = CaptureTimestamps("/src/auth/login.cs");
+        IReadOnlyDictionary<string, DateTime> timestamps = CaptureTimestamps("/src/auth/login.cs");
 
         await _sut.SetAsync("auth:assessment", "assessment result", timestamps);
-        var result = await _sut.GetAsync("auth:assessment");
+        AssessmentCacheEntry? result = await _sut.GetAsync("auth:assessment");
 
         Assert.NotNull(result);
         Assert.Equal("assessment result", result.Content);
@@ -113,7 +113,7 @@ public sealed class AssessmentCacheTests
     {
         CreateSourceFile("/src/auth/login.cs", "original");
         CreateSourceFile("/src/auth/register.cs", "original");
-        var timestamps = CaptureTimestamps("/src/auth/login.cs", "/src/auth/register.cs");
+        IReadOnlyDictionary<string, DateTime> timestamps = CaptureTimestamps("/src/auth/login.cs", "/src/auth/register.cs");
 
         await _sut.SetAsync("auth:assessment", "cached", timestamps);
 
@@ -121,7 +121,7 @@ public sealed class AssessmentCacheTests
         await Task.Delay(10);
         CreateSourceFile("/src/auth/login.cs", "modified");
 
-        var result = await _sut.GetAsync("auth:assessment");
+        AssessmentCacheEntry? result = await _sut.GetAsync("auth:assessment");
         Assert.Null(result);
     }
 
@@ -129,11 +129,11 @@ public sealed class AssessmentCacheTests
     public async Task GetAsync_NoFilesChanged_ReturnsEntry()
     {
         CreateSourceFile("/src/auth/login.cs", "code");
-        var timestamps = CaptureTimestamps("/src/auth/login.cs");
+        IReadOnlyDictionary<string, DateTime> timestamps = CaptureTimestamps("/src/auth/login.cs");
 
         await _sut.SetAsync("auth:assessment", "cached", timestamps);
 
-        var result = await _sut.GetAsync("auth:assessment");
+        AssessmentCacheEntry? result = await _sut.GetAsync("auth:assessment");
         Assert.NotNull(result);
         Assert.Equal("cached", result.Content);
     }
@@ -144,7 +144,7 @@ public sealed class AssessmentCacheTests
     public async Task InvalidateAsync_RemovesEntry()
     {
         CreateSourceFile("/src/auth/login.cs", "code");
-        var timestamps = CaptureTimestamps("/src/auth/login.cs");
+        IReadOnlyDictionary<string, DateTime> timestamps = CaptureTimestamps("/src/auth/login.cs");
 
         await _sut.SetAsync("auth:assessment", "cached", timestamps);
         await _sut.InvalidateAsync("auth:assessment");
@@ -182,12 +182,12 @@ public sealed class AssessmentCacheTests
     public async Task GetAsync_ReadsFromDisk()
     {
         CreateSourceFile("/src/auth/login.cs", "code");
-        var timestamps = CaptureTimestamps("/src/auth/login.cs");
+        IReadOnlyDictionary<string, DateTime> timestamps = CaptureTimestamps("/src/auth/login.cs");
 
         await _sut.SetAsync("auth:assessment", "persisted", timestamps);
 
         var freshCache = new AssessmentCache(_fs, NullLogger<AssessmentCache>.Instance, ProjectRoot);
-        var result = await freshCache.GetAsync("auth:assessment");
+        AssessmentCacheEntry? result = await freshCache.GetAsync("auth:assessment");
 
         Assert.NotNull(result);
         Assert.Equal("persisted", result.Content);
@@ -199,7 +199,7 @@ public sealed class AssessmentCacheTests
     public async Task GetAsync_CorruptedEntry_ReturnsNull()
     {
         CreateSourceFile("/src/auth/login.cs", "code");
-        var timestamps = CaptureTimestamps("/src/auth/login.cs");
+        IReadOnlyDictionary<string, DateTime> timestamps = CaptureTimestamps("/src/auth/login.cs");
 
         await _sut.SetAsync("auth:assessment", "valid", timestamps);
 
@@ -210,7 +210,7 @@ public sealed class AssessmentCacheTests
         await _fs.WriteAllTextAsync(files[0], "corrupted{{{");
 
         var freshCache = new AssessmentCache(_fs, NullLogger<AssessmentCache>.Instance, ProjectRoot);
-        var result = await freshCache.GetAsync("auth:assessment");
+        AssessmentCacheEntry? result = await freshCache.GetAsync("auth:assessment");
 
         Assert.Null(result); // Silently invalidated
     }
@@ -221,12 +221,12 @@ public sealed class AssessmentCacheTests
     public async Task SetAsync_RecordsCachedTimestamp()
     {
         CreateSourceFile("/src/auth/login.cs", "code");
-        var timestamps = CaptureTimestamps("/src/auth/login.cs");
-        var before = DateTime.UtcNow;
+        IReadOnlyDictionary<string, DateTime> timestamps = CaptureTimestamps("/src/auth/login.cs");
+        DateTime before = DateTime.UtcNow;
 
         await _sut.SetAsync("auth:assessment", "cached", timestamps);
 
-        var result = await _sut.GetAsync("auth:assessment");
+        AssessmentCacheEntry? result = await _sut.GetAsync("auth:assessment");
         Assert.NotNull(result);
         Assert.True(result.CachedAtUtc >= before);
         Assert.Equal(timestamps, result.FileTimestamps);
@@ -256,7 +256,7 @@ public sealed class AssessmentCacheTests
 
         await _sut.SetAsync("empty:scope", "result", emptyTimestamps);
 
-        var result = await _sut.GetAsync("empty:scope");
+        AssessmentCacheEntry? result = await _sut.GetAsync("empty:scope");
         Assert.NotNull(result);
         Assert.Equal("result", result.Content);
     }
@@ -286,7 +286,7 @@ public sealed class AssessmentCacheTests
 
         throwingFs.ThrowOnDelete = true;
 
-        var exception = await Record.ExceptionAsync(() => cache.InvalidateAsync("auth:assessment"));
+        Exception exception = await Record.ExceptionAsync(() => cache.InvalidateAsync("auth:assessment"));
         Assert.Null(exception);
 
         Assert.Contains(logger.Entries, e =>

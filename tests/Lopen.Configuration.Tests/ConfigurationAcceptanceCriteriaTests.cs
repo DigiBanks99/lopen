@@ -1,6 +1,6 @@
-using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
 
 namespace Lopen.Configuration.Tests;
 
@@ -34,7 +34,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
 
     private static void WithEnvVars(Dictionary<string, string> vars, Action action)
     {
-        foreach (var (key, value) in vars)
+        foreach ((string? key, string? value) in vars)
             Environment.SetEnvironmentVariable(key, value);
         try
         {
@@ -62,7 +62,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             var builder = new LopenConfigurationBuilder(globalPath, projectPath);
             builder.AddOverride("Models:Planning", "cli-model");
 
-            var (options, _) = builder.Build();
+            (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
             // CLI wins over env, project, global
             Assert.Equal("cli-model", options.Models.Planning);
@@ -78,7 +78,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             globalConfigPath: Path.Combine(_tempDir, "nonexistent-global.json"),
             projectConfigPath: Path.Combine(_tempDir, "nonexistent-project.json"));
 
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.Equal("claude-opus-4.6", options.Models.Planning);
         Assert.Equal(100, options.Workflow.MaxIterations);
@@ -100,7 +100,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             var builder = new LopenConfigurationBuilder(globalPath, projectPath);
             builder.AddOverride("Models:Planning", "model-d");
 
-            var (options, _) = builder.Build();
+            (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
             Assert.Equal("model-d", options.Models.Planning);
         });
@@ -117,7 +117,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         WithEnvVars(new() { ["LOPEN_Models__Building"] = "env-builder" }, () =>
         {
             var builder = new LopenConfigurationBuilder(globalPath, projectPath);
-            var (options, _) = builder.Build();
+            (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
             Assert.Equal("env-builder", options.Models.Building);
         });
@@ -132,7 +132,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             new { Workflow = new { MaxIterations = 25 } });
 
         var builder = new LopenConfigurationBuilder(globalPath, projectPath);
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.Equal(25, options.Workflow.MaxIterations);
     }
@@ -198,7 +198,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             new { Oracle = new { Model = "custom-oracle" } });
 
         var builder = new LopenConfigurationBuilder(globalConfigPath: globalPath);
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.Equal("custom-oracle", options.Oracle.Model);
     }
@@ -212,12 +212,12 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             new { Models = new { Planning = "gpt-5" } });
 
         var builder = new LopenConfigurationBuilder(globalConfigPath: globalPath);
-        var (_, configRoot) = builder.Build();
+        (LopenOptions _, IConfigurationRoot? configRoot) = builder.Build();
 
-        var entries = ConfigurationDiagnostics.GetEntries(configRoot);
+        IReadOnlyList<ConfigurationEntry> entries = ConfigurationDiagnostics.GetEntries(configRoot);
 
         Assert.NotEmpty(entries);
-        var planningEntry = entries.FirstOrDefault(e => e.Key == "Models:Planning");
+        ConfigurationEntry? planningEntry = entries.FirstOrDefault(e => e.Key == "Models:Planning");
         Assert.NotNull(planningEntry);
         Assert.Equal("gpt-5", planningEntry.Value);
         Assert.NotEmpty(planningEntry.Source);
@@ -230,9 +230,9 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             new { Models = new { Planning = "gpt-5" } });
 
         var builder = new LopenConfigurationBuilder(globalConfigPath: globalPath);
-        var (_, configRoot) = builder.Build();
+        (LopenOptions _, IConfigurationRoot? configRoot) = builder.Build();
 
-        var entries = ConfigurationDiagnostics.GetEntries(configRoot);
+        IReadOnlyList<ConfigurationEntry> entries = ConfigurationDiagnostics.GetEntries(configRoot);
         var formatted = ConfigurationDiagnostics.Format(entries);
 
         Assert.Contains("Setting", formatted);
@@ -249,9 +249,9 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             new { Workflow = new { MaxIterations = 42 } });
 
         var builder = new LopenConfigurationBuilder(projectConfigPath: projectPath);
-        var (_, configRoot) = builder.Build();
+        (LopenOptions _, IConfigurationRoot? configRoot) = builder.Build();
 
-        var entries = ConfigurationDiagnostics.GetEntries(configRoot);
+        IReadOnlyList<ConfigurationEntry> entries = ConfigurationDiagnostics.GetEntries(configRoot);
         var json = ConfigurationDiagnostics.FormatJson(entries);
 
         Assert.StartsWith("[", json.TrimStart());
@@ -267,9 +267,9 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             new { Workflow = new { MaxIterations = 42 } });
 
         var builder = new LopenConfigurationBuilder(projectConfigPath: projectPath);
-        var (_, configRoot) = builder.Build();
+        (LopenOptions _, IConfigurationRoot? configRoot) = builder.Build();
 
-        var entries = ConfigurationDiagnostics.GetEntries(configRoot);
+        IReadOnlyList<ConfigurationEntry> entries = ConfigurationDiagnostics.GetEntries(configRoot);
         var json = ConfigurationDiagnostics.FormatJson(entries);
 
         Assert.Contains("42", json);
@@ -281,7 +281,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
     public void AC07_Defaults_AllSettingsHaveSensibleValues()
     {
         var builder = new LopenConfigurationBuilder();
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         // Model defaults
         Assert.Equal("claude-opus-4.6", options.Models.RequirementGathering);
@@ -327,7 +327,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
     {
         var builder = new LopenConfigurationBuilder();
 
-        var exception = Record.Exception(() => builder.Build());
+        Exception exception = Record.Exception(() => builder.Build());
 
         Assert.Null(exception);
     }
@@ -340,7 +340,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var builder = new LopenConfigurationBuilder();
         builder.AddModelOverride("gpt-5");
 
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.Equal("gpt-5", options.Models.RequirementGathering);
         Assert.Equal("gpt-5", options.Models.Planning);
@@ -365,7 +365,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var builder = new LopenConfigurationBuilder(projectConfigPath: projectPath);
         builder.AddModelOverride("cli-override-model");
 
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.Equal("cli-override-model", options.Models.RequirementGathering);
         Assert.Equal("cli-override-model", options.Models.Planning);
@@ -381,7 +381,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var builder = new LopenConfigurationBuilder();
         builder.AddUnattendedOverride();
 
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.True(options.Workflow.Unattended);
     }
@@ -395,7 +395,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var builder = new LopenConfigurationBuilder(projectConfigPath: projectPath);
         builder.AddUnattendedOverride(true);
 
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.True(options.Workflow.Unattended);
     }
@@ -409,7 +409,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var builder = new LopenConfigurationBuilder(projectConfigPath: projectPath);
         builder.AddUnattendedOverride(false);
 
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.False(options.Workflow.Unattended);
     }
@@ -425,7 +425,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var builder = new LopenConfigurationBuilder(projectConfigPath: projectPath);
         builder.AddResumeOverride(true);
 
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.True(options.Session.AutoResume);
     }
@@ -438,7 +438,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var builder = new LopenConfigurationBuilder();
         builder.AddMaxIterationsOverride(42);
 
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.Equal(42, options.Workflow.MaxIterations);
     }
@@ -452,7 +452,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var builder = new LopenConfigurationBuilder(projectConfigPath: projectPath);
         builder.AddMaxIterationsOverride(15);
 
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.Equal(15, options.Workflow.MaxIterations);
     }
@@ -471,18 +471,18 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         };
         var enforcer = new BudgetEnforcer(budget);
 
-        var ok = enforcer.Check(5000, 0);
+        BudgetCheckResult ok = enforcer.Check(5000, 0);
         Assert.Equal(BudgetStatus.Ok, ok.Status);
         Assert.NotNull(ok.TokenUsageFraction);
         Assert.Equal(0.5, ok.TokenUsageFraction!.Value, precision: 2);
 
-        var warning = enforcer.Check(8500, 0);
+        BudgetCheckResult warning = enforcer.Check(8500, 0);
         Assert.Equal(BudgetStatus.Warning, warning.Status);
 
-        var confirmation = enforcer.Check(9500, 0);
+        BudgetCheckResult confirmation = enforcer.Check(9500, 0);
         Assert.Equal(BudgetStatus.ConfirmationRequired, confirmation.Status);
 
-        var exceeded = enforcer.Check(10000, 0);
+        BudgetCheckResult exceeded = enforcer.Check(10000, 0);
         Assert.Equal(BudgetStatus.Exceeded, exceeded.Status);
     }
 
@@ -498,14 +498,14 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         };
         var enforcer = new BudgetEnforcer(budget);
 
-        var ok = enforcer.Check(0, 50);
+        BudgetCheckResult ok = enforcer.Check(0, 50);
         Assert.Equal(BudgetStatus.Ok, ok.Status);
         Assert.NotNull(ok.RequestUsageFraction);
 
-        var warning = enforcer.Check(0, 85);
+        BudgetCheckResult warning = enforcer.Check(0, 85);
         Assert.Equal(BudgetStatus.Warning, warning.Status);
 
-        var exceeded = enforcer.Check(0, 100);
+        BudgetCheckResult exceeded = enforcer.Check(0, 100);
         Assert.Equal(BudgetStatus.Exceeded, exceeded.Status);
     }
 
@@ -521,7 +521,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         };
         var enforcer = new BudgetEnforcer(budget);
 
-        var result = enforcer.Check(999999, 999);
+        BudgetCheckResult result = enforcer.Check(999999, 999);
 
         Assert.Equal(BudgetStatus.Ok, result.Status);
         Assert.Null(result.TokenUsageFraction);
@@ -538,9 +538,9 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
 
         var services = new ServiceCollection();
         services.AddLopenConfiguration(options);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
-        var oracleOptions = provider.GetRequiredService<OracleOptions>();
+        OracleOptions oracleOptions = provider.GetRequiredService<OracleOptions>();
 
         Assert.Equal("custom-oracle-model", oracleOptions.Model);
     }
@@ -564,9 +564,9 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
 
         var services = new ServiceCollection();
         services.AddLopenConfiguration(options);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
-        var toolOptions = provider.GetRequiredService<ToolDisciplineOptions>();
+        ToolDisciplineOptions toolOptions = provider.GetRequiredService<ToolDisciplineOptions>();
 
         Assert.Equal(5, toolOptions.MaxFileReads);
         Assert.Equal(7, toolOptions.MaxCommandRetries);
@@ -588,7 +588,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             new { ToolDiscipline = new { MaxFileReads = 10, MaxCommandRetries = 5 } });
 
         var builder = new LopenConfigurationBuilder(projectConfigPath: projectPath);
-        var (options, _) = builder.Build();
+        (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
         Assert.Equal(10, options.ToolDiscipline.MaxFileReads);
         Assert.Equal(5, options.ToolDiscipline.MaxCommandRetries);
@@ -602,7 +602,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var options = new LopenOptions();
         options.Workflow.MaxIterations = 0;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.NotEmpty(errors);
         Assert.Contains(errors, e => e.Contains("max_iterations"));
@@ -614,7 +614,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var options = new LopenOptions();
         options.Budget.TokenBudgetPerModule = -1;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.NotEmpty(errors);
         Assert.Contains(errors, e => e.Contains("token_budget_per_module"));
@@ -626,7 +626,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var options = new LopenOptions();
         options.Budget.WarningThreshold = 1.5;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.NotEmpty(errors);
         Assert.Contains(errors, e => e.Contains("warning_threshold"));
@@ -639,7 +639,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         options.Budget.WarningThreshold = 0.95;
         options.Budget.ConfirmationThreshold = 0.9;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.NotEmpty(errors);
         Assert.Contains(errors, e => e.Contains("warning_threshold") && e.Contains("confirmation_threshold"));
@@ -651,7 +651,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         var options = new LopenOptions();
         options.Session.SessionRetention = -1;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.NotEmpty(errors);
         Assert.Contains(errors, e => e.Contains("session_retention"));
@@ -664,7 +664,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         options.ToolDiscipline.MaxFileReads = 0;
         options.ToolDiscipline.MaxCommandRetries = 0;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.True(errors.Count >= 2);
         Assert.Contains(errors, e => e.Contains("max_file_reads"));
@@ -679,7 +679,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         options.Workflow.FailureThreshold = 0;
         options.Budget.TokenBudgetPerModule = -1;
 
-        var errors = LopenOptionsValidator.Validate(options);
+        IReadOnlyList<string> errors = LopenOptionsValidator.Validate(options);
 
         Assert.True(errors.Count >= 3);
     }
@@ -691,7 +691,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         builder.AddOverride("Workflow:MaxIterations", "0");
         builder.AddOverride("Workflow:FailureThreshold", "0");
 
-        var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
 
         Assert.Contains("max_iterations", ex.Message);
         Assert.Contains("failure_threshold", ex.Message);
@@ -708,7 +708,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         WithEnvVars(new() { ["LOPEN_Models__Planning"] = "env-model" }, () =>
         {
             var builder = new LopenConfigurationBuilder(globalConfigPath: globalPath);
-            var (options, _) = builder.Build();
+            (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
             Assert.Equal("env-model", options.Models.Planning);
         });
@@ -723,7 +723,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         WithEnvVars(new() { ["LOPEN_Models__Building"] = "env-builder" }, () =>
         {
             var builder = new LopenConfigurationBuilder(projectConfigPath: projectPath);
-            var (options, _) = builder.Build();
+            (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
             Assert.Equal("env-builder", options.Models.Building);
         });
@@ -737,7 +737,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             var builder = new LopenConfigurationBuilder();
             builder.AddOverride("Workflow:MaxIterations", "10");
 
-            var (options, _) = builder.Build();
+            (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
             Assert.Equal(10, options.Workflow.MaxIterations);
         });
@@ -749,7 +749,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         WithEnvVars(new() { ["LOPEN_Budget__WarningThreshold"] = "0.5" }, () =>
         {
             var builder = new LopenConfigurationBuilder();
-            var (options, _) = builder.Build();
+            (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
             Assert.Equal(0.5, options.Budget.WarningThreshold);
         });
@@ -768,7 +768,7 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
             var builder = new LopenConfigurationBuilder(globalPath, projectPath);
             builder.AddOverride("Models:Research", "model-cli");
 
-            var (options, _) = builder.Build();
+            (LopenOptions? options, IConfigurationRoot _) = builder.Build();
 
             Assert.Equal("model-cli", options.Models.Research);
         });

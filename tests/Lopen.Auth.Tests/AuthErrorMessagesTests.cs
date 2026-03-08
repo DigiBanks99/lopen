@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace Lopen.Auth.Tests;
 
 public class AuthErrorMessagesTests
@@ -12,7 +14,7 @@ public class AuthErrorMessagesTests
     [InlineData(nameof(AuthErrorMessages.PreFlightFailed))]
     public void AllErrorMessages_ContainWhyAndFix(string fieldName)
     {
-        var field = typeof(AuthErrorMessages).GetField(fieldName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+        FieldInfo? field = typeof(AuthErrorMessages).GetField(fieldName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
         Assert.NotNull(field);
 
         var message = (string)field.GetValue(null)!;

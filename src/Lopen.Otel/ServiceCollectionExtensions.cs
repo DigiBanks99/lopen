@@ -25,7 +25,7 @@ public static class ServiceCollectionExtensions
             ?? configuration["otel:service_name"]
             ?? "lopen";
 
-        var otel = services.AddOpenTelemetry();
+        OpenTelemetryBuilder otel = services.AddOpenTelemetry();
 
         otel.ConfigureResource(r => r.AddService(serviceName));
 

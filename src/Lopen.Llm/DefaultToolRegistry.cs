@@ -59,7 +59,7 @@ internal sealed class DefaultToolRegistry : IToolRegistry
 
     private void RegisterBuiltInTools()
     {
-        var allPhases = new[]
+        WorkflowPhase[] allPhases = new[]
         {
             WorkflowPhase.RequirementGathering,
             WorkflowPhase.Planning,

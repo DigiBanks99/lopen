@@ -1,4 +1,3 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Lopen.Cli.Tests.Fakes;
 using Lopen.Commands;
@@ -9,6 +8,7 @@ using Lopen.Llm;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -20,7 +20,7 @@ public class RootCommandTests
     private static (CommandLineConfiguration config, StringWriter output, StringWriter error) CreateConfig(
         ISessionManager? sessionManager = null, IWorkflowOrchestrator? orchestrator = null)
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
         builder.Services.AddLopenCore();
@@ -33,7 +33,7 @@ public class RootCommandTests
         if (orchestrator is not null)
             builder.Services.AddSingleton(orchestrator);
 
-        var host = builder.Build();
+        IHost host = builder.Build();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -50,7 +50,7 @@ public class RootCommandTests
     [Fact]
     public async Task RootCommand_NoArgs_ReturnsTuiNotAvailable()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync([]);
 
@@ -63,7 +63,7 @@ public class RootCommandTests
     [Fact]
     public async Task RootCommand_Headless_WithPrompt_RunsHeadless()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build auth"]);
 
@@ -74,7 +74,7 @@ public class RootCommandTests
     [Fact]
     public async Task RootCommand_Headless_NoPrompt_NoSession_ReturnsFailure()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["--headless"]);
 
@@ -88,7 +88,7 @@ public class RootCommandTests
     public async Task RootCommand_Headless_WithSession_RunsOrchestrator()
     {
         var sessionManager = new FakeSessionManager();
-        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        SessionId sessionId = SessionId.TryParse("testmod-20260101-001")!;
         await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
         {
             SessionId = "testmod-20260101-001",
@@ -100,7 +100,7 @@ public class RootCommandTests
         });
         await sessionManager.SetLatestAsync(sessionId);
 
-        var (config, output, error) = CreateConfig(sessionManager);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter? error) = CreateConfig(sessionManager);
 
         var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it"]);
 
@@ -111,7 +111,7 @@ public class RootCommandTests
     public async Task RootCommand_Resume_InvalidId_WithSessionManager_ReturnsFailure()
     {
         var sessionManager = new FakeSessionManager();
-        var (config, _, error) = CreateConfig(sessionManager);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(sessionManager);
 
         var exitCode = await config.InvokeAsync(["--resume", "bad-id"]);
 
@@ -122,7 +122,7 @@ public class RootCommandTests
     [Fact]
     public async Task RootCommand_Resume_NoSessionManager_ReturnsTuiNotAvailable()
     {
-        var (config, output, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["--resume", "bad-id"]);
 
@@ -134,7 +134,7 @@ public class RootCommandTests
     public async Task RootCommand_Resume_WithActiveSession_PrintsResumingMessage()
     {
         var sessionManager = new FakeSessionManager();
-        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        SessionId sessionId = SessionId.TryParse("testmod-20260101-001")!;
         await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
         {
             SessionId = "testmod-20260101-001",
@@ -146,7 +146,7 @@ public class RootCommandTests
         });
         await sessionManager.SetLatestAsync(sessionId);
 
-        var (config, output, _) = CreateConfig(sessionManager);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig(sessionManager);
 
         var exitCode = await config.InvokeAsync(["--resume", "testmod-20260101-001"]);
 
@@ -161,7 +161,7 @@ public class RootCommandTests
     public async Task RootCommand_Headless_WithOrchestrator_Completed_ReturnsSuccess()
     {
         var sessionManager = new FakeSessionManager();
-        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        SessionId sessionId = SessionId.TryParse("testmod-20260101-001")!;
         await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
         {
             SessionId = "testmod-20260101-001",
@@ -174,7 +174,7 @@ public class RootCommandTests
         await sessionManager.SetLatestAsync(sessionId);
 
         var orchestrator = new FakeOrchestrator(OrchestrationResult.Completed(5, WorkflowStep.Repeat));
-        var (config, output, error) = CreateConfig(sessionManager, orchestrator);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter? error) = CreateConfig(sessionManager, orchestrator);
 
         var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it", "--resume", "testmod-20260101-001"]);
 
@@ -187,7 +187,7 @@ public class RootCommandTests
     public async Task RootCommand_Headless_Interrupted_ReturnsExitCode2()
     {
         var sessionManager = new FakeSessionManager();
-        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        SessionId sessionId = SessionId.TryParse("testmod-20260101-001")!;
         await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
         {
             SessionId = "testmod-20260101-001",
@@ -200,7 +200,7 @@ public class RootCommandTests
         await sessionManager.SetLatestAsync(sessionId);
 
         var orchestrator = new FakeOrchestrator(OrchestrationResult.Interrupted(3, WorkflowStep.IterateThroughTasks, "Human gate required"));
-        var (config, output, error) = CreateConfig(sessionManager, orchestrator);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter? error) = CreateConfig(sessionManager, orchestrator);
 
         var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it", "--resume", "testmod-20260101-001"]);
 
@@ -213,13 +213,13 @@ public class RootCommandTests
     [Fact]
     public async Task RootCommand_Model_OverridesAllPhaseModels()
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddLopenAuth();
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
-        var host = builder.Build();
+        IHost host = builder.Build();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -229,7 +229,7 @@ public class RootCommandTests
 
         await new CommandLineConfiguration(rootCommand).InvokeAsync(["--model", "gpt-5"]);
 
-        var modelOptions = host.Services.GetRequiredService<ModelOptions>();
+        ModelOptions modelOptions = host.Services.GetRequiredService<ModelOptions>();
         Assert.Equal("gpt-5", modelOptions.RequirementGathering);
         Assert.Equal("gpt-5", modelOptions.Planning);
         Assert.Equal("gpt-5", modelOptions.Building);
@@ -241,13 +241,13 @@ public class RootCommandTests
     [Fact]
     public async Task RootCommand_Unattended_SetsWorkflowUnattended()
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddLopenAuth();
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
-        var host = builder.Build();
+        IHost host = builder.Build();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -257,7 +257,7 @@ public class RootCommandTests
 
         await new CommandLineConfiguration(rootCommand).InvokeAsync(["--unattended"]);
 
-        var workflowOptions = host.Services.GetRequiredService<WorkflowOptions>();
+        WorkflowOptions workflowOptions = host.Services.GetRequiredService<WorkflowOptions>();
         Assert.True(workflowOptions.Unattended);
     }
 
@@ -266,13 +266,13 @@ public class RootCommandTests
     [Fact]
     public async Task RootCommand_MaxIterations_SetsWorkflowMaxIterations()
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddLopenAuth();
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
-        var host = builder.Build();
+        IHost host = builder.Build();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -282,20 +282,20 @@ public class RootCommandTests
 
         await new CommandLineConfiguration(rootCommand).InvokeAsync(["--max-iterations", "25"]);
 
-        var workflowOptions = host.Services.GetRequiredService<WorkflowOptions>();
+        WorkflowOptions workflowOptions = host.Services.GetRequiredService<WorkflowOptions>();
         Assert.Equal(25, workflowOptions.MaxIterations);
     }
 
     [Fact]
     public async Task RootCommand_NoOverrideFlags_KeepsDefaults()
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddLopenAuth();
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
-        var host = builder.Build();
+        IHost host = builder.Build();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -305,8 +305,8 @@ public class RootCommandTests
 
         await new CommandLineConfiguration(rootCommand).InvokeAsync([]);
 
-        var workflowOptions = host.Services.GetRequiredService<WorkflowOptions>();
-        var modelOptions = host.Services.GetRequiredService<ModelOptions>();
+        WorkflowOptions workflowOptions = host.Services.GetRequiredService<WorkflowOptions>();
+        ModelOptions modelOptions = host.Services.GetRequiredService<ModelOptions>();
         Assert.Equal(100, workflowOptions.MaxIterations);
         Assert.False(workflowOptions.Unattended);
         Assert.Equal("claude-opus-4.6", modelOptions.Building);
@@ -317,7 +317,7 @@ public class RootCommandTests
     private static (CommandLineConfiguration config, StringWriter output, StringWriter error) CreateConfigWithAuth(
         IAuthService authService, ISessionManager? sessionManager = null, IWorkflowOrchestrator? orchestrator = null)
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddLopenAuth();
         builder.Services.AddLopenCore();
@@ -333,7 +333,7 @@ public class RootCommandTests
         if (orchestrator is not null)
             builder.Services.AddSingleton(orchestrator);
 
-        var host = builder.Build();
+        IHost host = builder.Build();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -349,7 +349,7 @@ public class RootCommandTests
     public async Task RootCommand_Interactive_AuthFails_ReturnsFailure()
     {
         var authService = new FailingAuthService("Not authenticated. Run 'lopen auth login' or set GH_TOKEN.");
-        var (config, _, error) = CreateConfigWithAuth(authService);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfigWithAuth(authService);
 
         var exitCode = await config.InvokeAsync([]);
 
@@ -362,7 +362,7 @@ public class RootCommandTests
     {
         var authService = new FailingAuthService("Invalid credentials.");
         var sessionManager = new FakeSessionManager();
-        var sessionId = SessionId.TryParse("testmod-20260101-001")!;
+        SessionId sessionId = SessionId.TryParse("testmod-20260101-001")!;
         await sessionManager.SaveSessionStateAsync(sessionId, new SessionState
         {
             SessionId = "testmod-20260101-001",
@@ -374,7 +374,7 @@ public class RootCommandTests
         });
         await sessionManager.SetLatestAsync(sessionId);
 
-        var (config, _, error) = CreateConfigWithAuth(authService, sessionManager);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfigWithAuth(authService, sessionManager);
 
         var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build it"]);
 
@@ -440,7 +440,7 @@ public class RootCommandTests
         }
 
         public Task<SessionState?> LoadSessionStateAsync(SessionId id, CancellationToken ct = default)
-            => Task.FromResult(_sessions.TryGetValue(id, out var s) ? s : null);
+            => Task.FromResult(_sessions.TryGetValue(id, out SessionState? s) ? s : null);
 
         public Task<SessionMetrics?> LoadSessionMetricsAsync(SessionId id, CancellationToken ct = default)
             => Task.FromResult<SessionMetrics?>(null);

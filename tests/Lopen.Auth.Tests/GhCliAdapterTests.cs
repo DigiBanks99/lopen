@@ -16,7 +16,7 @@ public class GhCliAdapterTests
               - Token scopes: copilot, gist, read:org, repo
             """;
 
-        var result = GhCliAdapter.ParseStatusOutput(output);
+        GhAuthStatusInfo? result = GhCliAdapter.ParseStatusOutput(output);
 
         Assert.NotNull(result);
         Assert.Equal("testuser", result.Username);
@@ -34,7 +34,7 @@ public class GhCliAdapterTests
               - Git operations protocol: https
             """;
 
-        var result = GhCliAdapter.ParseStatusOutput(output);
+        GhAuthStatusInfo? result = GhCliAdapter.ParseStatusOutput(output);
 
         Assert.NotNull(result);
         Assert.Equal("anotheruser", result.Username);
@@ -50,7 +50,7 @@ public class GhCliAdapterTests
               - Active account: true
             """;
 
-        var result = GhCliAdapter.ParseStatusOutput(output);
+        GhAuthStatusInfo? result = GhCliAdapter.ParseStatusOutput(output);
 
         Assert.NotNull(result);
         Assert.Equal("user123", result.Username);
@@ -60,21 +60,21 @@ public class GhCliAdapterTests
     [Fact]
     public void ParseStatusOutput_EmptyOutput_ReturnsNull()
     {
-        var result = GhCliAdapter.ParseStatusOutput("");
+        GhAuthStatusInfo? result = GhCliAdapter.ParseStatusOutput("");
         Assert.Null(result);
     }
 
     [Fact]
     public void ParseStatusOutput_NullOutput_ReturnsNull()
     {
-        var result = GhCliAdapter.ParseStatusOutput(null!);
+        GhAuthStatusInfo? result = GhCliAdapter.ParseStatusOutput(null!);
         Assert.Null(result);
     }
 
     [Fact]
     public void ParseStatusOutput_WhitespaceOutput_ReturnsNull()
     {
-        var result = GhCliAdapter.ParseStatusOutput("   \n\t  ");
+        GhAuthStatusInfo? result = GhCliAdapter.ParseStatusOutput("   \n\t  ");
         Assert.Null(result);
     }
 
@@ -85,7 +85,7 @@ public class GhCliAdapterTests
             You are not logged into any GitHub hosts. To log in, run: gh auth login
             """;
 
-        var result = GhCliAdapter.ParseStatusOutput(output);
+        GhAuthStatusInfo? result = GhCliAdapter.ParseStatusOutput(output);
         Assert.Null(result);
     }
 
@@ -95,7 +95,7 @@ public class GhCliAdapterTests
         // Some gh versions use slightly different output
         var output = "Logged in to github.com account MyUser (token)";
 
-        var result = GhCliAdapter.ParseStatusOutput(output);
+        GhAuthStatusInfo? result = GhCliAdapter.ParseStatusOutput(output);
 
         Assert.NotNull(result);
         Assert.Equal("MyUser", result.Username);
@@ -111,7 +111,7 @@ public class GhCliAdapterTests
               - Token scopes: admin:org, copilot, gist, read:org, repo, workflow
             """;
 
-        var result = GhCliAdapter.ParseStatusOutput(output);
+        GhAuthStatusInfo? result = GhCliAdapter.ParseStatusOutput(output);
 
         Assert.NotNull(result);
         Assert.Contains("copilot", result.TokenScopes!);

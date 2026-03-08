@@ -121,7 +121,7 @@ internal sealed class InMemoryFileSystem : IFileSystem
     public DateTime GetLastWriteTimeUtc(string path)
     {
         var normalized = NormalizePath(path);
-        return _lastWriteTimes.TryGetValue(normalized, out var time) ? time : DateTime.MinValue;
+        return _lastWriteTimes.TryGetValue(normalized, out DateTime time) ? time : DateTime.MinValue;
     }
 
     private static string NormalizePath(string path) =>

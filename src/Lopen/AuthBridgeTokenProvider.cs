@@ -19,7 +19,7 @@ internal sealed class AuthBridgeTokenProvider : IGitHubTokenProvider
     /// <inheritdoc />
     public string? GetToken()
     {
-        var result = _resolver.Resolve();
+        TokenSourceResult result = _resolver.Resolve();
         return result.Token;
     }
 }

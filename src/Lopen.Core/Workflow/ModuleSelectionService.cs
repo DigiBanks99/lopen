@@ -23,7 +23,7 @@ internal sealed class ModuleSelectionService : IModuleSelectionService
 
     public async Task<string?> SelectModuleAsync(CancellationToken cancellationToken = default)
     {
-        var modules = _moduleLister.ListModules();
+        IReadOnlyList<ModuleState> modules = _moduleLister.ListModules();
         if (modules.Count == 0)
         {
             await _renderer.RenderErrorAsync("No modules found. Create a SPECIFICATION.md in docs/requirements/<module>/.");
@@ -52,7 +52,7 @@ internal sealed class ModuleSelectionService : IModuleSelectionService
         }
 
         // Try matching by name
-        var byName = modules.FirstOrDefault(m =>
+        ModuleState? byName = modules.FirstOrDefault(m =>
             m.Name.Equals(response.Trim(), StringComparison.OrdinalIgnoreCase));
         if (byName is not null)
         {
@@ -69,7 +69,7 @@ internal sealed class ModuleSelectionService : IModuleSelectionService
         var lines = new List<string> { "Available modules:" };
         for (var i = 0; i < modules.Count; i++)
         {
-            var m = modules[i];
+            ModuleState m = modules[i];
             var status = m.Status switch
             {
                 ModuleStatus.NotStarted => "○ Not Started",

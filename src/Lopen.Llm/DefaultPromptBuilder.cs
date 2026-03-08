@@ -1,5 +1,5 @@
-using System.Text;
 using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace Lopen.Llm;
 
@@ -104,7 +104,7 @@ internal sealed class DefaultPromptBuilder : IPromptBuilder
         sb.AppendLine("# Context");
         sb.AppendLine();
 
-        foreach (var (title, content) in contextSections)
+        foreach ((string? title, string? content) in contextSections)
         {
             sb.AppendLine($"## {title}");
             sb.AppendLine();
@@ -115,7 +115,7 @@ internal sealed class DefaultPromptBuilder : IPromptBuilder
 
     private void AppendToolsSection(StringBuilder sb, WorkflowPhase phase)
     {
-        var tools = _toolRegistry.GetToolsForPhase(phase);
+        IReadOnlyList<LopenToolDefinition> tools = _toolRegistry.GetToolsForPhase(phase);
 
         sb.AppendLine("# Available Tools");
         sb.AppendLine();
@@ -126,7 +126,7 @@ internal sealed class DefaultPromptBuilder : IPromptBuilder
         }
         else
         {
-            foreach (var tool in tools)
+            foreach (LopenToolDefinition tool in tools)
             {
                 sb.AppendLine($"- **{tool.Name}**: {tool.Description}");
             }

@@ -12,7 +12,7 @@ public class PassThroughGuardrailTests
     {
         var guardrail = new PassThroughGuardrail();
 
-        var result = await guardrail.EvaluateAsync(CreateContext());
+        GuardrailResult result = await guardrail.EvaluateAsync(CreateContext());
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }

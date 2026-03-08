@@ -17,7 +17,7 @@ public static class ConfigurationDiagnostics
 
         var entries = new List<ConfigurationEntry>();
 
-        foreach (var kvp in configurationRoot.AsEnumerable())
+        foreach (KeyValuePair<string, string?> kvp in configurationRoot.AsEnumerable())
         {
             if (kvp.Value is null)
                 continue;
@@ -44,7 +44,7 @@ public static class ConfigurationDiagnostics
         var separator = new string('-', header.Length);
 
         var lines = new List<string> { header, separator };
-        foreach (var entry in entries.OrderBy(e => e.Key, StringComparer.OrdinalIgnoreCase))
+        foreach (ConfigurationEntry? entry in entries.OrderBy(e => e.Key, StringComparer.OrdinalIgnoreCase))
         {
             lines.Add($"{entry.Key.PadRight(keyWidth)}  {entry.Value.PadRight(valueWidth)}  {entry.Source}");
         }
@@ -62,7 +62,7 @@ public static class ConfigurationDiagnostics
 
         for (var i = 0; i < entries.Count; i++)
         {
-            var entry = entries[i];
+            ConfigurationEntry entry = entries[i];
             var comma = i < entries.Count - 1 ? "," : "";
             sb.AppendLine($"  {{\"key\": {JsonEscape(entry.Key)}, \"value\": {JsonEscape(entry.Value)}, \"source\": {JsonEscape(entry.Source)}}}{comma}");
         }
@@ -86,7 +86,7 @@ public static class ConfigurationDiagnostics
         // Walk providers in reverse order (highest priority first) to find the winning provider
         for (var i = root.Providers.Count() - 1; i >= 0; i--)
         {
-            var provider = root.Providers.ElementAt(i);
+            IConfigurationProvider provider = root.Providers.ElementAt(i);
             if (provider.TryGet(key, out _))
             {
                 return provider switch

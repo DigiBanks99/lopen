@@ -35,7 +35,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(Unlimited());
 
-        var result = enforcer.Check(1_000_000, 500);
+        BudgetCheckResult result = enforcer.Check(1_000_000, 500);
 
         Assert.Equal(BudgetStatus.Ok, result.Status);
         Assert.Null(result.TokenUsageFraction);
@@ -47,7 +47,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithTokenBudget(10_000));
 
-        var result = enforcer.Check(0, 0);
+        BudgetCheckResult result = enforcer.Check(0, 0);
 
         Assert.Equal(BudgetStatus.Ok, result.Status);
         Assert.Equal(0.0, result.TokenUsageFraction);
@@ -60,7 +60,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithTokenBudget(10_000));
 
-        var result = enforcer.Check(7_000, 0);
+        BudgetCheckResult result = enforcer.Check(7_000, 0);
 
         Assert.Equal(BudgetStatus.Ok, result.Status);
         Assert.Equal(BudgetStatus.Ok, result.TokenStatus);
@@ -72,7 +72,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithTokenBudget(10_000));
 
-        var result = enforcer.Check(8_000, 0);
+        BudgetCheckResult result = enforcer.Check(8_000, 0);
 
         Assert.Equal(BudgetStatus.Warning, result.Status);
         Assert.Equal(BudgetStatus.Warning, result.TokenStatus);
@@ -85,7 +85,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithTokenBudget(10_000));
 
-        var result = enforcer.Check(8_500, 0);
+        BudgetCheckResult result = enforcer.Check(8_500, 0);
 
         Assert.Equal(BudgetStatus.Warning, result.Status);
     }
@@ -95,7 +95,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithTokenBudget(10_000));
 
-        var result = enforcer.Check(9_000, 0);
+        BudgetCheckResult result = enforcer.Check(9_000, 0);
 
         Assert.Equal(BudgetStatus.ConfirmationRequired, result.Status);
         Assert.Equal(BudgetStatus.ConfirmationRequired, result.TokenStatus);
@@ -107,7 +107,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithTokenBudget(10_000));
 
-        var result = enforcer.Check(10_000, 0);
+        BudgetCheckResult result = enforcer.Check(10_000, 0);
 
         Assert.Equal(BudgetStatus.Exceeded, result.Status);
         Assert.Equal(BudgetStatus.Exceeded, result.TokenStatus);
@@ -119,7 +119,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithTokenBudget(10_000));
 
-        var result = enforcer.Check(15_000, 0);
+        BudgetCheckResult result = enforcer.Check(15_000, 0);
 
         Assert.Equal(BudgetStatus.Exceeded, result.Status);
         Assert.True(result.TokenUsageFraction > 1.0);
@@ -132,7 +132,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithRequestBudget(100));
 
-        var result = enforcer.Check(0, 50);
+        BudgetCheckResult result = enforcer.Check(0, 50);
 
         Assert.Equal(BudgetStatus.Ok, result.Status);
         Assert.Equal(BudgetStatus.Ok, result.RequestStatus);
@@ -144,7 +144,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithRequestBudget(100));
 
-        var result = enforcer.Check(0, 80);
+        BudgetCheckResult result = enforcer.Check(0, 80);
 
         Assert.Equal(BudgetStatus.Warning, result.Status);
         Assert.Equal(BudgetStatus.Warning, result.RequestStatus);
@@ -155,7 +155,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithRequestBudget(100));
 
-        var result = enforcer.Check(0, 90);
+        BudgetCheckResult result = enforcer.Check(0, 90);
 
         Assert.Equal(BudgetStatus.ConfirmationRequired, result.Status);
     }
@@ -165,7 +165,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithRequestBudget(100));
 
-        var result = enforcer.Check(0, 100);
+        BudgetCheckResult result = enforcer.Check(0, 100);
 
         Assert.Equal(BudgetStatus.Exceeded, result.Status);
         Assert.Equal(BudgetStatus.Exceeded, result.RequestStatus);
@@ -178,7 +178,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithBothBudgets(10_000, 100));
 
-        var result = enforcer.Check(5_000, 50);
+        BudgetCheckResult result = enforcer.Check(5_000, 50);
 
         Assert.Equal(BudgetStatus.Ok, result.Status);
         Assert.NotNull(result.TokenUsageFraction);
@@ -190,7 +190,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithBothBudgets(10_000, 100));
 
-        var result = enforcer.Check(8_500, 10);
+        BudgetCheckResult result = enforcer.Check(8_500, 10);
 
         Assert.Equal(BudgetStatus.Warning, result.Status);
         Assert.Equal(BudgetStatus.Warning, result.TokenStatus);
@@ -202,7 +202,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithBothBudgets(10_000, 100));
 
-        var result = enforcer.Check(1_000, 100);
+        BudgetCheckResult result = enforcer.Check(1_000, 100);
 
         Assert.Equal(BudgetStatus.Exceeded, result.Status);
         Assert.Equal(BudgetStatus.Ok, result.TokenStatus);
@@ -214,7 +214,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithBothBudgets(10_000, 100));
 
-        var result = enforcer.Check(8_000, 100);
+        BudgetCheckResult result = enforcer.Check(8_000, 100);
 
         // Tokens at warning, requests exceeded => overall = exceeded
         Assert.Equal(BudgetStatus.Exceeded, result.Status);
@@ -227,7 +227,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(Unlimited());
 
-        var result = enforcer.Check(0, 0);
+        BudgetCheckResult result = enforcer.Check(0, 0);
 
         Assert.Equal("Budget usage is within limits.", result.Message);
     }
@@ -276,7 +276,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithTokenBudget(10_000));
 
-        var result = enforcer.Check(8_500, 9999);
+        BudgetCheckResult result = enforcer.Check(8_500, 9999);
 
         Assert.Equal(BudgetStatus.Warning, result.Status);
         Assert.Null(result.RequestUsageFraction);
@@ -289,7 +289,7 @@ public sealed class BudgetEnforcerTests
     {
         var enforcer = new BudgetEnforcer(WithRequestBudget(50));
 
-        var result = enforcer.Check(999_999, 45);
+        BudgetCheckResult result = enforcer.Check(999_999, 45);
 
         Assert.Equal(BudgetStatus.ConfirmationRequired, result.Status);
         Assert.Null(result.TokenUsageFraction);

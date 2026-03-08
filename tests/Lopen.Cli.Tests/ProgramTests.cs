@@ -1,4 +1,3 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Lopen.Commands;
 using Lopen.Configuration;
@@ -8,6 +7,7 @@ using Lopen.Otel;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests;
 
@@ -18,7 +18,7 @@ public class ProgramTests : IDisposable
 
     public ProgramTests()
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddLopenAuth();
         builder.Services.AddSingleton<IGitHubTokenProvider, AuthBridgeTokenProvider>();
@@ -64,21 +64,21 @@ public class ProgramTests : IDisposable
     {
         // ISessionManager and IAutoSaveService require projectRoot.
         // IFileSystem is always registered.
-        var fs = _services.GetService<IFileSystem>();
+        IFileSystem? fs = _services.GetService<IFileSystem>();
         Assert.NotNull(fs);
     }
 
     [Fact]
     public void DI_ResolvesAuthService()
     {
-        var service = _services.GetService<IAuthService>();
+        IAuthService? service = _services.GetService<IAuthService>();
         Assert.NotNull(service);
     }
 
     [Fact]
     public void DI_ResolvesGitHubTokenProvider_AsAuthBridge()
     {
-        var provider = _services.GetService<IGitHubTokenProvider>();
+        IGitHubTokenProvider? provider = _services.GetService<IGitHubTokenProvider>();
         Assert.NotNull(provider);
         Assert.IsType<AuthBridgeTokenProvider>(provider);
     }
@@ -88,7 +88,7 @@ public class ProgramTests : IDisposable
     {
         // Without projectRoot, ISessionManager is not registered so the bridge
         // is not registered either. Verify that it falls back to NullSessionStateSaver.
-        var saver = _services.GetService<ISessionStateSaver>();
+        ISessionStateSaver? saver = _services.GetService<ISessionStateSaver>();
         Assert.NotNull(saver);
         // With projectRoot, this would be SessionStateSaverBridge instead.
     }
@@ -98,37 +98,37 @@ public class ProgramTests : IDisposable
     [Fact]
     public void AuthCommand_CreatesSuccessfully()
     {
-        var cmd = AuthCommand.Create(_services);
+        Command cmd = AuthCommand.Create(_services);
         Assert.Equal("auth", cmd.Name);
     }
 
     [Fact]
     public void SessionCommand_CreatesSuccessfully()
     {
-        var cmd = SessionCommand.Create(_services);
+        Command cmd = SessionCommand.Create(_services);
         Assert.Equal("session", cmd.Name);
     }
 
     [Fact]
     public void ConfigCommand_CreatesSuccessfully()
     {
-        var cmd = ConfigCommand.Create(_services);
+        Command cmd = ConfigCommand.Create(_services);
         Assert.Equal("config", cmd.Name);
     }
 
     [Fact]
     public void RevertCommand_CreatesSuccessfully()
     {
-        var cmd = RevertCommand.Create(_services);
+        Command cmd = RevertCommand.Create(_services);
         Assert.Equal("revert", cmd.Name);
     }
 
     [Fact]
     public void PhaseCommands_CreateSuccessfully()
     {
-        var spec = PhaseCommands.CreateSpec(_services);
-        var plan = PhaseCommands.CreatePlan(_services);
-        var build = PhaseCommands.CreateBuild(_services);
+        Command spec = PhaseCommands.CreateSpec(_services);
+        Command plan = PhaseCommands.CreatePlan(_services);
+        Command build = PhaseCommands.CreateBuild(_services);
 
         Assert.Equal("spec", spec.Name);
         Assert.Equal("plan", plan.Name);
@@ -140,7 +140,7 @@ public class ProgramTests : IDisposable
     [Fact]
     public void RootCommand_ContainsAllSubcommands()
     {
-        var root = BuildRootCommand();
+        RootCommand root = BuildRootCommand();
 
         var names = root.Subcommands.Select(c => c.Name).ToHashSet();
         Assert.Contains("auth", names);
@@ -157,7 +157,7 @@ public class ProgramTests : IDisposable
     [Fact]
     public async Task RootCommand_Help_ReturnsSuccess()
     {
-        var root = BuildRootCommand();
+        RootCommand root = BuildRootCommand();
         var config = new CommandLineConfiguration(root);
 
         var exitCode = await config.InvokeAsync(["--help"]);
@@ -171,7 +171,7 @@ public class ProgramTests : IDisposable
     [InlineData("config", "--help")]
     public async Task SubCommand_Help_ReturnsSuccess(params string[] args)
     {
-        var root = BuildRootCommand();
+        RootCommand root = BuildRootCommand();
         var config = new CommandLineConfiguration(root);
 
         var exitCode = await config.InvokeAsync(args);

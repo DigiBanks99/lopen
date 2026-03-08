@@ -13,7 +13,7 @@ public class ToolConversionTests
     [Fact]
     public void ToAiFunctions_EmptyList_ReturnsEmptyList()
     {
-        var result = ToolConversion.ToAiFunctions([]);
+        List<AIFunction> result = ToolConversion.ToAiFunctions([]);
 
         Assert.Empty(result);
     }
@@ -28,7 +28,7 @@ public class ToolConversionTests
             new("another_with_handler", "Has handler too", Handler: (_, _) => Task.FromResult("ok2")),
         };
 
-        var result = ToolConversion.ToAiFunctions(tools);
+        List<AIFunction> result = ToolConversion.ToAiFunctions(tools);
 
         Assert.Equal(2, result.Count);
     }
@@ -41,7 +41,7 @@ public class ToolConversionTests
             new("read_spec", "Read specification", Handler: (_, _) => Task.FromResult("content")),
         };
 
-        var result = ToolConversion.ToAiFunctions(tools);
+        List<AIFunction> result = ToolConversion.ToAiFunctions(tools);
 
         Assert.Single(result);
         Assert.Equal("read_spec", result[0].Name);
@@ -55,7 +55,7 @@ public class ToolConversionTests
             new("read_spec", "Read the specification document", Handler: (_, _) => Task.FromResult("content")),
         };
 
-        var result = ToolConversion.ToAiFunctions(tools);
+        List<AIFunction> result = ToolConversion.ToAiFunctions(tools);
 
         Assert.Single(result);
         Assert.Equal("Read the specification document", result[0].Description);
@@ -74,11 +74,11 @@ public class ToolConversionTests
             }),
         };
 
-        var result = ToolConversion.ToAiFunctions(tools);
+        List<AIFunction> result = ToolConversion.ToAiFunctions(tools);
         Assert.Single(result);
 
         // Invoke the AIFunction and verify the handler is called
-        var aiFunc = result[0];
+        AIFunction aiFunc = result[0];
         var invokeResult = await aiFunc.InvokeAsync(
             new AIFunctionArguments(new Dictionary<string, object?>
             {
@@ -97,7 +97,7 @@ public class ToolConversionTests
             new("tool2", "Desc2"),
         };
 
-        var result = ToolConversion.ToAiFunctions(tools);
+        List<AIFunction> result = ToolConversion.ToAiFunctions(tools);
 
         Assert.Empty(result);
     }
@@ -112,7 +112,7 @@ public class ToolConversionTests
             new("verify_task", "Verify task", Handler: (_, _) => Task.FromResult("c")),
         };
 
-        var result = ToolConversion.ToAiFunctions(tools);
+        List<AIFunction> result = ToolConversion.ToAiFunctions(tools);
 
         Assert.Equal(3, result.Count);
         Assert.Equal("read_spec", result[0].Name);
@@ -130,7 +130,7 @@ public class ToolConversionTests
             new("m_tool", "M", Handler: (_, _) => Task.FromResult("m")),
         };
 
-        var result = ToolConversion.ToAiFunctions(tools);
+        List<AIFunction> result = ToolConversion.ToAiFunctions(tools);
 
         Assert.Equal("z_tool", result[0].Name);
         Assert.Equal("a_tool", result[1].Name);
@@ -145,7 +145,7 @@ public class ToolConversionTests
             new("test", "Test tool", Handler: (_, _) => Task.FromResult("ok")),
         };
 
-        var result = ToolConversion.ToAiFunctions(tools);
+        List<AIFunction> result = ToolConversion.ToAiFunctions(tools);
 
         Assert.Single(result);
         Assert.IsAssignableFrom<AIFunction>(result[0]);
@@ -166,7 +166,7 @@ public class ToolConversionTests
             }),
         };
 
-        var result = ToolConversion.ToAiFunctions(tools);
+        List<AIFunction> result = ToolConversion.ToAiFunctions(tools);
         await result[0].InvokeAsync(
             new AIFunctionArguments(new Dictionary<string, object?>
             {

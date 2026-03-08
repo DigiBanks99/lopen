@@ -44,7 +44,7 @@ public class SessionStateSaverBridgeTests
         await saver.SaveAsync();
 
         // No session was added, so no state could have been saved.
-        var sessions = await manager.ListSessionsAsync();
+        IReadOnlyList<SessionId> sessions = await manager.ListSessionsAsync();
         Assert.Empty(sessions);
     }
 
@@ -59,7 +59,7 @@ public class SessionStateSaverBridgeTests
         await saver.SaveAsync();
 
         // LoadSessionStateAsync returns null so SaveSessionStateAsync is never called.
-        var state = await manager.LoadSessionStateAsync(TestSessionId);
+        SessionState? state = await manager.LoadSessionStateAsync(TestSessionId);
         Assert.Null(state);
     }
 
@@ -67,16 +67,16 @@ public class SessionStateSaverBridgeTests
     public async Task SaveAsync_PersistsUpdatedState()
     {
         var manager = new FakeSessionManager();
-        var originalState = CreateTestState();
+        SessionState originalState = CreateTestState();
         manager.AddSession(TestSessionId, originalState);
         manager.SetLatestSessionId(TestSessionId);
 
         var saver = new SessionStateSaverBridge(manager, NullLogger<SessionStateSaverBridge>.Instance);
-        var before = DateTimeOffset.UtcNow;
+        DateTimeOffset before = DateTimeOffset.UtcNow;
 
         await saver.SaveAsync();
 
-        var saved = await manager.LoadSessionStateAsync(TestSessionId);
+        SessionState? saved = await manager.LoadSessionStateAsync(TestSessionId);
         Assert.NotNull(saved);
         Assert.True(saved!.UpdatedAt >= before, "UpdatedAt should be refreshed to a recent timestamp.");
         Assert.True(saved.UpdatedAt > originalState.UpdatedAt, "UpdatedAt should be later than original.");

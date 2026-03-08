@@ -12,8 +12,8 @@ public class ServiceCollectionExtensionsTests
 
         services.AddLopenConfiguration(options);
 
-        var provider = services.BuildServiceProvider();
-        var resolved = provider.GetRequiredService<LopenOptions>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        LopenOptions resolved = provider.GetRequiredService<LopenOptions>();
 
         Assert.Same(options, resolved);
     }
@@ -26,7 +26,7 @@ public class ServiceCollectionExtensionsTests
 
         services.AddLopenConfiguration(options);
 
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         Assert.Same(options.Models, provider.GetRequiredService<ModelOptions>());
         Assert.Same(options.Budget, provider.GetRequiredService<BudgetOptions>());
@@ -42,7 +42,7 @@ public class ServiceCollectionExtensionsTests
     public void AddLopenConfiguration_ReturnsServiceCollection()
     {
         var services = new ServiceCollection();
-        var result = services.AddLopenConfiguration(new LopenOptions());
+        IServiceCollection result = services.AddLopenConfiguration(new LopenOptions());
 
         Assert.Same(services, result);
     }
@@ -53,8 +53,8 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddLopenConfiguration(new LopenOptions());
 
-        var provider = services.BuildServiceProvider();
-        var enforcer = provider.GetRequiredService<IBudgetEnforcer>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IBudgetEnforcer enforcer = provider.GetRequiredService<IBudgetEnforcer>();
 
         Assert.IsType<BudgetEnforcer>(enforcer);
     }
