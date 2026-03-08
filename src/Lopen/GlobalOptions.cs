@@ -32,13 +32,6 @@ public static class GlobalOptions
         Recursive = true,
     };
 
-    /// <summary>Forces starting a fresh session, skipping the resume prompt.</summary>
-    public static Option<bool> NoResume { get; } = new("--no-resume")
-    {
-        Description = "Start a fresh session; skip the resume prompt",
-        Recursive = true,
-    };
-
     /// <summary>Suppresses the TUI landing page modal on startup (CLI-27).</summary>
     public static Option<bool> NoWelcome { get; } = new("--no-welcome")
     {
@@ -75,7 +68,6 @@ public static class GlobalOptions
         root.Options.Add(Headless);
         root.Options.Add(Prompt);
         root.Options.Add(Resume);
-        root.Options.Add(NoResume);
         root.Options.Add(NoWelcome);
         root.Options.Add(Model);
         root.Options.Add(Unattended);

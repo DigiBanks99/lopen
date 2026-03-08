@@ -336,19 +336,6 @@ public class PhaseCommandTests
     }
 
     [Fact]
-    public async Task Spec_NoResume_StartsFresh()
-    {
-        _fakeSessionManager.AddSession(Session1, ActiveState);
-        _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, output, _) = CreateConfig();
-
-        var exitCode = await config.InvokeAsync(["spec", "--no-resume"]);
-
-        Assert.Equal(0, exitCode);
-        Assert.DoesNotContain("Resuming session", output.ToString());
-    }
-
-    [Fact]
     public async Task Spec_AutoResume_LatestActiveSession()
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);

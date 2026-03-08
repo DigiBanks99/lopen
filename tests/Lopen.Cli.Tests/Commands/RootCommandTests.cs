@@ -151,18 +151,6 @@ public class RootCommandTests
     }
 
     [Fact]
-    public async Task RootCommand_NoResume_LaunchesTui_WithoutSession()
-    {
-        var (config, output, _, tui) = CreateConfig();
-
-        var exitCode = await config.InvokeAsync(["--no-resume"]);
-
-        Assert.Equal(0, exitCode);
-        Assert.True(tui.RunWasCalled);
-        Assert.DoesNotContain("Resuming session", output.ToString());
-    }
-
-    [Fact]
     public async Task RootCommand_Resume_WithActiveSession_PrintsResumingMessage()
     {
         var sessionManager = new FakeSessionManager();
@@ -355,18 +343,6 @@ public class RootCommandTests
 
         Assert.Equal(0, exitCode);
         Assert.True(tui.SessionResumeModalSuppressed, "SuppressSessionResumeModal should be called when --resume is set");
-        Assert.True(tui.RunWasCalled);
-    }
-
-    [Fact]
-    public async Task RootCommand_NoResume_SuppressesSessionResumeModal()
-    {
-        var (config, _, _, tui) = CreateConfig();
-
-        var exitCode = await config.InvokeAsync(["--no-resume"]);
-
-        Assert.Equal(0, exitCode);
-        Assert.True(tui.SessionResumeModalSuppressed, "SuppressSessionResumeModal should be called when --no-resume is set");
         Assert.True(tui.RunWasCalled);
     }
 

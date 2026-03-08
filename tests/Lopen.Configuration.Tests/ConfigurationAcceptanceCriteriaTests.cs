@@ -430,17 +430,6 @@ public class ConfigurationAcceptanceCriteriaTests : IDisposable
         Assert.True(options.Session.AutoResume);
     }
 
-    [Fact]
-    public void AC10_NoResumeFlag_DisablesAutoResume()
-    {
-        var builder = new LopenConfigurationBuilder();
-        builder.AddResumeOverride(false);
-
-        var (options, _) = builder.Build();
-
-        Assert.False(options.Session.AutoResume);
-    }
-
     // CFG-11: --max-iterations <n> CLI flag overrides max_iterations
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Text;
 using Lopen.Core;
 using Lopen.Core.Workflow;
 using Microsoft.Extensions.Logging;
@@ -1043,8 +1044,105 @@ internal sealed class TuiApplication : ITuiApplication
     {
         for (var row = 0; row < region.Height; row++)
         {
-            var line = row < lines.Length ? lines[row] : string.Empty;
-            ctx.SetString(region.X, region.Y + row, line, null, region.Width);
+            // Clear the row to avoid artifacts from previous frames
+            ctx.SetString(region.X, region.Y + row, new string(' ', region.Width), null, region.Width);
+
+            var rawLine = row < lines.Length ? lines[row] : string.Empty;
+            if (rawLine.Length > 0)
+            {
+                var markupLine = ConvertAnsiToMarkup(rawLine);
+                var textLine = LineExtensions.FromMarkup(markupLine, null);
+                ctx.SetLine(region.X, region.Y + row, textLine, region.Width);
+            }
         }
+    }
+
+    /// <summary>
+    /// Converts a string containing ANSI escape codes into Spectre Console markup.
+    /// Literal brackets in text are escaped so FromMarkup won't misinterpret them.
+    /// </summary>
+    internal static string ConvertAnsiToMarkup(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return string.Empty;
+
+        // Fast path: no ANSI escapes
+        if (!text.Contains('\x1b'))
+            return EscapeBrackets(text);
+
+        var sb = new StringBuilder(text.Length);
+        var openTags = 0;
+        var i = 0;
+
+        while (i < text.Length)
+        {
+            if (text[i] == '\x1b' && i + 1 < text.Length && text[i + 1] == '[')
+            {
+                // Parse ANSI escape: ESC [ <digits> m
+                var start = i + 2;
+                var end = start;
+                while (end < text.Length && text[end] != 'm' && end - start < 10)
+                    end++;
+
+                if (end < text.Length && text[end] == 'm')
+                {
+                    var code = text[start..end];
+                    if (code == "0")
+                    {
+                        // Reset: close all open markup tags
+                        for (var t = 0; t < openTags; t++)
+                            sb.Append("[/]");
+                        openTags = 0;
+                    }
+                    else
+                    {
+                        var markup = MapAnsiCodeToMarkup(code);
+                        if (markup.Length > 0)
+                        {
+                            sb.Append(markup);
+                            openTags++;
+                        }
+                    }
+
+                    i = end + 1;
+                    continue;
+                }
+            }
+
+            // Escape literal brackets for Spectre markup
+            if (text[i] == '[')
+                sb.Append("[[");
+            else if (text[i] == ']')
+                sb.Append("]]");
+            else
+                sb.Append(text[i]);
+            i++;
+        }
+
+        // Close any unclosed tags
+        for (var t = 0; t < openTags; t++)
+            sb.Append("[/]");
+
+        return sb.ToString();
+    }
+
+    private static string MapAnsiCodeToMarkup(string code) => code switch
+    {
+        "1" => "[bold]",
+        "31" => "[red]",
+        "32" => "[green]",
+        "33" => "[yellow]",
+        "34" => "[blue]",
+        "35" => "[magenta]",
+        "36" => "[cyan]",
+        "90" => "[grey]",
+        _ => string.Empty,
+    };
+
+    private static string EscapeBrackets(string text)
+    {
+        if (!text.Contains('[') && !text.Contains(']'))
+            return text;
+        return text.Replace("[", "[[").Replace("]", "]]");
     }
 }

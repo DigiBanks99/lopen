@@ -10,7 +10,7 @@ using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-var builder = Host.CreateApplicationBuilder(args);
+HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 var projectRoot = Lopen.ProjectRootDiscovery.FindProjectRoot(Directory.GetCurrentDirectory());
 
@@ -34,9 +34,9 @@ builder.Services.AddSessionDetector();
 builder.Services.AddTuiOutputRenderer();
 builder.Services.AddLopenOtel(builder.Configuration);
 
-using var host = builder.Build();
+using IHost host = builder.Build();
 
-var rootCommand = new RootCommand("Lopen — AI-powered software engineering workflow");
+RootCommand rootCommand = new("Lopen — AI-powered software engineering workflow");
 GlobalOptions.AddTo(rootCommand);
 
 RootCommandHandler.Configure(host.Services)(rootCommand);
@@ -50,6 +50,6 @@ rootCommand.Add(PhaseCommands.CreatePlan(host.Services));
 rootCommand.Add(PhaseCommands.CreateBuild(host.Services));
 rootCommand.Add(TestCommand.Create(host.Services));
 
-var config = new CommandLineConfiguration(rootCommand);
+CommandLineConfiguration config = new(rootCommand);
 
 return await config.InvokeAsync(args);
