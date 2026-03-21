@@ -37,58 +37,32 @@ public static class ServiceCollectionExtensions
         });
 
         // Slash commands
-        services.AddSingleton<ISlashCommand>(sp => new HelpCommand(
-            sp.GetRequiredService<IAnsiConsole>(),
-            new Lazy<ISlashCommandRegistry>(() => sp.GetRequiredService<ISlashCommandRegistry>())));
+        services.AddSingleton<ISlashCommand, HelpCommand>();
         services.AddSingleton<ISlashCommand, ModelCommand>();
         services.AddSingleton<ISlashCommand, SkillsCommand>();
-        services.AddSingleton<ISlashCommand>(sp => new SessionsCommand(
-            sp.GetRequiredService<IAnsiConsole>(),
-            sp.GetService<ISessionManager>()));
-        services.AddSingleton<ISlashCommand>(sp => new ResumeCommand(
-            sp.GetRequiredService<IAnsiConsole>(),
-            sp.GetService<ISessionManager>(),
-            sp.GetService<IWorkflowOrchestrator>()));
+        services.AddSingleton<ISlashCommand, SessionsCommand>();
+        services.AddSingleton<ISlashCommand, ResumeCommand>();
         services.AddSingleton<ISlashCommand, ClearCommand>();
         services.AddSingleton<ISlashCommand, ExitCommand>();
+        services.AddSingleton(sp => new Lazy<ISlashCommandRegistry>(() => sp.GetRequiredService<ISlashCommandRegistry>()));
 
         // Command registry (also implements ISlashCommandRegistry for completion)
-        services.TryAddSingleton<SlashCommandRegistry>(sp =>
-        {
-            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
-            IEnumerable<ISlashCommand> commands = sp.GetServices<ISlashCommand>();
-            return new SlashCommandRegistry(console, commands);
-        });
-        services.TryAddSingleton<ISlashCommandRegistry>(sp => sp.GetRequiredService<SlashCommandRegistry>());
+        services.TryAddSingleton<SlashCommandRegistry>();
+        services.TryAddSingleton<ISlashCommandRegistry, SlashCommandRegistry>();
 
         // Slash command completion (requires ISlashCommandRegistry)
-        services.TryAddSingleton<RadLine.ITextCompletion>(sp =>
-        {
-            ISlashCommandRegistry registry = sp.GetRequiredService<ISlashCommandRegistry>();
-            return new SlashCommandCompletion(registry);
-        });
+        services.TryAddSingleton<RadLine.ITextCompletion, SlashCommandCompletion>();
 
         // Line editor
-        services.TryAddSingleton<LopenLineEditor>(sp =>
-        {
-            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
-            RadLine.ILineEditorHistory history = sp.GetRequiredService<RadLine.ILineEditorHistory>();
-            RadLine.ITextCompletion? completion = sp.GetService<RadLine.ITextCompletion>();
-            IPauseController? pauseController = sp.GetService<IPauseController>();
-            return new LopenLineEditor(console, history, completion, pauseController);
-        });
+        services.TryAddSingleton<LopenLineEditor>();
+        services.TryAddSingleton(sp => new Lazy<LopenLineEditor>(() => sp.GetRequiredService<LopenLineEditor>()));
 
         // TUI output renderer - registered as IOutputRenderer to override HeadlessRenderer
-        services.AddSingleton<IOutputRenderer>(sp =>
-        {
-            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
-            LopenLineEditor lineEditor = sp.GetRequiredService<LopenLineEditor>();
-            return new TuiOutputRenderer(console, lineEditor);
-        });
+        services.AddSingleton<IOutputRenderer, TuiOutputRenderer>();
 
         // User prompt queue for TUI-to-orchestrator communication
         services.AddSingleton<TuiUserPromptQueue>();
-        services.AddSingleton<IUserPromptQueue>(sp => sp.GetRequiredService<TuiUserPromptQueue>());
+        services.AddSingleton<IUserPromptQueue, TuiUserPromptQueue>();
 
         // Response rendering components
         services.TryAddSingleton<ResponseRenderer>();
@@ -126,7 +100,8 @@ public static class ServiceCollectionExtensions
             WorkflowOverviewBlock? overviewBlock = sp.GetService<WorkflowOverviewBlock>();
             CommandPalette? commandPalette = sp.GetService<CommandPalette>();
             ISessionManager? sessionManager = sp.GetService<ISessionManager>();
-            return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator, overviewBlock, commandPalette, sessionManager);
+            IModuleSelectionService? moduleSelectionService = sp.GetService<IModuleSelectionService>();
+            return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator, overviewBlock, commandPalette, sessionManager, moduleSelectionService);
         });
 
         // Gallery components for visual testing (TUI-34 through TUI-36)

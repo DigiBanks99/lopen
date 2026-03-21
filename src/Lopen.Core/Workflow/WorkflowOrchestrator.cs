@@ -113,8 +113,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 SessionState? savedState = await _sessionManager.LoadSessionStateAsync(resumeSessionId, cancellationToken);
                 if (savedState is not null)
                 {
-                    await _renderer.RenderResultAsync(
-                        $"Resuming session {resumeSessionId} at {savedState.Step}");
+                    await _renderer.RenderResultAsync($"Resuming session {resumeSessionId} at {savedState.Step}", cancellationToken);
                 }
             }
             else
@@ -132,8 +131,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
                         await RestoreSessionMetricsAsync(latestId, cancellationToken);
 
-                        await _renderer.RenderResultAsync(
-                            $"Resuming session {latestId} at {savedState.Step}");
+                        await _renderer.RenderResultAsync($"Resuming session {latestId} at {savedState.Step}", cancellationToken);
                     }
                 }
 
@@ -179,11 +177,11 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 if (_pauseController is not null && _pauseController.IsPaused)
                 {
                     _logger.LogInformation("Execution paused — waiting for resume");
-                    await _renderer.RenderResultAsync("Paused — press Ctrl+P to resume");
+                    await _renderer.RenderResultAsync("Paused — press Ctrl+P to resume", cancellationToken);
                     await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
                     await _pauseController.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
                     _logger.LogInformation("Execution resumed");
-                    await _renderer.RenderResultAsync("Resumed");
+                    await _renderer.RenderResultAsync("Resumed", cancellationToken);
                 }
 
                 StepResult stepResult = await RunStepAsync(moduleName, cancellationToken: cancellationToken);
@@ -191,7 +189,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 if (!stepResult.Success)
                 {
                     _logger.LogWarning("Step {Step} failed: {Summary}", _engine.CurrentStep, stepResult.Summary);
-                    await _renderer.RenderErrorAsync(stepResult.Summary ?? "Step failed");
+                    await _renderer.RenderErrorAsync(stepResult.Summary ?? "Step failed", cancellationToken: cancellationToken);
                     await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
 
                     // CORE-21: Consult failure handler for self-correction vs interruption
@@ -207,8 +205,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                             _logger.LogCritical(
                                 "Critical system error — blocking execution: {Message}",
                                 criticalClassification.Message);
-                            await _renderer.RenderErrorAsync(
-                                $"CRITICAL ERROR — execution blocked: {criticalClassification.Message}");
+                            await _renderer.RenderErrorAsync($"CRITICAL ERROR — execution blocked: {criticalClassification.Message}", cancellationToken: cancellationToken);
                             await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
                             return OrchestrationResult.CriticalError(_iterationCount, _engine.CurrentStep,
                                 criticalClassification.Message);
@@ -274,7 +271,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 if (stepResult.RequiresUserConfirmation)
                 {
                     _logger.LogInformation("User confirmation required at step {Step}", _engine.CurrentStep);
-                    await _renderer.RenderResultAsync(stepResult.Summary ?? "Awaiting user confirmation");
+                    await _renderer.RenderResultAsync(stepResult.Summary ?? "Awaiting user confirmation", cancellationToken);
                     await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
                     return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
                         "User confirmation required");
@@ -304,7 +301,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 _failureHandler?.RecordCriticalError(errorMessage);
 
                 _logger.LogCritical(ex, "Critical storage error — pausing workflow: {Message}", errorMessage);
-                await _renderer.RenderErrorAsync($"CRITICAL ERROR — workflow paused: {errorMessage}");
+                await _renderer.RenderErrorAsync($"CRITICAL ERROR — workflow paused: {errorMessage}", cancellationToken: cancellationToken);
 
                 return OrchestrationResult.CriticalError(
                     _iterationCount, _engine.CurrentStep, errorMessage);
@@ -319,7 +316,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         _logger.LogInformation("Orchestration complete for module {Module} after {Iterations} iterations",
             moduleName, _iterationCount);
-        await _renderer.RenderResultAsync($"Module {moduleName} completed after {_iterationCount} iterations");
+        await _renderer.RenderResultAsync($"Module {moduleName} completed after {_iterationCount} iterations", cancellationToken);
 
         return OrchestrationResult.Completed(_iterationCount, _engine.CurrentStep);
     }
@@ -373,7 +370,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                     new KeyValuePair<string, object?>("lopen.backpressure.action", "warn"));
 
                 _logger.LogWarning("Guardrail warning: {Message}", warn.Message);
-                await _renderer.RenderErrorAsync($"Warning: {warn.Message}");
+                await _renderer.RenderErrorAsync($"Warning: {warn.Message}", cancellationToken: cancellationToken);
             }
         }
 
@@ -385,8 +382,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             {
                 var action = drift.IsNew ? "added" : drift.IsRemoved ? "removed" : "changed";
                 _logger.LogWarning("Spec drift: section '{Header}' was {Action}", drift.Header, action);
-                await _renderer.RenderErrorAsync(
-                    $"Specification drift detected: section '{drift.Header}' was {action}");
+                await _renderer.RenderErrorAsync($"Specification drift detected: section '{drift.Header}' was {action}", cancellationToken: cancellationToken);
             }
         }
 
@@ -551,14 +547,14 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             // CORE-23: Critical system errors block execution
             sdkActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogCritical(ex, "Critical system error at step {Step}", step);
-            await _renderer.RenderErrorAsync($"CRITICAL: {ex.Message}", ex);
+            await _renderer.RenderErrorAsync($"CRITICAL: {ex.Message}", ex, cancellationToken);
             return StepResult.CriticalFailure($"Critical system error: {ex.Message}");
         }
         catch (Exception ex)
         {
             sdkActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogError(ex, "LLM invocation failed at step {Step}", step);
-            await _renderer.RenderErrorAsync($"LLM error: {ex.Message}", ex);
+            await _renderer.RenderErrorAsync($"LLM error: {ex.Message}", ex, cancellationToken);
             return StepResult.Failed($"LLM invocation failed: {ex.Message}");
         }
     }

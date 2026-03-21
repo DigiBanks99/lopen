@@ -57,6 +57,30 @@ public class TuiRunnerTests
     }
 
     [Fact]
+    public async Task RunAsync_WhenConsoleIsNotInteractive_ReturnsFailureAndShowsHint()
+    {
+        var writer = new StringWriter();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        FileLineEditorHistory history = new(
+            Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
+        LopenLineEditor editor = new(console, history);
+        TuiUserPromptQueue queue = new();
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
+        SlashCommandRegistry registry = new(console, []);
+        TuiRunner runner = new(console, editor, queue, renderer, registry);
+
+        int exitCode = await runner.RunAsync(cancellationToken: CancellationToken.None);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Interactive TUI input is not available", writer.ToString());
+    }
+
+    [Fact]
     public async Task ProcessTurnAsync_WithNoOrchestrator_Completes()
     {
         (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
@@ -72,6 +96,7 @@ public class TuiRunnerTests
     {
         (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
         IWorkflowOrchestrator orchestrator = NSubstitute.Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
+        orchestrator.ActiveModule.Returns("tui");
         orchestrator.RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Core.Workflow.StepResult.Succeeded(Core.Workflow.WorkflowTrigger.Assess));
         TuiRunner runner = new(console, editor, queue, renderer, registry, orchestrator);
@@ -82,10 +107,119 @@ public class TuiRunnerTests
     }
 
     [Fact]
+    public async Task ExecuteTurnAsync_WithNoActiveModule_DoesNotCallRunStepAsync()
+    {
+        var writer = new StringWriter();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        FileLineEditorHistory history = new(
+            Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
+        LopenLineEditor editor = new(console, history);
+        TuiUserPromptQueue queue = new();
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
+        SlashCommandRegistry registry = new(console, []);
+
+        IWorkflowOrchestrator orchestrator = Substitute.For<IWorkflowOrchestrator>();
+        orchestrator.ActiveModule.Returns((string?)null);
+        TuiRunner runner = new(console, editor, queue, renderer, registry, orchestrator);
+
+        using var turnCts = new CancellationTokenSource();
+        await runner.ExecuteTurnAsync(turnCts, CancellationToken.None);
+
+        await orchestrator.DidNotReceive().RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        Assert.Contains("No active module selected", writer.ToString());
+    }
+
+    [Fact]
+    public async Task EnsureActiveModuleAsync_WithSelection_InitializesOrchestrator()
+    {
+        (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
+
+        IWorkflowOrchestrator orchestrator = Substitute.For<IWorkflowOrchestrator>();
+        orchestrator.ActiveModule.Returns((string?)null);
+
+        IModuleSelectionService selector = Substitute.For<IModuleSelectionService>();
+        selector.SelectModuleAsync(Arg.Any<CancellationToken>()).Returns("tui");
+
+        TuiRunner runner = new(console, editor, queue, renderer, registry, orchestrator, moduleSelectionService: selector);
+
+        bool result = await runner.EnsureActiveModuleAsync(CancellationToken.None);
+
+        Assert.True(result);
+        await orchestrator.Received(1).InitializeAsync("tui", null, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EnsureActiveModuleAsync_WhenSelectionUnavailable_ReturnsFalse()
+    {
+        var writer = new StringWriter();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        FileLineEditorHistory history = new(
+            Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
+        LopenLineEditor editor = new(console, history);
+        TuiUserPromptQueue queue = new();
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
+        SlashCommandRegistry registry = new(console, []);
+
+        IWorkflowOrchestrator orchestrator = Substitute.For<IWorkflowOrchestrator>();
+        orchestrator.ActiveModule.Returns((string?)null);
+
+        IModuleSelectionService selector = Substitute.For<IModuleSelectionService>();
+        selector.SelectModuleAsync(Arg.Any<CancellationToken>()).Returns((string?)null);
+
+        TuiRunner runner = new(console, editor, queue, renderer, registry, orchestrator, moduleSelectionService: selector);
+
+        bool result = await runner.EnsureActiveModuleAsync(CancellationToken.None);
+
+        Assert.False(result);
+        await orchestrator.DidNotReceive().InitializeAsync(Arg.Any<string>(), Arg.Any<SessionId?>(), Arg.Any<CancellationToken>());
+        Assert.Contains("No module selected", writer.ToString());
+    }
+
+    [Fact]
+    public async Task EnsureActiveModuleAsync_WithSelection_AllowsFirstTurnExecution()
+    {
+        (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
+
+        string? activeModule = null;
+        IWorkflowOrchestrator orchestrator = Substitute.For<IWorkflowOrchestrator>();
+        orchestrator.ActiveModule.Returns(_ => activeModule);
+        orchestrator.InitializeAsync(Arg.Any<string>(), Arg.Any<SessionId?>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                activeModule = callInfo.ArgAt<string>(0);
+                return Task.CompletedTask;
+            });
+        orchestrator.RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Core.Workflow.StepResult.Succeeded(Core.Workflow.WorkflowTrigger.Assess));
+
+        IModuleSelectionService selector = Substitute.For<IModuleSelectionService>();
+        selector.SelectModuleAsync(Arg.Any<CancellationToken>()).Returns("tui");
+
+        TuiRunner runner = new(console, editor, queue, renderer, registry, orchestrator, moduleSelectionService: selector);
+
+        bool resolved = await runner.EnsureActiveModuleAsync(CancellationToken.None);
+        await runner.ProcessTurnAsync(CancellationToken.None);
+
+        Assert.True(resolved);
+        await orchestrator.Received(1).RunStepAsync("tui", Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ProcessTurnAsync_WithPreCancelledToken_ThrowsOrCancels()
     {
         (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
         IWorkflowOrchestrator orchestrator = NSubstitute.Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
+        orchestrator.ActiveModule.Returns("tui");
         orchestrator.RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
@@ -107,20 +241,19 @@ public class TuiRunnerTests
     public async Task ProcessTurnAsync_OrchestratorReceivesCancellableToken()
     {
         (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();
-        CancellationToken receivedToken = default;
         IWorkflowOrchestrator orchestrator = NSubstitute.Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
+        orchestrator.ActiveModule.Returns("tui");
         orchestrator.RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                receivedToken = callInfo.Arg<CancellationToken>();
-                return Core.Workflow.StepResult.Succeeded(Core.Workflow.WorkflowTrigger.Assess);
-            });
+            .Returns(Core.Workflow.StepResult.Succeeded(Core.Workflow.WorkflowTrigger.Assess));
         TuiRunner runner = new(console, editor, queue, renderer, registry, orchestrator);
 
         await runner.ProcessTurnAsync(CancellationToken.None);
 
         // The orchestrator receives a linked token that supports per-turn cancellation
-        Assert.True(receivedToken.CanBeCanceled);
+        await orchestrator.Received(1).RunStepAsync(
+            "tui",
+            Arg.Any<string?>(),
+            Arg.Is<CancellationToken>(ct => ct.CanBeCanceled));
     }
 
     [Fact]
@@ -162,11 +295,12 @@ public class TuiRunnerTests
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
         LopenLineEditor editor = new(console, history);
         TuiUserPromptQueue queue = new();
-        TuiOutputRenderer renderer = new(console, editor);
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
         SlashCommandRegistry registry = new(console, []);
 
         var started = new TaskCompletionSource();
         IWorkflowOrchestrator orchestrator = Substitute.For<Core.Workflow.IWorkflowOrchestrator>();
+        orchestrator.ActiveModule.Returns("tui");
         orchestrator.RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async callInfo =>
             {
@@ -245,7 +379,7 @@ public class TuiRunnerTests
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
         LopenLineEditor editor = new(console, history);
         TuiUserPromptQueue queue = new();
-        TuiOutputRenderer renderer = new(console, editor);
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
 
         var executed = false;
         ISlashCommand clearCmd = Substitute.For<ISlashCommand>();
@@ -304,7 +438,7 @@ public class TuiRunnerTests
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
         LopenLineEditor editor = new(console, history);
         TuiUserPromptQueue queue = new();
-        TuiOutputRenderer renderer = new(console, editor);
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
         SlashCommandRegistry registry = new(console, []);
 
         CommandPalette palette = Substitute.For<CommandPalette>(console, Substitute.For<ISlashCommandRegistry>());
@@ -333,7 +467,7 @@ public class TuiRunnerTests
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
         LopenLineEditor editor = new(console, history);
         TuiUserPromptQueue queue = new();
-        TuiOutputRenderer renderer = new(console, editor);
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
         SlashCommandRegistry registry = new(console, []);
 
         SessionId sessionId = SessionId.Parse("tui-20260308-1");
@@ -377,7 +511,7 @@ public class TuiRunnerTests
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
         LopenLineEditor editor = new(console, history);
         TuiUserPromptQueue queue = new();
-        TuiOutputRenderer renderer = new(console, editor);
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
         SlashCommandRegistry registry = new(console, []);
 
         Storage.ISessionManager sessionManager = Substitute.For<Storage.ISessionManager>();
@@ -408,7 +542,7 @@ public class TuiRunnerTests
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
         LopenLineEditor editor = new(console, history);
         TuiUserPromptQueue queue = new();
-        TuiOutputRenderer renderer = new(console, editor);
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
         SlashCommandRegistry registry = new(console, []);
 
         SessionId sessionId = SessionId.Parse("tui-20260308-1");
@@ -451,7 +585,7 @@ public class TuiRunnerTests
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
         LopenLineEditor editor = new(console, history);
         TuiUserPromptQueue queue = new();
-        TuiOutputRenderer renderer = new(console, editor);
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
         SlashCommandRegistry registry = new(console, []);
 
         SessionId sessionId = SessionId.Parse("tui-20260308-1");
@@ -508,7 +642,7 @@ public class TuiRunnerTests
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
         LopenLineEditor editor = new(console, history);
         TuiUserPromptQueue queue = new();
-        TuiOutputRenderer renderer = new(console, editor);
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
         SlashCommandRegistry registry = new(console, []);
         return (console, editor, queue, renderer, registry);
     }

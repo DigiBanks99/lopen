@@ -26,16 +26,16 @@ internal sealed class ModuleSelectionService : IModuleSelectionService
         IReadOnlyList<ModuleState> modules = _moduleLister.ListModules();
         if (modules.Count == 0)
         {
-            await _renderer.RenderErrorAsync("No modules found. Create a SPECIFICATION.md in docs/requirements/<module>/.");
+            await _renderer.RenderErrorAsync("No modules found. Create a SPECIFICATION.md in docs/requirements/<module>/.", cancellationToken: cancellationToken);
             return null;
         }
 
         // Display module list with state
-        var listing = FormatModuleList(modules);
-        await _renderer.RenderResultAsync(listing);
+        string listing = FormatModuleList(modules);
+        await _renderer.RenderResultAsync(listing, cancellationToken);
 
         // Prompt for selection
-        var response = await _renderer.PromptAsync(
+        string? response = await _renderer.PromptAsync(
             $"Select a module (1-{modules.Count})", cancellationToken);
 
         if (response is null)
@@ -44,9 +44,9 @@ internal sealed class ModuleSelectionService : IModuleSelectionService
             return null;
         }
 
-        if (int.TryParse(response.Trim(), out var index) && index >= 1 && index <= modules.Count)
+        if (int.TryParse(response.Trim(), out int index) && index >= 1 && index <= modules.Count)
         {
-            var selected = modules[index - 1].Name;
+            string selected = modules[index - 1].Name;
             _logger.LogInformation("User selected module: {Module}", selected);
             return selected;
         }
@@ -60,17 +60,17 @@ internal sealed class ModuleSelectionService : IModuleSelectionService
             return byName.Name;
         }
 
-        await _renderer.RenderErrorAsync($"Invalid selection: '{response}'. Expected a number (1-{modules.Count}) or module name.");
+        await _renderer.RenderErrorAsync($"Invalid selection: '{response}'. Expected a number (1-{modules.Count}) or module name.", cancellationToken: cancellationToken);
         return null;
     }
 
     internal static string FormatModuleList(IReadOnlyList<ModuleState> modules)
     {
         var lines = new List<string> { "Available modules:" };
-        for (var i = 0; i < modules.Count; i++)
+        for (int i = 0; i < modules.Count; i++)
         {
             ModuleState m = modules[i];
-            var status = m.Status switch
+            string status = m.Status switch
             {
                 ModuleStatus.NotStarted => "○ Not Started",
                 ModuleStatus.InProgress => $"◐ In Progress ({m.CompletedCriteria}/{m.TotalCriteria})",

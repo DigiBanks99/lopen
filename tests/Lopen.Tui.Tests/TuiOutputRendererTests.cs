@@ -17,7 +17,7 @@ public class TuiOutputRendererTests
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
         LopenLineEditor editor = new(console, history);
 
-        Assert.Throws<ArgumentNullException>(() => new TuiOutputRenderer(null!, editor));
+        Assert.Throws<ArgumentNullException>(() => new TuiOutputRenderer(null!, new Lazy<LopenLineEditor>(() => editor)));
     }
 
     [Fact]
@@ -72,6 +72,6 @@ public class TuiOutputRendererTests
         FileLineEditorHistory history = new(
             Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
         LopenLineEditor editor = new(console, history);
-        return (new TuiOutputRenderer(console, editor), console);
+        return (new TuiOutputRenderer(console, new Lazy<LopenLineEditor>(() => editor)), console);
     }
 }

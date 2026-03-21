@@ -48,77 +48,7 @@ public static class ServiceCollectionExtensions
                     sp.GetRequiredService<ILogger<FailureHandler>>(),
                     threshold);
             });
-            services.AddSingleton<IWorkflowOrchestrator>(sp =>
-            {
-                Git.IGitWorkflowService? gitService = null;
-                try
-                { gitService = sp.GetService<Git.IGitWorkflowService>(); }
-                catch { /* Git service optional — dependencies may not be registered */ }
-
-                Lopen.Storage.IAutoSaveService? autoSave = null;
-                try
-                { autoSave = sp.GetService<Lopen.Storage.IAutoSaveService>(); }
-                catch { /* Auto-save optional */ }
-
-                Lopen.Storage.ISessionManager? sessionMgr = null;
-                try
-                { sessionMgr = sp.GetService<Lopen.Storage.ISessionManager>(); }
-                catch { /* Session manager optional */ }
-
-                Lopen.Llm.ITokenTracker? tokenTracker = null;
-                try
-                { tokenTracker = sp.GetService<Lopen.Llm.ITokenTracker>(); }
-                catch { /* Token tracker optional */ }
-
-                IFailureHandler? failureHandler = null;
-                try
-                { failureHandler = sp.GetService<IFailureHandler>(); }
-                catch { /* Failure handler optional */ }
-
-                Lopen.Configuration.IBudgetEnforcer? budgetEnforcer = null;
-                try
-                { budgetEnforcer = sp.GetService<Lopen.Configuration.IBudgetEnforcer>(); }
-                catch { /* Budget enforcer optional */ }
-
-                Lopen.Storage.IPlanManager? planMgr = null;
-                try
-                { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
-                catch { /* Plan manager optional */ }
-
-                IPauseController? pauseCtrl = null;
-                try
-                { pauseCtrl = sp.GetService<IPauseController>(); }
-                catch { /* Pause controller optional */ }
-
-                IToolHandlerBinder? toolBinder = null;
-                try
-                { toolBinder = sp.GetService<IToolHandlerBinder>(); }
-                catch { /* Tool handler binder optional */ }
-
-                return new WorkflowOrchestrator(
-                    sp.GetRequiredService<IWorkflowEngine>(),
-                    sp.GetRequiredService<IStateAssessor>(),
-                    sp.GetRequiredService<Lopen.Llm.ILlmService>(),
-                    sp.GetRequiredService<Lopen.Llm.IPromptBuilder>(),
-                    sp.GetRequiredService<Lopen.Llm.IToolRegistry>(),
-                    sp.GetRequiredService<Lopen.Llm.IModelSelector>(),
-                    sp.GetRequiredService<BackPressure.IGuardrailPipeline>(),
-                    sp.GetRequiredService<IOutputRenderer>(),
-                    sp.GetRequiredService<IPhaseTransitionController>(),
-                    sp.GetRequiredService<ISpecificationDriftService>(),
-                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<WorkflowOrchestrator>>(),
-                    gitService,
-                    autoSave,
-                    sessionMgr,
-                    tokenTracker,
-                    failureHandler,
-                    budgetEnforcer,
-                    planMgr,
-                    pauseCtrl,
-                    sp.GetService<IUserPromptQueue>(),
-                    toolBinder,
-                    sp.GetService<WorkflowOptions>());
-            });
+            services.AddSingleton<IWorkflowOrchestrator, WorkflowOrchestrator>();
             services.AddSingleton<IPauseController, PauseController>();
             services.AddSingleton<ISpecificationDriftService, SpecificationDriftService>();
             services.AddSingleton<IResourceTracker>(sp =>

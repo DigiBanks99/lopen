@@ -17,23 +17,16 @@ public static class ProjectRootDiscovery
     /// </returns>
     public static string? FindProjectRoot(string startDirectory)
     {
-        // First pass: look for .lopen/ (strongest signal — user explicitly initialized)
-        var lopenRoot = FindMarker(startDirectory, ".lopen");
-        if (lopenRoot is not null)
-            return lopenRoot;
-
-        // Second pass: look for .git/ (fallback for any git repo)
-        return FindMarker(startDirectory, ".git");
-    }
-
-    private static string? FindMarker(string startDirectory, string markerName)
-    {
         var current = new DirectoryInfo(startDirectory);
 
         while (current is not null)
         {
-            var markerPath = Path.Combine(current.FullName, markerName);
-            if (Directory.Exists(markerPath))
+            var lopenMarkerPath = Path.Combine(current.FullName, ".lopen");
+            if (Directory.Exists(lopenMarkerPath))
+                return current.FullName;
+
+            var gitMarkerPath = Path.Combine(current.FullName, ".git");
+            if (Directory.Exists(gitMarkerPath))
                 return current.FullName;
 
             current = current.Parent;

@@ -7,10 +7,10 @@ namespace Lopen.Tui;
 /// TUI implementation of IOutputRenderer using Spectre.Console.
 /// Renders progress, errors, results, and prompts with themed styling.
 /// </summary>
-public sealed class TuiOutputRenderer(IAnsiConsole console, LopenLineEditor lineEditor) : IOutputRenderer
+public sealed class TuiOutputRenderer(IAnsiConsole console, Lazy<LopenLineEditor> lineEditor) : IOutputRenderer
 {
     private readonly IAnsiConsole _console = console ?? throw new ArgumentNullException(nameof(console));
-    private readonly LopenLineEditor _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
+    private readonly Lazy<LopenLineEditor> _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
 
     public Task RenderProgressAsync(string phase, string step, double progress, CancellationToken cancellationToken = default)
     {
@@ -49,6 +49,6 @@ public sealed class TuiOutputRenderer(IAnsiConsole console, LopenLineEditor line
     public async Task<string?> PromptAsync(string message, CancellationToken cancellationToken = default)
     {
         _console.MarkupLine(Markup.Escape(message));
-        return await _lineEditor.ReadLineAsync(cancellationToken);
+        return await _lineEditor.Value.ReadLineAsync(cancellationToken);
     }
 }

@@ -20,7 +20,8 @@ public sealed class TuiRunner(
     IWorkflowOrchestrator? orchestrator = null,
     WorkflowOverviewBlock? overviewBlock = null,
     CommandPalette? commandPalette = null,
-    ISessionManager? sessionManager = null)
+    ISessionManager? sessionManager = null,
+    IModuleSelectionService? moduleSelectionService = null)
 {
     private readonly IAnsiConsole _console = console ?? throw new ArgumentNullException(nameof(console));
     private readonly LopenLineEditor _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
@@ -31,6 +32,7 @@ public sealed class TuiRunner(
     private readonly WorkflowOverviewBlock? _overviewBlock = overviewBlock;
     private readonly CommandPalette? _commandPalette = commandPalette;
     private readonly ISessionManager? _sessionManager = sessionManager;
+    private readonly IModuleSelectionService? _moduleSelectionService = moduleSelectionService;
 
     /// <summary>
     /// Runs the TUI REPL loop until the user exits.
@@ -41,6 +43,14 @@ public sealed class TuiRunner(
 
         while (!cancellationToken.IsCancellationRequested)
         {
+            if (!HasInteractiveInput())
+            {
+                _console.MarkupLine(LopenTheme.Styled(
+                    "Interactive TUI input is not available in this host. Run in a real terminal or use --headless mode.",
+                    LopenTheme.Warning));
+                return 1;
+            }
+
             _overviewBlock?.Render();
             string? input;
             try
@@ -50,6 +60,13 @@ public sealed class TuiRunner(
             catch (OperationCanceledException)
             {
                 break;
+            }
+            catch (InvalidOperationException ex) when (IsConsoleKeyAvailabilityError(ex))
+            {
+                _console.MarkupLine(LopenTheme.Styled(
+                    "Interactive TUI input is not available in this host. Run in a real terminal or use --headless mode.",
+                    LopenTheme.Warning));
+                return 1;
             }
 
             // Ctrl+D on empty prompt — exit gracefully
@@ -91,12 +108,29 @@ public sealed class TuiRunner(
             }
 
             // Enqueue and process user input
+            if (!await EnsureActiveModuleAsync(cancellationToken))
+            {
+                continue;
+            }
+
             _promptQueue.Enqueue(input);
             await ProcessTurnAsync(cancellationToken);
         }
 
         return 0;
     }
+
+    internal bool HasInteractiveInput()
+    {
+        // Spectre's capability is the primary signal; console redirection checks are a safety net.
+        if (!_console.Profile.Capabilities.Interactive)
+            return false;
+
+        return !(Console.IsInputRedirected || Console.IsOutputRedirected);
+    }
+
+    internal static bool IsConsoleKeyAvailabilityError(InvalidOperationException ex)
+        => ex.Message.Contains("Cannot see if a key has been pressed", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Detects open sessions on startup and either auto-resumes or shows a hint line.
@@ -190,7 +224,16 @@ public sealed class TuiRunner(
         {
             if (_orchestrator is not null)
             {
-                await _orchestrator.RunStepAsync(_orchestrator.ActiveModule ?? string.Empty, cancellationToken: turnCts.Token);
+                string? activeModule = _orchestrator.ActiveModule;
+                if (string.IsNullOrWhiteSpace(activeModule))
+                {
+                    _console.MarkupLine(LopenTheme.Styled(
+                        "No active module selected. Use /resume or choose a module to continue.",
+                        LopenTheme.Warning));
+                    return;
+                }
+
+                await _orchestrator.RunStepAsync(activeModule, cancellationToken: turnCts.Token);
             }
             else
             {
@@ -201,6 +244,30 @@ public sealed class TuiRunner(
         {
             _console.MarkupLine(LopenTheme.Styled($"{LopenTheme.InfoHint} Cancelled.", LopenTheme.Warning));
         }
+    }
+
+    internal async Task<bool> EnsureActiveModuleAsync(CancellationToken cancellationToken)
+    {
+        if (_orchestrator is null)
+            return true;
+
+        if (!string.IsNullOrWhiteSpace(_orchestrator.ActiveModule))
+            return true;
+
+        string? selectedModule = _moduleSelectionService is null
+            ? null
+            : await _moduleSelectionService.SelectModuleAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(selectedModule))
+        {
+            _console.MarkupLine(LopenTheme.Styled(
+                "No module selected. Use /resume to continue a session or select a module when prompted.",
+                LopenTheme.Warning));
+            return false;
+        }
+
+        await _orchestrator.InitializeAsync(selectedModule, cancellationToken: cancellationToken);
+        return true;
     }
 
     internal static void HandleCancelDuringProcessing(CancellationTokenSource turnCts)

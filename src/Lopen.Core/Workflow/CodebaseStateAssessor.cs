@@ -44,7 +44,7 @@ internal sealed class CodebaseStateAssessor : IStateAssessor
         string content;
         try
         {
-            content = _fileSystem.ReadAllTextAsync(module.SpecificationPath).GetAwaiter().GetResult();
+            content = _fileSystem.ReadAllTextAsync(module.SpecificationPath, cancellationToken).GetAwaiter().GetResult();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -120,7 +120,7 @@ internal sealed class CodebaseStateAssessor : IStateAssessor
 
         try
         {
-            var content = _fileSystem.ReadAllTextAsync(module.SpecificationPath).GetAwaiter().GetResult();
+            var content = _fileSystem.ReadAllTextAsync(module.SpecificationPath, cancellationToken).GetAwaiter().GetResult();
             (int total, int completed) = MarkdownUpdater.CountCheckboxes(content);
             return Task.FromResult(total > 0 && completed < total);
         }

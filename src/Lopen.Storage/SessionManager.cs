@@ -171,24 +171,24 @@ internal sealed class SessionManager : ISessionManager
         _logger.LogDebug("Saved session metrics for {SessionId}", sessionId);
     }
 
-    public Task<IReadOnlyList<SessionId>> ListSessionsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<SessionId>> ListSessionsAsync(CancellationToken cancellationToken = default)
     {
         var sessionsDir = StoragePaths.GetSessionsDirectory(_projectRoot);
 
         if (!_fileSystem.DirectoryExists(sessionsDir))
         {
-            return Task.FromResult<IReadOnlyList<SessionId>>(Array.Empty<SessionId>());
+            return Array.Empty<SessionId>();
         }
 
-        var sessions = _fileSystem.GetDirectories(sessionsDir)
-            .Select(d => SessionId.TryParse(Path.GetFileName(d)))
-            .Where(id => id is not null)
-            .Cast<SessionId>()
-            .OrderBy(id => id.Date)
-            .ThenBy(id => id.Counter)
-            .ToList();
+        IEnumerable<Task<SessionId?>> sessionIdTasks = _fileSystem.GetDirectories(sessionsDir)
+            .Select(async sessionDirectories => await _fileSystem.ReadAllTextAsync(Path.Combine(sessionDirectories, "state.json"), cancellationToken))
+            .Select(async json => SessionId.TryParse(Path.GetFileName(JsonDocument.Parse(await json).RootElement.GetProperty("session_id").GetString() ?? "")));
 
-        return Task.FromResult<IReadOnlyList<SessionId>>(sessions);
+
+        return [.. (await Task.WhenAll(sessionIdTasks))
+            .OfType<SessionId>()
+            .OrderBy(id => id.Date)
+            .ThenBy(id => id.Counter)];
     }
 
     public Task SetLatestAsync(SessionId sessionId, CancellationToken cancellationToken = default)

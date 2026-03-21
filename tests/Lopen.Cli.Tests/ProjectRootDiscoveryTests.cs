@@ -138,7 +138,7 @@ public class ProjectRootDiscoveryTests : IDisposable
     }
 
     [Fact]
-    public void FindProjectRoot_LopenCloserToRootThanGit_ReturnsLopenDir()
+    public void FindProjectRoot_LopenCloserToRootThanGit_ReturnsNearestMarker()
     {
         // .lopen/ at root, .git/ deeper in a subdirectory
         Directory.CreateDirectory(Path.Combine(_tempDir, ".lopen"));
@@ -149,10 +149,8 @@ public class ProjectRootDiscoveryTests : IDisposable
 
         var result = ProjectRootDiscovery.FindProjectRoot(leaf);
 
-        // .lopen/ is checked first in the walk-up — found at _tempDir (root)
-        // .git/ at subDir is only checked in second pass
-        // .lopen/ pass walks up from leaf → subDir → _tempDir (has .lopen/)
-        Assert.Equal(_tempDir, result);
+        // Nearest marker wins; .git at subDir should be selected before ancestor .lopen.
+        Assert.Equal(subDir, result);
     }
 
     [Fact]

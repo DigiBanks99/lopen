@@ -417,6 +417,10 @@ public static class PhaseCommands
         IServiceProvider services, ParseResult parseResult, CancellationToken cancellationToken)
     {
         string? resumeId = parseResult.GetValue(GlobalOptions.Resume);
+        if (string.IsNullOrEmpty(resumeId))
+        {
+            return (null, null);
+        }
 
         ISessionManager? sessionManager = services.GetService<ISessionManager>();
         if (sessionManager is null)
