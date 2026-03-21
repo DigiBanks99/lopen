@@ -2,18 +2,10 @@
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name')
 
-if [ "$TOOL_NAME" = "editFiles" ] || [ "$TOOL_NAME" = "createFile" ]; then
-  FILES=$(echo "$INPUT" | jq -r '.tool_input.files[]? // .tool_input.path // empty')
-
-  for FILE in $FILES; do
-    if [ -f "$FILE" ]; then
-      dotnet format "$FILE" 2>/dev/null
-    fi
-  done
+randotnet_format=false
+if [ "$TOOL_NAME" = "editFiles" ] || [ "$TOOL_NAME" = "createFile" ] || [ "$TOOL_NAME" = "replace_string" ] || [ "$TOOL_NAME" = "multiline_replace_string" ] || [ "$TOOL_NAME" = "apply_patch" ]; then
+    randotnet_format=true
+    dotnet format Lopen.slnx 2>/dev/null
 fi
 
-if [ "$TOOL_NAME" = "run_terminal_command" ] || [ "$TOOL_NAME" = "runInTerminal" ]; then
-  dotnet format Lopen.slnx 2>/dev/null
-fi
-
-echo '{"continue":true}'
+echo '{"continue":true, "ranFormat":'"$randotnet_format"'}'
