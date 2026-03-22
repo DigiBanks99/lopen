@@ -1,6 +1,21 @@
 namespace Lopen.Llm;
 
 /// <summary>
+/// Classifies the likely cause of a Copilot client startup failure.
+/// </summary>
+public enum CopilotFailureCategory
+{
+    /// <summary>Credentials are missing, revoked, or invalid.</summary>
+    Auth,
+    /// <summary>Network connectivity or DNS resolution failed.</summary>
+    Network,
+    /// <summary>The Copilot service returned a server-side error or is unavailable.</summary>
+    Service,
+    /// <summary>The cause could not be classified.</summary>
+    Unknown,
+}
+
+/// <summary>
 /// Exception thrown for LLM-specific failures (auth failure, rate limit, model unavailable).
 /// </summary>
 public class LlmException : Exception
@@ -13,6 +28,17 @@ public class LlmException : Exception
     /// When true, callers may retry with a fallback model (LLM-11).
     /// </summary>
     public bool IsModelUnavailable { get; init; }
+
+    /// <summary>
+    /// Classifies the likely cause of the failure for user-facing diagnostics.
+    /// Null when the failure category has not been determined.
+    /// </summary>
+    public CopilotFailureCategory? DiagnosticCategory { get; init; }
+
+    /// <summary>
+    /// Actionable guidance surfaced to the user. Null when not applicable.
+    /// </summary>
+    public string? UserHint { get; init; }
 
     public LlmException(string message)
         : base(message) { }

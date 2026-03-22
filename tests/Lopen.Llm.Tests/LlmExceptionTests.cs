@@ -46,4 +46,42 @@ public class LlmExceptionTests
 
         Assert.Null(ex.Model);
     }
+
+    [Fact]
+    public void LlmException_DiagnosticCategory_DefaultsToNull()
+    {
+        var ex = new LlmException("error");
+        Assert.Null(ex.DiagnosticCategory);
+    }
+
+    [Fact]
+    public void LlmException_UserHint_DefaultsToNull()
+    {
+        var ex = new LlmException("error");
+        Assert.Null(ex.UserHint);
+    }
+
+    [Fact]
+    public void LlmException_WithDiagnosticCategory_IsPreserved()
+    {
+        var inner = new InvalidOperationException("inner");
+        var ex = new LlmException("msg", model: null, inner)
+        {
+            DiagnosticCategory = CopilotFailureCategory.Auth,
+            UserHint = "Run 'lopen auth login'",
+        };
+
+        Assert.Equal(CopilotFailureCategory.Auth, ex.DiagnosticCategory);
+        Assert.Equal("Run 'lopen auth login'", ex.UserHint);
+    }
+
+    [Fact]
+    public void LlmException_AllCategories_AreValid()
+    {
+        foreach (CopilotFailureCategory cat in Enum.GetValues<CopilotFailureCategory>())
+        {
+            var ex = new LlmException("error") { DiagnosticCategory = cat };
+            Assert.Equal(cat, ex.DiagnosticCategory);
+        }
+    }
 }

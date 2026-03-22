@@ -58,7 +58,7 @@ internal sealed class CopilotClientProvider : ICopilotClientProvider
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(ex, "Failed to start Copilot SDK client");
-            throw new LlmException("Failed to start Copilot SDK client", model: null, ex);
+            throw CopilotStartupFailureMapper.CreateDiagnosticException("Failed to start Copilot SDK client", ex);
         }
         finally
         {
@@ -89,8 +89,8 @@ internal sealed class CopilotClientProvider : ICopilotClientProvider
 
     internal CopilotClient CreateClient()
     {
-        var token = _tokenProvider.GetToken();
-        var options = new CopilotClientOptions
+        string? token = _tokenProvider.GetToken();
+        CopilotClientOptions options = new()
         {
             AutoRestart = true,
             UseStdio = true,
