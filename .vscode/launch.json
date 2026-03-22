@@ -1,0 +1,13 @@
+{
+    "configurations": [
+        {
+            "name": "C#: Lopen - Atttach",
+            "type": "coreclr",
+            "request": "attach",
+            "processId": "${command:pickProcess}",
+            "sourceFileMap": {
+              "${workspaceFolder}": "${workspaceFolder}"
+            }
+        }
+    ]
+}
