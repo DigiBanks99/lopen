@@ -1,4 +1,5 @@
 using Lopen.Core;
+using Lopen.Llm;
 using Spectre.Console;
 
 namespace Lopen.Tui;
@@ -32,7 +33,17 @@ public sealed class TuiOutputRenderer(IAnsiConsole console, Lazy<LopenLineEditor
 
         _console.Write(panel);
 
-        if (exception is not null)
+        if (exception is LlmException llmEx && llmEx.DiagnosticCategory is not null)
+        {
+            string category = llmEx.DiagnosticCategory.Value.ToString();
+            _console.MarkupLine(LopenTheme.Dim($"  Cause: {category}", LopenTheme.Muted));
+
+            if (!string.IsNullOrEmpty(llmEx.UserHint))
+            {
+                _console.MarkupLine(LopenTheme.Styled($"  → {llmEx.UserHint}", LopenTheme.Secondary));
+            }
+        }
+        else if (exception is not null)
         {
             _console.MarkupLine(LopenTheme.Dim($"  {exception.GetType().Name}: {exception.Message}", LopenTheme.Muted));
         }
