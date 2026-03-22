@@ -21,7 +21,6 @@ public class ProgramTests : IDisposable
         HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddLopenAuth();
-        builder.Services.AddSingleton<IGitHubTokenProvider, AuthBridgeTokenProvider>();
         builder.Services.AddLopenCore(null);
         builder.Services.AddLopenStorage(null);
         builder.Services.AddLopenLlm();
@@ -76,11 +75,11 @@ public class ProgramTests : IDisposable
     }
 
     [Fact]
-    public void DI_ResolvesGitHubTokenProvider_AsAuthBridge()
+    public void DI_ResolvesAuthTokenProvider_FromAuthModule()
     {
-        IGitHubTokenProvider? provider = _services.GetService<IGitHubTokenProvider>();
+        IAuthTokenProvider? provider = _services.GetService<IAuthTokenProvider>();
         Assert.NotNull(provider);
-        Assert.IsType<AuthBridgeTokenProvider>(provider);
+        Assert.IsType<CopilotAuthService>(provider);
     }
 
     [Fact]

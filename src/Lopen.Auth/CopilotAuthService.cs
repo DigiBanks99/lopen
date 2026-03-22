@@ -6,7 +6,7 @@ namespace Lopen.Auth;
 /// Production auth service that combines environment variable resolution with
 /// gh CLI delegation for device flow, status checks, and logout.
 /// </summary>
-internal sealed class CopilotAuthService : IAuthService
+internal sealed class CopilotAuthService : IAuthService, IAuthTokenProvider
 {
     private readonly ITokenSourceResolver _tokenSourceResolver;
     private readonly IGhCliAdapter _ghCli;
@@ -134,5 +134,19 @@ internal sealed class CopilotAuthService : IAuthService
             default:
                 throw new AuthenticationException(AuthErrorMessages.PreFlightFailed);
         }
+    }
+
+    public Task<string?> GetTokenAsync(CancellationToken cancellationToken = default)
+    {
+        TokenSourceResult envResult = _tokenSourceResolver.Resolve();
+
+        if (envResult.Source is AuthCredentialSource.GhToken or AuthCredentialSource.GitHubToken)
+        {
+            return Task.FromResult(envResult.Token);
+        }
+
+        // Null intentionally delegates to SDK credential resolution chain
+        // (including gh CLI stored credentials).
+        return Task.FromResult<string?>(null);
     }
 }

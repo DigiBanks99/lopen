@@ -83,4 +83,32 @@ public class ServiceCollectionExtensionsTests
 
         Assert.Same(first, second);
     }
+
+    [Fact]
+    public void AddLopenAuth_RegistersIAuthTokenProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddLopenAuth();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IAuthTokenProvider? tokenProvider = provider.GetService<IAuthTokenProvider>();
+
+        Assert.NotNull(tokenProvider);
+        Assert.IsType<CopilotAuthService>(tokenProvider);
+    }
+
+    [Fact]
+    public void AddLopenAuth_IAuthServiceAndTokenProvider_AreSameSingleton()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddLopenAuth();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IAuthService authService = provider.GetRequiredService<IAuthService>();
+        IAuthTokenProvider tokenProvider = provider.GetRequiredService<IAuthTokenProvider>();
+
+        Assert.Same(authService, tokenProvider);
+    }
 }

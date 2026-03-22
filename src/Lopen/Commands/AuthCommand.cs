@@ -14,18 +14,19 @@ public static class AuthCommand
         TextWriter stdout = output ?? Console.Out;
         TextWriter stderr = error ?? Console.Error;
 
-        var auth = new Command("auth", "Manage authentication");
-
-        auth.Add(CreateLoginCommand(services, stdout, stderr));
-        auth.Add(CreateStatusCommand(services, stdout, stderr));
-        auth.Add(CreateLogoutCommand(services, stdout, stderr));
+        Command auth = new("auth", "Manage authentication")
+        {
+            CreateLoginCommand(services, stdout, stderr),
+            CreateStatusCommand(services, stdout, stderr),
+            CreateLogoutCommand(services, stdout, stderr)
+        };
 
         return auth;
     }
 
     private static Command CreateLoginCommand(IServiceProvider services, TextWriter stdout, TextWriter stderr)
     {
-        var login = new Command("login", "Authenticate via Copilot SDK device flow");
+        Command login = new("login", "Authenticate via Copilot SDK device flow");
         login.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
             // AUTH-05: --headless flag explicitly blocks interactive login
@@ -53,7 +54,7 @@ public static class AuthCommand
 
     private static Command CreateStatusCommand(IServiceProvider services, TextWriter stdout, TextWriter stderr)
     {
-        var status = new Command("status", "Check current authentication state");
+        Command status = new("status", "Check current authentication state");
         status.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
         {
             IAuthService authService = services.GetRequiredService<IAuthService>();
@@ -79,7 +80,7 @@ public static class AuthCommand
 
     private static Command CreateLogoutCommand(IServiceProvider services, TextWriter stdout, TextWriter stderr)
     {
-        var logout = new Command("logout", "Clear stored credentials");
+        Command logout = new("logout", "Clear stored credentials");
         logout.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
         {
             IAuthService authService = services.GetRequiredService<IAuthService>();

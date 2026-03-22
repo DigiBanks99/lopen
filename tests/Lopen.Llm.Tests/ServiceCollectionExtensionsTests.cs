@@ -1,3 +1,4 @@
+using Lopen.Auth;
 using Lopen.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -14,6 +15,7 @@ public class ServiceCollectionExtensionsTests
         var lopenOptions = new LopenOptions();
         services.AddSingleton(Options.Create(lopenOptions));
         services.AddSingleton(lopenOptions.Oracle);
+        services.AddSingleton<IAuthTokenProvider>(new TestTokenProvider("test-token"));
         services.AddLopenLlm();
         return services.BuildServiceProvider();
     }
@@ -216,15 +218,15 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task AddLopenLlm_RegistersIGitHubTokenProvider()
+    public async Task AddLopenLlm_RequiresCallerProvidedIAuthTokenProvider()
     {
         ServiceProvider provider = BuildProvider();
         try
         {
-            IGitHubTokenProvider? tokenProvider = provider.GetService<IGitHubTokenProvider>();
+            IAuthTokenProvider tokenProvider = provider.GetRequiredService<IAuthTokenProvider>();
 
-            Assert.NotNull(tokenProvider);
-            Assert.IsType<NullGitHubTokenProvider>(tokenProvider);
+            Assert.IsType<TestTokenProvider>(tokenProvider);
+            Assert.Equal("test-token", await tokenProvider.GetTokenAsync());
         }
         finally
         {
@@ -250,22 +252,21 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task AddLopenLlm_CustomTokenProvider_IsUsed()
+    public async Task AddLopenLlm_CopilotClientProvider_ResolvesWithProvidedAuthTokenProvider()
     {
         var services = new ServiceCollection();
         services.AddLogging();
         var lopenOptions = new LopenOptions();
         services.AddSingleton(Options.Create(lopenOptions));
         services.AddSingleton(lopenOptions.Oracle);
-        services.AddSingleton<IGitHubTokenProvider>(new TestTokenProvider("test-token"));
+        services.AddSingleton<IAuthTokenProvider>(new TestTokenProvider("test-token"));
         services.AddLopenLlm();
         ServiceProvider provider = services.BuildServiceProvider();
         try
         {
-            IGitHubTokenProvider tokenProvider = provider.GetRequiredService<IGitHubTokenProvider>();
+            ICopilotClientProvider copilotClientProvider = provider.GetRequiredService<ICopilotClientProvider>();
 
-            Assert.IsType<TestTokenProvider>(tokenProvider);
-            Assert.Equal("test-token", tokenProvider.GetToken());
+            Assert.IsType<CopilotClientProvider>(copilotClientProvider);
         }
         finally
         {
@@ -273,8 +274,8 @@ public class ServiceCollectionExtensionsTests
         }
     }
 
-    private sealed class TestTokenProvider(string token) : IGitHubTokenProvider
+    private sealed class TestTokenProvider(string? token) : IAuthTokenProvider
     {
-        public string? GetToken() => token;
+        public Task<string?> GetTokenAsync(CancellationToken cancellationToken = default) => Task.FromResult(token);
     }
 }

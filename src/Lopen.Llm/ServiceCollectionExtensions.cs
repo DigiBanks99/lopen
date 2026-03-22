@@ -16,9 +16,6 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddLopenLlm(this IServiceCollection services)
     {
-        // Auth token provider — default is null (SDK resolves credentials).
-        // Consumers can register their own IGitHubTokenProvider before calling this.
-        services.TryAddSingleton<IGitHubTokenProvider, NullGitHubTokenProvider>();
         services.TryAddSingleton<ICopilotClientProvider, CopilotClientProvider>();
         services.TryAddSingleton<ISessionStateSaver, NullSessionStateSaver>();
         services.AddSingleton<IAuthErrorHandler, AuthErrorHandler>();

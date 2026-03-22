@@ -19,7 +19,6 @@ bool isHeadless = args.Contains("--headless") || args.Contains("-q");
 
 builder.Services.AddLopenConfiguration();
 builder.Services.AddLopenAuth();
-builder.Services.AddSingleton<IGitHubTokenProvider, Lopen.AuthBridgeTokenProvider>();
 
 // Register TUI before Core so TuiOutputRenderer takes precedence over HeadlessRenderer
 // via TryAddSingleton<IOutputRenderer> in Core.
@@ -53,6 +52,4 @@ rootCommand.Add(PhaseCommands.CreatePlan(host.Services));
 rootCommand.Add(PhaseCommands.CreateBuild(host.Services));
 rootCommand.Add(TuiCommand.Create(host.Services));
 
-CommandLineConfiguration config = new(rootCommand);
-
-return await config.InvokeAsync(args);
+return await rootCommand.Parse(args).InvokeAsync();

@@ -1,4 +1,5 @@
 using GitHub.Copilot.SDK;
+using Lopen.Auth;
 using Lopen.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,10 +18,10 @@ public class LlmAcceptanceCriteriaTests
     // Primary coverage: CopilotClientProviderTests, CopilotLlmServiceTests
 
     [Fact]
-    public void AC1_TokenProvider_InjectableViaInterface()
+    public async Task AC1_TokenProvider_InjectableViaInterface()
     {
-        var provider = new NullGitHubTokenProvider();
-        Assert.Null(provider.GetToken());
+        IAuthTokenProvider provider = new FakeTokenProvider(null);
+        Assert.Null(await provider.GetTokenAsync());
     }
 
     [Fact]
@@ -30,7 +31,7 @@ public class LlmAcceptanceCriteriaTests
         var clientProvider = new CopilotClientProvider(
             tokenProvider, NullLogger<CopilotClientProvider>.Instance);
 
-        CopilotClient client = clientProvider.CreateClient();
+        CopilotClient client = await clientProvider.CreateClientAsync();
         Assert.NotNull(client);
         await clientProvider.DisposeAsync();
     }
@@ -40,10 +41,11 @@ public class LlmAcceptanceCriteriaTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<IAuthTokenProvider>(new FakeTokenProvider(null));
         services.AddLopenLlm();
 
         ServiceProvider sp = services.BuildServiceProvider();
-        Assert.NotNull(sp.GetService<IGitHubTokenProvider>());
+        Assert.NotNull(sp.GetService<IAuthTokenProvider>());
         Assert.NotNull(sp.GetService<ICopilotClientProvider>());
     }
 
@@ -310,6 +312,7 @@ public class LlmAcceptanceCriteriaTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<IAuthTokenProvider>(new FakeTokenProvider(null));
         services.AddLopenLlm();
 
         ServiceProvider sp = services.BuildServiceProvider();
@@ -356,11 +359,11 @@ public class LlmAcceptanceCriteriaTests
 
     // Test helpers
 
-    private sealed class FakeTokenProvider : IGitHubTokenProvider
+    private sealed class FakeTokenProvider : IAuthTokenProvider
     {
         private readonly string? _token;
         public FakeTokenProvider(string? token) => _token = token;
-        public string? GetToken() => _token;
+        public Task<string?> GetTokenAsync(CancellationToken cancellationToken = default) => Task.FromResult(_token);
     }
 
     private sealed class CountingClientProvider : ICopilotClientProvider
