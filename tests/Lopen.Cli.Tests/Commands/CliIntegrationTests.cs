@@ -23,6 +23,7 @@ public class CliIntegrationTests
         HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
+        builder.Services.AddSingleton<IAuthTokenProvider>(new TestAuthTokenProvider());
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
@@ -52,6 +53,7 @@ public class CliIntegrationTests
         HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
+        builder.Services.AddSingleton<IAuthTokenProvider>(new TestAuthTokenProvider());
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
@@ -68,6 +70,7 @@ public class CliIntegrationTests
         HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
+        builder.Services.AddSingleton<IAuthTokenProvider>(new TestAuthTokenProvider());
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
@@ -106,6 +109,12 @@ public class CliIntegrationTests
         var exitCode = await config.InvokeAsync([]);
 
         Assert.Equal(1, exitCode);
+    }
+
+    private sealed class TestAuthTokenProvider : IAuthTokenProvider
+    {
+        public Task<string?> GetTokenAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<string?>(null);
     }
 
     // ==================== Command Registration ====================

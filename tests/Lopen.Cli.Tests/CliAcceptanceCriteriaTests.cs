@@ -128,7 +128,7 @@ public class CliAcceptanceCriteriaTests
         sessions.AddSession(TestSession, ActiveState);
         sessions.SetLatestSessionId(TestSession);
 
-        var exitCode = await config.InvokeAsync(["spec"]);
+        var exitCode = await config.InvokeAsync(["spec", "--resume", TestSession.ToString()]);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("auth", orchestrator.LastModule);
@@ -421,7 +421,7 @@ public class CliAcceptanceCriteriaTests
         sessions.SetLatestSessionId(TestSession);
         modules.AddModule("auth", hasSpec: true);
 
-        var exitCode = await config.InvokeAsync(["spec", "--prompt", "Focus on auth"]);
+        var exitCode = await config.InvokeAsync(["spec", "--resume", TestSession.ToString(), "--prompt", "Focus on auth"]);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("Focus on auth", orchestrator.LastPrompt);
@@ -580,7 +580,7 @@ public class CliAcceptanceCriteriaTests
         specSessions.AddSession(fizzSession, fizzState);
         specSessions.SetLatestSessionId(fizzSession);
         specModules.AddModule(fizzModule, hasSpec: false);
-        var specExit = await specConfig.InvokeAsync(["spec", "--prompt", "Build fizzbuzz"]);
+        var specExit = await specConfig.InvokeAsync(["spec", "--resume", fizzSession.ToString(), "--prompt", "Build fizzbuzz"]);
         Assert.Equal(0, specExit);
         Assert.Equal(fizzModule, specOrch.LastModule);
 
@@ -589,7 +589,7 @@ public class CliAcceptanceCriteriaTests
         planSessions.AddSession(fizzSession, fizzState);
         planSessions.SetLatestSessionId(fizzSession);
         planModules.AddModule(fizzModule, hasSpec: true);
-        var planExit = await planConfig.InvokeAsync(["plan"]);
+        var planExit = await planConfig.InvokeAsync(["plan", "--resume", fizzSession.ToString()]);
         Assert.Equal(0, planExit);
         Assert.Equal(fizzModule, planOrch.LastModule);
 
@@ -599,7 +599,7 @@ public class CliAcceptanceCriteriaTests
         buildSessions.SetLatestSessionId(fizzSession);
         buildModules.AddModule(fizzModule, hasSpec: true);
         buildPlans.AddPlan(fizzModule, "# Plan\n- [ ] Implement FizzBuzz");
-        var buildExit = await buildConfig.InvokeAsync(["build"]);
+        var buildExit = await buildConfig.InvokeAsync(["build", "--resume", fizzSession.ToString()]);
         Assert.Equal(0, buildExit);
         Assert.Equal(fizzModule, buildOrch.LastModule);
     }

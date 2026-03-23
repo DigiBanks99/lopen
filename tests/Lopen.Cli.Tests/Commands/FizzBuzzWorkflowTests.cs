@@ -34,7 +34,7 @@ public class FizzBuzzWorkflowTests
         var orchestrator = new TrackingOrchestrator();
         (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig(orchestrator, hasSpec: false, hasPlan: false);
 
-        var exitCode = await config.InvokeAsync(["spec", "--prompt", FizzBuzzPrompt]);
+        var exitCode = await config.InvokeAsync(["spec", "--resume", FizzBuzzSession.ToString(), "--prompt", FizzBuzzPrompt]);
 
         Assert.Equal(ExitCodes.Success, exitCode);
         Assert.Equal(FizzBuzzModule, orchestrator.LastModule);
@@ -62,7 +62,7 @@ public class FizzBuzzWorkflowTests
         var orchestrator = new TrackingOrchestrator();
         (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator, hasSpec: true, hasPlan: false);
 
-        var exitCode = await config.InvokeAsync(["plan"]);
+        var exitCode = await config.InvokeAsync(["plan", "--resume", FizzBuzzSession.ToString()]);
 
         Assert.Equal(ExitCodes.Success, exitCode);
         Assert.Equal(FizzBuzzModule, orchestrator.LastModule);
@@ -88,7 +88,7 @@ public class FizzBuzzWorkflowTests
         var orchestrator = new TrackingOrchestrator();
         (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator, hasSpec: true, hasPlan: true);
 
-        var exitCode = await config.InvokeAsync(["build"]);
+        var exitCode = await config.InvokeAsync(["build", "--resume", FizzBuzzSession.ToString()]);
 
         Assert.Equal(ExitCodes.Success, exitCode);
         Assert.Equal(FizzBuzzModule, orchestrator.LastModule);
@@ -129,20 +129,20 @@ public class FizzBuzzWorkflowTests
 
         // Phase 1: Spec — no spec or plan exists yet
         (CommandLineConfiguration? specConfig, StringWriter? specOutput, StringWriter _) = CreateConfig(specOrchestrator, hasSpec: false, hasPlan: false);
-        var specExit = await specConfig.InvokeAsync(["spec", "--prompt", FizzBuzzPrompt]);
+        var specExit = await specConfig.InvokeAsync(["spec", "--resume", FizzBuzzSession.ToString(), "--prompt", FizzBuzzPrompt]);
         Assert.Equal(ExitCodes.Success, specExit);
         Assert.Equal(FizzBuzzModule, specOrchestrator.LastModule);
         Assert.Equal(FizzBuzzPrompt, specOrchestrator.LastPrompt);
 
         // Phase 2: Plan — spec now exists
         (CommandLineConfiguration? planConfig, StringWriter? planOutput, StringWriter _) = CreateConfig(planOrchestrator, hasSpec: true, hasPlan: false);
-        var planExit = await planConfig.InvokeAsync(["plan"]);
+        var planExit = await planConfig.InvokeAsync(["plan", "--resume", FizzBuzzSession.ToString()]);
         Assert.Equal(ExitCodes.Success, planExit);
         Assert.Equal(FizzBuzzModule, planOrchestrator.LastModule);
 
         // Phase 3: Build — spec and plan exist
         (CommandLineConfiguration? buildConfig, StringWriter? buildOutput, StringWriter _) = CreateConfig(buildOrchestrator, hasSpec: true, hasPlan: true);
-        var buildExit = await buildConfig.InvokeAsync(["build"]);
+        var buildExit = await buildConfig.InvokeAsync(["build", "--resume", FizzBuzzSession.ToString()]);
         Assert.Equal(ExitCodes.Success, buildExit);
         Assert.Equal(FizzBuzzModule, buildOrchestrator.LastModule);
     }
@@ -180,7 +180,7 @@ public class FizzBuzzWorkflowTests
         (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator, hasSpec: true, hasPlan: true);
         const string buildPrompt = "Implement FizzBuzz: for numbers 1-100, print Fizz for multiples of 3, Buzz for multiples of 5, FizzBuzz for both";
 
-        var exitCode = await config.InvokeAsync(["build", "--prompt", buildPrompt]);
+        var exitCode = await config.InvokeAsync(["build", "--resume", FizzBuzzSession.ToString(), "--prompt", buildPrompt]);
 
         Assert.Equal(ExitCodes.Success, exitCode);
         Assert.Equal(FizzBuzzModule, orchestrator.LastModule);

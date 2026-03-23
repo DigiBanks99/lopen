@@ -78,8 +78,10 @@ public class ProgramTests : IDisposable
     public void DI_ResolvesAuthTokenProvider_FromAuthModule()
     {
         IAuthTokenProvider? provider = _services.GetService<IAuthTokenProvider>();
+        IAuthService? authService = _services.GetService<IAuthService>();
         Assert.NotNull(provider);
-        Assert.IsType<CopilotAuthService>(provider);
+        Assert.NotNull(authService);
+        Assert.Same(authService, provider);
     }
 
     [Fact]

@@ -184,7 +184,7 @@ public class PhaseCommandTests
         _fakeSessionManager.SetLatestSessionId(Session1);
         (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig();
 
-        await config.InvokeAsync(["spec"]);
+        await config.InvokeAsync(["spec", "--resume", Session1.ToString()]);
 
         Assert.Equal("auth", _fakeOrchestrator.LastModule);
     }
@@ -197,7 +197,7 @@ public class PhaseCommandTests
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
         (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig();
 
-        await config.InvokeAsync(["plan"]);
+        await config.InvokeAsync(["plan", "--resume", Session1.ToString()]);
 
         Assert.Equal("auth", _fakeOrchestrator.LastModule);
     }
@@ -211,7 +211,7 @@ public class PhaseCommandTests
         _fakePlanManager.AddPlan("auth", "# Plan");
         (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig();
 
-        await config.InvokeAsync(["build"]);
+        await config.InvokeAsync(["build", "--resume", Session1.ToString()]);
 
         Assert.Equal("auth", _fakeOrchestrator.LastModule);
     }
@@ -336,7 +336,7 @@ public class PhaseCommandTests
     }
 
     [Fact]
-    public async Task Spec_AutoResume_LatestActiveSession()
+    public async Task Spec_WithoutResume_DoesNotAutoResumeLatestSession()
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
@@ -345,7 +345,7 @@ public class PhaseCommandTests
         var exitCode = await config.InvokeAsync(["spec"]);
 
         Assert.Equal(0, exitCode);
-        Assert.Contains($"Resuming session: {Session1}", output.ToString());
+        Assert.DoesNotContain("Resuming session", output.ToString());
     }
 
     [Fact]
@@ -395,7 +395,7 @@ public class PhaseCommandTests
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
         (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
-        var exitCode = await config.InvokeAsync(["spec", "--prompt", "Focus on auth module"]);
+        var exitCode = await config.InvokeAsync(["spec", "--resume", Session1.ToString(), "--prompt", "Focus on auth module"]);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("Focus on auth module", _fakeOrchestrator.LastPrompt);
@@ -409,7 +409,7 @@ public class PhaseCommandTests
         _fakeModuleScanner.AddModule("auth", hasSpec: true);
         (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
-        var exitCode = await config.InvokeAsync(["spec"]);
+        var exitCode = await config.InvokeAsync(["spec", "--resume", Session1.ToString()]);
 
         Assert.Equal(0, exitCode);
         Assert.Null(_fakeOrchestrator.LastPrompt);

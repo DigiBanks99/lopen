@@ -8,6 +8,13 @@
             "sourceFileMap": {
               "${workspaceFolder}": "${workspaceFolder}"
             }
+        },
+        {
+          "name": "C#: Lopen - Launch",
+          "type": "dotnet",
+          "request": "launch",
+          "projectPath": "${workspaceFolder}/src/Lopen/Lopen.csproj",
+          "args": ["auth", "status"],
         }
     ]
 }

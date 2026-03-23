@@ -56,10 +56,7 @@ internal sealed class InMemoryFileSystem : IFileSystem
         return _directories
             .Where(d => d.StartsWith(prefix, StringComparison.Ordinal) &&
                         d != normalized &&
-                        !d[prefix.Length..].Contains('/'))
-            .Concat(_symlinks.Keys.Where(d => d.StartsWith(prefix, StringComparison.Ordinal) &&
-                        !d[prefix.Length..].Contains('/')))
-            .Distinct();
+                        !d[prefix.Length..].Contains('/'));
     }
 
     public void MoveFile(string sourcePath, string destinationPath)

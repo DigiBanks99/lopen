@@ -77,7 +77,7 @@ public class PhaseCommandIntegrationTests
         var orchestrator = new ThrowingOrchestrator(new InvalidOperationException("LLM service unavailable"));
         (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator);
 
-        var exitCode = await config.InvokeAsync(["spec"]);
+        var exitCode = await config.InvokeAsync(["spec", "--resume", Session1.ToString()]);
 
         Assert.Equal(ExitCodes.Failure, exitCode);
         Assert.Contains("LLM service unavailable", error.ToString());
@@ -105,7 +105,7 @@ public class PhaseCommandIntegrationTests
             OrchestrationResult.Completed(1, WorkflowStep.DraftSpecification, "Done"));
         (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator);
 
-        await config.InvokeAsync(["plan", "--prompt", "Focus on security"]);
+        await config.InvokeAsync(["plan", "--resume", Session1.ToString(), "--prompt", "Focus on security"]);
 
         Assert.Equal("Focus on security", orchestrator.LastPrompt);
         Assert.Equal("auth", orchestrator.LastModule);
@@ -117,7 +117,7 @@ public class PhaseCommandIntegrationTests
         var orchestrator = new ThrowingOrchestrator(new InvalidOperationException("Plan generation failed"));
         (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator);
 
-        var exitCode = await config.InvokeAsync(["plan"]);
+        var exitCode = await config.InvokeAsync(["plan", "--resume", Session1.ToString()]);
 
         Assert.Equal(ExitCodes.Failure, exitCode);
         Assert.Contains("Plan generation failed", error.ToString());
@@ -132,7 +132,7 @@ public class PhaseCommandIntegrationTests
             OrchestrationResult.Completed(1, WorkflowStep.DraftSpecification, "Done"));
         (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator);
 
-        await config.InvokeAsync(["build", "--prompt", "Skip tests"]);
+        await config.InvokeAsync(["build", "--resume", Session1.ToString(), "--prompt", "Skip tests"]);
 
         Assert.Equal("Skip tests", orchestrator.LastPrompt);
         Assert.Equal("auth", orchestrator.LastModule);
@@ -144,7 +144,7 @@ public class PhaseCommandIntegrationTests
         var orchestrator = new ThrowingOrchestrator(new InvalidOperationException("Build step crashed"));
         (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator);
 
-        var exitCode = await config.InvokeAsync(["build"]);
+        var exitCode = await config.InvokeAsync(["build", "--resume", Session1.ToString()]);
 
         Assert.Equal(ExitCodes.Failure, exitCode);
         Assert.Contains("Build step crashed", error.ToString());

@@ -162,10 +162,12 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddSingleton(new Lopen.Configuration.GitOptions());
         services.AddSingleton<Lopen.Llm.ILlmService, NullLlmService>();
         services.AddSingleton<Lopen.Llm.IPromptBuilder, NullPromptBuilder>();
         services.AddSingleton<Lopen.Llm.IToolRegistry, NullToolRegistry>();
         services.AddSingleton<Lopen.Llm.IModelSelector, NullModelSelector>();
+        services.AddSingleton<Lopen.Llm.IVerificationTracker, NullVerificationTracker>();
         services.AddLopenCore(projectRoot: "/tmp");
 
         ServiceProvider provider = services.BuildServiceProvider();
@@ -258,10 +260,12 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddSingleton(new Lopen.Configuration.GitOptions());
         services.AddSingleton<Lopen.Llm.ILlmService, NullLlmService>();
         services.AddSingleton<Lopen.Llm.IPromptBuilder, NullPromptBuilder>();
         services.AddSingleton<Lopen.Llm.IToolRegistry, NullToolRegistry>();
         services.AddSingleton<Lopen.Llm.IModelSelector, NullModelSelector>();
+        services.AddSingleton<Lopen.Llm.IVerificationTracker, NullVerificationTracker>();
         services.AddSingleton<Lopen.Configuration.IBudgetEnforcer>(
             new Lopen.Configuration.BudgetEnforcer(new Lopen.Configuration.BudgetOptions()));
         services.AddLopenCore(projectRoot: "/tmp");
