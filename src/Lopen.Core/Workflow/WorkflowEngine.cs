@@ -38,8 +38,9 @@ internal sealed class WorkflowEngine : IWorkflowEngine
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
 
-        _currentStep = await _assessor.GetCurrentStepAsync(moduleName, cancellationToken);
-        _isComplete = false;
+        WorkflowAssessment assessment = await _assessor.AssessAsync(moduleName, cancellationToken);
+        _currentStep = assessment.Step;
+        _isComplete = !assessment.HasMoreComponents && assessment.Step == WorkflowStep.Repeat;
 
         _logger.LogInformation(
             "Workflow initialized for module {Module} at step {Step} (phase: {Phase})",

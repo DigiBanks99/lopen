@@ -279,7 +279,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.Repeat;
         _engine.StepsBeforeComplete = 1;
-        _assessor.HasMoreComponents = false;
+        _assessor.HasMore = false;
         WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
@@ -292,7 +292,7 @@ public class WorkflowOrchestratorTests
     {
         _engine.CurrentStep = WorkflowStep.Repeat;
         _engine.StepsBeforeComplete = 1;
-        _assessor.HasMoreComponents = true;
+        _assessor.HasMore = true;
         WorkflowOrchestrator sut = CreateOrchestrator();
 
         await sut.RunAsync("test-module");
@@ -1761,7 +1761,7 @@ public class WorkflowOrchestratorTests
         Assert.Contains(WorkflowTrigger.TaskIterationComplete, engine.FiredTriggers);
 
         // Phase B: Repeat step checks for remaining components → triggers ModuleComplete
-        _assessor.HasMoreComponents = false;
+        _assessor.HasMore = false;
         var repeatEngine = new StubWorkflowEngine
         {
             CurrentStep = WorkflowStep.Repeat,
@@ -1825,19 +1825,12 @@ public class WorkflowOrchestratorTests
 
     private sealed class StubStateAssessor : IStateAssessor
     {
-        public bool HasMoreComponents { get; set; } = true;
+        public WorkflowStep Step { get; set; } = WorkflowStep.DraftSpecification;
+        public bool HasMore { get; set; } = true;
+        public bool SpecReady { get; set; } = false;
 
-        public Task<WorkflowStep> GetCurrentStepAsync(string moduleName, CancellationToken ct = default) =>
-            Task.FromResult(WorkflowStep.DraftSpecification);
-
-        public Task PersistStepAsync(string moduleName, WorkflowStep step, CancellationToken ct = default) =>
-            Task.CompletedTask;
-
-        public Task<bool> IsSpecReadyAsync(string moduleName, CancellationToken ct = default) =>
-            Task.FromResult(false);
-
-        public Task<bool> HasMoreComponentsAsync(string moduleName, CancellationToken ct = default) =>
-            Task.FromResult(HasMoreComponents);
+        public Task<WorkflowAssessment> AssessAsync(string moduleName, CancellationToken ct = default) =>
+            Task.FromResult(new WorkflowAssessment(Step, SpecReady, HasMore));
     }
 
     private sealed class StubLlmService : ILlmService

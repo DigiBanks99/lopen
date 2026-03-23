@@ -234,17 +234,8 @@ public sealed class OrchestratorRetryGuardrailIntegrationTests
 
     private sealed class FakeStateAssessor : IStateAssessor
     {
-        public Task<WorkflowStep> GetCurrentStepAsync(string moduleName, CancellationToken ct = default) =>
-            Task.FromResult(WorkflowStep.DetermineDependencies);
-
-        public Task PersistStepAsync(string moduleName, WorkflowStep step, CancellationToken ct = default) =>
-            Task.CompletedTask;
-
-        public Task<bool> IsSpecReadyAsync(string moduleName, CancellationToken ct = default) =>
-            Task.FromResult(false);
-
-        public Task<bool> HasMoreComponentsAsync(string moduleName, CancellationToken ct = default) =>
-            Task.FromResult(false);
+        public Task<WorkflowAssessment> AssessAsync(string moduleName, CancellationToken ct = default) =>
+            Task.FromResult(new WorkflowAssessment(WorkflowStep.DetermineDependencies, IsSpecReady: false, HasMoreComponents: false));
     }
 
     private sealed class FakePromptBuilder : IPromptBuilder

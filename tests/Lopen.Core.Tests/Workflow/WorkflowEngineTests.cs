@@ -231,16 +231,7 @@ public sealed class WorkflowEngineTests
 
         public FakeStateAssessor(WorkflowStep step) => _step = step;
 
-        public Task<WorkflowStep> GetCurrentStepAsync(string moduleName, CancellationToken cancellationToken = default)
-            => Task.FromResult(_step);
-
-        public Task PersistStepAsync(string moduleName, WorkflowStep step, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
-
-        public Task<bool> IsSpecReadyAsync(string moduleName, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
-
-        public Task<bool> HasMoreComponentsAsync(string moduleName, CancellationToken cancellationToken = default)
-            => Task.FromResult(false);
+        public Task<WorkflowAssessment> AssessAsync(string moduleName, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new WorkflowAssessment(_step, IsSpecReady: true, HasMoreComponents: false));
     }
 }

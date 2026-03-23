@@ -74,9 +74,10 @@ public class CoreAcceptanceCriteriaTests
 
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, "/project");
         var assessor = new CodebaseStateAssessor(
-            fs, scanner, NullLogger<CodebaseStateAssessor>.Instance);
+            fs, scanner, "/project", NullLogger<CodebaseStateAssessor>.Instance);
 
-        WorkflowStep step = await assessor.GetCurrentStepAsync("auth");
+        WorkflowAssessment assessment = await assessor.AssessAsync("auth");
+        WorkflowStep step = assessment.Step;
         // Has spec with incomplete checkboxes = in progress (not DraftSpecification, not Repeat)
         Assert.NotEqual(WorkflowStep.DraftSpecification, step);
     }
@@ -464,17 +465,8 @@ public class CoreAcceptanceCriteriaTests
         private readonly WorkflowStep _step;
         public FakeStateAssessor(WorkflowStep step) => _step = step;
 
-        public Task<WorkflowStep> GetCurrentStepAsync(string moduleName, CancellationToken ct = default)
-            => Task.FromResult(_step);
-
-        public Task PersistStepAsync(string moduleName, WorkflowStep step, CancellationToken ct = default)
-            => Task.CompletedTask;
-
-        public Task<bool> IsSpecReadyAsync(string moduleName, CancellationToken ct = default)
-            => Task.FromResult(true);
-
-        public Task<bool> HasMoreComponentsAsync(string moduleName, CancellationToken ct = default)
-            => Task.FromResult(true);
+        public Task<WorkflowAssessment> AssessAsync(string moduleName, CancellationToken ct = default) =>
+            Task.FromResult(new WorkflowAssessment(_step, IsSpecReady: true, HasMoreComponents: true));
     }
 
     private sealed class FakeTokenTracker : ITokenTracker

@@ -19,6 +19,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 {
     private readonly IWorkflowEngine _engine;
     private readonly IStateAssessor _assessor;
+    private readonly IStepRecorder? _stepRecorder;
     private readonly ILlmService _llmService;
     private readonly IPromptBuilder _promptBuilder;
     private readonly IToolRegistry _toolRegistry;
@@ -69,10 +70,12 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IPauseController? pauseController = null,
         IUserPromptQueue? userPromptQueue = null,
         IToolHandlerBinder? toolHandlerBinder = null,
+        IStepRecorder? stepRecorder = null,
         WorkflowOptions? workflowOptions = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _assessor = assessor ?? throw new ArgumentNullException(nameof(assessor));
+        _stepRecorder = stepRecorder;
         _llmService = llmService ?? throw new ArgumentNullException(nameof(llmService));
         _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
         _toolRegistry = toolRegistry ?? throw new ArgumentNullException(nameof(toolRegistry));
@@ -291,6 +294,18 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                         // Phase transition occurred — save state
                         await AutoSaveAsync(AutoSaveTrigger.PhaseTransition, moduleName, cancellationToken);
                     }
+
+                    if (fired && _stepRecorder is not null)
+                    {
+                        WorkflowStep newStep = _engine.CurrentStep;
+                        if (newStep is WorkflowStep.DetermineDependencies
+                                 or WorkflowStep.IdentifyComponents
+                                 or WorkflowStep.SelectNextComponent
+                                 or WorkflowStep.BreakIntoTasks)
+                        {
+                            await _stepRecorder.RecordStepAsync(moduleName, newStep, cancellationToken);
+                        }
+                    }
                 }
             }
             catch (StorageException ex) when (ex.IsCritical)
@@ -442,7 +457,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             await PersistPlanAsync(moduleName, llmResult.Summary, cancellationToken);
 
             // Check if planning is structurally complete for auto-transition to building
-            var hasComponents = await _assessor.HasMoreComponentsAsync(moduleName, cancellationToken);
+            WorkflowAssessment assessment = await _assessor.AssessAsync(moduleName, cancellationToken);
             if (_phaseController.CanAutoTransitionToBuilding(true, true))
             {
                 _logger.LogInformation("Auto-transition: Planning structurally complete");
@@ -452,8 +467,8 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         if (currentStep == WorkflowStep.Repeat)
         {
             // Check if all components are built for auto-transition to complete
-            var hasMore = await _assessor.HasMoreComponentsAsync(moduleName, cancellationToken);
-            if (!hasMore)
+            WorkflowAssessment repeatAssessment = await _assessor.AssessAsync(moduleName, cancellationToken);
+            if (!repeatAssessment.HasMoreComponents)
             {
                 _logger.LogInformation("No more components — checking module completion");
                 return StepResult.Succeeded(WorkflowTrigger.ModuleComplete, "All components complete");

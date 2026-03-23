@@ -38,7 +38,14 @@ public static class ServiceCollectionExtensions
                     projectRoot));
             services.AddSingleton<IModuleLister, ModuleLister>();
             services.AddSingleton<IModuleSelectionService, ModuleSelectionService>();
-            services.AddSingleton<IStateAssessor, CodebaseStateAssessor>();
+            services.AddSingleton<CodebaseStateAssessor>(sp =>
+                new CodebaseStateAssessor(
+                    sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
+                    sp.GetRequiredService<IModuleScanner>(),
+                    projectRoot,
+                    sp.GetRequiredService<ILogger<CodebaseStateAssessor>>()));
+            services.AddSingleton<IStateAssessor>(sp => sp.GetRequiredService<CodebaseStateAssessor>());
+            services.AddSingleton<IStepRecorder>(sp => sp.GetRequiredService<CodebaseStateAssessor>());
             services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
             services.AddSingleton<IFailureHandler>(sp =>
             {
