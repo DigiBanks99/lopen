@@ -5,7 +5,6 @@ namespace Lopen.Llm.Tools;
 
 /// <summary>
 /// Assembles AIFunction instances per workflow phase using static operations classes.
-/// Replaces the three-layer DefaultToolRegistry/ToolHandlerBinder/ToolConversion infrastructure.
 /// </summary>
 internal sealed class ToolCatalog
 {

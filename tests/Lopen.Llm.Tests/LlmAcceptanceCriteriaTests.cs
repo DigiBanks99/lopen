@@ -115,38 +115,10 @@ public class LlmAcceptanceCriteriaTests
     }
 
     // AC5: Lopen-managed tools are registered and functional
-    // Primary coverage: DefaultToolRegistryTests
-
-    [Fact]
-    public void AC5_AllSpecifiedTools_AreRegistered()
-    {
-        var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        IReadOnlyList<LopenToolDefinition> allTools = registry.GetAllTools();
-        var toolNames = allTools.Select(t => t.Name).ToHashSet();
-
-        Assert.Contains("read_spec", toolNames);
-        Assert.Contains("read_research", toolNames);
-        Assert.Contains("read_plan", toolNames);
-        Assert.Contains("update_task_status", toolNames);
-        Assert.Contains("get_current_context", toolNames);
-        Assert.Contains("log_research", toolNames);
-        Assert.Contains("report_progress", toolNames);
-    }
+    // Primary coverage: ToolCatalogTests
 
     // AC6: Oracle verification tools dispatch a sub-agent and return pass/fail verdicts
     // Primary coverage: OracleVerifierTests
-
-    [Fact]
-    public void AC6_VerificationTools_AreRegistered()
-    {
-        var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        IReadOnlyList<LopenToolDefinition> allTools = registry.GetAllTools();
-        var toolNames = allTools.Select(t => t.Name).ToHashSet();
-
-        Assert.Contains("verify_task_completion", toolNames);
-        Assert.Contains("verify_component_completion", toolNames);
-        Assert.Contains("verify_module_completion", toolNames);
-    }
 
     [Fact]
     public void AC6_OracleVerdict_ReturnsPassOrFail()
@@ -174,7 +146,6 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC7_OracleVerifier_RegistersNoTools()
     {
-        // OracleVerifier invokes with Array.Empty<LopenToolDefinition>()
         var prompt = OracleVerifier.BuildPrompt(
             VerificationScope.Task, "evidence", "criteria");
         Assert.Contains("acceptance criteria", prompt, StringComparison.OrdinalIgnoreCase);
@@ -206,31 +177,7 @@ public class LlmAcceptanceCriteriaTests
     }
 
     // AC9: Tool registration varies by workflow step
-    // Primary coverage: DefaultToolRegistryTests
-
-    [Fact]
-    public void AC9_ResearchPhase_IncludesLogResearch_ExcludesVerification()
-    {
-        var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        IReadOnlyList<LopenToolDefinition> tools = registry.GetToolsForPhase(WorkflowPhase.Research);
-        var names = tools.Select(t => t.Name).ToHashSet();
-
-        Assert.Contains("log_research", names);
-        Assert.DoesNotContain("verify_task_completion", names);
-        Assert.DoesNotContain("update_task_status", names);
-    }
-
-    [Fact]
-    public void AC9_BuildingPhase_IncludesVerification_ExcludesLogResearch()
-    {
-        var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        IReadOnlyList<LopenToolDefinition> tools = registry.GetToolsForPhase(WorkflowPhase.Building);
-        var names = tools.Select(t => t.Name).ToHashSet();
-
-        Assert.Contains("verify_task_completion", names);
-        Assert.Contains("update_task_status", names);
-        Assert.DoesNotContain("log_research", names);
-    }
+    // Primary coverage: ToolCatalogTests
 
     // AC10: Per-phase model selection works
     // Primary coverage: DefaultModelSelectorTests
