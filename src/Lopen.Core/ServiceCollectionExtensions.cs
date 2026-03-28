@@ -5,6 +5,7 @@ using Lopen.Core.Git;
 using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
+using Lopen.Llm.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -96,6 +97,39 @@ public static class ServiceCollectionExtensions
                     taskGate,
                     planMgr,
                     oracleVerifier);
+            });
+
+            services.AddSingleton<ToolCatalog>(sp =>
+            {
+                var fs = sp.GetRequiredService<Lopen.Storage.IFileSystem>();
+                var sectionExtractor = sp.GetRequiredService<ISectionExtractor>();
+                var engine = sp.GetRequiredService<IWorkflowEngine>();
+                var verificationTracker = sp.GetRequiredService<Lopen.Llm.IVerificationTracker>();
+
+                Lopen.Llm.ITaskStatusGate? taskGateCatalog = null;
+                try { taskGateCatalog = sp.GetService<Lopen.Llm.ITaskStatusGate>(); }
+                catch { /* optional */ }
+
+                Lopen.Storage.IPlanManager? planMgrCatalog = null;
+                try { planMgrCatalog = sp.GetService<Lopen.Storage.IPlanManager>(); }
+                catch { /* optional */ }
+
+                Lopen.Llm.IOracleVerifier? oracleCatalog = null;
+                try { oracleCatalog = sp.GetService<Lopen.Llm.IOracleVerifier>(); }
+                catch { /* optional */ }
+
+                var toolSectionExtractor = new SectionExtractorToolAdapter(sectionExtractor);
+                var toolWorkflowEngine = new WorkflowEngineToolAdapter(engine);
+
+                return new ToolCatalog(
+                    fs,
+                    toolSectionExtractor,
+                    toolWorkflowEngine,
+                    verificationTracker,
+                    projectRoot,
+                    taskGateCatalog,
+                    planMgrCatalog,
+                    oracleCatalog);
             });
         }
 

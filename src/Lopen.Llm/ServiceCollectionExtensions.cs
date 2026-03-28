@@ -1,4 +1,5 @@
 using Lopen.Configuration;
+using Lopen.Llm.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;

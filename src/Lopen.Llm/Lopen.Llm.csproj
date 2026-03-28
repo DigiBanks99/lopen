@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Lopen.Llm.Tests" />
+    <InternalsVisibleTo Include="Lopen.Core" />
     <InternalsVisibleTo Include="Lopen.Core.Tests" />
   </ItemGroup>
 
@@ -16,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Lopen.Auth\Lopen.Auth.csproj" />
     <ProjectReference Include="..\Lopen.Configuration\Lopen.Configuration.csproj" />
+    <ProjectReference Include="..\Lopen.Storage\Lopen.Storage.csproj" />
   </ItemGroup>
 
 </Project>
