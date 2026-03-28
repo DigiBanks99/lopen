@@ -1,7 +1,6 @@
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
-using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -165,7 +164,6 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton(new Lopen.Configuration.GitOptions());
         services.AddSingleton<Lopen.Llm.ILlmService, NullLlmService>();
         services.AddSingleton<Lopen.Llm.IPromptBuilder, NullPromptBuilder>();
-        services.AddSingleton<Lopen.Llm.IToolRegistry, NullToolRegistry>();
         services.AddSingleton<Lopen.Llm.IModelSelector, NullModelSelector>();
         services.AddSingleton<Lopen.Llm.IVerificationTracker, NullVerificationTracker>();
         services.AddLopenCore(projectRoot: "/tmp");
@@ -263,7 +261,6 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton(new Lopen.Configuration.GitOptions());
         services.AddSingleton<Lopen.Llm.ILlmService, NullLlmService>();
         services.AddSingleton<Lopen.Llm.IPromptBuilder, NullPromptBuilder>();
-        services.AddSingleton<Lopen.Llm.IToolRegistry, NullToolRegistry>();
         services.AddSingleton<Lopen.Llm.IModelSelector, NullModelSelector>();
         services.AddSingleton<Lopen.Llm.IVerificationTracker, NullVerificationTracker>();
         services.AddSingleton<Lopen.Configuration.IBudgetEnforcer>(
@@ -277,7 +274,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddLopenCore_WithProjectRoot_RegistersToolHandlerBinder()
+    public void AddLopenCore_WithProjectRoot_RegistersToolCatalog()
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -286,7 +283,7 @@ public class ServiceCollectionExtensionsTests
         services.AddLopenCore(projectRoot: "/tmp");
 
         ServiceProvider provider = services.BuildServiceProvider();
-        IToolHandlerBinder? service = provider.GetService<Lopen.Core.ToolHandlers.IToolHandlerBinder>();
+        Lopen.Llm.Tools.ToolCatalog? service = provider.GetService<Lopen.Llm.Tools.ToolCatalog>();
 
         Assert.NotNull(service);
     }
@@ -360,7 +357,7 @@ public class ServiceCollectionExtensionsTests
     private sealed class NullLlmService : Lopen.Llm.ILlmService
     {
         public Task<Lopen.Llm.LlmInvocationResult> InvokeAsync(string systemPrompt, string model,
-            IReadOnlyList<Lopen.Llm.LopenToolDefinition> tools, CancellationToken ct = default) =>
+            IReadOnlyList<Microsoft.Extensions.AI.AIFunction> tools, CancellationToken ct = default) =>
             Task.FromResult(new Lopen.Llm.LlmInvocationResult("", new Lopen.Llm.TokenUsage(0, 0, 0, 0, false), 0, true));
     }
 
@@ -368,14 +365,6 @@ public class ServiceCollectionExtensionsTests
     {
         public string BuildSystemPrompt(Lopen.Llm.WorkflowPhase phase, string module, string? component, string? task,
             IReadOnlyDictionary<string, string>? contextSections = null) => "";
-    }
-
-    private sealed class NullToolRegistry : Lopen.Llm.IToolRegistry
-    {
-        public IReadOnlyList<Lopen.Llm.LopenToolDefinition> GetToolsForPhase(Lopen.Llm.WorkflowPhase phase) => [];
-        public void RegisterTool(Lopen.Llm.LopenToolDefinition tool) { }
-        public IReadOnlyList<Lopen.Llm.LopenToolDefinition> GetAllTools() => [];
-        public bool BindHandler(string toolName, Func<string, CancellationToken, Task<string>> handler) => true;
     }
 
     private sealed class NullModelSelector : Lopen.Llm.IModelSelector

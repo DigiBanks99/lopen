@@ -50,7 +50,7 @@ internal sealed class OracleVerifier : IOracleVerifier
             result = await _llmService.InvokeAsync(
                 prompt,
                 _oracleOptions.Model,
-                Array.Empty<LopenToolDefinition>(),
+                Array.Empty<Microsoft.Extensions.AI.AIFunction>(),
                 cancellationToken);
         }
         catch (LlmException ex)

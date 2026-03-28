@@ -225,7 +225,7 @@ public class OracleVerificationIntegrationTests
         public string NextResponse { get; set; } = "";
 
         public Task<LlmInvocationResult> InvokeAsync(
-            string systemPrompt, string model, IReadOnlyList<LopenToolDefinition> tools, CancellationToken ct)
+            string systemPrompt, string model, IReadOnlyList<Microsoft.Extensions.AI.AIFunction> tools, CancellationToken ct)
         {
             return Task.FromResult(new LlmInvocationResult(
                 Output: NextResponse,

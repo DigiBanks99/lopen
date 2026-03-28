@@ -1,4 +1,5 @@
 using Lopen.Configuration;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -31,7 +32,7 @@ internal sealed class RetryingLlmService : ILlmService
     public async Task<LlmInvocationResult> InvokeAsync(
         string systemPrompt,
         string model,
-        IReadOnlyList<LopenToolDefinition> tools,
+        IReadOnlyList<AIFunction> tools,
         CancellationToken cancellationToken = default)
     {
         IReadOnlyList<string> chain = BuildFallbackChain(model);

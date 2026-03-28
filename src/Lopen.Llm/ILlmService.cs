@@ -1,3 +1,5 @@
+using Microsoft.Extensions.AI;
+
 namespace Lopen.Llm;
 
 /// <summary>
@@ -12,6 +14,6 @@ public interface ILlmService
     Task<LlmInvocationResult> InvokeAsync(
         string systemPrompt,
         string model,
-        IReadOnlyList<LopenToolDefinition> tools,
+        IReadOnlyList<AIFunction> tools,
         CancellationToken cancellationToken = default);
 }

@@ -358,7 +358,7 @@ public sealed class OracleVerifierTests
         private readonly string _output;
 
         public string? LastModelUsed { get; private set; }
-        public IReadOnlyList<LopenToolDefinition>? LastToolsUsed { get; private set; }
+        public IReadOnlyList<Microsoft.Extensions.AI.AIFunction>? LastToolsUsed { get; private set; }
         public string? LastPromptUsed { get; private set; }
 
         public FakeLlmService(string output) => _output = output;
@@ -366,7 +366,7 @@ public sealed class OracleVerifierTests
         public Task<LlmInvocationResult> InvokeAsync(
             string systemPrompt,
             string model,
-            IReadOnlyList<LopenToolDefinition> tools,
+            IReadOnlyList<Microsoft.Extensions.AI.AIFunction> tools,
             CancellationToken cancellationToken = default)
         {
             LastPromptUsed = systemPrompt;
@@ -390,7 +390,7 @@ public sealed class OracleVerifierTests
         public Task<LlmInvocationResult> InvokeAsync(
             string systemPrompt,
             string model,
-            IReadOnlyList<LopenToolDefinition> tools,
+            IReadOnlyList<Microsoft.Extensions.AI.AIFunction> tools,
             CancellationToken cancellationToken = default)
         {
             throw new LlmException(_message);
@@ -402,7 +402,7 @@ public sealed class OracleVerifierTests
         public Task<LlmInvocationResult> InvokeAsync(
             string systemPrompt,
             string model,
-            IReadOnlyList<LopenToolDefinition> tools,
+            IReadOnlyList<Microsoft.Extensions.AI.AIFunction> tools,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();

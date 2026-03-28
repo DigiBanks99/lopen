@@ -2,10 +2,11 @@ using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
-using Lopen.Core.ToolHandlers;
 using Lopen.Llm;
+using Lopen.Llm.Tools;
 using Lopen.Otel;
 using Lopen.Storage;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
@@ -22,7 +23,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IStepRecorder? _stepRecorder;
     private readonly ILlmService _llmService;
     private readonly IPromptBuilder _promptBuilder;
-    private readonly IToolRegistry _toolRegistry;
+    private readonly ToolCatalog _toolCatalog;
     private readonly IModelSelector _modelSelector;
     private readonly IGuardrailPipeline _guardrailPipeline;
     private readonly IOutputRenderer _renderer;
@@ -37,7 +38,6 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IPlanManager? _planManager;
     private readonly IPauseController? _pauseController;
     private readonly IUserPromptQueue? _userPromptQueue;
-    private readonly IToolHandlerBinder? _toolHandlerBinder;
     private readonly WorkflowOptions? _workflowOptions;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
@@ -53,7 +53,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IStateAssessor assessor,
         ILlmService llmService,
         IPromptBuilder promptBuilder,
-        IToolRegistry toolRegistry,
+        ToolCatalog toolCatalog,
         IModelSelector modelSelector,
         IGuardrailPipeline guardrailPipeline,
         IOutputRenderer renderer,
@@ -69,7 +69,6 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IPlanManager? planManager = null,
         IPauseController? pauseController = null,
         IUserPromptQueue? userPromptQueue = null,
-        IToolHandlerBinder? toolHandlerBinder = null,
         IStepRecorder? stepRecorder = null,
         WorkflowOptions? workflowOptions = null)
     {
@@ -78,7 +77,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _stepRecorder = stepRecorder;
         _llmService = llmService ?? throw new ArgumentNullException(nameof(llmService));
         _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
-        _toolRegistry = toolRegistry ?? throw new ArgumentNullException(nameof(toolRegistry));
+        _toolCatalog = toolCatalog ?? throw new ArgumentNullException(nameof(toolCatalog));
         _modelSelector = modelSelector ?? throw new ArgumentNullException(nameof(modelSelector));
         _guardrailPipeline = guardrailPipeline ?? throw new ArgumentNullException(nameof(guardrailPipeline));
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
@@ -94,7 +93,6 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _planManager = planManager;
         _pauseController = pauseController;
         _userPromptQueue = userPromptQueue;
-        _toolHandlerBinder = toolHandlerBinder;
         _workflowOptions = workflowOptions;
     }
 
@@ -144,9 +142,6 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
 
         await _engine.InitializeAsync(moduleName, cancellationToken);
-
-        // Bind tool handlers to registry so LLM can invoke them (CORE-25)
-        _toolHandlerBinder?.BindAll(_toolRegistry);
     }
 
     public async Task<OrchestrationResult> RunAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
@@ -493,7 +488,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             phase.ToString(), step.ToString(), CalculateProgress(step), cancellationToken);
 
         ModelFallbackResult model = _modelSelector.SelectModel(phase);
-        IReadOnlyList<LopenToolDefinition> tools = _toolRegistry.GetToolsForPhase(phase);
+        IReadOnlyList<AIFunction> tools = _toolCatalog.GetToolsForPhase(phase);
         Dictionary<string, string> contextSections = _userPrompt is not null
             ? new Dictionary<string, string> { ["user_prompt"] = _userPrompt }
             : new Dictionary<string, string>();

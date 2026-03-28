@@ -37,7 +37,6 @@ public class ProgramTests : IDisposable
     [InlineData(typeof(ILlmService))]
     [InlineData(typeof(IModelSelector))]
     [InlineData(typeof(ITokenTracker))]
-    [InlineData(typeof(IToolRegistry))]
     [InlineData(typeof(IPromptBuilder))]
     public void DI_ResolvesLlmServices(Type serviceType)
     {

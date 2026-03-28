@@ -156,6 +156,34 @@ public class CopilotLlmServiceTests
         Assert.Equal(expected, CopilotLlmService.IsPremiumModel(model));
     }
 
+    [Fact]
+    public void BuildSessionConfig_AlwaysIncludesPermissionHandler()
+    {
+        // SDK v0.2.0 requires OnPermissionRequest to be set or CreateSessionAsync throws ArgumentException
+        SessionConfig config = CopilotLlmService.BuildSessionConfig(
+            "claude-sonnet-4",
+            "system prompt",
+            [],
+            new StubAuthErrorHandler(),
+            CancellationToken.None);
+
+        Assert.NotNull(config.OnPermissionRequest);
+    }
+
+    [Fact]
+    public void BuildSessionConfig_SetsModelAndSystemPrompt()
+    {
+        SessionConfig config = CopilotLlmService.BuildSessionConfig(
+            "claude-sonnet-4",
+            "my system prompt",
+            [],
+            new StubAuthErrorHandler(),
+            CancellationToken.None);
+
+        Assert.Equal("claude-sonnet-4", config.Model);
+        Assert.Equal("my system prompt", config.SystemMessage?.Content);
+    }
+
     /// <summary>
     /// Fake client provider that fails with a generic exception.
     /// </summary>

@@ -1,4 +1,5 @@
 using Lopen.Llm;
+using Microsoft.Extensions.AI;
 
 namespace Lopen.Cli.Tests.Fakes;
 
@@ -12,7 +13,7 @@ public sealed class ScriptedLlmService : ILlmService
     private readonly Queue<LlmInvocationResult> _responses;
     private readonly LlmInvocationResult _defaultResponse;
 
-    public List<(string SystemPrompt, string Model, IReadOnlyList<LopenToolDefinition> Tools)> Invocations { get; } = [];
+    public List<(string SystemPrompt, string Model, IReadOnlyList<AIFunction> Tools)> Invocations { get; } = [];
     public int InvokeCount => Invocations.Count;
 
     public ScriptedLlmService(IEnumerable<LlmInvocationResult> responses)
@@ -31,7 +32,7 @@ public sealed class ScriptedLlmService : ILlmService
     public Task<LlmInvocationResult> InvokeAsync(
         string systemPrompt,
         string model,
-        IReadOnlyList<LopenToolDefinition> tools,
+        IReadOnlyList<AIFunction> tools,
         CancellationToken cancellationToken = default)
     {
         Invocations.Add((systemPrompt, model, tools));

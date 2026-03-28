@@ -268,7 +268,7 @@ public sealed class RetryingLlmServiceTests
 
     private sealed class FakeLlmService : ILlmService
     {
-        public List<(string prompt, string model, IReadOnlyList<LopenToolDefinition> tools)> Calls { get; } = [];
+        public List<(string prompt, string model, IReadOnlyList<Microsoft.Extensions.AI.AIFunction> tools)> Calls { get; } = [];
         public HashSet<string> FailModels { get; } = new(StringComparer.OrdinalIgnoreCase);
         public bool FailAllModels { get; set; }
         public bool ThrowNonModelError { get; set; }
@@ -278,7 +278,7 @@ public sealed class RetryingLlmServiceTests
 
         public Task<LlmInvocationResult> InvokeAsync(
             string systemPrompt, string model,
-            IReadOnlyList<LopenToolDefinition> tools,
+            IReadOnlyList<Microsoft.Extensions.AI.AIFunction> tools,
             CancellationToken cancellationToken = default)
         {
             Calls.Add((systemPrompt, model, tools));

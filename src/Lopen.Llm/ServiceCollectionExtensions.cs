@@ -29,8 +29,10 @@ public static class ServiceCollectionExtensions
                 sp.GetRequiredService<ILogger<RetryingLlmService>>()));
         services.AddSingleton<IModelSelector, DefaultModelSelector>();
         services.AddSingleton<ITokenTracker, InMemoryTokenTracker>();
-        services.AddSingleton<IToolRegistry, DefaultToolRegistry>();
-        services.AddSingleton<IPromptBuilder, DefaultPromptBuilder>();
+        services.AddSingleton<IPromptBuilder>(sp =>
+            new DefaultPromptBuilder(
+                sp.GetService<ToolCatalog>(),
+                sp.GetRequiredService<ILogger<DefaultPromptBuilder>>()));
         services.AddSingleton<IVerificationTracker, VerificationTracker>();
         services.AddSingleton<IOracleVerifier, OracleVerifier>();
         services.AddSingleton<IContextBudgetManager, ContextBudgetManager>();

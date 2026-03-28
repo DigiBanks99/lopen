@@ -29,7 +29,7 @@ internal sealed class CopilotLlmService : ILlmService
     public async Task<LlmInvocationResult> InvokeAsync(
         string systemPrompt,
         string model,
-        IReadOnlyList<LopenToolDefinition> tools,
+        IReadOnlyList<AIFunction> tools,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(systemPrompt);
@@ -61,29 +61,7 @@ internal sealed class CopilotLlmService : ILlmService
                 model);
         }
 
-        List<AIFunction> aiFunctions = ToolConversion.ToAiFunctions(tools);
-        _logger.LogDebug("Converted {BoundToolCount}/{TotalToolCount} tools to AIFunction instances",
-            aiFunctions.Count, tools.Count);
-
-        var config = new SessionConfig
-        {
-            Model = model,
-            SystemMessage = new SystemMessageConfig
-            {
-                Content = systemPrompt,
-                Mode = SystemMessageMode.Replace,
-            },
-            Tools = aiFunctions,
-            Streaming = false,
-            Hooks = new SessionHooks
-            {
-                OnErrorOccurred = async (input, _) =>
-                {
-                    ErrorOccurredHookOutput? result = await _authErrorHandler.HandleErrorAsync(input, cancellationToken);
-                    return result ?? new ErrorOccurredHookOutput();
-                },
-            },
-        };
+        SessionConfig config = BuildSessionConfig(model, systemPrompt, tools.ToList(), _authErrorHandler, cancellationToken);
 
         // Track usage via events
         int inputTokens = 0, outputTokens = 0, toolCallCount = 0;
@@ -150,6 +128,39 @@ internal sealed class CopilotLlmService : ILlmService
                 IsModelUnavailable = LlmException.LooksLikeModelUnavailable(ex),
             };
         }
+    }
+
+    /// <summary>
+    /// Builds the session configuration for a Copilot SDK session.
+    /// OnPermissionRequest is always set to PermissionHandler.ApproveAll as required by the SDK.
+    /// </summary>
+    internal static SessionConfig BuildSessionConfig(
+        string model,
+        string systemPrompt,
+        List<AIFunction> tools,
+        IAuthErrorHandler authErrorHandler,
+        CancellationToken cancellationToken)
+    {
+        return new SessionConfig
+        {
+            OnPermissionRequest = PermissionHandler.ApproveAll,
+            Model = model,
+            SystemMessage = new SystemMessageConfig
+            {
+                Content = systemPrompt,
+                Mode = SystemMessageMode.Replace,
+            },
+            Tools = tools,
+            Streaming = false,
+            Hooks = new SessionHooks
+            {
+                OnErrorOccurred = async (input, _) =>
+                {
+                    ErrorOccurredHookOutput? result = await authErrorHandler.HandleErrorAsync(input, cancellationToken);
+                    return result ?? new ErrorOccurredHookOutput();
+                },
+            },
+        };
     }
 
     /// <summary>

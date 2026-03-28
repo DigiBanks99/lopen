@@ -2,7 +2,6 @@ using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
-using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Llm.Tools;
@@ -64,40 +63,6 @@ public static class ServiceCollectionExtensions
                     sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
                     projectRoot,
                     sp.GetRequiredService<ILogger<ResourceTracker>>()));
-            services.AddSingleton<IToolHandlerBinder>(sp =>
-            {
-                Git.IGitWorkflowService? gitSvc = null;
-                try
-                { gitSvc = sp.GetService<Git.IGitWorkflowService>(); }
-                catch { /* Git service optional */ }
-
-                Lopen.Llm.ITaskStatusGate? taskGate = null;
-                try
-                { taskGate = sp.GetService<Lopen.Llm.ITaskStatusGate>(); }
-                catch { /* Task status gate optional */ }
-
-                Lopen.Storage.IPlanManager? planMgr = null;
-                try
-                { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
-                catch { /* Plan manager optional */ }
-
-                Lopen.Llm.IOracleVerifier? oracleVerifier = null;
-                try
-                { oracleVerifier = sp.GetService<Lopen.Llm.IOracleVerifier>(); }
-                catch { /* Oracle verifier optional */ }
-
-                return new ToolHandlerBinder(
-                    sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
-                    sp.GetRequiredService<ISectionExtractor>(),
-                    sp.GetRequiredService<IWorkflowEngine>(),
-                    sp.GetRequiredService<Lopen.Llm.IVerificationTracker>(),
-                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ToolHandlerBinder>>(),
-                    projectRoot,
-                    gitSvc,
-                    taskGate,
-                    planMgr,
-                    oracleVerifier);
-            });
 
             services.AddSingleton<ToolCatalog>(sp =>
             {

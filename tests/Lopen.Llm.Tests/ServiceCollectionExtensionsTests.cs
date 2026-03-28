@@ -133,15 +133,14 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task AddLopenLlm_RegistersIToolRegistry()
+    public async Task AddLopenLlm_NoLongerRegistersIToolRegistry()
     {
         ServiceProvider provider = BuildProvider();
         try
         {
+            // IToolRegistry is no longer registered — ToolCatalog replaces it (task #69)
             IToolRegistry? registry = provider.GetService<IToolRegistry>();
-
-            Assert.NotNull(registry);
-            Assert.IsType<DefaultToolRegistry>(registry);
+            Assert.Null(registry);
         }
         finally
         {

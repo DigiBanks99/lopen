@@ -1,15 +1,23 @@
+using Lopen.Llm.Tools;
+using Lopen.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Lopen.Llm.Tests;
 
 public sealed class DefaultPromptBuilderTests
 {
-    private readonly DefaultToolRegistry _toolRegistry = new(NullLogger<DefaultToolRegistry>.Instance);
+    private readonly ToolCatalog _toolCatalog;
     private readonly DefaultPromptBuilder _builder;
 
     public DefaultPromptBuilderTests()
     {
-        _builder = new DefaultPromptBuilder(_toolRegistry, NullLogger<DefaultPromptBuilder>.Instance);
+        _toolCatalog = new ToolCatalog(
+            new StubFileSystem(),
+            new StubToolSectionExtractor(),
+            new StubToolWorkflowEngine(),
+            new StubVerificationTracker(),
+            "/stub-root");
+        _builder = new DefaultPromptBuilder(_toolCatalog, NullLogger<DefaultPromptBuilder>.Instance);
     }
 
     [Fact]
@@ -87,8 +95,8 @@ public sealed class DefaultPromptBuilderTests
         var prompt = _builder.BuildSystemPrompt(WorkflowPhase.Building, "auth", null, null);
 
         Assert.Contains("# Available Tools", prompt);
-        Assert.Contains("**read_spec**", prompt);
         Assert.Contains("**update_task_status**", prompt);
+        Assert.Contains("**read_plan**", prompt);
     }
 
     [Fact]
@@ -135,16 +143,53 @@ public sealed class DefaultPromptBuilderTests
     }
 
     [Fact]
-    public void Constructor_NullToolRegistry_Throws()
+    public void Constructor_NullToolCatalog_DoesNotThrow()
     {
-        Assert.Throws<ArgumentNullException>(
-            () => new DefaultPromptBuilder(null!, NullLogger<DefaultPromptBuilder>.Instance));
+        var builder = new DefaultPromptBuilder(null, NullLogger<DefaultPromptBuilder>.Instance);
+        Assert.NotNull(builder);
     }
 
     [Fact]
     public void Constructor_NullLogger_Throws()
     {
         Assert.Throws<ArgumentNullException>(
-            () => new DefaultPromptBuilder(_toolRegistry, null!));
+            () => new DefaultPromptBuilder(_toolCatalog, null!));
+    }
+
+    private sealed class StubFileSystem : IFileSystem
+    {
+        public void CreateDirectory(string path) { }
+        public bool FileExists(string path) => false;
+        public bool DirectoryExists(string path) => false;
+        public Task<string> ReadAllTextAsync(string path, CancellationToken ct = default) => Task.FromResult("");
+        public Task WriteAllTextAsync(string path, string content, CancellationToken ct = default) => Task.CompletedTask;
+        public IEnumerable<string> GetFiles(string path, string searchPattern = "*") => [];
+        public IEnumerable<string> GetDirectories(string path) => [];
+        public void MoveFile(string source, string dest) { }
+        public void DeleteFile(string path) { }
+        public void DeleteDirectory(string path, bool recursive = true) { }
+        public void CreateSymlink(string linkPath, string targetPath) { }
+        public string? GetSymlinkTarget(string linkPath) => null;
+        public DateTime GetLastWriteTimeUtc(string path) => DateTime.UtcNow;
+    }
+
+    private sealed class StubToolSectionExtractor : IToolSectionExtractor
+    {
+        public IReadOnlyList<ToolExtractedSection> ExtractRelevantSections(string content, IReadOnlyList<string> headers) => [];
+    }
+
+    private sealed class StubToolWorkflowEngine : IToolWorkflowEngine
+    {
+        public string CurrentStep => "DraftSpecification";
+        public WorkflowPhase CurrentPhase => WorkflowPhase.RequirementGathering;
+        public bool IsComplete => false;
+        public IReadOnlyList<string> GetPermittedTriggers() => [];
+    }
+
+    private sealed class StubVerificationTracker : IVerificationTracker
+    {
+        public void RecordVerification(VerificationScope scope, string identifier, bool passed) { }
+        public bool IsVerified(VerificationScope scope, string identifier) => false;
+        public void ResetForInvocation() { }
     }
 }

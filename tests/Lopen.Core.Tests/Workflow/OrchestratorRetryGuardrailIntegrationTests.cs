@@ -3,6 +3,9 @@ using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
+using Lopen.Llm.Tools;
+using Lopen.Storage;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -18,8 +21,15 @@ public sealed class OrchestratorRetryGuardrailIntegrationTests
     private readonly FakeInnerLlmService _innerLlm = new();
     private readonly FakeModelSelector _modelSelector = new();
     private readonly FakePromptBuilder _promptBuilder = new();
-    private readonly FakeToolRegistry _toolRegistry = new();
+    private readonly ToolCatalog _toolCatalog = CreateStubToolCatalog();
     private readonly FakeOutputRenderer _renderer = new();
+
+    private static ToolCatalog CreateStubToolCatalog() => new(
+        new StubFileSystem(),
+        new StubSectionExtractor(),
+        new StubWorkflowEngine(),
+        new StubVerificationTracker(),
+        "/stub-root");
     private readonly FakePhaseTransitionController _phaseController = new();
     private readonly FakeSpecificationDriftService _driftService = new();
 
@@ -40,7 +50,7 @@ public sealed class OrchestratorRetryGuardrailIntegrationTests
             assessor,
             llmService,
             _promptBuilder,
-            _toolRegistry,
+            _toolCatalog,
             _modelSelector,
             guardrailPipeline,
             _renderer,
@@ -162,7 +172,7 @@ public sealed class OrchestratorRetryGuardrailIntegrationTests
 
         public Task<LlmInvocationResult> InvokeAsync(
             string systemPrompt, string model,
-            IReadOnlyList<LopenToolDefinition> tools,
+            IReadOnlyList<Microsoft.Extensions.AI.AIFunction> tools,
             CancellationToken cancellationToken = default)
         {
             InvokeCount++;
@@ -245,14 +255,41 @@ public sealed class OrchestratorRetryGuardrailIntegrationTests
             $"System prompt for {phase}";
     }
 
-    private sealed class FakeToolRegistry : IToolRegistry
+    private sealed class StubFileSystem : IFileSystem
     {
-        public IReadOnlyList<LopenToolDefinition> GetToolsForPhase(WorkflowPhase phase) =>
-            Array.Empty<LopenToolDefinition>();
+        public void CreateDirectory(string path) { }
+        public bool FileExists(string path) => false;
+        public bool DirectoryExists(string path) => false;
+        public Task<string> ReadAllTextAsync(string path, CancellationToken ct = default) => Task.FromResult("");
+        public Task WriteAllTextAsync(string path, string content, CancellationToken ct = default) => Task.CompletedTask;
+        public IEnumerable<string> GetFiles(string path, string searchPattern = "*") => [];
+        public IEnumerable<string> GetDirectories(string path) => [];
+        public void MoveFile(string s, string d) { }
+        public void DeleteFile(string path) { }
+        public void CreateSymlink(string l, string t) { }
+        public string? GetSymlinkTarget(string l) => null;
+        public void DeleteDirectory(string p, bool r = true) { }
+        public DateTime GetLastWriteTimeUtc(string p) => DateTime.UtcNow;
+    }
 
-        public void RegisterTool(LopenToolDefinition tool) { }
-        public IReadOnlyList<LopenToolDefinition> GetAllTools() => Array.Empty<LopenToolDefinition>();
-        public bool BindHandler(string toolName, Func<string, CancellationToken, Task<string>> handler) => false;
+    private sealed class StubSectionExtractor : IToolSectionExtractor
+    {
+        public IReadOnlyList<ToolExtractedSection> ExtractRelevantSections(string content, IReadOnlyList<string> headers) => [];
+    }
+
+    private sealed class StubWorkflowEngine : IToolWorkflowEngine
+    {
+        public string CurrentStep => "DraftSpecification";
+        public WorkflowPhase CurrentPhase => WorkflowPhase.RequirementGathering;
+        public bool IsComplete => false;
+        public IReadOnlyList<string> GetPermittedTriggers() => [];
+    }
+
+    private sealed class StubVerificationTracker : IVerificationTracker
+    {
+        public void RecordVerification(VerificationScope scope, string identifier, bool passed) { }
+        public bool IsVerified(VerificationScope scope, string identifier) => false;
+        public void ResetForInvocation() { }
     }
 
     private sealed class FakeOutputRenderer : IOutputRenderer

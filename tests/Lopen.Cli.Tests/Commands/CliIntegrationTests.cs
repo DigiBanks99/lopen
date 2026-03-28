@@ -87,7 +87,6 @@ public class CliIntegrationTests
 
         // LLM services
         Assert.NotNull(host.Services.GetRequiredService<Lopen.Llm.ILlmService>());
-        Assert.NotNull(host.Services.GetRequiredService<Lopen.Llm.IToolRegistry>());
         Assert.NotNull(host.Services.GetRequiredService<Lopen.Llm.IModelSelector>());
         Assert.NotNull(host.Services.GetRequiredService<Lopen.Llm.IPromptBuilder>());
         Assert.NotNull(host.Services.GetRequiredService<Lopen.Llm.ITokenTracker>());

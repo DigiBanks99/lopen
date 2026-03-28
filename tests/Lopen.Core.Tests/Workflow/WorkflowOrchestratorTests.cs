@@ -1,10 +1,11 @@
 using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
-using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
+using Lopen.Llm.Tools;
 using Lopen.Storage;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -18,7 +19,7 @@ public class WorkflowOrchestratorTests
     private readonly StubStateAssessor _assessor = new();
     private readonly StubLlmService _llmService = new();
     private readonly StubPromptBuilder _promptBuilder = new();
-    private readonly StubToolRegistry _toolRegistry = new();
+    private readonly ToolCatalog _toolCatalog = CreateStubToolCatalog();
     private readonly StubModelSelector _modelSelector = new();
     private readonly StubGuardrailPipeline _guardrailPipeline = new();
     private readonly StubOutputRenderer _renderer = new();
@@ -26,10 +27,17 @@ public class WorkflowOrchestratorTests
     private readonly StubSpecificationDriftService _driftService = new();
 
     private WorkflowOrchestrator CreateOrchestrator() => new(
-        _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+        _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
         _modelSelector, _guardrailPipeline, _renderer, _phaseController,
         _driftService,
         NullLogger<WorkflowOrchestrator>.Instance);
+
+    private static ToolCatalog CreateStubToolCatalog() => new(
+        new StubFileSystem(),
+        new StubToolSectionExtractor(),
+        new StubToolWorkflowEngine(),
+        new StubVerificationTracker(),
+        "/stub-project-root");
 
     [Fact]
     public async Task RunAsync_ThrowsOnNullModuleName()
@@ -239,7 +247,7 @@ public class WorkflowOrchestratorTests
 
         await sut.RunAsync("test-module");
 
-        Assert.True(_toolRegistry.GetToolsCount > 0);
+        Assert.True(_llmService.InvokeCount > 0);
     }
 
     [Fact]
@@ -258,7 +266,7 @@ public class WorkflowOrchestratorTests
     public void Constructor_ThrowsOnNullEngine()
     {
         Assert.Throws<ArgumentNullException>(() => new WorkflowOrchestrator(
-            null!, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            null!, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService,
             NullLogger<WorkflowOrchestrator>.Instance));
@@ -268,7 +276,7 @@ public class WorkflowOrchestratorTests
     public void Constructor_ThrowsOnNullLlmService()
     {
         Assert.Throws<ArgumentNullException>(() => new WorkflowOrchestrator(
-            _engine, _assessor, null!, _promptBuilder, _toolRegistry,
+            _engine, _assessor, null!, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService,
             NullLogger<WorkflowOrchestrator>.Instance));
@@ -338,7 +346,7 @@ public class WorkflowOrchestratorTests
         _engine.IsComplete = true;
         var gitService = new StubGitWorkflowService();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance, gitService);
 
@@ -367,7 +375,7 @@ public class WorkflowOrchestratorTests
         var autoSave = new StubAutoSaveService();
         var sessionMgr = new StubSessionManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             autoSaveService: autoSave, sessionManager: sessionMgr);
@@ -387,7 +395,7 @@ public class WorkflowOrchestratorTests
         var autoSave = new StubAutoSaveService();
         var sessionMgr = new StubSessionManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             autoSaveService: autoSave, sessionManager: sessionMgr);
@@ -417,7 +425,7 @@ public class WorkflowOrchestratorTests
             }
         };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             sessionManager: sessionMgr);
@@ -433,7 +441,7 @@ public class WorkflowOrchestratorTests
         _engine.IsComplete = true;
         var sessionMgr = new StubSessionManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             sessionManager: sessionMgr);
@@ -451,7 +459,7 @@ public class WorkflowOrchestratorTests
         var autoSave = new StubAutoSaveService { ThrowOnSave = true };
         var sessionMgr = new StubSessionManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             autoSaveService: autoSave, sessionManager: sessionMgr);
@@ -470,7 +478,7 @@ public class WorkflowOrchestratorTests
             "output", new TokenUsage(100, 50, 150, 8000, false), 2, true);
         var tokenTracker = new StubTokenTracker();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker);
@@ -491,7 +499,7 @@ public class WorkflowOrchestratorTests
         var autoSave = new StubAutoSaveService();
         var sessionMgr = new StubSessionManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             autoSaveService: autoSave, sessionManager: sessionMgr,
@@ -713,7 +721,7 @@ public class WorkflowOrchestratorTests
         _llmService.FailUntilInvokeCount = 1; // Fail first, succeed second
         var failureHandler = new StubFailureHandler();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -746,7 +754,7 @@ public class WorkflowOrchestratorTests
         _llmService.ThrowOnInvoke = true; // Always fails
         var failureHandler = new StubFailureHandler { Threshold = 2 };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -766,7 +774,7 @@ public class WorkflowOrchestratorTests
         _llmService.FailUntilInvokeCount = 1;
         var failureHandler = new StubFailureHandler();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -785,7 +793,7 @@ public class WorkflowOrchestratorTests
         _llmService.FailUntilInvokeCount = 1;
         var failureHandler = new StubFailureHandler();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -807,7 +815,7 @@ public class WorkflowOrchestratorTests
         _renderer.PromptResponse = "y";
         var failureHandler = new StubFailureHandler { Threshold = 3 };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -828,7 +836,7 @@ public class WorkflowOrchestratorTests
         _renderer.PromptResponse = "yes";
         var failureHandler = new StubFailureHandler { Threshold = 3 };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -846,7 +854,7 @@ public class WorkflowOrchestratorTests
         _renderer.PromptResponse = "n";
         var failureHandler = new StubFailureHandler { Threshold = 2 };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -866,7 +874,7 @@ public class WorkflowOrchestratorTests
         _renderer.PromptResponse = null; // Headless — no user interaction
         var failureHandler = new StubFailureHandler { Threshold = 2 };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -887,7 +895,7 @@ public class WorkflowOrchestratorTests
         var failureHandler = new StubFailureHandler { Threshold = 3 };
         var options = new WorkflowOptions { Unattended = true };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler,
@@ -907,7 +915,7 @@ public class WorkflowOrchestratorTests
         _renderer.PromptResponse = "n";
         var failureHandler = new StubFailureHandler { Threshold = 2 };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -929,7 +937,7 @@ public class WorkflowOrchestratorTests
         _renderer.PromptResponse = "y";
         var failureHandler = new StubFailureHandler { Threshold = 2 };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -950,7 +958,7 @@ public class WorkflowOrchestratorTests
         var tokenTracker = new StubTokenTracker();
         var budgetEnforcer = new StubBudgetEnforcer { StatusToReturn = BudgetStatus.Ok };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
@@ -972,7 +980,7 @@ public class WorkflowOrchestratorTests
             MessageToReturn = "Token usage at 82% — approaching budget limit."
         };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
@@ -998,7 +1006,7 @@ public class WorkflowOrchestratorTests
         };
         _renderer.PromptResponse = "y";
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
@@ -1022,7 +1030,7 @@ public class WorkflowOrchestratorTests
         };
         _renderer.PromptResponse = "n";
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
@@ -1046,7 +1054,7 @@ public class WorkflowOrchestratorTests
         };
         var options = new WorkflowOptions { Unattended = true };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer,
@@ -1071,7 +1079,7 @@ public class WorkflowOrchestratorTests
         };
         _renderer.PromptResponse = null; // Headless — no user interaction
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
@@ -1094,7 +1102,7 @@ public class WorkflowOrchestratorTests
             MessageToReturn = "Token budget exceeded (105% used).",
         };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker, budgetEnforcer: budgetEnforcer);
@@ -1120,7 +1128,7 @@ public class WorkflowOrchestratorTests
         var autoSave = new StubAutoSaveService();
         var sessionMgr = new StubSessionManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             autoSaveService: autoSave, sessionManager: sessionMgr,
@@ -1140,7 +1148,7 @@ public class WorkflowOrchestratorTests
         var tokenTracker = new StubTokenTracker();
         // No budget enforcer — backward compatible
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             tokenTracker: tokenTracker);
@@ -1161,7 +1169,7 @@ public class WorkflowOrchestratorTests
         };
         // No token tracker — budget check skipped
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             budgetEnforcer: budgetEnforcer);
@@ -1184,7 +1192,7 @@ public class WorkflowOrchestratorTests
         _llmService.ExceptionToThrow = new IOException("Disk full");
         var failureHandler = new StubFailureHandler();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -1205,7 +1213,7 @@ public class WorkflowOrchestratorTests
         _llmService.ExceptionToThrow = new UnauthorizedAccessException("Permission denied");
         var failureHandler = new StubFailureHandler();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -1225,7 +1233,7 @@ public class WorkflowOrchestratorTests
         _llmService.ExceptionToThrow = new IOException("No space left on device");
         var failureHandler = new StubFailureHandler();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -1244,7 +1252,7 @@ public class WorkflowOrchestratorTests
         _llmService.ExceptionToThrow = new IOException("Disk full");
         var failureHandler = new StubFailureHandler();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -1264,7 +1272,7 @@ public class WorkflowOrchestratorTests
         _llmService.ExceptionToThrow = new IOException("Disk full");
         var failureHandler = new StubFailureHandler();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -1285,7 +1293,7 @@ public class WorkflowOrchestratorTests
         var autoSave = new StubAutoSaveService();
         var sessionManager = new StubSessionManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             autoSaveService: autoSave, sessionManager: sessionManager,
@@ -1324,7 +1332,7 @@ public class WorkflowOrchestratorTests
         // Default InvalidOperationException — not critical
         var failureHandler = new StubFailureHandler();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -1345,7 +1353,7 @@ public class WorkflowOrchestratorTests
         _llmService.ExceptionToThrow = new System.Security.SecurityException("Access denied");
         var failureHandler = new StubFailureHandler();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -1364,7 +1372,7 @@ public class WorkflowOrchestratorTests
         _llmService.ExceptionToThrow = new OutOfMemoryException("Insufficient memory");
         var failureHandler = new StubFailureHandler();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             failureHandler: failureHandler);
@@ -1408,7 +1416,7 @@ public class WorkflowOrchestratorTests
             "- [ ] Task 1\n- [ ] Task 2", new TokenUsage(10, 10, 20, 8000, false), 0, true);
         var planManager = new StubPlanManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             planManager: planManager);
@@ -1430,7 +1438,7 @@ public class WorkflowOrchestratorTests
             "- [ ] Task B", new TokenUsage(10, 10, 20, 8000, false), 0, true);
         var planManager = new StubPlanManager { ExistingContent = "- [x] Task A" };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             planManager: planManager);
@@ -1462,7 +1470,7 @@ public class WorkflowOrchestratorTests
         _engine.StepsBeforeComplete = 1;
         var planManager = new StubPlanManager { ThrowOnWrite = true };
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             planManager: planManager);
@@ -1479,7 +1487,7 @@ public class WorkflowOrchestratorTests
         _engine.StepsBeforeComplete = 1;
         var planManager = new StubPlanManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             planManager: planManager);
@@ -1498,7 +1506,7 @@ public class WorkflowOrchestratorTests
             "", new TokenUsage(10, 10, 20, 8000, false), 0, true);
         var planManager = new StubPlanManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             planManager: planManager);
@@ -1517,7 +1525,7 @@ public class WorkflowOrchestratorTests
             "- [ ] Implement feature X", new TokenUsage(10, 10, 20, 8000, false), 0, true);
         var planManager = new StubPlanManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             planManager: planManager);
@@ -1544,7 +1552,7 @@ public class WorkflowOrchestratorTests
 
         Assert.True(_llmService.Invocations.Count >= 2, "Expected at least 2 LLM invocations");
         // Each invocation gets an independent system prompt string (not an appended conversation)
-        foreach ((string SystemPrompt, string Model, IReadOnlyList<LopenToolDefinition> Tools) invocation in _llmService.Invocations)
+        foreach ((string SystemPrompt, string Model, IReadOnlyList<AIFunction> Tools) invocation in _llmService.Invocations)
         {
             Assert.False(string.IsNullOrWhiteSpace(invocation.SystemPrompt),
                 "Each invocation must receive a non-empty system prompt");
@@ -1573,7 +1581,7 @@ public class WorkflowOrchestratorTests
         // Each call to ILlmService.InvokeAsync is stateless — it receives
         // (systemPrompt, model, tools) with no conversation history parameter.
         // Verify each invocation has exactly 3 discrete parameters (no history accumulation).
-        foreach ((string SystemPrompt, string Model, IReadOnlyList<LopenToolDefinition> Tools) invocation in _llmService.Invocations)
+        foreach ((string SystemPrompt, string Model, IReadOnlyList<AIFunction> Tools) invocation in _llmService.Invocations)
         {
             Assert.NotNull(invocation.SystemPrompt);
             Assert.NotNull(invocation.Model);
@@ -1622,12 +1630,10 @@ public class WorkflowOrchestratorTests
 
         Assert.True(specResult.WasInterrupted, "Spec phase should interrupt for user confirmation");
         Assert.Contains(WorkflowPhase.RequirementGathering, _promptBuilder.PhasesInvoked);
-        Assert.Contains(WorkflowPhase.RequirementGathering, _toolRegistry.PhasesRequested);
         Assert.Contains(WorkflowPhase.RequirementGathering, _modelSelector.PhasesRequested);
 
         // Phase 2: Planning — DetermineDependencies through BreakIntoTasks
         _promptBuilder.PhasesInvoked.Clear();
-        _toolRegistry.PhasesRequested.Clear();
         _modelSelector.PhasesRequested.Clear();
         _llmService.InvokeCount = 0;
 
@@ -1640,13 +1646,11 @@ public class WorkflowOrchestratorTests
 
         Assert.True(planResult.IsComplete);
         Assert.Contains(WorkflowPhase.Planning, _promptBuilder.PhasesInvoked);
-        Assert.Contains(WorkflowPhase.Planning, _toolRegistry.PhasesRequested);
         Assert.Contains(WorkflowPhase.Planning, _modelSelector.PhasesRequested);
         Assert.True(_llmService.InvokeCount > 0, "LLM should be invoked during planning phase");
 
         // Phase 3: Building — IterateThroughTasks
         _promptBuilder.PhasesInvoked.Clear();
-        _toolRegistry.PhasesRequested.Clear();
         _modelSelector.PhasesRequested.Clear();
         _llmService.InvokeCount = 0;
 
@@ -1660,7 +1664,6 @@ public class WorkflowOrchestratorTests
 
         Assert.True(buildResult.IsComplete);
         Assert.Contains(WorkflowPhase.Building, _promptBuilder.PhasesInvoked);
-        Assert.Contains(WorkflowPhase.Building, _toolRegistry.PhasesRequested);
         Assert.Contains(WorkflowPhase.Building, _modelSelector.PhasesRequested);
         Assert.True(_llmService.InvokeCount > 0, "LLM should be invoked during building phase");
     }
@@ -1728,7 +1731,7 @@ public class WorkflowOrchestratorTests
         // Verifies the orchestrator drives through task iteration into verification.
 
         var promptBuilder = new StubPromptBuilder();
-        var toolRegistry = new StubToolRegistry();
+        var toolCatalog = CreateStubToolCatalog();
 
         // LLM returns output with tool calls (simulating update_task_status)
         var llmService = new StubLlmService
@@ -1749,7 +1752,7 @@ public class WorkflowOrchestratorTests
         var phaseController = new StubPhaseTransitionController { SpecApproved = true };
 
         var sut = new WorkflowOrchestrator(
-            engine, _assessor, llmService, promptBuilder, toolRegistry,
+            engine, _assessor, llmService, promptBuilder, toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance);
 
@@ -1770,7 +1773,7 @@ public class WorkflowOrchestratorTests
         llmService.InvokeCount = 0;
 
         sut = new WorkflowOrchestrator(
-            repeatEngine, _assessor, llmService, promptBuilder, toolRegistry,
+            repeatEngine, _assessor, llmService, promptBuilder, toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance);
 
@@ -1840,10 +1843,10 @@ public class WorkflowOrchestratorTests
         public int FailUntilInvokeCount { get; set; }
         public LlmInvocationResult? Result { get; set; }
         public Exception? ExceptionToThrow { get; set; }
-        public List<(string SystemPrompt, string Model, IReadOnlyList<LopenToolDefinition> Tools)> Invocations { get; } = [];
+        public List<(string SystemPrompt, string Model, IReadOnlyList<AIFunction> Tools)> Invocations { get; } = [];
 
         public Task<LlmInvocationResult> InvokeAsync(
-            string systemPrompt, string model, IReadOnlyList<LopenToolDefinition> tools,
+            string systemPrompt, string model, IReadOnlyList<AIFunction> tools,
             CancellationToken ct = default)
         {
             InvokeCount++;
@@ -1873,21 +1876,41 @@ public class WorkflowOrchestratorTests
         }
     }
 
-    private sealed class StubToolRegistry : IToolRegistry
+    private sealed class StubFileSystem : Lopen.Storage.IFileSystem
     {
-        public int GetToolsCount { get; private set; }
-        public List<WorkflowPhase> PhasesRequested { get; } = [];
+        public void CreateDirectory(string path) { }
+        public bool FileExists(string path) => false;
+        public bool DirectoryExists(string path) => false;
+        public Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default) => Task.FromResult("");
+        public Task WriteAllTextAsync(string path, string content, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public IEnumerable<string> GetFiles(string path, string searchPattern = "*") => [];
+        public IEnumerable<string> GetDirectories(string path) => [];
+        public void MoveFile(string sourcePath, string destinationPath) { }
+        public void DeleteFile(string path) { }
+        public void DeleteDirectory(string path, bool recursive = true) { }
+        public void CreateSymlink(string linkPath, string targetPath) { }
+        public string? GetSymlinkTarget(string linkPath) => null;
+        public DateTime GetLastWriteTimeUtc(string path) => DateTime.UtcNow;
+    }
 
-        public IReadOnlyList<LopenToolDefinition> GetToolsForPhase(WorkflowPhase phase)
-        {
-            GetToolsCount++;
-            PhasesRequested.Add(phase);
-            return [];
-        }
+    private sealed class StubToolSectionExtractor : IToolSectionExtractor
+    {
+        public IReadOnlyList<ToolExtractedSection> ExtractRelevantSections(string content, IReadOnlyList<string> headers) => [];
+    }
 
-        public void RegisterTool(LopenToolDefinition tool) { }
-        public IReadOnlyList<LopenToolDefinition> GetAllTools() => [];
-        public bool BindHandler(string toolName, Func<string, CancellationToken, Task<string>> handler) => true;
+    private sealed class StubToolWorkflowEngine : IToolWorkflowEngine
+    {
+        public string CurrentStep => "DraftSpecification";
+        public WorkflowPhase CurrentPhase => WorkflowPhase.RequirementGathering;
+        public bool IsComplete => false;
+        public IReadOnlyList<string> GetPermittedTriggers() => [];
+    }
+
+    private sealed class StubVerificationTracker : IVerificationTracker
+    {
+        public void RecordVerification(VerificationScope scope, string identifier, bool passed) { }
+        public bool IsVerified(VerificationScope scope, string identifier) => false;
+        public void ResetForInvocation() { }
     }
 
     private sealed class StubModelSelector : IModelSelector
@@ -2186,7 +2209,7 @@ public class WorkflowOrchestratorTests
         pauseController.Pause();
 
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             pauseController: pauseController);
@@ -2214,7 +2237,7 @@ public class WorkflowOrchestratorTests
         var sessionMgr = new StubSessionManager();
 
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             autoSaveService: autoSave,
@@ -2240,7 +2263,7 @@ public class WorkflowOrchestratorTests
         var pauseController = new PauseController();
 
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             pauseController: pauseController);
@@ -2269,7 +2292,7 @@ public class WorkflowOrchestratorTests
         pauseController.Pause();
 
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService, NullLogger<WorkflowOrchestrator>.Instance,
             pauseController: pauseController);
@@ -2290,7 +2313,7 @@ public class WorkflowOrchestratorTests
     // --- TUI-40: Queued User Messages Tests ---
 
     private WorkflowOrchestrator CreateOrchestratorWithQueue(IUserPromptQueue queue) => new(
-        _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+        _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
         _modelSelector, _guardrailPipeline, _renderer, _phaseController,
         _driftService,
         NullLogger<WorkflowOrchestrator>.Instance,
@@ -2381,48 +2404,6 @@ public class WorkflowOrchestratorTests
         Assert.Equal("Queued message", _promptBuilder.LastContextSections["queued_user_messages"]);
     }
 
-    // --- CORE-25 / JOB-126: ToolHandlerBinder.BindAll wiring ---
-
-    [Fact]
-    public async Task RunAsync_WithToolHandlerBinder_CallsBindAll()
-    {
-        _engine.IsComplete = true;
-        var binder = new StubToolHandlerBinder();
-        var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
-            _modelSelector, _guardrailPipeline, _renderer, _phaseController,
-            _driftService, NullLogger<WorkflowOrchestrator>.Instance,
-            toolHandlerBinder: binder);
-
-        await sut.RunAsync("test-module");
-
-        Assert.True(binder.BindAllCalled);
-        Assert.Same(_toolRegistry, binder.BoundRegistry);
-    }
-
-    [Fact]
-    public async Task RunAsync_WithoutToolHandlerBinder_CompletesWithoutError()
-    {
-        _engine.IsComplete = true;
-        WorkflowOrchestrator sut = CreateOrchestrator(); // No binder injected
-
-        OrchestrationResult result = await sut.RunAsync("test-module");
-
-        Assert.True(result.IsComplete);
-    }
-
-    private sealed class StubToolHandlerBinder : IToolHandlerBinder
-    {
-        public bool BindAllCalled { get; private set; }
-        public IToolRegistry? BoundRegistry { get; private set; }
-
-        public void BindAll(IToolRegistry registry)
-        {
-            BindAllCalled = true;
-            BoundRegistry = registry;
-        }
-    }
-
     private sealed class InMemoryUserPromptQueue : IUserPromptQueue
     {
         private readonly Queue<string> _queue = new();
@@ -2456,7 +2437,7 @@ public class WorkflowOrchestratorTests
         var autoSaveService = new CriticalAutoSaveService();
         var sessionManager = new StubSessionManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, _phaseController,
             _driftService,
             NullLogger<WorkflowOrchestrator>.Instance,
@@ -2479,7 +2460,7 @@ public class WorkflowOrchestratorTests
         var autoSaveService = new NonCriticalAutoSaveService();
         var sessionManager = new StubSessionManager();
         var sut = new WorkflowOrchestrator(
-            _engine, _assessor, _llmService, _promptBuilder, _toolRegistry,
+            _engine, _assessor, _llmService, _promptBuilder, _toolCatalog,
             _modelSelector, _guardrailPipeline, _renderer, phaseController,
             _driftService,
             NullLogger<WorkflowOrchestrator>.Instance,

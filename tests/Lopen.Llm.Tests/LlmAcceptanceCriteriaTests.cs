@@ -76,8 +76,7 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC3_SystemPrompt_ContainsAllRequiredSections()
     {
-        var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        var builder = new DefaultPromptBuilder(registry, NullLogger<DefaultPromptBuilder>.Instance);
+        var builder = new DefaultPromptBuilder(null, NullLogger<DefaultPromptBuilder>.Instance);
 
         var prompt = builder.BuildSystemPrompt(
             WorkflowPhase.Building,
