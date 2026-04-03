@@ -92,9 +92,14 @@ internal sealed class CopilotClientProvider : ICopilotClientProvider
 
     internal async Task<CopilotClient> CreateClientAsync(CancellationToken cancellationToken = default)
     {
-        EnsureCopilotCliPathConfigured();
-
+        // Prefer an explicit token from the auth module. If one is provided,
+        // we can avoid requiring the Copilot CLI to be present on PATH.
         string? token = await _tokenProvider.GetTokenAsync(cancellationToken);
+
+        if (string.IsNullOrEmpty(token))
+        {
+            EnsureCopilotCliPathConfigured();
+        }
         CopilotClientOptions options = new()
         {
             UseStdio = true,

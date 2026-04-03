@@ -40,7 +40,7 @@ public class ProgramTests : IDisposable
     [InlineData(typeof(IPromptBuilder))]
     public void DI_ResolvesLlmServices(Type serviceType)
     {
-        var service = _services.GetService(serviceType);
+        object? service = _services.GetService(serviceType);
         Assert.NotNull(service);
     }
 
@@ -51,7 +51,7 @@ public class ProgramTests : IDisposable
     {
         // Note: Some core services require projectRoot for full resolution.
         // With null projectRoot, orchestrator registration is conditional.
-        var service = _services.GetService(serviceType);
+        object? service = _services.GetService(serviceType);
         // IWorkflowOrchestrator may be null without projectRoot — that's by design
         if (serviceType != typeof(Lopen.Core.Workflow.IWorkflowOrchestrator))
             Assert.NotNull(service);
@@ -142,7 +142,7 @@ public class ProgramTests : IDisposable
     {
         RootCommand root = BuildRootCommand();
 
-        var names = root.Subcommands.Select(c => c.Name).ToHashSet();
+        HashSet<string> names = root.Subcommands.Select(c => c.Name).ToHashSet();
         Assert.Contains("auth", names);
         Assert.Contains("session", names);
         Assert.Contains("config", names);
@@ -158,9 +158,9 @@ public class ProgramTests : IDisposable
     public async Task RootCommand_Help_ReturnsSuccess()
     {
         RootCommand root = BuildRootCommand();
-        var config = new CommandLineConfiguration(root);
+        CommandLineConfiguration config = new(root);
 
-        var exitCode = await config.InvokeAsync(["--help"]);
+        int exitCode = await config.InvokeAsync(["--help"]);
 
         Assert.Equal(0, exitCode);
     }
@@ -172,16 +172,16 @@ public class ProgramTests : IDisposable
     public async Task SubCommand_Help_ReturnsSuccess(params string[] args)
     {
         RootCommand root = BuildRootCommand();
-        var config = new CommandLineConfiguration(root);
+        CommandLineConfiguration config = new(root);
 
-        var exitCode = await config.InvokeAsync(args);
+        int exitCode = await config.InvokeAsync(args);
 
         Assert.Equal(0, exitCode);
     }
 
     private RootCommand BuildRootCommand()
     {
-        var root = new RootCommand("Lopen — AI-powered software engineering workflow");
+        RootCommand root = new("Lopen — AI-powered software engineering workflow");
         GlobalOptions.AddTo(root);
         RootCommandHandler.Configure(_services)(root);
         root.Add(AuthCommand.Create(_services));

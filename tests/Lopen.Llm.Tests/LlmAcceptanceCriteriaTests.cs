@@ -27,9 +27,8 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public async Task AC1_ClientProvider_AcceptsTokenFromAuthModule()
     {
-        var tokenProvider = new FakeTokenProvider("gh_test_token");
-        var clientProvider = new CopilotClientProvider(
-            tokenProvider, NullLogger<CopilotClientProvider>.Instance);
+        FakeTokenProvider tokenProvider = new("gh_test_token");
+        CopilotClientProvider clientProvider = new(tokenProvider, NullLogger<CopilotClientProvider>.Instance);
 
         CopilotClient client = await clientProvider.CreateClientAsync();
         Assert.NotNull(client);
@@ -39,7 +38,7 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC1_ServiceRegistration_RegistersAuthComponents()
     {
-        var services = new ServiceCollection();
+        ServiceCollection services = new();
         services.AddLogging();
         services.AddSingleton<IAuthTokenProvider>(new FakeTokenProvider(null));
         services.AddLopenLlm();
@@ -55,8 +54,8 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public async Task AC2_EachInvocation_CreatesNewSession()
     {
-        var counter = new CountingClientProvider();
-        var service = new CopilotLlmService(
+        CountingClientProvider counter = new();
+        CopilotLlmService service = new(
             counter, new StubAuthErrorHandler(), NullLogger<CopilotLlmService>.Instance);
 
         try
@@ -76,7 +75,7 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC3_SystemPrompt_ContainsAllRequiredSections()
     {
-        var builder = new DefaultPromptBuilder(null, NullLogger<DefaultPromptBuilder>.Instance);
+        DefaultPromptBuilder builder = new(null, NullLogger<DefaultPromptBuilder>.Instance);
 
         var prompt = builder.BuildSystemPrompt(
             WorkflowPhase.Building,
@@ -102,9 +101,9 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC4_ContextBudgetManager_TruncatesLowPrioritySections()
     {
-        var manager = new ContextBudgetManager(NullLogger<ContextBudgetManager>.Instance);
+        ContextBudgetManager manager = new(NullLogger<ContextBudgetManager>.Instance);
 
-        var sections = new ContextSection[]
+        ContextSection[] sections = new ContextSection[]
         {
             new("high", "Important content", ContextBudgetManager.EstimateTokens("Important content")),
             new("low", new string('x', 100_000), ContextBudgetManager.EstimateTokens(new string('x', 100_000))),
@@ -123,8 +122,8 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC6_OracleVerdict_ReturnsPassOrFail()
     {
-        var pass = new OracleVerdict(Passed: true, Gaps: [], Scope: VerificationScope.Task);
-        var fail = new OracleVerdict(Passed: false, Gaps: ["Missing auth"], Scope: VerificationScope.Task);
+        OracleVerdict pass = new(Passed: true, Gaps: [], Scope: VerificationScope.Task);
+        OracleVerdict fail = new(Passed: false, Gaps: ["Missing auth"], Scope: VerificationScope.Task);
 
         Assert.True(pass.Passed);
         Assert.Empty(pass.Gaps);
@@ -157,8 +156,8 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC8_CompletionRejected_WithoutVerification()
     {
-        var tracker = new VerificationTracker();
-        var gate = new TaskStatusGate(tracker, NullLogger<TaskStatusGate>.Instance);
+        VerificationTracker tracker = new();
+        TaskStatusGate gate = new(tracker, NullLogger<TaskStatusGate>.Instance);
 
         TaskStatusGateResult result = gate.ValidateCompletion(VerificationScope.Task, "my-task");
         Assert.False(result.IsAllowed);
@@ -168,8 +167,8 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC8_CompletionAllowed_AfterPassingVerification()
     {
-        var tracker = new VerificationTracker();
-        var gate = new TaskStatusGate(tracker, NullLogger<TaskStatusGate>.Instance);
+        VerificationTracker tracker = new();
+        TaskStatusGate gate = new(tracker, NullLogger<TaskStatusGate>.Instance);
 
         tracker.RecordVerification(VerificationScope.Task, "my-task", passed: true);
         TaskStatusGateResult result = gate.ValidateCompletion(VerificationScope.Task, "my-task");
@@ -196,7 +195,7 @@ public class LlmAcceptanceCriteriaTests
             },
         });
 
-        var selector = new DefaultModelSelector(options, NullLogger<DefaultModelSelector>.Instance);
+        DefaultModelSelector selector = new(options, NullLogger<DefaultModelSelector>.Instance);
 
         Assert.Equal("claude-sonnet-4.5", selector.SelectModel(WorkflowPhase.Building).SelectedModel);
         Assert.Equal("gpt-5-mini", selector.SelectModel(WorkflowPhase.Research).SelectedModel);
@@ -216,7 +215,7 @@ public class LlmAcceptanceCriteriaTests
             Models = new ModelOptions { Building = "" },
         });
 
-        var selector = new DefaultModelSelector(options, NullLogger<DefaultModelSelector>.Instance);
+        DefaultModelSelector selector = new(options, NullLogger<DefaultModelSelector>.Instance);
         ModelFallbackResult result = selector.SelectModel(WorkflowPhase.Building);
 
         Assert.True(result.WasFallback);
@@ -229,7 +228,7 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC12_TokenTracker_RecordsAndAggregatesUsage()
     {
-        var tracker = new InMemoryTokenTracker();
+        InMemoryTokenTracker tracker = new();
 
         tracker.RecordUsage(new TokenUsage(100, 50, 150, 8192, true));
         tracker.RecordUsage(new TokenUsage(200, 75, 275, 8192, false));
@@ -256,7 +255,7 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC13_TokenTracker_ExposesMetricsViaPublicInterface()
     {
-        var services = new ServiceCollection();
+        ServiceCollection services = new();
         services.AddLogging();
         services.AddSingleton<IAuthTokenProvider>(new FakeTokenProvider(null));
         services.AddLopenLlm();
@@ -285,9 +284,9 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC14_BudgetManager_RespectsTokenLimit()
     {
-        var manager = new ContextBudgetManager(NullLogger<ContextBudgetManager>.Instance);
+        ContextBudgetManager manager = new(NullLogger<ContextBudgetManager>.Instance);
 
-        var sections = new ContextSection[]
+        ContextSection[] sections = new ContextSection[]
         {
             new("spec", new string('a', 400), ContextBudgetManager.EstimateTokens(new string('a', 400))),
             new("research", new string('b', 400), ContextBudgetManager.EstimateTokens(new string('b', 400))),
