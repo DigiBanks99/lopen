@@ -34,7 +34,7 @@ if (projectRoot is not null)
     builder.Services.AddSingleton<ISessionStateSaver, Lopen.SessionStateSaverBridge>();
 }
 builder.Services.AddLopenLlm();
-builder.Services.AddLopenOtel(builder.Configuration);
+builder.Services.AddLopenOtel(builder.Configuration, args);
 
 using IHost host = builder.Build();
 

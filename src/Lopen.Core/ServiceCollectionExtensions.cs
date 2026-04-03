@@ -5,6 +5,7 @@ using Lopen.Core.Git;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Llm.Tools;
+using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -66,10 +67,10 @@ public static class ServiceCollectionExtensions
 
             services.AddSingleton<ToolCatalog>(sp =>
             {
-                var fs = sp.GetRequiredService<Lopen.Storage.IFileSystem>();
-                var sectionExtractor = sp.GetRequiredService<ISectionExtractor>();
-                var engine = sp.GetRequiredService<IWorkflowEngine>();
-                var verificationTracker = sp.GetRequiredService<Lopen.Llm.IVerificationTracker>();
+                IFileSystem fs = sp.GetRequiredService<Lopen.Storage.IFileSystem>();
+                ISectionExtractor sectionExtractor = sp.GetRequiredService<ISectionExtractor>();
+                IWorkflowEngine engine = sp.GetRequiredService<IWorkflowEngine>();
+                IVerificationTracker verificationTracker = sp.GetRequiredService<Lopen.Llm.IVerificationTracker>();
 
                 Lopen.Llm.ITaskStatusGate? taskGateCatalog = null;
                 try { taskGateCatalog = sp.GetService<Lopen.Llm.ITaskStatusGate>(); }

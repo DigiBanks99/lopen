@@ -332,6 +332,69 @@ public class TuiRunnerTests
     }
 
     [Fact]
+    public async Task ExecuteTurnAsync_NeedsConfirmation_RendersHintAndReturns()
+    {
+        var writer = new StringWriter();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        FileLineEditorHistory history = new(
+            Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
+        LopenLineEditor editor = new(console, history);
+        TuiUserPromptQueue queue = new();
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
+        SlashCommandRegistry registry = new(console, []);
+
+        IWorkflowOrchestrator orchestrator = Substitute.For<IWorkflowOrchestrator>();
+        orchestrator.ActiveModule.Returns("tui");
+        orchestrator.RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Core.Workflow.StepResult.NeedsConfirmation("Spec drafted."));
+
+        TuiRunner runner = new(console, editor, queue, renderer, registry, orchestrator);
+
+        using var turnCts = new CancellationTokenSource();
+        await runner.ExecuteTurnAsync(turnCts, CancellationToken.None);
+
+        string output = writer.ToString();
+        Assert.Contains("not approved", output);
+    }
+
+    [Fact]
+    public async Task ExecuteTurnAsync_FailedStep_RendersErrorMessage()
+    {
+        var writer = new StringWriter();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        FileLineEditorHistory history = new(
+            Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
+        LopenLineEditor editor = new(console, history);
+        TuiUserPromptQueue queue = new();
+        TuiOutputRenderer renderer = new(console, new Lazy<LopenLineEditor>(() => editor));
+        SlashCommandRegistry registry = new(console, []);
+
+        IWorkflowOrchestrator orchestrator = Substitute.For<IWorkflowOrchestrator>();
+        orchestrator.ActiveModule.Returns("tui");
+        orchestrator.RunStepAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Core.Workflow.StepResult.Failed("LLM timeout"));
+
+        TuiRunner runner = new(console, editor, queue, renderer, registry, orchestrator);
+
+        using var turnCts = new CancellationTokenSource();
+        await runner.ExecuteTurnAsync(turnCts, CancellationToken.None);
+
+        string output = writer.ToString();
+        Assert.Contains("Step failed", output);
+        Assert.Contains("LLM timeout", output);
+    }
+
+    [Fact]
     public void Constructor_AcceptsNullCommandPalette()
     {
         (IAnsiConsole? console, LopenLineEditor? editor, TuiUserPromptQueue? queue, Core.IOutputRenderer? renderer, SlashCommandRegistry? registry) = CreateDependencies();

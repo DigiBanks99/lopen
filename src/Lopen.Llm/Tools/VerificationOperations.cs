@@ -1,5 +1,5 @@
-using System.ComponentModel;
 using Microsoft.Extensions.AI;
+using System.ComponentModel;
 
 namespace Lopen.Llm.Tools;
 
@@ -15,19 +15,19 @@ internal static class VerificationOperations
     {
         tools.Add(AIFunctionFactory.Create(
             [Description("Dispatch oracle sub-agent to verify a task is complete")]
-            (string task_id, string? evidence, string? acceptance_criteria) =>
+        (string task_id, string? evidence, string? acceptance_criteria) =>
                 VerifyTaskCompletion(oracleVerifier, verificationTracker, task_id, evidence, acceptance_criteria),
             "verify_task_completion"));
 
         tools.Add(AIFunctionFactory.Create(
             [Description("Dispatch oracle sub-agent to verify all tasks in a component are complete")]
-            (string component_id, string? evidence, string? acceptance_criteria) =>
+        (string component_id, string? evidence, string? acceptance_criteria) =>
                 VerifyComponentCompletion(oracleVerifier, verificationTracker, component_id, evidence, acceptance_criteria),
             "verify_component_completion"));
 
         tools.Add(AIFunctionFactory.Create(
             [Description("Dispatch oracle sub-agent to verify the module meets all acceptance criteria")]
-            (string module_id, string? evidence, string? acceptance_criteria) =>
+        (string module_id, string? evidence, string? acceptance_criteria) =>
                 VerifyModuleCompletion(oracleVerifier, verificationTracker, module_id, evidence, acceptance_criteria),
             "verify_module_completion"));
     }

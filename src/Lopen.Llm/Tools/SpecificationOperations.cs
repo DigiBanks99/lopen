@@ -1,6 +1,6 @@
-using System.ComponentModel;
 using Lopen.Storage;
 using Microsoft.Extensions.AI;
+using System.ComponentModel;
 
 namespace Lopen.Llm.Tools;
 
@@ -13,7 +13,7 @@ internal static class SpecificationOperations
     {
         tools.Add(AIFunctionFactory.Create(
             [Description("Read a specific section from a specification document")]
-            (string module, string? section) => ReadSpec(fileSystem, sectionExtractor, projectRoot, module, section),
+        (string module, string? section) => ReadSpec(fileSystem, sectionExtractor, projectRoot, module, section),
             "read_spec"));
     }
 

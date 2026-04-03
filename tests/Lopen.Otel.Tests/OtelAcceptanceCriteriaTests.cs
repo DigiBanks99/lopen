@@ -251,7 +251,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
 
         IConfiguration config = BuildConfig(new Dictionary<string, string?> { ["otel:enabled"] = "true" });
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         using ServiceProvider sp = services.BuildServiceProvider();
         ILogger logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("AC10");
 
@@ -299,7 +299,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         });
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         using ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.NotNull(sp.GetService<TracerProvider>());
@@ -318,7 +318,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         });
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         Exception exception = Record.Exception(() =>
         {
@@ -361,7 +361,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         });
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         using ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.Null(sp.GetService<TracerProvider>());
@@ -386,7 +386,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         });
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         using ServiceProvider sp = services.BuildServiceProvider();
 
         if (expectTracer)
@@ -439,7 +439,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
 
         // JIT warmup
         var warmup = new ServiceCollection();
-        warmup.AddLopenOtel(config);
+        warmup.AddLopenOtel(config, []);
         warmup.BuildServiceProvider().Dispose();
 
         const int iterations = 20;
@@ -448,7 +448,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         for (int i = 0; i < iterations; i++)
         {
             var s = new ServiceCollection();
-            s.AddLopenOtel(disabledConfig);
+            s.AddLopenOtel(disabledConfig, []);
             s.BuildServiceProvider().Dispose();
         }
         sw.Stop();
@@ -458,7 +458,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         for (int i = 0; i < iterations; i++)
         {
             var s = new ServiceCollection();
-            s.AddLopenOtel(config);
+            s.AddLopenOtel(config, []);
             s.BuildServiceProvider().Dispose();
         }
         sw.Stop();

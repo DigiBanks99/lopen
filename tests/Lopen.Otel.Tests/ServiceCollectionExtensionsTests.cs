@@ -28,7 +28,7 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         IConfiguration config = BuildConfiguration();
 
-        Exception exception = Record.Exception(() => services.AddLopenOtel(config));
+        Exception exception = Record.Exception(() => services.AddLopenOtel(config, []));
 
         Assert.Null(exception);
     }
@@ -39,7 +39,7 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         IConfiguration config = BuildConfiguration();
 
-        IServiceCollection result = services.AddLopenOtel(config);
+        IServiceCollection result = services.AddLopenOtel(config, []);
 
         Assert.Same(services, result);
     }
@@ -49,7 +49,7 @@ public class ServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
         IConfiguration config = BuildConfiguration();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         Exception exception = Record.Exception(() =>
         {
@@ -70,7 +70,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:enabled"] = "false"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         // When master is disabled, no OTEL services should be registered
         using ServiceProvider provider = services.BuildServiceProvider();
@@ -87,7 +87,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:enabled"] = "true"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         TracerProvider? tracerProvider = provider.GetService<TracerProvider>();
@@ -100,7 +100,7 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         IConfiguration config = BuildConfiguration();
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         TracerProvider? tracerProvider = provider.GetService<TracerProvider>();
@@ -120,7 +120,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:logs:enabled"] = "false"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         TracerProvider? tracerProvider = provider.GetService<TracerProvider>();
@@ -139,7 +139,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:logs:enabled"] = "false"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         TracerProvider? tracerProvider = provider.GetService<TracerProvider>();
@@ -157,7 +157,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:logs:enabled"] = "false"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         MeterProvider? meterProvider = provider.GetService<MeterProvider>();
@@ -175,7 +175,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:logs:enabled"] = "false"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         MeterProvider? meterProvider = provider.GetService<MeterProvider>();
@@ -193,7 +193,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:logs:enabled"] = "true"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         ILoggerFactory? loggerFactory = provider.GetService<ILoggerFactory>();
@@ -215,7 +215,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:logs:enabled"] = "false"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         // Should still build without error even with all signals disabled
         using ServiceProvider provider = services.BuildServiceProvider();
@@ -231,7 +231,7 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         IConfiguration config = BuildConfiguration();
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         // No OTLP endpoint set — should not attempt to export, no errors
         Exception exception = Record.Exception(() =>
@@ -251,7 +251,7 @@ public class ServiceCollectionExtensionsTests
             ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4317"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         // With endpoint set — UseOtlpExporter is called, should still build
         Exception exception = Record.Exception(() =>
@@ -271,7 +271,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:export:endpoint"] = "http://localhost:4317"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         Exception exception = Record.Exception(() =>
         {
@@ -290,7 +290,7 @@ public class ServiceCollectionExtensionsTests
         IConfiguration config = BuildConfiguration();
 
         // Default service name should be "lopen" — we verify by building without error
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         Exception exception = Record.Exception(() =>
         {
@@ -309,7 +309,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:service_name"] = "custom-lopen"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         Exception exception = Record.Exception(() =>
         {
@@ -330,7 +330,7 @@ public class ServiceCollectionExtensionsTests
         });
 
         // OTEL_SERVICE_NAME should take precedence over otel:service_name
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         Exception exception = Record.Exception(() =>
         {
@@ -389,7 +389,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:logs:enabled"] = "true"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         Assert.NotNull(provider.GetService<TracerProvider>());
@@ -409,7 +409,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:logs:enabled"] = "false"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         // No providers registered when all signals disabled
@@ -428,7 +428,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:logs:enabled"] = "true"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         LoggerFactoryOptions options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>().Value;
@@ -448,7 +448,7 @@ public class ServiceCollectionExtensionsTests
             ["otel:logs:enabled"] = "false"
         });
 
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         LoggerFactoryOptions options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>().Value;
@@ -466,7 +466,7 @@ public class ServiceCollectionExtensionsTests
         // Warm up
         var warmup = new ServiceCollection();
         warmup.AddLogging();
-        warmup.AddLopenOtel(config);
+        warmup.AddLopenOtel(config, []);
         warmup.BuildServiceProvider().Dispose();
 
         // Measure registration + build overhead
@@ -476,7 +476,7 @@ public class ServiceCollectionExtensionsTests
         {
             var services = new ServiceCollection();
             services.AddLogging();
-            services.AddLopenOtel(config);
+            services.AddLopenOtel(config, []);
             using ServiceProvider provider = services.BuildServiceProvider();
         }
         sw.Stop();

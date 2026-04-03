@@ -1,7 +1,7 @@
-using System.ComponentModel;
-using System.Text.Json;
 using Lopen.Storage;
 using Microsoft.Extensions.AI;
+using System.ComponentModel;
+using System.Text.Json;
 
 namespace Lopen.Llm.Tools;
 
@@ -21,23 +21,23 @@ internal static class WorkflowOperations
     {
         tools.Add(AIFunctionFactory.Create(
             [Description("Read the current plan with task statuses")]
-            (string? _unused) => ReadPlan(fileSystem, projectRoot),
+        (string? _unused) => ReadPlan(fileSystem, projectRoot),
             "read_plan"));
 
         tools.Add(AIFunctionFactory.Create(
             [Description("Mark a task as pending, in-progress, complete, or failed")]
-            (string task_id, string status, string? module, string? component) =>
+        (string task_id, string status, string? module, string? component) =>
                 UpdateTaskStatus(taskStatusGate, verificationTracker, planManager, task_id, status, module, component),
             "update_task_status"));
 
         tools.Add(AIFunctionFactory.Create(
             [Description("Retrieve the current workflow step, module, component, and task")]
-            (string? _unused) => GetCurrentContext(engine),
+        (string? _unused) => GetCurrentContext(engine),
             "get_current_context"));
 
         tools.Add(AIFunctionFactory.Create(
             [Description("Report what was accomplished in this iteration")]
-            (string summary) => ReportProgress(summary),
+        (string summary) => ReportProgress(summary),
             "report_progress"));
     }
 

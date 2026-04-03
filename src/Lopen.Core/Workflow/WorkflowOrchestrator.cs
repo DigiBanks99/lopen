@@ -401,12 +401,24 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         {
             if (!_phaseController.IsRequirementGatheringToPlannningApproved)
             {
-                // Invoke LLM for spec drafting, then pause for human gate
+                // Invoke LLM for spec drafting, then prompt user for approval (human gate)
                 StepResult specResult = await InvokeLlmForStepAsync(moduleName, currentStep, currentPhase, cancellationToken);
                 if (!specResult.Success)
                     return specResult;
-                return StepResult.NeedsConfirmation(
-                    specResult.Summary ?? "Specification drafted. Please review and approve to continue.");
+
+                var confirmationSummary = specResult.Summary ?? "Specification drafted. Please review and approve to continue.";
+                var response = await _renderer.PromptAsync(
+                    $"{confirmationSummary}\n\nApprove specification to continue? [y/N]", cancellationToken);
+
+                if (response is not null &&
+                    (response.Trim().Equals("y", StringComparison.OrdinalIgnoreCase) ||
+                     response.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase)))
+                {
+                    _phaseController.ApproveSpecification();
+                    return StepResult.Succeeded(WorkflowTrigger.SpecApproved, "Specification approved");
+                }
+
+                return StepResult.NeedsConfirmation(confirmationSummary);
             }
 
             // Spec already approved, fire transition
@@ -544,6 +556,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                     (double)result.TokenUsage.TotalTokens / result.TokenUsage.ContextWindowSize);
             }
 
+            await _renderer.RenderResultAsync(result.Output, cancellationToken);
             return StepResult.Succeeded(
                 DetermineNextTrigger(step) ?? WorkflowTrigger.Assess,
                 result.Output);

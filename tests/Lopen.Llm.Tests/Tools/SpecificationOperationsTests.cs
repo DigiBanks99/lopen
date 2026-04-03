@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Lopen.Llm.Tools;
+using System.Text.Json;
 
 namespace Lopen.Llm.Tests.Tools;
 
@@ -27,8 +27,8 @@ public sealed class SpecificationOperationsTests
     [Fact]
     public async Task ReadSpec_ReturnsContent_WhenSpecExists()
     {
-        var fs = FsWithSpec("auth", "# Auth Spec\nSome content");
-        var extractor = PassthroughExtractor();
+        FakeFileSystem fs = FsWithSpec("auth", "# Auth Spec\nSome content");
+        IToolSectionExtractor extractor = PassthroughExtractor();
 
         var result = await SpecificationOperations.ReadSpec(fs, extractor, ProjectRoot, "auth", null);
 
@@ -39,7 +39,7 @@ public sealed class SpecificationOperationsTests
     public async Task ReadSpec_ReturnsError_WhenSpecNotFound()
     {
         var fs = new FakeFileSystem();
-        var extractor = PassthroughExtractor();
+        IToolSectionExtractor extractor = PassthroughExtractor();
 
         var result = await SpecificationOperations.ReadSpec(fs, extractor, ProjectRoot, "missing", null);
 
@@ -51,8 +51,8 @@ public sealed class SpecificationOperationsTests
     [Fact]
     public async Task ReadSpec_ExtractsSection_WhenSectionProvided()
     {
-        var fs = FsWithSpec("auth", "# Auth\n## Overview\nOverview text\n## Details\nDetails text");
-        var extractor = StubExtractor((content, headers) =>
+        FakeFileSystem fs = FsWithSpec("auth", "# Auth\n## Overview\nOverview text\n## Details\nDetails text");
+        IToolSectionExtractor extractor = StubExtractor((content, headers) =>
             new List<ToolExtractedSection>
             {
                 new("Overview", "Overview text")
@@ -66,8 +66,8 @@ public sealed class SpecificationOperationsTests
     [Fact]
     public async Task ReadSpec_ReturnsError_WhenSectionNotFound()
     {
-        var fs = FsWithSpec("auth", "# Auth\n## Overview\nSome text");
-        var extractor = StubExtractor((_, _) => Array.Empty<ToolExtractedSection>());
+        FakeFileSystem fs = FsWithSpec("auth", "# Auth\n## Overview\nSome text");
+        IToolSectionExtractor extractor = StubExtractor((_, _) => Array.Empty<ToolExtractedSection>());
 
         var result = await SpecificationOperations.ReadSpec(fs, extractor, ProjectRoot, "auth", "NonExistent");
 

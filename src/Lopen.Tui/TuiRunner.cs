@@ -233,7 +233,22 @@ public sealed class TuiRunner(
                     return;
                 }
 
-                await _orchestrator.RunStepAsync(activeModule, cancellationToken: turnCts.Token);
+                StepResult result = await _orchestrator.RunStepAsync(activeModule, cancellationToken: turnCts.Token);
+
+                if (result.RequiresUserConfirmation)
+                {
+                    _console.MarkupLine(LopenTheme.Styled(
+                        $"{LopenTheme.InfoHint} Specification not approved. Edit your prompt or type /resume to continue.",
+                        LopenTheme.Warning));
+                    return;
+                }
+
+                if (!result.Success)
+                {
+                    _console.MarkupLine(LopenTheme.Styled(
+                        $"{LopenTheme.InfoHint} Step failed: {Markup.Escape(result.Summary ?? "unknown error")}",
+                        LopenTheme.Error));
+                }
             }
             else
             {

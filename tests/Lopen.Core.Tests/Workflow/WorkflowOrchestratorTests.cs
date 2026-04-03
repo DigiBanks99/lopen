@@ -130,6 +130,50 @@ public class WorkflowOrchestratorTests
     }
 
     [Fact]
+    public async Task RunStepAsync_DraftSpec_PromptsUser_WhenSpecNotApproved()
+    {
+        _engine.CurrentStep = WorkflowStep.DraftSpecification;
+        _phaseController.SpecApproved = false;
+        _renderer.PromptResponse = null;
+        WorkflowOrchestrator sut = CreateOrchestrator();
+
+        await sut.RunStepAsync("test-module");
+
+        Assert.Single(_renderer.PromptMessages);
+        Assert.Contains("Approve specification", _renderer.PromptMessages[0]);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_DraftSpec_ApprovesAndReturnsSucceeded_WhenUserTypesY()
+    {
+        _engine.CurrentStep = WorkflowStep.DraftSpecification;
+        _phaseController.SpecApproved = false;
+        _renderer.PromptResponse = "y";
+        WorkflowOrchestrator sut = CreateOrchestrator();
+
+        StepResult result = await sut.RunStepAsync("test-module");
+
+        Assert.True(result.Success);
+        Assert.False(result.RequiresUserConfirmation);
+        Assert.True(_phaseController.SpecApproved);
+    }
+
+    [Fact]
+    public async Task RunStepAsync_DraftSpec_ReturnsNeedsConfirmation_WhenUserDeclinesOrNullResponse()
+    {
+        _engine.CurrentStep = WorkflowStep.DraftSpecification;
+        _phaseController.SpecApproved = false;
+        _renderer.PromptResponse = null; // Headless or user declined
+        WorkflowOrchestrator sut = CreateOrchestrator();
+
+        StepResult result = await sut.RunStepAsync("test-module");
+
+        Assert.True(result.Success);
+        Assert.True(result.RequiresUserConfirmation);
+        Assert.False(_phaseController.SpecApproved);
+    }
+
+    [Fact]
     public async Task RunAsync_InvokesLlmForNonSpecSteps()
     {
         _engine.CurrentStep = WorkflowStep.DetermineDependencies;
@@ -1731,7 +1775,7 @@ public class WorkflowOrchestratorTests
         // Verifies the orchestrator drives through task iteration into verification.
 
         var promptBuilder = new StubPromptBuilder();
-        var toolCatalog = CreateStubToolCatalog();
+        ToolCatalog toolCatalog = CreateStubToolCatalog();
 
         // LLM returns output with tool calls (simulating update_task_status)
         var llmService = new StubLlmService

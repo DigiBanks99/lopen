@@ -23,7 +23,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
 
         // Should not throw — no export when no endpoint
@@ -42,7 +42,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
 
         // Export is configured (no way to verify at DI level, but it should not crash)
@@ -60,7 +60,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.NotNull(sp);
@@ -78,7 +78,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
 
         // Disabled — no OTEL services registered
@@ -98,7 +98,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.NotNull(sp);
@@ -117,7 +117,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.NotNull(sp);
@@ -136,7 +136,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.NotNull(sp);
@@ -154,7 +154,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
 
         // OTEL_SERVICE_NAME takes precedence — just verify no errors
@@ -234,7 +234,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
         ILogger logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("test");
 
@@ -270,7 +270,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
 
         // Verify all three signal providers are registered
@@ -304,7 +304,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
 
         // Services resolve but no OTLP exporter is configured
@@ -339,7 +339,7 @@ public class OtlpExportTests
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
         ServiceProvider sp = services.BuildServiceProvider();
 
         // When disabled, TracerProvider should NOT be registered
@@ -359,7 +359,7 @@ public class OtlpExportTests
 
         // Warm up JIT
         var warmup = new ServiceCollection();
-        warmup.AddLopenOtel(config);
+        warmup.AddLopenOtel(config, []);
         warmup.BuildServiceProvider().Dispose();
 
         // Measure baseline (no OTEL)
@@ -372,7 +372,7 @@ public class OtlpExportTests
         for (int i = 0; i < iterations; i++)
         {
             var s = new ServiceCollection();
-            s.AddLopenOtel(baselineConfig);
+            s.AddLopenOtel(baselineConfig, []);
             s.BuildServiceProvider().Dispose();
         }
         sw.Stop();
@@ -383,7 +383,7 @@ public class OtlpExportTests
         for (int i = 0; i < iterations; i++)
         {
             var s = new ServiceCollection();
-            s.AddLopenOtel(config);
+            s.AddLopenOtel(config, []);
             s.BuildServiceProvider().Dispose();
         }
         sw.Stop();

@@ -28,7 +28,7 @@ public sealed class ToolCatalogTests
     [Fact]
     public void GetToolsForPhase_RequirementGathering_ReturnsCorrectTools()
     {
-        var tools = _catalog.GetToolsForPhase(WorkflowPhase.RequirementGathering);
+        IReadOnlyList<AIFunction> tools = _catalog.GetToolsForPhase(WorkflowPhase.RequirementGathering);
 
         var names = tools.Select(t => t.Name).ToList();
         Assert.Equal(5, names.Count);
@@ -42,7 +42,7 @@ public sealed class ToolCatalogTests
     [Fact]
     public void GetToolsForPhase_Planning_ReturnsCorrectTools()
     {
-        var tools = _catalog.GetToolsForPhase(WorkflowPhase.Planning);
+        IReadOnlyList<AIFunction> tools = _catalog.GetToolsForPhase(WorkflowPhase.Planning);
 
         var names = tools.Select(t => t.Name).ToList();
         Assert.Equal(6, names.Count);
@@ -57,7 +57,7 @@ public sealed class ToolCatalogTests
     [Fact]
     public void GetToolsForPhase_Building_ReturnsCorrectTools()
     {
-        var tools = _catalog.GetToolsForPhase(WorkflowPhase.Building);
+        IReadOnlyList<AIFunction> tools = _catalog.GetToolsForPhase(WorkflowPhase.Building);
 
         var names = tools.Select(t => t.Name).ToList();
         Assert.Equal(7, names.Count);
@@ -73,7 +73,7 @@ public sealed class ToolCatalogTests
     [Fact]
     public void GetToolsForPhase_Research_ReturnsCorrectTools()
     {
-        var tools = _catalog.GetToolsForPhase(WorkflowPhase.Research);
+        IReadOnlyList<AIFunction> tools = _catalog.GetToolsForPhase(WorkflowPhase.Research);
 
         var names = tools.Select(t => t.Name).ToList();
         Assert.Equal(5, names.Count);

@@ -24,7 +24,7 @@ public class ProgramTests : IDisposable
         builder.Services.AddLopenCore(null);
         builder.Services.AddLopenStorage(null);
         builder.Services.AddLopenLlm();
-        builder.Services.AddLopenOtel(builder.Configuration);
+        builder.Services.AddLopenOtel(builder.Configuration, []);
         _host = builder.Build();
         _services = _host.Services;
     }

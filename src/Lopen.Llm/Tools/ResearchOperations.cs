@@ -1,8 +1,8 @@
+using Lopen.Storage;
+using Microsoft.Extensions.AI;
 using System.ComponentModel;
 using System.Text;
 using System.Text.RegularExpressions;
-using Lopen.Storage;
-using Microsoft.Extensions.AI;
 
 namespace Lopen.Llm.Tools;
 
@@ -15,12 +15,12 @@ internal static class ResearchOperations
     {
         tools.Add(AIFunctionFactory.Create(
             [Description("Read findings from a research document")]
-            (string module, string? topic) => ReadResearch(fileSystem, projectRoot, module, topic),
+        (string module, string? topic) => ReadResearch(fileSystem, projectRoot, module, topic),
             "read_research"));
 
         tools.Add(AIFunctionFactory.Create(
             [Description("Save research findings to docs/requirements/{module}/RESEARCH-{topic}.md")]
-            (string module, string? topic, string content) => LogResearch(fileSystem, projectRoot, module, topic, content),
+        (string module, string? topic, string content) => LogResearch(fileSystem, projectRoot, module, topic, content),
             "log_research"));
     }
 

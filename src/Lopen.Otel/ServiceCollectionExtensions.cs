@@ -16,7 +16,8 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddLopenOtel(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        string[] args)
     {
         if (!configuration.GetValue("otel:enabled", defaultValue: true))
             return services;
@@ -55,6 +56,10 @@ public static class ServiceCollectionExtensions
             services.AddLogging(logging =>
             {
                 logging.ClearProviders();
+                if (args.Contains("--debug"))
+                {
+                    logging.AddConsole();
+                }
                 logging.Configure(options =>
                     options.ActivityTrackingOptions =
                         ActivityTrackingOptions.TraceId |

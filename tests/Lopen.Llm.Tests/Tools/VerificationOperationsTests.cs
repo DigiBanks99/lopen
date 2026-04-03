@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Lopen.Llm.Tools;
+using System.Text.Json;
 
 namespace Lopen.Llm.Tests.Tools;
 
