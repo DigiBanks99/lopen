@@ -18,11 +18,11 @@ internal sealed class GuardrailPipeline : IGuardrailPipeline
         CancellationToken cancellationToken = default)
     {
         var results = new List<GuardrailResult>();
-        var ordered = _guardrails.OrderBy(g => g.Order);
+        IOrderedEnumerable<IGuardrail> ordered = _guardrails.OrderBy(g => g.Order);
 
-        foreach (var guardrail in ordered)
+        foreach (IGuardrail? guardrail in ordered)
         {
-            var result = await guardrail.EvaluateAsync(context, cancellationToken).ConfigureAwait(false);
+            GuardrailResult result = await guardrail.EvaluateAsync(context, cancellationToken).ConfigureAwait(false);
             results.Add(result);
 
             if (result is GuardrailResult.Block && guardrail.ShortCircuitOnBlock)

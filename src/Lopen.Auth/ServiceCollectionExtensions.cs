@@ -11,7 +11,9 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<ITokenSourceResolver, EnvironmentTokenSourceResolver>();
         services.AddSingleton<IGhCliAdapter, GhCliAdapter>();
-        services.AddSingleton<IAuthService, CopilotAuthService>();
+        services.AddSingleton<CopilotAuthService>();
+        services.AddSingleton<IAuthService>(sp => sp.GetRequiredService<CopilotAuthService>());
+        services.AddSingleton<IAuthTokenProvider>(sp => sp.GetRequiredService<CopilotAuthService>());
 
         return services;
     }

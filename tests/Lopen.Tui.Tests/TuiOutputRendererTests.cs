@@ -1,206 +1,176 @@
-using Lopen.Core;
-using Microsoft.Extensions.Logging.Abstractions;
+using Lopen.Llm;
+using Spectre.Console;
 
 namespace Lopen.Tui.Tests;
 
 public class TuiOutputRendererTests
 {
-    private readonly ActivityPanelDataProvider _activityProvider = new();
-    private readonly UserPromptQueue _promptQueue = new();
-
-    private TuiOutputRenderer CreateRenderer(IUserPromptQueue? promptQueue = null)
+    [Fact]
+    public void Constructor_ThrowsOnNullConsole()
     {
-        return new TuiOutputRenderer(
-            _activityProvider,
-            promptQueue,
-            NullLogger<TuiOutputRenderer>.Instance);
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(TextWriter.Null),
+        });
+        FileLineEditorHistory history = new(
+            Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
+        LopenLineEditor editor = new(console, history);
+
+        Assert.Throws<ArgumentNullException>(() => new TuiOutputRenderer(null!, new Lazy<LopenLineEditor>(() => editor)));
     }
 
     [Fact]
-    public void Constructor_NullActivityProvider_ThrowsArgumentNull()
+    public void Constructor_ThrowsOnNullEditor()
     {
-        Assert.Throws<ArgumentNullException>(() =>
-            new TuiOutputRenderer(null!, null, NullLogger<TuiOutputRenderer>.Instance));
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(TextWriter.Null),
+        });
+
+        Assert.Throws<ArgumentNullException>(() => new TuiOutputRenderer(console, null!));
     }
 
     [Fact]
-    public void Constructor_NullLogger_ThrowsArgumentNull()
+    public async Task RenderProgressAsync_DoesNotThrow()
     {
-        Assert.Throws<ArgumentNullException>(() =>
-            new TuiOutputRenderer(_activityProvider, null, null!));
+        (TuiOutputRenderer? renderer, IAnsiConsole _) = CreateRenderer();
+        await renderer.RenderProgressAsync("Build", "compiling", 0.5);
     }
 
     [Fact]
-    public void Constructor_NullPromptQueue_DoesNotThrow()
+    public async Task RenderErrorAsync_DoesNotThrow()
     {
-        var renderer = new TuiOutputRenderer(_activityProvider, null, NullLogger<TuiOutputRenderer>.Instance);
-        Assert.NotNull(renderer);
+        (TuiOutputRenderer? renderer, IAnsiConsole _) = CreateRenderer();
+        await renderer.RenderErrorAsync("Something went wrong", new InvalidOperationException("test"));
     }
 
     [Fact]
-    public async Task RenderProgressAsync_AddsPhaseTransitionEntry()
+    public async Task RenderResultAsync_DoesNotThrow()
     {
-        var renderer = CreateRenderer();
-
-        await renderer.RenderProgressAsync("Building", "Compiling", 0.5);
-
-        var data = _activityProvider.GetCurrentData();
-        Assert.Single(data.Entries);
-        Assert.Equal(ActivityEntryKind.PhaseTransition, data.Entries[0].Kind);
-        Assert.Contains("Building", data.Entries[0].Summary);
-        Assert.Contains("Compiling", data.Entries[0].Summary);
+        (TuiOutputRenderer? renderer, IAnsiConsole _) = CreateRenderer();
+        await renderer.RenderResultAsync("Operation complete");
     }
 
     [Fact]
-    public async Task RenderProgressAsync_NegativeProgress_OmitsPercentage()
+    public async Task RenderErrorAsync_LlmExceptionWithDiagnostics_RendersWithoutThrowing()
     {
-        var renderer = CreateRenderer();
+        (TuiOutputRenderer renderer, _) = CreateRenderer();
+        var inner = new InvalidOperationException("401 Unauthorized");
+        var llmEx = new LlmException("Failed to start Copilot SDK client", model: null, inner)
+        {
+            DiagnosticCategory = CopilotFailureCategory.Auth,
+            UserHint = "Run 'lopen auth login' to re-authenticate.",
+        };
 
-        await renderer.RenderProgressAsync("Assess", "Starting", -1);
-
-        var data = _activityProvider.GetCurrentData();
-        Assert.Single(data.Entries);
-        Assert.DoesNotContain("%", data.Entries[0].Summary);
+        // Should render category and hint without throwing
+        await renderer.RenderErrorAsync("Failed to start Copilot SDK client", llmEx);
     }
 
     [Fact]
-    public async Task RenderErrorAsync_AddsErrorEntry()
+    public async Task RenderErrorAsync_LlmExceptionWithDiagnostics_WritesOutputIncludingHint()
     {
-        var renderer = CreateRenderer();
+        (TuiOutputRenderer renderer, StringWriter writer) = CreateCapturingRenderer();
 
-        await renderer.RenderErrorAsync("Something went wrong");
+        var inner = new InvalidOperationException("401 Unauthorized");
+        var llmEx = new LlmException("Failed to start Copilot SDK client", model: null, inner)
+        {
+            DiagnosticCategory = CopilotFailureCategory.Auth,
+            UserHint = "Run 'lopen auth login' to re-authenticate.",
+        };
 
-        var data = _activityProvider.GetCurrentData();
-        Assert.Single(data.Entries);
-        Assert.Equal(ActivityEntryKind.Error, data.Entries[0].Kind);
-        // AddTaskFailure uses "✗ Task failed: {taskName}" as summary
-        Assert.Contains("Error", data.Entries[0].Summary);
-        // The error message is in the details
-        Assert.Contains(data.Entries[0].Details, d => d.Contains("Something went wrong"));
+        await renderer.RenderErrorAsync("Failed to start Copilot SDK client", llmEx);
+
+        string output = writer.ToString();
+        Assert.Contains("Auth", output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("lopen auth login", output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task RenderErrorAsync_WithException_IncludesExceptionDetails()
+    public async Task RenderErrorAsync_LlmExceptionNetworkCategory_WritesNetworkHint()
     {
-        var renderer = CreateRenderer();
-        var exception = new InvalidOperationException("test error");
+        (TuiOutputRenderer renderer, StringWriter writer) = CreateCapturingRenderer();
 
-        await renderer.RenderErrorAsync("Failed", exception);
+        var inner = new InvalidOperationException("Connection timeout");
+        var llmEx = new LlmException("Failed to start Copilot SDK client", model: null, inner)
+        {
+            DiagnosticCategory = CopilotFailureCategory.Network,
+            UserHint = "Check your network connection and verify the Copilot service is reachable.",
+        };
 
-        var data = _activityProvider.GetCurrentData();
-        Assert.Single(data.Entries);
-        // Details include both the error message and exception info
-        Assert.True(data.Entries[0].Details.Count >= 2);
-        Assert.Contains(data.Entries[0].Details, d => d.Contains("InvalidOperationException"));
+        await renderer.RenderErrorAsync("Failed to start Copilot SDK client", llmEx);
+
+        string output = writer.ToString();
+        Assert.Contains("Network", output, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("network connection", output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task RenderErrorAsync_WithoutException_NoExtraDetails()
+    public async Task RenderErrorAsync_PlainException_RendersExceptionTypeAndMessage()
     {
-        var renderer = CreateRenderer();
+        (TuiOutputRenderer renderer, StringWriter writer) = CreateCapturingRenderer();
 
-        await renderer.RenderErrorAsync("Simple error");
+        var ex = new InvalidOperationException("Something failed");
+        await renderer.RenderErrorAsync("An error occurred", ex);
 
-        var data = _activityProvider.GetCurrentData();
-        Assert.Single(data.Entries);
-        // The TaskFailure method always adds "Error: message" as first detail
-        Assert.Contains("Simple error", data.Entries[0].Details[0]);
+        string output = writer.ToString();
+        Assert.Contains("InvalidOperationException", output);
+        Assert.Contains("Something failed", output);
     }
 
     [Fact]
-    public async Task RenderResultAsync_AddsActionEntry()
+    public async Task RenderErrorAsync_LlmExceptionWithoutDiagnostics_FallsBackToExceptionDetails()
     {
-        var renderer = CreateRenderer();
+        (TuiOutputRenderer renderer, StringWriter writer) = CreateCapturingRenderer();
 
-        await renderer.RenderResultAsync("Task completed successfully");
+        var llmEx = new LlmException("Rate limited", "gpt-5-mini");
+        await renderer.RenderErrorAsync("LLM error", llmEx);
 
-        var data = _activityProvider.GetCurrentData();
-        Assert.Single(data.Entries);
-        Assert.Equal(ActivityEntryKind.Action, data.Entries[0].Kind);
-        Assert.Equal("Task completed successfully", data.Entries[0].Summary);
+        string output = writer.ToString();
+        Assert.Contains("LlmException", output);
+        Assert.Contains("Rate limited", output);
     }
 
     [Fact]
-    public async Task PromptAsync_NoQueue_ReturnsNull()
+    public void ImplementsIOutputRenderer()
     {
-        var renderer = CreateRenderer(promptQueue: null);
-
-        var result = await renderer.PromptAsync("Continue?");
-
-        Assert.Null(result);
+        (TuiOutputRenderer? renderer, IAnsiConsole _) = CreateRenderer();
+        Assert.IsAssignableFrom<Lopen.Core.IOutputRenderer>(renderer);
     }
 
-    [Fact]
-    public async Task PromptAsync_WithQueue_WaitsForResponse()
+    private static (TuiOutputRenderer renderer, IAnsiConsole console) CreateRenderer()
     {
-        var renderer = CreateRenderer(promptQueue: _promptQueue);
-
-        // Enqueue a response before prompting to avoid blocking
-        _promptQueue.Enqueue("yes");
-
-        var result = await renderer.PromptAsync("Continue?");
-
-        Assert.Equal("yes", result);
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(TextWriter.Null),
+        });
+        FileLineEditorHistory history = new(
+            Path.Combine(Path.GetTempPath(), $"lopen-test-{Guid.NewGuid():N}", "history.txt"));
+        LopenLineEditor editor = new(console, history);
+        return (new TuiOutputRenderer(console, new Lazy<LopenLineEditor>(() => editor)), console);
     }
 
-    [Fact]
-    public async Task PromptAsync_WithQueue_AddsConversationEntry()
+    /// <summary>
+    /// Creates a renderer that captures output to a <see cref="StringWriter"/>.
+    /// The <see cref="LopenLineEditor"/> is never instantiated since these tests only
+    /// call <see cref="TuiOutputRenderer.RenderErrorAsync"/> which does not need it.
+    /// </summary>
+    private static (TuiOutputRenderer renderer, StringWriter writer) CreateCapturingRenderer()
     {
-        var renderer = CreateRenderer(promptQueue: _promptQueue);
-        _promptQueue.Enqueue("response");
-
-        await renderer.PromptAsync("What should I do?");
-
-        var data = _activityProvider.GetCurrentData();
-        // Should have the conversation prompt entry
-        Assert.Contains(data.Entries, e => e.Kind == ActivityEntryKind.Conversation);
-        Assert.Contains(data.Entries, e => e.Summary.Contains("What should I do?"));
-    }
-
-    [Fact]
-    public async Task RenderProgressAsync_MultipleEntries_AllAdded()
-    {
-        var renderer = CreateRenderer();
-
-        await renderer.RenderProgressAsync("Assess", "Step 1", 0.25);
-        await renderer.RenderProgressAsync("Building", "Step 2", 0.50);
-        await renderer.RenderProgressAsync("Testing", "Step 3", 0.75);
-
-        var data = _activityProvider.GetCurrentData();
-        Assert.Equal(3, data.Entries.Count);
-    }
-
-    [Fact]
-    public async Task RenderErrorAsync_IncrementsFailureCount()
-    {
-        var renderer = CreateRenderer();
-
-        await renderer.RenderErrorAsync("Error 1");
-        await renderer.RenderErrorAsync("Error 2");
-
-        Assert.Equal(2, _activityProvider.ConsecutiveFailureCount);
-    }
-
-    [Fact]
-    public async Task RenderResultAsync_ResetsFailureCount()
-    {
-        var renderer = CreateRenderer();
-
-        await renderer.RenderErrorAsync("Error 1");
-        Assert.Equal(1, _activityProvider.ConsecutiveFailureCount);
-
-        await renderer.RenderResultAsync("Success");
-        Assert.Equal(0, _activityProvider.ConsecutiveFailureCount);
-    }
-
-    [Fact]
-    public async Task PromptAsync_CancellationRequested_ThrowsOperationCanceled()
-    {
-        var renderer = CreateRenderer(promptQueue: _promptQueue);
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            renderer.PromptAsync("Wait...", cts.Token));
+        var writer = new StringWriter();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.Yes,
+            Interactive = InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        Lazy<LopenLineEditor> neverUsedEditor = new(
+            () => throw new NotSupportedException("LopenLineEditor is not needed for RenderErrorAsync tests."));
+        return (new TuiOutputRenderer(console, neverUsedEditor), writer);
     }
 }

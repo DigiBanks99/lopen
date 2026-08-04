@@ -1,0 +1,262 @@
+using Lopen.Configuration;
+using Lopen.Core.Workflow;
+using Lopen.Llm;
+using Lopen.Storage;
+using Microsoft.Extensions.Options;
+using NSubstitute;
+using Spectre.Console;
+
+namespace Lopen.Tui.Tests;
+
+public class WorkflowOverviewBlockTests
+{
+    private static IAnsiConsole CreateTestConsole() => AnsiConsole.Create(new AnsiConsoleSettings
+    {
+        Ansi = AnsiSupport.No,
+        Interactive = InteractionSupport.No,
+        Out = new AnsiConsoleOutput(TextWriter.Null),
+    });
+
+    // ── Phase Mapping Tests ──────────────────────────────────────────
+
+    [Fact]
+    public void MapPhases_RequirementGathering_AssessIsActive()
+    {
+        IReadOnlyList<DisplayPhase> phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.RequirementGathering, false);
+
+        Assert.Equal(4, phases.Count);
+        Assert.Equal(DisplayPhaseState.Active, phases[0].State);  // Assess
+        Assert.Equal(DisplayPhaseState.Pending, phases[1].State); // Plan
+        Assert.Equal(DisplayPhaseState.Pending, phases[2].State); // Build
+        Assert.Equal(DisplayPhaseState.Pending, phases[3].State); // Verify
+    }
+
+    [Fact]
+    public void MapPhases_Planning_PlanIsActive()
+    {
+        IReadOnlyList<DisplayPhase> phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.Planning, false);
+
+        Assert.Equal(DisplayPhaseState.Complete, phases[0].State); // Assess
+        Assert.Equal(DisplayPhaseState.Active, phases[1].State);   // Plan
+        Assert.Equal(DisplayPhaseState.Pending, phases[2].State);  // Build
+        Assert.Equal(DisplayPhaseState.Pending, phases[3].State);  // Verify
+    }
+
+    [Fact]
+    public void MapPhases_Building_BuildIsActive()
+    {
+        IReadOnlyList<DisplayPhase> phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.Building, false);
+
+        Assert.Equal(DisplayPhaseState.Complete, phases[0].State);
+        Assert.Equal(DisplayPhaseState.Complete, phases[1].State);
+        Assert.Equal(DisplayPhaseState.Active, phases[2].State);
+        Assert.Equal(DisplayPhaseState.Pending, phases[3].State);
+    }
+
+    [Fact]
+    public void MapPhases_IsComplete_AllComplete()
+    {
+        IReadOnlyList<DisplayPhase> phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.Building, true);
+
+        Assert.All(phases, p => Assert.Equal(DisplayPhaseState.Complete, p.State));
+    }
+
+    [Theory]
+    [InlineData("Assess")]
+    [InlineData("Plan")]
+    [InlineData("Build")]
+    [InlineData("Verify")]
+    public void MapPhases_AllFourPhasesNamed(string expectedName)
+    {
+        IReadOnlyList<DisplayPhase> phases = WorkflowOverviewBlock.MapPhases(WorkflowPhase.RequirementGathering, false);
+        Assert.Contains(phases, p => p.Name == expectedName);
+    }
+
+    // ── Phase Display Tests ──────────────────────────────────────────
+
+    [Fact]
+    public void BuildPhaseDisplay_ContainsCheckForComplete()
+    {
+        var display = WorkflowOverviewBlock.BuildPhaseDisplay(WorkflowPhase.Building, false);
+        Assert.Contains(LopenTheme.PhaseComplete, display);  // Assess and Plan should be ✓
+        Assert.Contains(LopenTheme.PhaseActive, display);    // Build should be ●
+        Assert.Contains(LopenTheme.PhasePending, display);   // Verify should be ○
+    }
+
+    // ── Token Formatting Tests ───────────────────────────────────────
+
+    [Theory]
+    [InlineData(0, "0")]
+    [InlineData(500, "500")]
+    [InlineData(1000, "1k")]
+    [InlineData(1200, "1.2k")]
+    [InlineData(50000, "50k")]
+    [InlineData(1000000, "1M")]
+    [InlineData(1500000, "1.5M")]
+    public void FormatTokenCount_FormatsCorrectly(int count, string expected)
+    {
+        Assert.Equal(expected, WorkflowOverviewBlock.FormatTokenCount(count));
+    }
+
+    // ── Task Counting Tests ──────────────────────────────────────────
+
+    [Fact]
+    public void CountTasks_EmptyList_ReturnsZero()
+    {
+        (int completed, int total, string? active) = WorkflowOverviewBlock.CountTasks([]);
+        Assert.Equal(0, completed);
+        Assert.Equal(0, total);
+        Assert.Null(active);
+    }
+
+    [Fact]
+    public void CountTasks_MixedStates_CountsCorrectly()
+    {
+        var tasks = new List<TaskHierarchyNode>
+        {
+            new() { Id = "1", Name = "task-one", State = "Complete", NodeType = "task" },
+            new() { Id = "2", Name = "task-two", State = "InProgress", NodeType = "task" },
+            new() { Id = "3", Name = "task-three", State = "Pending", NodeType = "task" },
+        };
+
+        (int completed, int total, string? active) = WorkflowOverviewBlock.CountTasks(tasks);
+        Assert.Equal(1, completed);
+        Assert.Equal(3, total);
+        Assert.Equal("task-two", active);
+    }
+
+    [Fact]
+    public void CountTasks_NestedChildren_CountsRecursively()
+    {
+        var tasks = new List<TaskHierarchyNode>
+        {
+            new()
+            {
+                Id = "comp1", Name = "component", State = "InProgress", NodeType = "component",
+                Children =
+                [
+                    new() { Id = "t1", Name = "sub-task-1", State = "Complete", NodeType = "task" },
+                    new() { Id = "t2", Name = "sub-task-2", State = "InProgress", NodeType = "task" },
+                ]
+            },
+        };
+
+        (int completed, int total, string? active) = WorkflowOverviewBlock.CountTasks(tasks);
+        Assert.Equal(1, completed);
+        Assert.Equal(2, total);
+        Assert.Equal("sub-task-2", active);
+    }
+
+    // ── Render Tests ─────────────────────────────────────────────────
+
+    [Fact]
+    public void Render_NoWorkflow_DoesNotThrow()
+    {
+        WorkflowOverviewBlock block = CreateBlock();
+        block.Render(); // Should not throw
+    }
+
+    [Fact]
+    public void Render_WithSessionState_DoesNotThrow()
+    {
+        WorkflowOverviewBlock block = CreateBlock();
+        var state = new SessionState
+        {
+            SessionId = "test-session",
+            Phase = "Building",
+            Step = "IterateThroughTasks",
+            Module = "auth-module",
+            Component = "login",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+            TaskHierarchy =
+            [
+                new() { Id = "t1", Name = "add-jwt", State = "Complete", NodeType = "task" },
+                new() { Id = "t2", Name = "add-refresh", State = "InProgress", NodeType = "task" },
+                new() { Id = "t3", Name = "add-logout", State = "Pending", NodeType = "task" },
+            ],
+        };
+
+        block.Render(state); // Should not throw
+    }
+
+    private static WorkflowOverviewBlock CreateBlock()
+    {
+        IAnsiConsole console = CreateTestConsole();
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions());
+        return new WorkflowOverviewBlock(console, options);
+    }
+
+    // ── Pause Indicator Tests ────────────────────────────────────────
+
+    [Fact]
+    public void Render_WhenPaused_OutputContainsPausedIndicator()
+    {
+        var writer = new StringWriter();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions());
+        IPauseController pauseController = Substitute.For<IPauseController>();
+        pauseController.IsPaused.Returns(true);
+
+        var block = new WorkflowOverviewBlock(console, options, pauseController: pauseController);
+        block.Render();
+
+        string output = writer.ToString();
+        Assert.Contains("PAUSED", output);
+    }
+
+    [Fact]
+    public void Render_WhenNotPaused_OutputDoesNotContainPausedIndicator()
+    {
+        var writer = new StringWriter();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions());
+        IPauseController pauseController = Substitute.For<IPauseController>();
+        pauseController.IsPaused.Returns(false);
+
+        var block = new WorkflowOverviewBlock(console, options, pauseController: pauseController);
+        block.Render();
+
+        string output = writer.ToString();
+        Assert.DoesNotContain("PAUSED", output);
+    }
+
+    [Fact]
+    public void Render_PauseAndResume_IndicatorAppearsAndDisappears()
+    {
+        var writer = new StringWriter();
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings
+        {
+            Ansi = AnsiSupport.No,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(writer),
+        });
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions());
+        IPauseController pauseController = Substitute.For<IPauseController>();
+
+        var block = new WorkflowOverviewBlock(console, options, pauseController: pauseController);
+
+        // Paused: indicator should appear
+        pauseController.IsPaused.Returns(true);
+        block.Render();
+        string pausedOutput = writer.ToString();
+        Assert.Contains("PAUSED", pausedOutput);
+
+        // Resume: indicator should disappear
+        writer.GetStringBuilder().Clear();
+        pauseController.IsPaused.Returns(false);
+        block.Render();
+        string resumedOutput = writer.ToString();
+        Assert.DoesNotContain("PAUSED", resumedOutput);
+    }
+}

@@ -19,7 +19,7 @@ public class GitCliServiceTests
     [Fact]
     public async Task GetLastCommitDateAsync_ReturnsDateOrNull()
     {
-        var result = await _service.GetLastCommitDateAsync();
+        DateTimeOffset? result = await _service.GetLastCommitDateAsync();
 
         // In a git repo, this should return a date; in a non-git context, null
         // We just verify it doesn't throw

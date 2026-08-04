@@ -38,7 +38,7 @@ internal sealed class RevertService : IRevertService
 
         try
         {
-            var result = await _gitService.ResetToCommitAsync(commitSha, cancellationToken);
+            GitResult result = await _gitService.ResetToCommitAsync(commitSha, cancellationToken);
 
             if (result.Success)
             {

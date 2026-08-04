@@ -1,9 +1,10 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Lopen.Core.Workflow;
 using Lopen.Otel;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
+using System.Diagnostics;
 
 namespace Lopen.Commands;
 
@@ -15,30 +16,30 @@ public static class PhaseCommands
 {
     public static Command CreateSpec(IServiceProvider services, TextWriter? output = null, TextWriter? error = null)
     {
-        var stdout = output ?? Console.Out;
-        var stderr = error ?? Console.Error;
+        TextWriter stdout = output ?? Console.Out;
+        TextWriter stderr = error ?? Console.Error;
 
-        var spec = new Command("spec", "Run the Requirement Gathering phase (step 1)");
+        Command spec = new Command("spec", "Run the Requirement Gathering phase (step 1)");
         spec.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
-            using var activity = SpanFactory.StartCommand("spec");
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+            using Activity? activity = SpanFactory.StartCommand("spec");
+            Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             LopenTelemetryDiagnostics.CommandCount.Add(1, new KeyValuePair<string, object?>("lopen.command.name", "spec"));
             try
             {
                 GlobalOptions.ApplyConfigOverrides(services, parseResult);
-                var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
+                int? headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
                 if (headlessError is not null)
                     return headlessError.Value;
 
-                var authError = await ValidateAuthAsync(services, cancellationToken);
+                string? authError = await ValidateAuthAsync(services, cancellationToken);
                 if (authError is not null)
                 {
                     await stderr.WriteLineAsync(authError);
                     return ExitCodes.Failure;
                 }
 
-                var (sessionId, resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
+                (SessionId? sessionId, string? resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
                 if (resolveError is not null)
                 {
                     await stderr.WriteLineAsync(resolveError);
@@ -52,7 +53,7 @@ public static class PhaseCommands
 
                 await stdout.WriteLineAsync("Starting requirement gathering phase...");
 
-                var orchestrator = services.GetService<IWorkflowOrchestrator>();
+                IWorkflowOrchestrator? orchestrator = services.GetService<IWorkflowOrchestrator>();
                 if (orchestrator is null)
                 {
                     await stderr.WriteLineAsync("No workflow orchestrator available. Run from a project directory.");
@@ -61,12 +62,12 @@ public static class PhaseCommands
                     return ExitCodes.Failure;
                 }
 
-                var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
-                var prompt = parseResult.GetValue(GlobalOptions.Prompt);
+                string? module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
+                string? prompt = parseResult.GetValue(GlobalOptions.Prompt);
 
                 if (module is not null)
                 {
-                    var result = await orchestrator.RunAsync(module, prompt, cancellationToken);
+                    OrchestrationResult result = await orchestrator.RunAsync(module, prompt, cancellationToken);
                     if (!result.IsComplete && result.WasInterrupted)
                     {
                         await stdout.WriteLineAsync(result.Summary ?? "Requirement gathering paused.");
@@ -99,37 +100,37 @@ public static class PhaseCommands
 
     public static Command CreatePlan(IServiceProvider services, TextWriter? output = null, TextWriter? error = null)
     {
-        var stdout = output ?? Console.Out;
-        var stderr = error ?? Console.Error;
+        TextWriter stdout = output ?? Console.Out;
+        TextWriter stderr = error ?? Console.Error;
 
-        var plan = new Command("plan", "Run the Planning phase (steps 2–5)");
+        Command plan = new Command("plan", "Run the Planning phase (steps 2–5)");
         plan.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
-            using var activity = SpanFactory.StartCommand("plan");
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+            using Activity? activity = SpanFactory.StartCommand("plan");
+            Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             LopenTelemetryDiagnostics.CommandCount.Add(1, new KeyValuePair<string, object?>("lopen.command.name", "plan"));
             try
             {
                 GlobalOptions.ApplyConfigOverrides(services, parseResult);
-                var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
+                int? headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
                 if (headlessError is not null)
                     return headlessError.Value;
 
-                var authError = await ValidateAuthAsync(services, cancellationToken);
+                string? authError = await ValidateAuthAsync(services, cancellationToken);
                 if (authError is not null)
                 {
                     await stderr.WriteLineAsync(authError);
                     return ExitCodes.Failure;
                 }
 
-                var (sessionId, resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
+                (SessionId? sessionId, string? resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
                 if (resolveError is not null)
                 {
                     await stderr.WriteLineAsync(resolveError);
                     return ExitCodes.Failure;
                 }
 
-                var validationResult = await ValidateSpecExistsAsync(services, cancellationToken);
+                string? validationResult = await ValidateSpecExistsAsync(services, cancellationToken);
                 if (validationResult is not null)
                 {
                     await stderr.WriteLineAsync(validationResult);
@@ -143,7 +144,7 @@ public static class PhaseCommands
 
                 await stdout.WriteLineAsync("Starting planning phase...");
 
-                var orchestrator = services.GetService<IWorkflowOrchestrator>();
+                IWorkflowOrchestrator? orchestrator = services.GetService<IWorkflowOrchestrator>();
                 if (orchestrator is null)
                 {
                     await stderr.WriteLineAsync("No workflow orchestrator available. Run from a project directory.");
@@ -152,12 +153,12 @@ public static class PhaseCommands
                     return ExitCodes.Failure;
                 }
 
-                var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
-                var prompt = parseResult.GetValue(GlobalOptions.Prompt);
+                string? module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
+                string? prompt = parseResult.GetValue(GlobalOptions.Prompt);
 
                 if (module is not null)
                 {
-                    var result = await orchestrator.RunAsync(module, prompt, cancellationToken);
+                    OrchestrationResult result = await orchestrator.RunAsync(module, prompt, cancellationToken);
                     if (!result.IsComplete && result.WasInterrupted)
                     {
                         await stdout.WriteLineAsync(result.Summary ?? "Planning paused.");
@@ -190,44 +191,44 @@ public static class PhaseCommands
 
     public static Command CreateBuild(IServiceProvider services, TextWriter? output = null, TextWriter? error = null)
     {
-        var stdout = output ?? Console.Out;
-        var stderr = error ?? Console.Error;
+        TextWriter stdout = output ?? Console.Out;
+        TextWriter stderr = error ?? Console.Error;
 
-        var build = new Command("build", "Run the Building phase (steps 6–7)");
+        Command build = new Command("build", "Run the Building phase (steps 6–7)");
         build.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
-            using var activity = SpanFactory.StartCommand("build");
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+            using Activity? activity = SpanFactory.StartCommand("build");
+            Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             LopenTelemetryDiagnostics.CommandCount.Add(1, new KeyValuePair<string, object?>("lopen.command.name", "build"));
             try
             {
                 GlobalOptions.ApplyConfigOverrides(services, parseResult);
-                var headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
+                int? headlessError = await ValidateHeadlessPromptAsync(services, parseResult, stderr, cancellationToken);
                 if (headlessError is not null)
                     return headlessError.Value;
 
-                var authError = await ValidateAuthAsync(services, cancellationToken);
+                string? authError = await ValidateAuthAsync(services, cancellationToken);
                 if (authError is not null)
                 {
                     await stderr.WriteLineAsync(authError);
                     return ExitCodes.Failure;
                 }
 
-                var (sessionId, resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
+                (SessionId? sessionId, string? resolveError) = await ResolveSessionAsync(services, parseResult, cancellationToken);
                 if (resolveError is not null)
                 {
                     await stderr.WriteLineAsync(resolveError);
                     return ExitCodes.Failure;
                 }
 
-                var specResult = await ValidateSpecExistsAsync(services, cancellationToken);
+                string? specResult = await ValidateSpecExistsAsync(services, cancellationToken);
                 if (specResult is not null)
                 {
                     await stderr.WriteLineAsync(specResult);
                     return ExitCodes.Failure;
                 }
 
-                var planResult = await ValidatePlanExistsAsync(services, cancellationToken);
+                string? planResult = await ValidatePlanExistsAsync(services, cancellationToken);
                 if (planResult is not null)
                 {
                     await stderr.WriteLineAsync(planResult);
@@ -241,7 +242,7 @@ public static class PhaseCommands
 
                 await stdout.WriteLineAsync("Starting building phase...");
 
-                var orchestrator = services.GetService<IWorkflowOrchestrator>();
+                IWorkflowOrchestrator? orchestrator = services.GetService<IWorkflowOrchestrator>();
                 if (orchestrator is null)
                 {
                     await stderr.WriteLineAsync("No workflow orchestrator available. Run from a project directory.");
@@ -250,12 +251,12 @@ public static class PhaseCommands
                     return ExitCodes.Failure;
                 }
 
-                var module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
-                var prompt = parseResult.GetValue(GlobalOptions.Prompt);
+                string? module = await ResolveModuleNameAsync(services, sessionId, cancellationToken);
+                string? prompt = parseResult.GetValue(GlobalOptions.Prompt);
 
                 if (module is not null)
                 {
-                    var result = await orchestrator.RunAsync(module, prompt, cancellationToken);
+                    OrchestrationResult result = await orchestrator.RunAsync(module, prompt, cancellationToken);
                     if (!result.IsComplete && result.WasInterrupted)
                     {
                         await stdout.WriteLineAsync(result.Summary ?? "Building paused.");
@@ -294,7 +295,7 @@ public static class PhaseCommands
     internal static async Task<string?> ValidateAuthAsync(
         IServiceProvider services, CancellationToken cancellationToken)
     {
-        var authService = services.GetService<IAuthService>();
+        IAuthService? authService = services.GetService<IAuthService>();
         if (authService is null)
             return null;
 
@@ -316,19 +317,19 @@ public static class PhaseCommands
     internal static async Task<int?> ValidateHeadlessPromptAsync(
         IServiceProvider services, ParseResult parseResult, TextWriter stderr, CancellationToken cancellationToken)
     {
-        var headless = parseResult.GetValue(GlobalOptions.Headless);
-        var prompt = parseResult.GetValue(GlobalOptions.Prompt);
+        bool headless = parseResult.GetValue(GlobalOptions.Headless);
+        string? prompt = parseResult.GetValue(GlobalOptions.Prompt);
 
         if (!headless || !string.IsNullOrWhiteSpace(prompt))
             return null;
 
-        var sessionManager = services.GetService<ISessionManager>();
+        ISessionManager? sessionManager = services.GetService<ISessionManager>();
         if (sessionManager is null)
         {
             await stderr.WriteLineAsync("Headless mode requires --prompt or an active session. Run with --prompt <text> or start a session first.");
             return ExitCodes.Failure;
         }
-        var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
+        SessionId? latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
         if (latestId is null)
         {
             await stderr.WriteLineAsync("Headless mode requires --prompt or an active session. Run with --prompt <text> or start a session first.");
@@ -344,26 +345,26 @@ public static class PhaseCommands
     /// </summary>
     internal static async Task<string?> ValidateSpecExistsAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var sessionManager = services.GetService<ISessionManager>();
-        var moduleScanner = services.GetService<IModuleScanner>();
+        ISessionManager? sessionManager = services.GetService<ISessionManager>();
+        IModuleScanner? moduleScanner = services.GetService<IModuleScanner>();
 
         if (sessionManager is null || moduleScanner is null)
             return "No project found. Run from a directory with a .lopen/ or .git/ folder.";
 
-        var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
+        SessionId? latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
         if (latestId is null)
         {
             return "No active session found. Run 'lopen spec' first to create a specification.";
         }
 
-        var state = await sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
+        SessionState? state = await sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
         if (state is null)
         {
             return $"Session state not found: {latestId}";
         }
 
-        var modules = moduleScanner.ScanModules();
-        var moduleInfo = modules.FirstOrDefault(m =>
+        IReadOnlyList<ModuleInfo> modules = moduleScanner.ScanModules();
+        ModuleInfo? moduleInfo = modules.FirstOrDefault(m =>
             string.Equals(m.Name, state.Module, StringComparison.OrdinalIgnoreCase));
 
         if (moduleInfo is null || !moduleInfo.HasSpecification)
@@ -380,25 +381,25 @@ public static class PhaseCommands
     /// </summary>
     internal static async Task<string?> ValidatePlanExistsAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var sessionManager = services.GetService<ISessionManager>();
-        var planManager = services.GetService<IPlanManager>();
+        ISessionManager? sessionManager = services.GetService<ISessionManager>();
+        IPlanManager? planManager = services.GetService<IPlanManager>();
 
         if (sessionManager is null || planManager is null)
             return "No project found. Run from a directory with a .lopen/ or .git/ folder.";
 
-        var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
+        SessionId? latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
         if (latestId is null)
         {
             return "No active session found. Run 'lopen plan' first to create a plan.";
         }
 
-        var state = await sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
+        SessionState? state = await sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
         if (state is null)
         {
             return $"Session state not found: {latestId}";
         }
 
-        var planExists = await planManager.PlanExistsAsync(state.Module, cancellationToken);
+        bool planExists = await planManager.PlanExistsAsync(state.Module, cancellationToken);
         if (!planExists)
         {
             return $"No plan found for module '{state.Module}'. Run 'lopen plan' first.";
@@ -408,22 +409,20 @@ public static class PhaseCommands
     }
 
     /// <summary>
-    /// Resolves which session to use based on --resume/--no-resume flags.
+    /// Resolves which session to use based on --resume flag.
     /// Returns (sessionId, errorMessage). If sessionId is null and errorMessage is not null, an error occurred.
-    /// If both are null, no session and --no-resume was specified (start fresh).
+    /// If both are null, no session was resolved (start fresh).
     /// </summary>
     internal static async Task<(SessionId? sessionId, string? errorMessage)> ResolveSessionAsync(
         IServiceProvider services, ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var resumeId = parseResult.GetValue(GlobalOptions.Resume);
-        var noResume = parseResult.GetValue(GlobalOptions.NoResume);
-
-        if (noResume)
+        string? resumeId = parseResult.GetValue(GlobalOptions.Resume);
+        if (string.IsNullOrEmpty(resumeId))
         {
             return (null, null);
         }
 
-        var sessionManager = services.GetService<ISessionManager>();
+        ISessionManager? sessionManager = services.GetService<ISessionManager>();
         if (sessionManager is null)
         {
             // No session manager available (e.g., no project root). Start fresh.
@@ -432,13 +431,13 @@ public static class PhaseCommands
 
         if (!string.IsNullOrWhiteSpace(resumeId))
         {
-            var parsed = SessionId.TryParse(resumeId);
+            SessionId? parsed = SessionId.TryParse(resumeId);
             if (parsed is null)
             {
                 return (null, $"Invalid session ID format: '{resumeId}'. Expected format: <module>-YYYYMMDD-<counter>.");
             }
 
-            var state = await sessionManager.LoadSessionStateAsync(parsed, cancellationToken);
+            SessionState? state = await sessionManager.LoadSessionStateAsync(parsed, cancellationToken);
             if (state is null)
             {
                 return (null, $"Session not found: '{resumeId}'.");
@@ -453,11 +452,17 @@ public static class PhaseCommands
             return (parsed, null);
         }
 
+        // Headless mode defaults to a new session unless --resume is explicit
+        if (parseResult.GetValue(GlobalOptions.Headless))
+        {
+            return (null, null);
+        }
+
         // No explicit flags: check for latest active session
-        var latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
+        SessionId? latestId = await sessionManager.GetLatestSessionIdAsync(cancellationToken);
         if (latestId is not null)
         {
-            var state = await sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
+            SessionState? state = await sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
             if (state is not null && !string.Equals(state.Phase, "complete", StringComparison.OrdinalIgnoreCase))
             {
                 return (latestId, null);
@@ -471,22 +476,24 @@ public static class PhaseCommands
     /// Resolves the module name from the session state, falling back to module selection if needed.
     /// </summary>
     internal static async Task<string?> ResolveModuleNameAsync(
-        IServiceProvider services, SessionId? sessionId, CancellationToken cancellationToken)
+        IServiceProvider services,
+         SessionId? sessionId,
+          CancellationToken cancellationToken)
     {
         // Try to resolve from session state first
         if (sessionId is not null)
         {
-            var sessionManager = services.GetService<ISessionManager>();
+            ISessionManager? sessionManager = services.GetService<ISessionManager>();
             if (sessionManager is not null)
             {
-                var state = await sessionManager.LoadSessionStateAsync(sessionId, cancellationToken);
+                SessionState? state = await sessionManager.LoadSessionStateAsync(sessionId, cancellationToken);
                 if (state?.Module is not null)
                     return state.Module;
             }
         }
 
         // Fall back to interactive module selection (CORE-24)
-        var moduleSelector = services.GetService<IModuleSelectionService>();
+        IModuleSelectionService? moduleSelector = services.GetService<IModuleSelectionService>();
         if (moduleSelector is not null)
         {
             return await moduleSelector.SelectModuleAsync(cancellationToken);

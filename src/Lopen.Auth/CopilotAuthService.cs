@@ -6,7 +6,7 @@ namespace Lopen.Auth;
 /// Production auth service that combines environment variable resolution with
 /// gh CLI delegation for device flow, status checks, and logout.
 /// </summary>
-internal sealed class CopilotAuthService : IAuthService
+internal sealed class CopilotAuthService : IAuthService, IAuthTokenProvider
 {
     private readonly ITokenSourceResolver _tokenSourceResolver;
     private readonly IGhCliAdapter _ghCli;
@@ -62,7 +62,7 @@ internal sealed class CopilotAuthService : IAuthService
         _logger.LogInformation("Logged out of gh CLI credentials");
 
         // JOB-014: Warn if environment variables are still set
-        var envResult = _tokenSourceResolver.Resolve();
+        TokenSourceResult envResult = _tokenSourceResolver.Resolve();
         if (envResult.Source is AuthCredentialSource.GhToken)
         {
             _logger.LogWarning("{Warning}", AuthErrorMessages.EnvVarStillSet("GH_TOKEN"));
@@ -76,7 +76,7 @@ internal sealed class CopilotAuthService : IAuthService
     public async Task<AuthStatusResult> GetStatusAsync(CancellationToken cancellationToken = default)
     {
         // JOB-016: Check environment variables first (highest precedence)
-        var envResult = _tokenSourceResolver.Resolve();
+        TokenSourceResult envResult = _tokenSourceResolver.Resolve();
 
         if (envResult.Source is AuthCredentialSource.GhToken)
         {
@@ -89,7 +89,7 @@ internal sealed class CopilotAuthService : IAuthService
         }
 
         // JOB-013: Fall back to gh CLI stored credentials
-        var ghStatus = await _ghCli.GetStatusAsync(cancellationToken);
+        GhAuthStatusInfo? ghStatus = await _ghCli.GetStatusAsync(cancellationToken);
 
         if (ghStatus is not null)
         {
@@ -119,7 +119,7 @@ internal sealed class CopilotAuthService : IAuthService
 
     public async Task ValidateAsync(CancellationToken cancellationToken = default)
     {
-        var status = await GetStatusAsync(cancellationToken);
+        AuthStatusResult status = await GetStatusAsync(cancellationToken);
 
         switch (status.State)
         {
@@ -134,5 +134,19 @@ internal sealed class CopilotAuthService : IAuthService
             default:
                 throw new AuthenticationException(AuthErrorMessages.PreFlightFailed);
         }
+    }
+
+    public Task<string?> GetTokenAsync(CancellationToken cancellationToken = default)
+    {
+        TokenSourceResult envResult = _tokenSourceResolver.Resolve();
+
+        if (envResult.Source is AuthCredentialSource.GhToken or AuthCredentialSource.GitHubToken)
+        {
+            return Task.FromResult(envResult.Token);
+        }
+
+        // Null intentionally delegates to SDK credential resolution chain
+        // (including gh CLI stored credentials).
+        return Task.FromResult<string?>(null);
     }
 }

@@ -15,13 +15,13 @@ internal sealed class MarkdigSpecificationParser : ISpecificationParser
     {
         ArgumentNullException.ThrowIfNull(content);
 
-        var document = Markdown.Parse(content, Pipeline);
+        MarkdownDocument document = Markdown.Parse(content, Pipeline);
         var sections = new List<DocumentSection>();
         var headings = document.OfType<HeadingBlock>().ToList();
 
         for (var i = 0; i < headings.Count; i++)
         {
-            var heading = headings[i];
+            HeadingBlock heading = headings[i];
             var headerText = heading.Inline?.FirstChild?.ToString() ?? string.Empty;
             var level = heading.Level;
 
@@ -46,7 +46,7 @@ internal sealed class MarkdigSpecificationParser : ISpecificationParser
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(header);
 
-        var sections = ExtractSections(content);
+        IReadOnlyList<DocumentSection> sections = ExtractSections(content);
         return sections.FirstOrDefault(s =>
             s.Header.Equals(header, StringComparison.OrdinalIgnoreCase))?.Content;
     }

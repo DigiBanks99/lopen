@@ -40,8 +40,8 @@ public sealed class RetryingLlmServiceTests
                 new TokenUsage(10, 20, 30, 1000, false), 0, true)
         };
 
-        var sut = CreateService(inner);
-        var result = await sut.InvokeAsync("prompt", "claude-opus-4.6", []);
+        RetryingLlmService sut = CreateService(inner);
+        LlmInvocationResult result = await sut.InvokeAsync("prompt", "claude-opus-4.6", []);
 
         Assert.Equal("ok", result.Output);
         Assert.Single(inner.Calls);
@@ -58,14 +58,14 @@ public sealed class RetryingLlmServiceTests
         inner.DefaultResult = new LlmInvocationResult("fallback-ok",
             new TokenUsage(5, 10, 15, 500, false), 0, true);
 
-        var options = CreateOptions(m =>
+        IOptions<LopenOptions> options = CreateOptions(m =>
         {
             m.Building = "claude-opus-4.6";
             m.BuildingFallbacks = ["gpt-5"];
         });
 
-        var sut = CreateService(inner, options);
-        var result = await sut.InvokeAsync("prompt", "claude-opus-4.6", []);
+        RetryingLlmService sut = CreateService(inner, options);
+        LlmInvocationResult result = await sut.InvokeAsync("prompt", "claude-opus-4.6", []);
 
         Assert.Equal("fallback-ok", result.Output);
         Assert.Equal(2, inner.Calls.Count);
@@ -81,15 +81,15 @@ public sealed class RetryingLlmServiceTests
         var inner = new FakeLlmService();
         inner.FailAllModels = true;
 
-        var options = CreateOptions(m =>
+        IOptions<LopenOptions> options = CreateOptions(m =>
         {
             m.Building = "claude-opus-4.6";
             m.BuildingFallbacks = ["gpt-5"];
             m.GlobalFallback = "claude-sonnet-4";
         });
 
-        var sut = CreateService(inner, options);
-        var ex = await Assert.ThrowsAsync<LlmException>(
+        RetryingLlmService sut = CreateService(inner, options);
+        LlmException ex = await Assert.ThrowsAsync<LlmException>(
             () => sut.InvokeAsync("prompt", "claude-opus-4.6", []));
 
         Assert.True(ex.IsModelUnavailable);
@@ -108,7 +108,7 @@ public sealed class RetryingLlmServiceTests
         inner.DefaultResult = new LlmInvocationResult("ok",
             new TokenUsage(1, 1, 2, 100, false), 0, true);
 
-        var options = CreateOptions(m =>
+        IOptions<LopenOptions> options = CreateOptions(m =>
         {
             m.Building = "claude-opus-4.6";
             // Fallback is the same as global fallback — should not appear twice
@@ -116,7 +116,7 @@ public sealed class RetryingLlmServiceTests
             m.GlobalFallback = "claude-sonnet-4";
         });
 
-        var sut = CreateService(inner, options);
+        RetryingLlmService sut = CreateService(inner, options);
         await sut.InvokeAsync("prompt", "claude-opus-4.6", []);
 
         Assert.Equal(2, inner.Calls.Count);
@@ -132,8 +132,8 @@ public sealed class RetryingLlmServiceTests
         var inner = new FakeLlmService();
         inner.ThrowNonModelError = true;
 
-        var sut = CreateService(inner);
-        var ex = await Assert.ThrowsAsync<LlmException>(
+        RetryingLlmService sut = CreateService(inner);
+        LlmException ex = await Assert.ThrowsAsync<LlmException>(
             () => sut.InvokeAsync("prompt", "claude-opus-4.6", []));
 
         Assert.False(ex.IsModelUnavailable);
@@ -148,7 +148,7 @@ public sealed class RetryingLlmServiceTests
         var inner = new FakeLlmService();
         inner.ThrowCancellation = true;
 
-        var sut = CreateService(inner);
+        RetryingLlmService sut = CreateService(inner);
         var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
@@ -163,15 +163,15 @@ public sealed class RetryingLlmServiceTests
     [Fact]
     public void BuildFallbackChain_KnownPhaseModel_ReturnsFullChain()
     {
-        var options = CreateOptions(m =>
+        IOptions<LopenOptions> options = CreateOptions(m =>
         {
             m.Research = "gpt-5";
             m.ResearchFallbacks = ["gpt-4.1", "gpt-5-mini"];
             m.GlobalFallback = "claude-sonnet-4";
         });
 
-        var sut = CreateService(new FakeLlmService(), options);
-        var chain = sut.BuildFallbackChain("gpt-5");
+        RetryingLlmService sut = CreateService(new FakeLlmService(), options);
+        IReadOnlyList<string> chain = sut.BuildFallbackChain("gpt-5");
 
         Assert.Equal(["gpt-5", "gpt-4.1", "gpt-5-mini", "claude-sonnet-4"], chain);
     }
@@ -179,10 +179,10 @@ public sealed class RetryingLlmServiceTests
     [Fact]
     public void BuildFallbackChain_UnknownModel_ReturnsSelfPlusGlobal()
     {
-        var options = CreateOptions(m => m.GlobalFallback = "claude-sonnet-4");
-        var sut = CreateService(new FakeLlmService(), options);
+        IOptions<LopenOptions> options = CreateOptions(m => m.GlobalFallback = "claude-sonnet-4");
+        RetryingLlmService sut = CreateService(new FakeLlmService(), options);
 
-        var chain = sut.BuildFallbackChain("custom-model");
+        IReadOnlyList<string> chain = sut.BuildFallbackChain("custom-model");
 
         Assert.Equal(["custom-model", "claude-sonnet-4"], chain);
     }
@@ -190,10 +190,10 @@ public sealed class RetryingLlmServiceTests
     [Fact]
     public void BuildFallbackChain_ModelIsGlobalFallback_ReturnsOnlyOne()
     {
-        var options = CreateOptions(m => m.GlobalFallback = "claude-sonnet-4");
-        var sut = CreateService(new FakeLlmService(), options);
+        IOptions<LopenOptions> options = CreateOptions(m => m.GlobalFallback = "claude-sonnet-4");
+        RetryingLlmService sut = CreateService(new FakeLlmService(), options);
 
-        var chain = sut.BuildFallbackChain("claude-sonnet-4");
+        IReadOnlyList<string> chain = sut.BuildFallbackChain("claude-sonnet-4");
 
         Assert.Single(chain);
         Assert.Equal("claude-sonnet-4", chain[0]);
@@ -204,15 +204,15 @@ public sealed class RetryingLlmServiceTests
     [Fact]
     public void DefaultModelSelector_GetFallbackChain_IncludesConfiguredFallbacks()
     {
-        var options = CreateOptions(m =>
+        IOptions<LopenOptions> options = CreateOptions(m =>
         {
             m.Planning = "claude-opus-4.6";
             m.PlanningFallbacks = ["gpt-5", "gpt-4.1"];
             m.GlobalFallback = "claude-sonnet-4";
         });
 
-        var selector = CreateSelector(options);
-        var chain = selector.GetFallbackChain(WorkflowPhase.Planning);
+        IModelSelector selector = CreateSelector(options);
+        IReadOnlyList<string> chain = selector.GetFallbackChain(WorkflowPhase.Planning);
 
         Assert.Equal(["claude-opus-4.6", "gpt-5", "gpt-4.1", "claude-sonnet-4"], chain);
     }
@@ -220,14 +220,14 @@ public sealed class RetryingLlmServiceTests
     [Fact]
     public void DefaultModelSelector_GetFallbackChain_EmptyFallbacks_ReturnsPrimaryPlusGlobal()
     {
-        var options = CreateOptions(m =>
+        IOptions<LopenOptions> options = CreateOptions(m =>
         {
             m.Building = "gpt-5";
             m.GlobalFallback = "claude-sonnet-4";
         });
 
-        var selector = CreateSelector(options);
-        var chain = selector.GetFallbackChain(WorkflowPhase.Building);
+        IModelSelector selector = CreateSelector(options);
+        IReadOnlyList<string> chain = selector.GetFallbackChain(WorkflowPhase.Building);
 
         Assert.Equal(["gpt-5", "claude-sonnet-4"], chain);
     }
@@ -235,14 +235,14 @@ public sealed class RetryingLlmServiceTests
     [Fact]
     public void DefaultModelSelector_GetFallbackChain_PrimaryIsGlobal_NoDuplicate()
     {
-        var options = CreateOptions(m =>
+        IOptions<LopenOptions> options = CreateOptions(m =>
         {
             m.Research = "claude-sonnet-4";
             m.GlobalFallback = "claude-sonnet-4";
         });
 
-        var selector = CreateSelector(options);
-        var chain = selector.GetFallbackChain(WorkflowPhase.Research);
+        IModelSelector selector = CreateSelector(options);
+        IReadOnlyList<string> chain = selector.GetFallbackChain(WorkflowPhase.Research);
 
         Assert.Single(chain);
         Assert.Equal("claude-sonnet-4", chain[0]);
@@ -268,7 +268,7 @@ public sealed class RetryingLlmServiceTests
 
     private sealed class FakeLlmService : ILlmService
     {
-        public List<(string prompt, string model, IReadOnlyList<LopenToolDefinition> tools)> Calls { get; } = [];
+        public List<(string prompt, string model, IReadOnlyList<Microsoft.Extensions.AI.AIFunction> tools)> Calls { get; } = [];
         public HashSet<string> FailModels { get; } = new(StringComparer.OrdinalIgnoreCase);
         public bool FailAllModels { get; set; }
         public bool ThrowNonModelError { get; set; }
@@ -278,7 +278,7 @@ public sealed class RetryingLlmServiceTests
 
         public Task<LlmInvocationResult> InvokeAsync(
             string systemPrompt, string model,
-            IReadOnlyList<LopenToolDefinition> tools,
+            IReadOnlyList<Microsoft.Extensions.AI.AIFunction> tools,
             CancellationToken cancellationToken = default)
         {
             Calls.Add((systemPrompt, model, tools));

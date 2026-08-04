@@ -14,7 +14,7 @@ public class ServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        var result = services.AddLopenCore();
+        IServiceCollection result = services.AddLopenCore();
 
         Assert.Same(services, result);
     }
@@ -26,8 +26,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<ISpecificationParser>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        ISpecificationParser? service = provider.GetService<ISpecificationParser>();
 
         Assert.NotNull(service);
     }
@@ -39,8 +39,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IContentHasher>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IContentHasher? service = provider.GetService<IContentHasher>();
 
         Assert.NotNull(service);
     }
@@ -52,8 +52,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IGuardrailPipeline>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IGuardrailPipeline? service = provider.GetService<IGuardrailPipeline>();
 
         Assert.NotNull(service);
     }
@@ -65,9 +65,9 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
-        var parser1 = provider.GetService<ISpecificationParser>();
-        var parser2 = provider.GetService<ISpecificationParser>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        ISpecificationParser? parser1 = provider.GetService<ISpecificationParser>();
+        ISpecificationParser? parser2 = provider.GetService<ISpecificationParser>();
 
         Assert.Same(parser1, parser2);
     }
@@ -80,8 +80,8 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
         services.AddLopenCore(projectRoot: "/tmp");
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IGitService>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IGitService? service = provider.GetService<IGitService>();
 
         Assert.NotNull(service);
     }
@@ -94,8 +94,8 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
         services.AddLopenCore(projectRoot: "/tmp");
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IModuleScanner>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IModuleScanner? service = provider.GetService<IModuleScanner>();
 
         Assert.NotNull(service);
     }
@@ -107,8 +107,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IOutputRenderer>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IOutputRenderer? service = provider.GetService<IOutputRenderer>();
 
         Assert.NotNull(service);
         Assert.IsType<HeadlessRenderer>(service);
@@ -121,8 +121,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IPhaseTransitionController>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IPhaseTransitionController? service = provider.GetService<IPhaseTransitionController>();
 
         Assert.NotNull(service);
     }
@@ -135,8 +135,8 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
         services.AddLopenCore(projectRoot: "/tmp");
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IWorkflowEngine>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IWorkflowEngine? service = provider.GetService<IWorkflowEngine>();
 
         Assert.NotNull(service);
     }
@@ -149,8 +149,8 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
         services.AddLopenCore(projectRoot: "/tmp");
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IStateAssessor>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IStateAssessor? service = provider.GetService<IStateAssessor>();
 
         Assert.NotNull(service);
     }
@@ -161,14 +161,15 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddSingleton(new Lopen.Configuration.GitOptions());
         services.AddSingleton<Lopen.Llm.ILlmService, NullLlmService>();
         services.AddSingleton<Lopen.Llm.IPromptBuilder, NullPromptBuilder>();
-        services.AddSingleton<Lopen.Llm.IToolRegistry, NullToolRegistry>();
         services.AddSingleton<Lopen.Llm.IModelSelector, NullModelSelector>();
+        services.AddSingleton<Lopen.Llm.IVerificationTracker, NullVerificationTracker>();
         services.AddLopenCore(projectRoot: "/tmp");
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IWorkflowOrchestrator>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IWorkflowOrchestrator? service = provider.GetService<IWorkflowOrchestrator>();
 
         Assert.NotNull(service);
     }
@@ -181,9 +182,9 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
         services.AddLopenCore(projectRoot: "/tmp");
 
-        var provider = services.BuildServiceProvider();
-        var engine1 = provider.GetService<IWorkflowEngine>();
-        var engine2 = provider.GetService<IWorkflowEngine>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IWorkflowEngine? engine1 = provider.GetService<IWorkflowEngine>();
+        IWorkflowEngine? engine2 = provider.GetService<IWorkflowEngine>();
 
         Assert.Same(engine1, engine2);
     }
@@ -195,8 +196,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IWorkflowEngine>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IWorkflowEngine? service = provider.GetService<IWorkflowEngine>();
 
         Assert.Null(service);
     }
@@ -208,8 +209,8 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IStateAssessor>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IStateAssessor? service = provider.GetService<IStateAssessor>();
 
         Assert.Null(service);
     }
@@ -222,8 +223,8 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
         services.AddLopenCore(projectRoot: "/tmp");
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IFailureHandler>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IFailureHandler? service = provider.GetService<IFailureHandler>();
 
         Assert.NotNull(service);
     }
@@ -237,17 +238,17 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton(new Lopen.Configuration.WorkflowOptions { FailureThreshold = 5 });
         services.AddLopenCore(projectRoot: "/tmp");
 
-        var provider = services.BuildServiceProvider();
-        var handler = provider.GetService<IFailureHandler>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IFailureHandler? handler = provider.GetService<IFailureHandler>();
 
         Assert.NotNull(handler);
         // Verify threshold by failing 4 times (should still self-correct) then 5th escalates
         for (var i = 0; i < 4; i++)
         {
-            var classification = handler.RecordFailure("test-task", "error");
+            FailureClassification classification = handler.RecordFailure("test-task", "error");
             Assert.Equal(FailureAction.SelfCorrect, classification.Action);
         }
-        var fifth = handler.RecordFailure("test-task", "error");
+        FailureClassification fifth = handler.RecordFailure("test-task", "error");
         Assert.Equal(FailureAction.PromptUser, fifth.Action);
     }
 
@@ -257,22 +258,23 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<Lopen.Storage.IFileSystem, StubFileSystem>();
+        services.AddSingleton(new Lopen.Configuration.GitOptions());
         services.AddSingleton<Lopen.Llm.ILlmService, NullLlmService>();
         services.AddSingleton<Lopen.Llm.IPromptBuilder, NullPromptBuilder>();
-        services.AddSingleton<Lopen.Llm.IToolRegistry, NullToolRegistry>();
         services.AddSingleton<Lopen.Llm.IModelSelector, NullModelSelector>();
+        services.AddSingleton<Lopen.Llm.IVerificationTracker, NullVerificationTracker>();
         services.AddSingleton<Lopen.Configuration.IBudgetEnforcer>(
             new Lopen.Configuration.BudgetEnforcer(new Lopen.Configuration.BudgetOptions()));
         services.AddLopenCore(projectRoot: "/tmp");
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<IWorkflowOrchestrator>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        IWorkflowOrchestrator? service = provider.GetService<IWorkflowOrchestrator>();
 
         Assert.NotNull(service);
     }
 
     [Fact]
-    public void AddLopenCore_WithProjectRoot_RegistersToolHandlerBinder()
+    public void AddLopenCore_WithProjectRoot_RegistersToolCatalog()
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -280,8 +282,8 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton<Lopen.Llm.IVerificationTracker, NullVerificationTracker>();
         services.AddLopenCore(projectRoot: "/tmp");
 
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetService<Lopen.Core.ToolHandlers.IToolHandlerBinder>();
+        ServiceProvider provider = services.BuildServiceProvider();
+        Lopen.Llm.Tools.ToolCatalog? service = provider.GetService<Lopen.Llm.Tools.ToolCatalog>();
 
         Assert.NotNull(service);
     }
@@ -293,7 +295,7 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         var guardrails = provider.GetServices<IGuardrail>().ToList();
 
         Assert.Contains(guardrails, g => g is Lopen.Core.BackPressure.ChurnDetectionGuardrail);
@@ -308,7 +310,7 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton(new Lopen.Configuration.BudgetOptions { PremiumRequestBudget = 100 });
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         var guardrails = provider.GetServices<IGuardrail>().ToList();
 
         Assert.Contains(guardrails, g => g is Lopen.Core.BackPressure.ResourceLimitGuardrail);
@@ -321,7 +323,7 @@ public class ServiceCollectionExtensionsTests
         services.AddLogging();
         services.AddLopenCore();
 
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         var guardrails = provider.GetServices<IGuardrail>().ToList();
 
         Assert.Contains(guardrails, g => g is Lopen.Core.BackPressure.PassThroughGuardrail);
@@ -355,7 +357,7 @@ public class ServiceCollectionExtensionsTests
     private sealed class NullLlmService : Lopen.Llm.ILlmService
     {
         public Task<Lopen.Llm.LlmInvocationResult> InvokeAsync(string systemPrompt, string model,
-            IReadOnlyList<Lopen.Llm.LopenToolDefinition> tools, CancellationToken ct = default) =>
+            IReadOnlyList<Microsoft.Extensions.AI.AIFunction> tools, CancellationToken ct = default) =>
             Task.FromResult(new Lopen.Llm.LlmInvocationResult("", new Lopen.Llm.TokenUsage(0, 0, 0, 0, false), 0, true));
     }
 
@@ -363,14 +365,6 @@ public class ServiceCollectionExtensionsTests
     {
         public string BuildSystemPrompt(Lopen.Llm.WorkflowPhase phase, string module, string? component, string? task,
             IReadOnlyDictionary<string, string>? contextSections = null) => "";
-    }
-
-    private sealed class NullToolRegistry : Lopen.Llm.IToolRegistry
-    {
-        public IReadOnlyList<Lopen.Llm.LopenToolDefinition> GetToolsForPhase(Lopen.Llm.WorkflowPhase phase) => [];
-        public void RegisterTool(Lopen.Llm.LopenToolDefinition tool) { }
-        public IReadOnlyList<Lopen.Llm.LopenToolDefinition> GetAllTools() => [];
-        public bool BindHandler(string toolName, Func<string, CancellationToken, Task<string>> handler) => true;
     }
 
     private sealed class NullModelSelector : Lopen.Llm.IModelSelector

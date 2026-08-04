@@ -49,7 +49,7 @@ internal sealed class ToolDisciplineGuardrail : IGuardrail
         // Check per-file read counts
         if (context.FileReadCounts is not null)
         {
-            foreach (var (file, count) in context.FileReadCounts)
+            foreach ((string? file, int count) in context.FileReadCounts)
             {
                 if (count > _maxFileReads)
                 {
@@ -63,7 +63,7 @@ internal sealed class ToolDisciplineGuardrail : IGuardrail
         // Check per-command retry counts
         if (context.CommandRetryCounts is not null)
         {
-            foreach (var (command, count) in context.CommandRetryCounts)
+            foreach ((string? command, int count) in context.CommandRetryCounts)
             {
                 if (count > _maxCommandRetries)
                 {

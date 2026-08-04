@@ -1,90 +1,65 @@
 using Lopen.Core;
-using Microsoft.Extensions.Logging;
+using Lopen.Llm;
+using Spectre.Console;
 
 namespace Lopen.Tui;
 
 /// <summary>
-/// TUI-mode output renderer that bridges orchestrator output events to the TUI activity panel.
-/// Replaces <see cref="HeadlessRenderer"/> when TUI mode is active.
+/// TUI implementation of IOutputRenderer using Spectre.Console.
+/// Renders progress, errors, results, and prompts with themed styling.
 /// </summary>
-public sealed class TuiOutputRenderer : IOutputRenderer
+public sealed class TuiOutputRenderer(IAnsiConsole console, Lazy<LopenLineEditor> lineEditor) : IOutputRenderer
 {
-    private readonly IActivityPanelDataProvider _activityProvider;
-    private readonly IUserPromptQueue? _promptQueue;
-    private readonly ILogger<TuiOutputRenderer> _logger;
-
-    public TuiOutputRenderer(
-        IActivityPanelDataProvider activityProvider,
-        IUserPromptQueue? promptQueue,
-        ILogger<TuiOutputRenderer> logger)
-    {
-        _activityProvider = activityProvider ?? throw new ArgumentNullException(nameof(activityProvider));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _promptQueue = promptQueue;
-    }
+    private readonly IAnsiConsole _console = console ?? throw new ArgumentNullException(nameof(console));
+    private readonly Lazy<LopenLineEditor> _lineEditor = lineEditor ?? throw new ArgumentNullException(nameof(lineEditor));
 
     public Task RenderProgressAsync(string phase, string step, double progress, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Progress: [{Phase}] {Step} ({Progress:P0})", phase, step, progress);
-
-        var pct = progress >= 0 ? $" ({progress:P0})" : "";
-        var entry = new ActivityEntry
-        {
-            Summary = $"[{phase}] {step}{pct}",
-            Kind = ActivityEntryKind.PhaseTransition,
-        };
-
-        _activityProvider.AddEntry(entry);
+        string phaseText = LopenTheme.Bold(phase, LopenTheme.Secondary);
+        string stepText = LopenTheme.Styled(step, LopenTheme.Muted);
+        string pct = progress >= 0 ? $" ({progress:P0})" : "";
+        _console.MarkupLine($"{LopenTheme.SectionMarker} {phaseText} {stepText}{Markup.Escape(pct)}");
         return Task.CompletedTask;
     }
 
     public Task RenderErrorAsync(string message, Exception? exception = null, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Error rendered: {Message}", message);
-
-        var details = new List<string>();
-        if (exception is not null)
+        Panel panel = new Panel(Markup.Escape(message))
         {
-            details.Add($"{exception.GetType().Name}: {exception.Message}");
+            Border = BoxBorder.Rounded,
+            BorderStyle = new Style(LopenTheme.Error),
+            Header = new PanelHeader(LopenTheme.Bold("Error", LopenTheme.Error)),
+        };
+
+        _console.Write(panel);
+
+        if (exception is LlmException llmEx && llmEx.DiagnosticCategory is not null)
+        {
+            string category = llmEx.DiagnosticCategory.Value.ToString();
+            _console.MarkupLine(LopenTheme.Dim($"  Cause: {category}", LopenTheme.Muted));
+
+            if (!string.IsNullOrEmpty(llmEx.UserHint))
+            {
+                _console.MarkupLine(LopenTheme.Styled($"  → {llmEx.UserHint}", LopenTheme.Secondary));
+            }
+        }
+        else if (exception is not null)
+        {
+            _console.MarkupLine(LopenTheme.Dim($"  {exception.GetType().Name}: {exception.Message}", LopenTheme.Muted));
         }
 
-        _activityProvider.AddTaskFailure("Error", message, details.Count > 0 ? details : null);
         return Task.CompletedTask;
     }
 
     public Task RenderResultAsync(string message, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Result rendered: {Message}", message);
-
-        var entry = new ActivityEntry
-        {
-            Summary = message,
-            Kind = ActivityEntryKind.Action,
-        };
-
-        _activityProvider.AddEntry(entry);
+        _console.MarkupLine(Markup.Escape(message));
         return Task.CompletedTask;
     }
 
     public async Task<string?> PromptAsync(string message, CancellationToken cancellationToken = default)
     {
-        if (_promptQueue is null)
-        {
-            _logger.LogDebug("PromptAsync called but no prompt queue available; returning null");
-            return null;
-        }
-
-        _logger.LogDebug("Prompting user: {Message}", message);
-
-        // Add a conversation entry to show the prompt in the activity panel
-        _activityProvider.AddEntry(new ActivityEntry
-        {
-            Summary = $"⏳ {message}",
-            Kind = ActivityEntryKind.Conversation,
-        });
-
-        // Wait for the user to respond via the TUI prompt area
-        var response = await _promptQueue.DequeueAsync(cancellationToken);
-        return response;
+        _console.MarkupLine(Markup.Escape(message));
+        return await _lineEditor.Value.ReadLineAsync(cancellationToken);
     }
 }

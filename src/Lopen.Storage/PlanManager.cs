@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace Lopen.Storage;
 
@@ -90,11 +90,11 @@ public sealed partial class PlanManager : IPlanManager
 
         var lines = content.Split('\n');
         var found = false;
-        var regex = CheckboxPattern();
+        Regex regex = CheckboxPattern();
 
         for (var i = 0; i < lines.Length; i++)
         {
-            var match = regex.Match(lines[i]);
+            Match match = regex.Match(lines[i]);
             if (!match.Success)
                 continue;
 
@@ -128,11 +128,11 @@ public sealed partial class PlanManager : IPlanManager
             return [];
 
         var tasks = new List<PlanTask>();
-        var regex = CheckboxPattern();
+        Regex regex = CheckboxPattern();
 
         foreach (var line in content.Split('\n'))
         {
-            var match = regex.Match(line);
+            Match match = regex.Match(line);
             if (!match.Success)
                 continue;
 

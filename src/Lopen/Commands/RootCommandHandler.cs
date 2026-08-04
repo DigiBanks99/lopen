@@ -1,16 +1,15 @@
-using System.CommandLine;
-using Lopen.Auth;
 using Lopen.Core.Workflow;
 using Lopen.Otel;
 using Lopen.Storage;
 using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
+using System.Diagnostics;
 
 namespace Lopen.Commands;
 
 /// <summary>
-/// Root command handler: launches the TUI with full workflow and session resume offer,
-/// or runs headless if --headless is specified.
+/// Root command handler: launches headless workflow or reports TUI not yet implemented.
 /// </summary>
 public static class RootCommandHandler
 {
@@ -19,18 +18,18 @@ public static class RootCommandHandler
     /// </summary>
     public static Action<RootCommand> Configure(IServiceProvider services, TextWriter? output = null, TextWriter? error = null)
     {
-        var stdout = output ?? Console.Out;
-        var stderr = error ?? Console.Error;
+        TextWriter stdout = output ?? Console.Out;
+        TextWriter stderr = error ?? Console.Error;
 
         return rootCommand =>
         {
             rootCommand.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
             {
-                var headless = parseResult.GetValue(GlobalOptions.Headless);
+                bool headless = parseResult.GetValue(GlobalOptions.Headless);
 
                 // OTEL-01: Root command span
-                using var activity = SpanFactory.StartCommand("lopen", headless);
-                var sw = System.Diagnostics.Stopwatch.StartNew();
+                using Activity? activity = SpanFactory.StartCommand("lopen", headless);
+                var sw = Stopwatch.StartNew();
                 LopenTelemetryDiagnostics.CommandCount.Add(1, new KeyValuePair<string, object?>("lopen.command.name", "lopen"));
 
                 try
@@ -41,7 +40,7 @@ public static class RootCommandHandler
                     int exitCode;
                     if (headless)
                     {
-                        var headlessError = await PhaseCommands.ValidateHeadlessPromptAsync(
+                        int? headlessError = await PhaseCommands.ValidateHeadlessPromptAsync(
                             services, parseResult, stderr, cancellationToken);
                         if (headlessError is not null)
                         {
@@ -49,7 +48,7 @@ public static class RootCommandHandler
                             return headlessError.Value;
                         }
 
-                        var authError = await PhaseCommands.ValidateAuthAsync(services, cancellationToken);
+                        string? authError = await PhaseCommands.ValidateAuthAsync(services, cancellationToken);
                         if (authError is not null)
                         {
                             await stderr.WriteLineAsync(authError);
@@ -61,7 +60,7 @@ public static class RootCommandHandler
                     }
                     else
                     {
-                        var authError = await PhaseCommands.ValidateAuthAsync(services, cancellationToken);
+                        string? authError = await PhaseCommands.ValidateAuthAsync(services, cancellationToken);
                         if (authError is not null)
                         {
                             await stderr.WriteLineAsync(authError);
@@ -69,7 +68,7 @@ public static class RootCommandHandler
                             return ExitCodes.Failure;
                         }
 
-                        var (sessionId, resolveError) = await PhaseCommands.ResolveSessionAsync(
+                        (SessionId? sessionId, string? resolveError) = await PhaseCommands.ResolveSessionAsync(
                             services, parseResult, cancellationToken);
                         if (resolveError is not null)
                         {
@@ -83,24 +82,29 @@ public static class RootCommandHandler
                             await stdout.WriteLineAsync($"Resuming session: {sessionId}");
                         }
 
-                        var app = services.GetRequiredService<ITuiApplication>();
-                        var prompt = parseResult.GetValue(GlobalOptions.Prompt);
-                        if (parseResult.GetValue(GlobalOptions.NoWelcome))
-                            app.SuppressLandingPage();
-                        await app.RunAsync(prompt, cancellationToken);
-                        exitCode = ExitCodes.Success;
+                        TuiRunner? tuiRunner = services.GetService<Lopen.Tui.TuiRunner>();
+                        if (tuiRunner is not null)
+                        {
+                            exitCode = await tuiRunner.RunAsync(sessionId, cancellationToken);
+                        }
+                        else
+                        {
+                            await stderr.WriteLineAsync("TUI not available. Use --headless mode.");
+                            exitCode = ExitCodes.Failure;
+                        }
                     }
 
                     SpanFactory.SetCommandExitCode(activity, exitCode);
                     LopenTelemetryDiagnostics.CommandDuration.Record(
-                        sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "lopen"));
+                        sw.Elapsed.TotalMilliseconds,
+                        new KeyValuePair<string, object?>("lopen.command.name", "lopen"));
                     return exitCode;
                 }
                 catch (Exception ex)
                 {
                     LopenTelemetryDiagnostics.CommandDuration.Record(
                         sw.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("lopen.command.name", "lopen"));
-                    activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+                    activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                     SpanFactory.SetCommandExitCode(activity, ExitCodes.Failure);
                     await stderr.WriteLineAsync(ex.Message);
                     return ExitCodes.Failure;
@@ -116,7 +120,7 @@ public static class RootCommandHandler
         IServiceProvider services, ParseResult parseResult,
         TextWriter stdout, TextWriter stderr, CancellationToken cancellationToken)
     {
-        var (sessionId, resolveError) = await PhaseCommands.ResolveSessionAsync(
+        (SessionId? sessionId, string? resolveError) = await PhaseCommands.ResolveSessionAsync(
             services, parseResult, cancellationToken);
         if (resolveError is not null)
         {
@@ -129,24 +133,24 @@ public static class RootCommandHandler
             await stdout.WriteLineAsync($"Resuming session: {sessionId}");
         }
 
-        var orchestrator = services.GetService<IWorkflowOrchestrator>();
+        IWorkflowOrchestrator? orchestrator = services.GetService<IWorkflowOrchestrator>();
         if (orchestrator is null)
         {
             await stderr.WriteLineAsync("Workflow engine not available. Ensure project root is configured.");
             return ExitCodes.Failure;
         }
 
-        var module = await PhaseCommands.ResolveModuleNameAsync(services, sessionId, cancellationToken);
+        string? module = await PhaseCommands.ResolveModuleNameAsync(services, sessionId, cancellationToken);
         if (module is null)
         {
             await stderr.WriteLineAsync("No module specified. Create or resume a session first.");
             return ExitCodes.Failure;
         }
 
-        var prompt = parseResult.GetValue(GlobalOptions.Prompt);
+        string? prompt = parseResult.GetValue(GlobalOptions.Prompt);
 
         await stdout.WriteLineAsync($"Running headless workflow for module: {module}");
-        var result = await orchestrator.RunAsync(module, prompt, cancellationToken);
+        OrchestrationResult result = await orchestrator.RunAsync(module, prompt, cancellationToken);
 
         if (result.IsComplete)
         {

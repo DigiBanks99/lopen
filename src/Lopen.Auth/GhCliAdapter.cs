@@ -1,6 +1,6 @@
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Logging;
 
 namespace Lopen.Auth;
 
@@ -33,7 +33,7 @@ internal sealed partial class GhCliAdapter : IGhCliAdapter
     {
         try
         {
-            var result = await RunAsync("--version", redirectOutput: true, cancellationToken: cancellationToken);
+            GhProcessResult result = await RunAsync("--version", redirectOutput: true, cancellationToken: cancellationToken);
             return result.ExitCode == 0;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -48,7 +48,7 @@ internal sealed partial class GhCliAdapter : IGhCliAdapter
         _logger.LogInformation("Starting gh auth login with web browser flow");
 
         // Use --web to open browser for device flow, --git-protocol https for HTTPS
-        var result = await RunAsync(
+        GhProcessResult result = await RunAsync(
             "auth login --git-protocol https --web",
             redirectOutput: false,
             cancellationToken: cancellationToken);
@@ -60,7 +60,7 @@ internal sealed partial class GhCliAdapter : IGhCliAdapter
         }
 
         // Verify login by checking status
-        var status = await GetStatusAsync(cancellationToken);
+        GhAuthStatusInfo? status = await GetStatusAsync(cancellationToken);
         if (status is null)
         {
             throw new AuthenticationException(AuthErrorMessages.LoginFailed);
@@ -72,7 +72,7 @@ internal sealed partial class GhCliAdapter : IGhCliAdapter
 
     public async Task<GhAuthStatusInfo?> GetStatusAsync(CancellationToken cancellationToken = default)
     {
-        var result = await RunAsync("auth status", redirectOutput: true, cancellationToken: cancellationToken);
+        GhProcessResult result = await RunAsync("auth status", redirectOutput: true, cancellationToken: cancellationToken);
 
         if (result.ExitCode != 0)
         {
@@ -89,7 +89,7 @@ internal sealed partial class GhCliAdapter : IGhCliAdapter
     {
         _logger.LogInformation("Running gh auth logout");
 
-        var result = await RunAsync(
+        GhProcessResult result = await RunAsync(
             "auth logout --hostname github.com",
             redirectOutput: true,
             input: "Y\n",
@@ -105,7 +105,7 @@ internal sealed partial class GhCliAdapter : IGhCliAdapter
     {
         try
         {
-            var result = await RunAsync("api user --jq .login", redirectOutput: true, cancellationToken: cancellationToken);
+            GhProcessResult result = await RunAsync("api user --jq .login", redirectOutput: true, cancellationToken: cancellationToken);
             return result.ExitCode == 0 && !string.IsNullOrWhiteSpace(result.StdOut);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -123,7 +123,7 @@ internal sealed partial class GhCliAdapter : IGhCliAdapter
         }
 
         // Match patterns like "Logged in to github.com account USERNAME" or "account USERNAME ("
-        var accountMatch = AccountPattern().Match(output);
+        Match accountMatch = AccountPattern().Match(output);
         if (!accountMatch.Success)
         {
             return null;
@@ -134,7 +134,7 @@ internal sealed partial class GhCliAdapter : IGhCliAdapter
 
         // Extract token scopes if present
         string? scopes = null;
-        var scopesMatch = ScopesPattern().Match(output);
+        Match scopesMatch = ScopesPattern().Match(output);
         if (scopesMatch.Success)
         {
             scopes = scopesMatch.Groups["scopes"].Value.Trim();
@@ -162,7 +162,7 @@ internal sealed partial class GhCliAdapter : IGhCliAdapter
 
         _logger.LogDebug("Running: {Command} {Arguments}", GhCommand, arguments);
 
-        var process = _processStarter(startInfo);
+        Process? process = _processStarter(startInfo);
         if (process is null)
         {
             throw new AuthenticationException(AuthErrorMessages.GhCliNotFound);
@@ -181,8 +181,8 @@ internal sealed partial class GhCliAdapter : IGhCliAdapter
 
             if (redirectOutput)
             {
-                var stdOutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-                var stdErrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+                Task<string> stdOutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+                Task<string> stdErrTask = process.StandardError.ReadToEndAsync(cancellationToken);
                 stdOut = await stdOutTask;
                 stdErr = await stdErrTask;
             }

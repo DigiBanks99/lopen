@@ -11,7 +11,7 @@ public sealed class FailureHandlerTests
     [Fact]
     public void RecordFailure_FirstTime_ReturnsSelfCorrect()
     {
-        var result = _handler.RecordFailure("task-1", "Build failed");
+        FailureClassification result = _handler.RecordFailure("task-1", "Build failed");
 
         Assert.Equal(FailureSeverity.TaskFailure, result.Severity);
         Assert.Equal(FailureAction.SelfCorrect, result.Action);
@@ -23,7 +23,7 @@ public sealed class FailureHandlerTests
     public void RecordFailure_SecondTime_StillSelfCorrect()
     {
         _handler.RecordFailure("task-1", "fail 1");
-        var result = _handler.RecordFailure("task-1", "fail 2");
+        FailureClassification result = _handler.RecordFailure("task-1", "fail 2");
 
         Assert.Equal(FailureSeverity.TaskFailure, result.Severity);
         Assert.Equal(FailureAction.SelfCorrect, result.Action);
@@ -35,7 +35,7 @@ public sealed class FailureHandlerTests
     {
         _handler.RecordFailure("task-1", "fail 1");
         _handler.RecordFailure("task-1", "fail 2");
-        var result = _handler.RecordFailure("task-1", "fail 3");
+        FailureClassification result = _handler.RecordFailure("task-1", "fail 3");
 
         Assert.Equal(FailureSeverity.RepeatedFailure, result.Severity);
         Assert.Equal(FailureAction.PromptUser, result.Action);
@@ -48,7 +48,7 @@ public sealed class FailureHandlerTests
         _handler.RecordFailure("task-1", "fail 1");
         _handler.RecordFailure("task-1", "fail 2");
         _handler.RecordFailure("task-1", "fail 3");
-        var result = _handler.RecordFailure("task-1", "fail 4");
+        FailureClassification result = _handler.RecordFailure("task-1", "fail 4");
 
         Assert.Equal(FailureSeverity.RepeatedFailure, result.Severity);
         Assert.Equal(4, result.ConsecutiveFailures);
@@ -59,7 +59,7 @@ public sealed class FailureHandlerTests
     {
         _handler.RecordFailure("task-1", "fail");
         _handler.RecordFailure("task-1", "fail");
-        var result2 = _handler.RecordFailure("task-2", "fail");
+        FailureClassification result2 = _handler.RecordFailure("task-2", "fail");
 
         Assert.Equal(1, result2.ConsecutiveFailures);
     }
@@ -71,7 +71,7 @@ public sealed class FailureHandlerTests
         _handler.RecordFailure("task-1", "fail");
         _handler.ResetFailureCount("task-1");
 
-        var result = _handler.RecordFailure("task-1", "fail again");
+        FailureClassification result = _handler.RecordFailure("task-1", "fail again");
         Assert.Equal(1, result.ConsecutiveFailures);
     }
 
@@ -93,7 +93,7 @@ public sealed class FailureHandlerTests
     [Fact]
     public void RecordCriticalError_ReturnsBlock()
     {
-        var result = _handler.RecordCriticalError("Disk full");
+        FailureClassification result = _handler.RecordCriticalError("Disk full");
 
         Assert.Equal(FailureSeverity.Critical, result.Severity);
         Assert.Equal(FailureAction.Block, result.Action);
@@ -103,7 +103,7 @@ public sealed class FailureHandlerTests
     [Fact]
     public void RecordWarning_ReturnsSelfCorrect()
     {
-        var result = _handler.RecordWarning("Minor issue");
+        FailureClassification result = _handler.RecordWarning("Minor issue");
 
         Assert.Equal(FailureSeverity.Warning, result.Severity);
         Assert.Equal(FailureAction.SelfCorrect, result.Action);
@@ -158,7 +158,7 @@ public sealed class FailureHandlerTests
     {
         var handler = new FailureHandler(NullLogger<FailureHandler>.Instance, failureThreshold: 2);
         handler.RecordFailure("t", "f");
-        var result = handler.RecordFailure("t", "f");
+        FailureClassification result = handler.RecordFailure("t", "f");
 
         Assert.Equal(FailureSeverity.RepeatedFailure, result.Severity);
         Assert.Equal(FailureAction.PromptUser, result.Action);

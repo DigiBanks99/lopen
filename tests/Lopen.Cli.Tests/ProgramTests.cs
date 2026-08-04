@@ -1,4 +1,3 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Lopen.Commands;
 using Lopen.Configuration;
@@ -6,9 +5,9 @@ using Lopen.Core;
 using Lopen.Llm;
 using Lopen.Otel;
 using Lopen.Storage;
-using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests;
 
@@ -19,22 +18,13 @@ public class ProgramTests : IDisposable
 
     public ProgramTests()
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddLopenAuth();
-        builder.Services.AddSingleton<IGitHubTokenProvider, AuthBridgeTokenProvider>();
         builder.Services.AddLopenCore(null);
         builder.Services.AddLopenStorage(null);
         builder.Services.AddLopenLlm();
-        builder.Services.AddLopenTui();
-        builder.Services.UseRealTui();
-        builder.Services.AddTopPanelDataProvider();
-        builder.Services.AddContextPanelDataProvider();
-        builder.Services.AddActivityPanelDataProvider();
-        builder.Services.AddUserPromptQueue();
-        builder.Services.AddSessionDetector();
-        builder.Services.AddTuiOutputRenderer();
-        builder.Services.AddLopenOtel(builder.Configuration);
+        builder.Services.AddLopenOtel(builder.Configuration, []);
         _host = builder.Build();
         _services = _host.Services;
     }
@@ -47,11 +37,10 @@ public class ProgramTests : IDisposable
     [InlineData(typeof(ILlmService))]
     [InlineData(typeof(IModelSelector))]
     [InlineData(typeof(ITokenTracker))]
-    [InlineData(typeof(IToolRegistry))]
     [InlineData(typeof(IPromptBuilder))]
     public void DI_ResolvesLlmServices(Type serviceType)
     {
-        var service = _services.GetService(serviceType);
+        object? service = _services.GetService(serviceType);
         Assert.NotNull(service);
     }
 
@@ -62,7 +51,7 @@ public class ProgramTests : IDisposable
     {
         // Note: Some core services require projectRoot for full resolution.
         // With null projectRoot, orchestrator registration is conditional.
-        var service = _services.GetService(serviceType);
+        object? service = _services.GetService(serviceType);
         // IWorkflowOrchestrator may be null without projectRoot — that's by design
         if (serviceType != typeof(Lopen.Core.Workflow.IWorkflowOrchestrator))
             Assert.NotNull(service);
@@ -73,23 +62,25 @@ public class ProgramTests : IDisposable
     {
         // ISessionManager and IAutoSaveService require projectRoot.
         // IFileSystem is always registered.
-        var fs = _services.GetService<IFileSystem>();
+        IFileSystem? fs = _services.GetService<IFileSystem>();
         Assert.NotNull(fs);
     }
 
     [Fact]
     public void DI_ResolvesAuthService()
     {
-        var service = _services.GetService<IAuthService>();
+        IAuthService? service = _services.GetService<IAuthService>();
         Assert.NotNull(service);
     }
 
     [Fact]
-    public void DI_ResolvesGitHubTokenProvider_AsAuthBridge()
+    public void DI_ResolvesAuthTokenProvider_FromAuthModule()
     {
-        var provider = _services.GetService<IGitHubTokenProvider>();
+        IAuthTokenProvider? provider = _services.GetService<IAuthTokenProvider>();
+        IAuthService? authService = _services.GetService<IAuthService>();
         Assert.NotNull(provider);
-        Assert.IsType<AuthBridgeTokenProvider>(provider);
+        Assert.NotNull(authService);
+        Assert.Same(authService, provider);
     }
 
     [Fact]
@@ -97,7 +88,7 @@ public class ProgramTests : IDisposable
     {
         // Without projectRoot, ISessionManager is not registered so the bridge
         // is not registered either. Verify that it falls back to NullSessionStateSaver.
-        var saver = _services.GetService<ISessionStateSaver>();
+        ISessionStateSaver? saver = _services.GetService<ISessionStateSaver>();
         Assert.NotNull(saver);
         // With projectRoot, this would be SessionStateSaverBridge instead.
     }
@@ -107,48 +98,41 @@ public class ProgramTests : IDisposable
     [Fact]
     public void AuthCommand_CreatesSuccessfully()
     {
-        var cmd = AuthCommand.Create(_services);
+        Command cmd = AuthCommand.Create(_services);
         Assert.Equal("auth", cmd.Name);
     }
 
     [Fact]
     public void SessionCommand_CreatesSuccessfully()
     {
-        var cmd = SessionCommand.Create(_services);
+        Command cmd = SessionCommand.Create(_services);
         Assert.Equal("session", cmd.Name);
     }
 
     [Fact]
     public void ConfigCommand_CreatesSuccessfully()
     {
-        var cmd = ConfigCommand.Create(_services);
+        Command cmd = ConfigCommand.Create(_services);
         Assert.Equal("config", cmd.Name);
     }
 
     [Fact]
     public void RevertCommand_CreatesSuccessfully()
     {
-        var cmd = RevertCommand.Create(_services);
+        Command cmd = RevertCommand.Create(_services);
         Assert.Equal("revert", cmd.Name);
     }
 
     [Fact]
     public void PhaseCommands_CreateSuccessfully()
     {
-        var spec = PhaseCommands.CreateSpec(_services);
-        var plan = PhaseCommands.CreatePlan(_services);
-        var build = PhaseCommands.CreateBuild(_services);
+        Command spec = PhaseCommands.CreateSpec(_services);
+        Command plan = PhaseCommands.CreatePlan(_services);
+        Command build = PhaseCommands.CreateBuild(_services);
 
         Assert.Equal("spec", spec.Name);
         Assert.Equal("plan", plan.Name);
         Assert.Equal("build", build.Name);
-    }
-
-    [Fact]
-    public void TestCommand_CreatesSuccessfully()
-    {
-        var cmd = TestCommand.Create(_services);
-        Assert.Equal("test", cmd.Name);
     }
 
     // --- Full command tree ---
@@ -156,9 +140,9 @@ public class ProgramTests : IDisposable
     [Fact]
     public void RootCommand_ContainsAllSubcommands()
     {
-        var root = BuildRootCommand();
+        RootCommand root = BuildRootCommand();
 
-        var names = root.Subcommands.Select(c => c.Name).ToHashSet();
+        HashSet<string> names = root.Subcommands.Select(c => c.Name).ToHashSet();
         Assert.Contains("auth", names);
         Assert.Contains("session", names);
         Assert.Contains("config", names);
@@ -166,7 +150,6 @@ public class ProgramTests : IDisposable
         Assert.Contains("spec", names);
         Assert.Contains("plan", names);
         Assert.Contains("build", names);
-        Assert.Contains("test", names);
     }
 
     // --- Help invocation ---
@@ -174,10 +157,10 @@ public class ProgramTests : IDisposable
     [Fact]
     public async Task RootCommand_Help_ReturnsSuccess()
     {
-        var root = BuildRootCommand();
-        var config = new CommandLineConfiguration(root);
+        RootCommand root = BuildRootCommand();
+        CommandLineConfiguration config = new(root);
 
-        var exitCode = await config.InvokeAsync(["--help"]);
+        int exitCode = await config.InvokeAsync(["--help"]);
 
         Assert.Equal(0, exitCode);
     }
@@ -188,17 +171,17 @@ public class ProgramTests : IDisposable
     [InlineData("config", "--help")]
     public async Task SubCommand_Help_ReturnsSuccess(params string[] args)
     {
-        var root = BuildRootCommand();
-        var config = new CommandLineConfiguration(root);
+        RootCommand root = BuildRootCommand();
+        CommandLineConfiguration config = new(root);
 
-        var exitCode = await config.InvokeAsync(args);
+        int exitCode = await config.InvokeAsync(args);
 
         Assert.Equal(0, exitCode);
     }
 
     private RootCommand BuildRootCommand()
     {
-        var root = new RootCommand("Lopen — AI-powered software engineering workflow");
+        RootCommand root = new("Lopen — AI-powered software engineering workflow");
         GlobalOptions.AddTo(root);
         RootCommandHandler.Configure(_services)(root);
         root.Add(AuthCommand.Create(_services));
@@ -208,7 +191,6 @@ public class ProgramTests : IDisposable
         root.Add(PhaseCommands.CreateSpec(_services));
         root.Add(PhaseCommands.CreatePlan(_services));
         root.Add(PhaseCommands.CreateBuild(_services));
-        root.Add(TestCommand.Create(_services));
         return root;
     }
 }

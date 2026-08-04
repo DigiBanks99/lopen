@@ -1,8 +1,8 @@
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 
 namespace Lopen.Storage;
 
@@ -43,7 +43,7 @@ public sealed class SectionCache : ISectionCache
         var key = BuildKey(filePath, sectionHeader);
 
         // Check in-memory first
-        if (_memory.TryGetValue(key, out var cached))
+        if (_memory.TryGetValue(key, out SectionCacheEntry? cached))
         {
             if (IsValid(filePath, cached))
                 return cached;
@@ -59,7 +59,7 @@ public sealed class SectionCache : ISectionCache
         try
         {
             var json = await _fileSystem.ReadAllTextAsync(diskPath, cancellationToken);
-            var entry = JsonSerializer.Deserialize<SectionCacheEntry>(json, JsonOptions);
+            SectionCacheEntry? entry = JsonSerializer.Deserialize<SectionCacheEntry>(json, JsonOptions);
 
             if (entry is not null && IsValid(filePath, entry))
             {
@@ -85,7 +85,7 @@ public sealed class SectionCache : ISectionCache
         ArgumentException.ThrowIfNullOrWhiteSpace(sectionHeader);
         ArgumentNullException.ThrowIfNull(content);
 
-        var fileModified = _fileSystem.GetLastWriteTimeUtc(filePath);
+        DateTime fileModified = _fileSystem.GetLastWriteTimeUtc(filePath);
         var entry = new SectionCacheEntry
         {
             Content = content,
@@ -149,7 +149,7 @@ public sealed class SectionCache : ISectionCache
 
     private bool IsValid(string filePath, SectionCacheEntry entry)
     {
-        var currentModified = _fileSystem.GetLastWriteTimeUtc(filePath);
+        DateTime currentModified = _fileSystem.GetLastWriteTimeUtc(filePath);
         return currentModified == entry.FileModifiedUtc;
     }
 
@@ -169,9 +169,9 @@ public sealed class SectionCache : ISectionCache
             if (_fileSystem.FileExists(path))
                 _fileSystem.DeleteFile(path);
         }
-        catch (IOException)
+        catch (IOException ex)
         {
-            // Best effort cleanup
+            _logger.LogDebug(ex, "Best-effort cache cleanup failed for {Path}", path);
         }
     }
 }

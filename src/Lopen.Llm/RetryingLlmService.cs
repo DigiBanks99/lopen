@@ -1,4 +1,5 @@
 using Lopen.Configuration;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -31,10 +32,10 @@ internal sealed class RetryingLlmService : ILlmService
     public async Task<LlmInvocationResult> InvokeAsync(
         string systemPrompt,
         string model,
-        IReadOnlyList<LopenToolDefinition> tools,
+        IReadOnlyList<AIFunction> tools,
         CancellationToken cancellationToken = default)
     {
-        var chain = BuildFallbackChain(model);
+        IReadOnlyList<string> chain = BuildFallbackChain(model);
 
         LlmException? lastException = null;
 
@@ -78,12 +79,12 @@ internal sealed class RetryingLlmService : ILlmService
     {
         IReadOnlyList<string>? bestChain = null;
 
-        foreach (var phase in Enum.GetValues<WorkflowPhase>())
+        foreach (WorkflowPhase phase in Enum.GetValues<WorkflowPhase>())
         {
             var primary = _modelSelector.SelectModel(phase).SelectedModel;
             if (string.Equals(primary, model, StringComparison.OrdinalIgnoreCase))
             {
-                var chain = _modelSelector.GetFallbackChain(phase);
+                IReadOnlyList<string> chain = _modelSelector.GetFallbackChain(phase);
                 if (bestChain is null || chain.Count > bestChain.Count)
                     bestChain = chain;
             }

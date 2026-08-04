@@ -16,7 +16,7 @@ public class TaskStatusGateTests
     [Fact]
     public void ValidateCompletion_NoVerification_ReturnsRejected()
     {
-        var result = _gate.ValidateCompletion(VerificationScope.Task, "build-ui");
+        TaskStatusGateResult result = _gate.ValidateCompletion(VerificationScope.Task, "build-ui");
 
         Assert.False(result.IsAllowed);
         Assert.Contains("verify_task_completion", result.RejectionReason!);
@@ -28,7 +28,7 @@ public class TaskStatusGateTests
     {
         _tracker.RecordVerification(VerificationScope.Task, "build-ui", passed: true);
 
-        var result = _gate.ValidateCompletion(VerificationScope.Task, "build-ui");
+        TaskStatusGateResult result = _gate.ValidateCompletion(VerificationScope.Task, "build-ui");
 
         Assert.True(result.IsAllowed);
         Assert.Null(result.RejectionReason);
@@ -39,7 +39,7 @@ public class TaskStatusGateTests
     {
         _tracker.RecordVerification(VerificationScope.Task, "build-ui", passed: false);
 
-        var result = _gate.ValidateCompletion(VerificationScope.Task, "build-ui");
+        TaskStatusGateResult result = _gate.ValidateCompletion(VerificationScope.Task, "build-ui");
 
         Assert.False(result.IsAllowed);
         Assert.Contains("no passing oracle verification", result.RejectionReason!);
@@ -48,7 +48,7 @@ public class TaskStatusGateTests
     [Fact]
     public void ValidateCompletion_Component_UsesComponentToolName()
     {
-        var result = _gate.ValidateCompletion(VerificationScope.Component, "auth-service");
+        TaskStatusGateResult result = _gate.ValidateCompletion(VerificationScope.Component, "auth-service");
 
         Assert.False(result.IsAllowed);
         Assert.Contains("verify_component_completion", result.RejectionReason!);
@@ -57,7 +57,7 @@ public class TaskStatusGateTests
     [Fact]
     public void ValidateCompletion_Module_UsesModuleToolName()
     {
-        var result = _gate.ValidateCompletion(VerificationScope.Module, "auth");
+        TaskStatusGateResult result = _gate.ValidateCompletion(VerificationScope.Module, "auth");
 
         Assert.False(result.IsAllowed);
         Assert.Contains("verify_module_completion", result.RejectionReason!);
@@ -68,7 +68,7 @@ public class TaskStatusGateTests
     {
         _tracker.RecordVerification(VerificationScope.Task, "build-ui", passed: true);
 
-        var result = _gate.ValidateCompletion(VerificationScope.Component, "build-ui");
+        TaskStatusGateResult result = _gate.ValidateCompletion(VerificationScope.Component, "build-ui");
 
         Assert.False(result.IsAllowed);
     }
@@ -78,7 +78,7 @@ public class TaskStatusGateTests
     {
         _tracker.RecordVerification(VerificationScope.Task, "build-ui", passed: true);
 
-        var result = _gate.ValidateCompletion(VerificationScope.Task, "build-api");
+        TaskStatusGateResult result = _gate.ValidateCompletion(VerificationScope.Task, "build-api");
 
         Assert.False(result.IsAllowed);
     }
@@ -89,7 +89,7 @@ public class TaskStatusGateTests
         _tracker.RecordVerification(VerificationScope.Task, "build-ui", passed: true);
         _tracker.ResetForInvocation();
 
-        var result = _gate.ValidateCompletion(VerificationScope.Task, "build-ui");
+        TaskStatusGateResult result = _gate.ValidateCompletion(VerificationScope.Task, "build-ui");
 
         Assert.False(result.IsAllowed);
     }

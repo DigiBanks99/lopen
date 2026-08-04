@@ -1,5 +1,7 @@
-using System.Text;
+using Lopen.Llm.Tools;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace Lopen.Llm;
 
@@ -9,12 +11,12 @@ namespace Lopen.Llm;
 /// </summary>
 internal sealed class DefaultPromptBuilder : IPromptBuilder
 {
-    private readonly IToolRegistry _toolRegistry;
+    private readonly ToolCatalog? _toolCatalog;
     private readonly ILogger<DefaultPromptBuilder> _logger;
 
-    public DefaultPromptBuilder(IToolRegistry toolRegistry, ILogger<DefaultPromptBuilder> logger)
+    public DefaultPromptBuilder(ToolCatalog? toolCatalog, ILogger<DefaultPromptBuilder> logger)
     {
-        _toolRegistry = toolRegistry ?? throw new ArgumentNullException(nameof(toolRegistry));
+        _toolCatalog = toolCatalog;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -104,7 +106,7 @@ internal sealed class DefaultPromptBuilder : IPromptBuilder
         sb.AppendLine("# Context");
         sb.AppendLine();
 
-        foreach (var (title, content) in contextSections)
+        foreach ((string? title, string? content) in contextSections)
         {
             sb.AppendLine($"## {title}");
             sb.AppendLine();
@@ -115,7 +117,7 @@ internal sealed class DefaultPromptBuilder : IPromptBuilder
 
     private void AppendToolsSection(StringBuilder sb, WorkflowPhase phase)
     {
-        var tools = _toolRegistry.GetToolsForPhase(phase);
+        IReadOnlyList<AIFunction> tools = _toolCatalog?.GetToolsForPhase(phase) ?? [];
 
         sb.AppendLine("# Available Tools");
         sb.AppendLine();
@@ -126,7 +128,7 @@ internal sealed class DefaultPromptBuilder : IPromptBuilder
         }
         else
         {
-            foreach (var tool in tools)
+            foreach (AIFunction tool in tools)
             {
                 sb.AppendLine($"- **{tool.Name}**: {tool.Description}");
             }

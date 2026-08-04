@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
 
 namespace Lopen.Storage.Tests;
 
@@ -55,10 +55,10 @@ public class StorageAcceptanceCriteriaTests
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         fs.CreateDirectory("/project/.lopen/sessions");
 
-        var first = await manager.CreateSessionAsync("auth");
-        var second = await manager.CreateSessionAsync("auth");
+        SessionId first = await manager.CreateSessionAsync("auth");
+        SessionId second = await manager.CreateSessionAsync("auth");
 
-        var latest = await manager.GetLatestSessionIdAsync();
+        SessionId? latest = await manager.GetLatestSessionIdAsync();
         Assert.NotNull(latest);
         Assert.Equal(second.Module, latest.Module);
         Assert.Equal(second.Counter, latest.Counter);
@@ -71,11 +71,11 @@ public class StorageAcceptanceCriteriaTests
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         fs.CreateDirectory("/project/.lopen/sessions");
 
-        var first = await manager.CreateSessionAsync("core");
-        var second = await manager.CreateSessionAsync("core");
+        SessionId first = await manager.CreateSessionAsync("core");
+        SessionId second = await manager.CreateSessionAsync("core");
         await manager.SetLatestAsync(first);
 
-        var latest = await manager.GetLatestSessionIdAsync();
+        SessionId? latest = await manager.GetLatestSessionIdAsync();
         Assert.NotNull(latest);
         Assert.Equal(first.Counter, latest.Counter);
     }
@@ -86,7 +86,7 @@ public class StorageAcceptanceCriteriaTests
     [Fact]
     public async Task AC06_AutoSave_TriggersOnAllDefinedEvents()
     {
-        var now = DateTimeOffset.UtcNow;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var sessionId = SessionId.Generate("test", DateOnly.FromDateTime(DateTime.UtcNow), 1);
         var state = new SessionState
         {
@@ -100,7 +100,7 @@ public class StorageAcceptanceCriteriaTests
         var fakeManager = new FakeSessionManager();
         var autoSave = new AutoSaveService(fakeManager, NullLogger<AutoSaveService>.Instance);
 
-        var triggers = new[]
+        AutoSaveTrigger[] triggers = new[]
         {
             AutoSaveTrigger.StepCompletion,
             AutoSaveTrigger.TaskCompletion,
@@ -110,7 +110,7 @@ public class StorageAcceptanceCriteriaTests
             AutoSaveTrigger.UserPause,
         };
 
-        foreach (var trigger in triggers)
+        foreach (AutoSaveTrigger trigger in triggers)
         {
             fakeManager.SaveCount = 0;
             await autoSave.SaveAsync(trigger, sessionId, state);
@@ -127,8 +127,8 @@ public class StorageAcceptanceCriteriaTests
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         fs.CreateDirectory("/project/.lopen/sessions");
 
-        var sessionId = await manager.CreateSessionAsync("auth");
-        var now = DateTimeOffset.UtcNow;
+        SessionId sessionId = await manager.CreateSessionAsync("auth");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var savedState = new SessionState
         {
             SessionId = sessionId.ToString(),
@@ -140,10 +140,10 @@ public class StorageAcceptanceCriteriaTests
         };
         await manager.SaveSessionStateAsync(sessionId, savedState);
 
-        var latestId = await manager.GetLatestSessionIdAsync();
+        SessionId? latestId = await manager.GetLatestSessionIdAsync();
         Assert.NotNull(latestId);
 
-        var loadedState = await manager.LoadSessionStateAsync(latestId);
+        SessionState? loadedState = await manager.LoadSessionStateAsync(latestId);
         Assert.NotNull(loadedState);
         Assert.Equal("building", loadedState.Phase);
         Assert.Equal("iterate", loadedState.Step);
@@ -216,7 +216,7 @@ public class StorageAcceptanceCriteriaTests
         var pruned = await manager.PruneSessionsAsync(5);
 
         Assert.Equal(0, pruned);
-        var remaining = await manager.ListSessionsAsync();
+        IReadOnlyList<SessionId> remaining = await manager.ListSessionsAsync();
         Assert.Equal(2, remaining.Count);
     }
 
@@ -242,8 +242,8 @@ public class StorageAcceptanceCriteriaTests
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         fs.CreateDirectory("/project/.lopen/sessions");
 
-        var sessionId = await manager.CreateSessionAsync("core");
-        var now = DateTimeOffset.UtcNow;
+        SessionId sessionId = await manager.CreateSessionAsync("core");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var state = new SessionState
         {
             SessionId = sessionId.ToString(),
@@ -256,7 +256,7 @@ public class StorageAcceptanceCriteriaTests
         };
         await manager.SaveSessionStateAsync(sessionId, state);
 
-        var loaded = await manager.LoadSessionStateAsync(sessionId);
+        SessionState? loaded = await manager.LoadSessionStateAsync(sessionId);
         Assert.NotNull(loaded);
         Assert.Equal("building", loaded.Phase);
         Assert.Equal("iterate", loaded.Step);
@@ -271,8 +271,8 @@ public class StorageAcceptanceCriteriaTests
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         fs.CreateDirectory("/project/.lopen/sessions");
 
-        var sessionId = await manager.CreateSessionAsync("core");
-        var now = DateTimeOffset.UtcNow;
+        SessionId sessionId = await manager.CreateSessionAsync("core");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
 
         var hierarchy = new List<TaskHierarchyNode>
         {
@@ -335,36 +335,36 @@ public class StorageAcceptanceCriteriaTests
         };
         await manager.SaveSessionStateAsync(sessionId, state);
 
-        var loaded = await manager.LoadSessionStateAsync(sessionId);
+        SessionState? loaded = await manager.LoadSessionStateAsync(sessionId);
         Assert.NotNull(loaded);
         Assert.NotNull(loaded.TaskHierarchy);
         Assert.Single(loaded.TaskHierarchy);
 
-        var module = loaded.TaskHierarchy[0];
+        TaskHierarchyNode module = loaded.TaskHierarchy[0];
         Assert.Equal("mod-core", module.Id);
         Assert.Equal("Core Module", module.Name);
         Assert.Equal("InProgress", module.State);
         Assert.Equal("module", module.NodeType);
         Assert.Single(module.Children);
 
-        var component = module.Children[0];
+        TaskHierarchyNode component = module.Children[0];
         Assert.Equal("comp-engine", component.Id);
         Assert.Equal("component", component.NodeType);
         Assert.Equal(2, component.Children.Count);
 
-        var completedTask = component.Children[0];
+        TaskHierarchyNode completedTask = component.Children[0];
         Assert.Equal("task-init", completedTask.Id);
         Assert.Equal("Complete", completedTask.State);
         Assert.Equal("task", completedTask.NodeType);
         Assert.Single(completedTask.Children);
 
-        var subtask = completedTask.Children[0];
+        TaskHierarchyNode subtask = completedTask.Children[0];
         Assert.Equal("sub-validate", subtask.Id);
         Assert.Equal("subtask", subtask.NodeType);
         Assert.Equal("Complete", subtask.State);
         Assert.Empty(subtask.Children);
 
-        var pendingTask = component.Children[1];
+        TaskHierarchyNode pendingTask = component.Children[1];
         Assert.Equal("task-run", pendingTask.Id);
         Assert.Equal("Pending", pendingTask.State);
         Assert.Empty(pendingTask.Children);
@@ -377,8 +377,8 @@ public class StorageAcceptanceCriteriaTests
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         fs.CreateDirectory("/project/.lopen/sessions");
 
-        var sessionId = await manager.CreateSessionAsync("core");
-        var now = DateTimeOffset.UtcNow;
+        SessionId sessionId = await manager.CreateSessionAsync("core");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
 
         // Save state without task hierarchy (simulates pre-existing state.json)
         var state = new SessionState
@@ -392,7 +392,7 @@ public class StorageAcceptanceCriteriaTests
         };
         await manager.SaveSessionStateAsync(sessionId, state);
 
-        var loaded = await manager.LoadSessionStateAsync(sessionId);
+        SessionState? loaded = await manager.LoadSessionStateAsync(sessionId);
         Assert.NotNull(loaded);
         Assert.Null(loaded.TaskHierarchy);
         Assert.Equal("building", loaded.Phase);
@@ -407,8 +407,8 @@ public class StorageAcceptanceCriteriaTests
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         fs.CreateDirectory("/project/.lopen/sessions");
 
-        var goodId = await manager.CreateSessionAsync("auth");
-        var badId = await manager.CreateSessionAsync("auth");
+        SessionId goodId = await manager.CreateSessionAsync("auth");
+        SessionId badId = await manager.CreateSessionAsync("auth");
 
         // Corrupt the second session's state file
         var badStatePath = $"/project/.lopen/sessions/{badId}/state.json";
@@ -417,7 +417,7 @@ public class StorageAcceptanceCriteriaTests
         await Assert.ThrowsAsync<StorageException>(() => manager.LoadSessionStateAsync(badId));
 
         // Good session still loads fine
-        var goodState = await manager.LoadSessionStateAsync(goodId);
+        SessionState? goodState = await manager.LoadSessionStateAsync(goodId);
         Assert.NotNull(goodState);
     }
 
@@ -430,8 +430,8 @@ public class StorageAcceptanceCriteriaTests
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         fs.CreateDirectory("/project/.lopen/sessions");
 
-        var sessionId = await manager.CreateSessionAsync("auth");
-        var now = DateTimeOffset.UtcNow;
+        SessionId sessionId = await manager.CreateSessionAsync("auth");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var metrics = new SessionMetrics
         {
             SessionId = sessionId.ToString(),
@@ -448,7 +448,7 @@ public class StorageAcceptanceCriteriaTests
         };
         await manager.SaveSessionMetricsAsync(sessionId, metrics);
 
-        var loaded = await manager.LoadSessionMetricsAsync(sessionId);
+        SessionMetrics? loaded = await manager.LoadSessionMetricsAsync(sessionId);
         Assert.NotNull(loaded);
         Assert.Equal(5000, loaded.CumulativeInputTokens);
         Assert.Equal(3000, loaded.CumulativeOutputTokens);
@@ -469,9 +469,9 @@ public class StorageAcceptanceCriteriaTests
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         fs.CreateDirectory("/project/.lopen/sessions");
 
-        var first = await manager.CreateSessionAsync("auth");
-        var second = await manager.CreateSessionAsync("auth");
-        var now = DateTimeOffset.UtcNow;
+        SessionId first = await manager.CreateSessionAsync("auth");
+        SessionId second = await manager.CreateSessionAsync("auth");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
 
         var firstState = new SessionState
         {
@@ -495,7 +495,7 @@ public class StorageAcceptanceCriteriaTests
         await manager.SaveSessionStateAsync(second, secondState);
 
         // Resume by explicit first session ID (not latest)
-        var loaded = await manager.LoadSessionStateAsync(first);
+        SessionState? loaded = await manager.LoadSessionStateAsync(first);
         Assert.NotNull(loaded);
         Assert.Equal("research", loaded.Phase);
         Assert.Equal("gather", loaded.Step);
@@ -541,9 +541,9 @@ public class StorageAcceptanceCriteriaTests
         // Different headers, same file
         await cache.SetAsync("/src/a.md", "Details", "details from a");
 
-        var resultA = await cache.GetAsync("/src/a.md", "Overview");
-        var resultB = await cache.GetAsync("/src/b.md", "Overview");
-        var resultDetails = await cache.GetAsync("/src/a.md", "Details");
+        SectionCacheEntry? resultA = await cache.GetAsync("/src/a.md", "Overview");
+        SectionCacheEntry? resultB = await cache.GetAsync("/src/b.md", "Overview");
+        SectionCacheEntry? resultDetails = await cache.GetAsync("/src/a.md", "Details");
 
         Assert.NotNull(resultA);
         Assert.NotNull(resultB);
@@ -569,7 +569,7 @@ public class StorageAcceptanceCriteriaTests
         await Task.Delay(10);
         await fs.WriteAllTextAsync("/src/spec.md", "modified content");
 
-        var result = await cache.GetAsync("/src/spec.md", "Overview");
+        SectionCacheEntry? result = await cache.GetAsync("/src/spec.md", "Overview");
         Assert.Null(result);
     }
 
@@ -596,7 +596,7 @@ public class StorageAcceptanceCriteriaTests
         await Task.Delay(10);
         await fs.WriteAllTextAsync("/src/auth/register.cs", "modified code");
 
-        var result = await cache.GetAsync("auth:assessment");
+        AssessmentCacheEntry? result = await cache.GetAsync("auth:assessment");
         Assert.Null(result);
     }
 
@@ -610,7 +610,7 @@ public class StorageAcceptanceCriteriaTests
         fs.CreateDirectory("/project/.lopen/sessions");
         fs.CreateDirectory(StoragePaths.GetCorruptedDirectory("/project"));
 
-        var sessionId = await manager.CreateSessionAsync("auth");
+        SessionId sessionId = await manager.CreateSessionAsync("auth");
         var statePath = $"/project/.lopen/sessions/{sessionId}/state.json";
         await fs.WriteAllTextAsync(statePath, "CORRUPTED{{{");
 
@@ -630,7 +630,7 @@ public class StorageAcceptanceCriteriaTests
         fs.CreateDirectory("/project/.lopen/sessions");
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         var sessionId = SessionId.Generate("auth", DateOnly.FromDateTime(DateTime.UtcNow), 1);
-        var now = DateTimeOffset.UtcNow;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var state = new SessionState
         {
             SessionId = sessionId.ToString(),
@@ -641,7 +641,7 @@ public class StorageAcceptanceCriteriaTests
             UpdatedAt = now,
         };
 
-        var ex = await Assert.ThrowsAsync<StorageException>(() => manager.SaveSessionStateAsync(sessionId, state));
+        StorageException ex = await Assert.ThrowsAsync<StorageException>(() => manager.SaveSessionStateAsync(sessionId, state));
         Assert.IsType<IOException>(ex.InnerException);
     }
 
@@ -665,7 +665,7 @@ public class StorageAcceptanceCriteriaTests
 
         // Fresh instance reads from disk only
         var freshCache = new SectionCache(fs, NullLogger<SectionCache>.Instance, "/project");
-        var result = await freshCache.GetAsync("/src/spec.md", "Overview");
+        SectionCacheEntry? result = await freshCache.GetAsync("/src/spec.md", "Overview");
         Assert.Null(result);
     }
 
@@ -690,7 +690,7 @@ public class StorageAcceptanceCriteriaTests
         await fs.WriteAllTextAsync(files[0], "corrupted{{{");
 
         var freshCache = new AssessmentCache(fs, NullLogger<AssessmentCache>.Instance, "/project");
-        var result = await freshCache.GetAsync("auth:assessment");
+        AssessmentCacheEntry? result = await freshCache.GetAsync("auth:assessment");
         Assert.Null(result);
     }
 
@@ -703,8 +703,8 @@ public class StorageAcceptanceCriteriaTests
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         fs.CreateDirectory("/project/.lopen/sessions");
 
-        var sessionId = await manager.CreateSessionAsync("auth");
-        var now = DateTimeOffset.UtcNow;
+        SessionId sessionId = await manager.CreateSessionAsync("auth");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var state = new SessionState
         {
             SessionId = sessionId.ToString(),
@@ -752,8 +752,8 @@ public class StorageAcceptanceCriteriaTests
         var manager = new SessionManager(fs, NullLogger<SessionManager>.Instance, "/project");
         fs.CreateDirectory("/project/.lopen/sessions");
 
-        var sessionId = await manager.CreateSessionAsync("auth");
-        var now = DateTimeOffset.UtcNow;
+        SessionId sessionId = await manager.CreateSessionAsync("auth");
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var state = new SessionState
         {
             SessionId = sessionId.ToString(),

@@ -18,8 +18,8 @@ public sealed class BudgetEnforcer : IBudgetEnforcer
         ArgumentOutOfRangeException.ThrowIfNegative(currentTokens);
         ArgumentOutOfRangeException.ThrowIfNegative(currentRequests);
 
-        var tokenStatus = CheckSingle(currentTokens, _budget.TokenBudgetPerModule, out var tokenFraction);
-        var requestStatus = CheckSingle(currentRequests, _budget.PremiumRequestBudget, out var requestFraction);
+        BudgetStatus tokenStatus = CheckSingle(currentTokens, _budget.TokenBudgetPerModule, out var tokenFraction);
+        BudgetStatus requestStatus = CheckSingle(currentRequests, _budget.PremiumRequestBudget, out var requestFraction);
         var overall = (BudgetStatus)Math.Max((int)tokenStatus, (int)requestStatus);
 
         return new BudgetCheckResult

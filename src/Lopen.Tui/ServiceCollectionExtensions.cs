@@ -1,143 +1,118 @@
+using Lopen.Configuration;
 using Lopen.Core;
+using Lopen.Core.Workflow;
+using Lopen.Llm;
+using Lopen.Storage;
+using Lopen.Tui.Commands;
+using Lopen.Tui.Gallery;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using Spectre.Console;
 
 namespace Lopen.Tui;
 
+/// <summary>
+/// Extension methods for registering TUI services.
+/// Must be called BEFORE AddLopenCore() so that TryAddSingleton&lt;IOutputRenderer&gt;
+/// in core becomes a no-op, allowing TuiOutputRenderer to take precedence.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers TUI services including the application lifecycle and component gallery
-    /// with all built-in components self-registered.
+    /// Adds Lopen TUI services to the service collection.
     /// </summary>
     public static IServiceCollection AddLopenTui(this IServiceCollection services)
     {
-        services.AddSingleton<TopPanelComponent>();
-        services.AddSingleton<ActivityPanelComponent>();
-        services.AddSingleton<ContextPanelComponent>();
-        services.AddSingleton<PromptAreaComponent>();
-        services.AddSingleton<KeyboardHandler>();
-        services.AddSingleton(_ => SlashCommandRegistry.CreateDefault());
-        services.AddSingleton<ISlashCommandExecutor, SlashCommandExecutor>();
-        services.AddSingleton<GuidedConversationComponent>();
-        services.AddSingleton<ITuiApplication, StubTuiApplication>();
-        services.AddSingleton<IComponentGallery>(sp =>
+        // Register IAnsiConsole for Spectre.Console rendering
+        services.TryAddSingleton<IAnsiConsole>(AnsiConsole.Console);
+
+        // File-backed history stored in user's config directory
+        services.TryAddSingleton<RadLine.ILineEditorHistory>(sp =>
         {
-            var gallery = new ComponentGallery();
-            // Self-register all built-in components
-            gallery.Register(sp.GetRequiredService<TopPanelComponent>());
-            gallery.Register(sp.GetRequiredService<ContextPanelComponent>());
-            gallery.Register(sp.GetRequiredService<ActivityPanelComponent>());
-            gallery.Register(sp.GetRequiredService<PromptAreaComponent>());
-            gallery.Register(new LandingPageComponent());
-            gallery.Register(new SessionResumeModalComponent());
-            gallery.Register(new DiffViewerComponent());
-            gallery.Register(new PhaseTransitionComponent());
-            gallery.Register(new ResearchDisplayComponent());
-            gallery.Register(new FilePickerComponent());
-            gallery.Register(new SelectionModalComponent());
-            gallery.Register(new ConfirmationModalComponent());
-            gallery.Register(new ErrorModalComponent());
-            gallery.Register(new SpinnerComponent());
-            gallery.Register(sp.GetRequiredService<GuidedConversationComponent>());
-            return gallery;
+            string configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME")
+                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
+            string historyPath = Path.Combine(configHome, "lopen", "history.txt");
+            return new FileLineEditorHistory(historyPath);
         });
-        return services;
-    }
 
-    /// <summary>
-    /// Replaces the stub TUI with the real TuiApplication that runs a
-    /// full-screen Spectre.Tui render loop. Call after <see cref="AddLopenTui"/>
-    /// and only in the real CLI entry point (not in tests or headless mode).
-    /// </summary>
-    public static IServiceCollection UseRealTui(this IServiceCollection services)
-    {
-        // Remove the stub registration and replace with real TUI
-        var descriptor = services.FirstOrDefault(d =>
-            d.ServiceType == typeof(ITuiApplication));
-        if (descriptor is not null)
-            services.Remove(descriptor);
+        // Slash commands
+        services.AddSingleton<ISlashCommand, HelpCommand>();
+        services.AddSingleton<ISlashCommand, ModelCommand>();
+        services.AddSingleton<ISlashCommand, SkillsCommand>();
+        services.AddSingleton<ISlashCommand, SessionsCommand>();
+        services.AddSingleton<ISlashCommand, ResumeCommand>();
+        services.AddSingleton<ISlashCommand, ClearCommand>();
+        services.AddSingleton<ISlashCommand, ExitCommand>();
+        services.AddSingleton(sp => new Lazy<ISlashCommandRegistry>(() => sp.GetRequiredService<ISlashCommandRegistry>()));
 
-        services.AddSingleton<TuiApplication>();
-        services.AddSingleton<ITuiApplication>(sp => sp.GetRequiredService<TuiApplication>());
-        return services;
-    }
+        // Command registry (also implements ISlashCommandRegistry for completion)
+        services.TryAddSingleton<SlashCommandRegistry>();
+        services.TryAddSingleton<ISlashCommandRegistry, SlashCommandRegistry>();
 
-    /// <summary>
-    /// Registers <see cref="TopPanelDataProvider"/> to supply live data to the top panel.
-    /// Requires ITokenTracker, IGitService, IAuthService, IWorkflowEngine, and IModelSelector
-    /// to be registered. Call after all module registrations.
-    /// </summary>
-    public static IServiceCollection AddTopPanelDataProvider(this IServiceCollection services)
-    {
-        services.AddSingleton<ITopPanelDataProvider, TopPanelDataProvider>();
-        return services;
-    }
+        // Slash command completion (requires ISlashCommandRegistry)
+        services.TryAddSingleton<RadLine.ITextCompletion, SlashCommandCompletion>();
 
-    /// <summary>
-    /// Registers <see cref="ContextPanelDataProvider"/> to supply live data to the context panel.
-    /// Requires IPlanManager and IWorkflowEngine to be registered.
-    /// Optionally uses IResourceTracker when available to populate active resources.
-    /// Call after all module registrations.
-    /// </summary>
-    public static IServiceCollection AddContextPanelDataProvider(this IServiceCollection services)
-    {
-        services.AddSingleton<IContextPanelDataProvider>(sp =>
-            new ContextPanelDataProvider(
-                sp.GetRequiredService<Lopen.Storage.IPlanManager>(),
-                sp.GetRequiredService<Lopen.Core.Workflow.IWorkflowEngine>(),
-                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ContextPanelDataProvider>>(),
-                sp.GetService<Lopen.Core.Documents.IResourceTracker>()));
-        return services;
-    }
+        // Line editor
+        services.TryAddSingleton<LopenLineEditor>();
+        services.TryAddSingleton(sp => new Lazy<LopenLineEditor>(() => sp.GetRequiredService<LopenLineEditor>()));
 
-    /// <summary>
-    /// Registers <see cref="ActivityPanelDataProvider"/> to supply live data to the activity panel.
-    /// Call after all module registrations.
-    /// </summary>
-    public static IServiceCollection AddActivityPanelDataProvider(this IServiceCollection services)
-    {
-        services.AddSingleton<IActivityPanelDataProvider, ActivityPanelDataProvider>();
-        return services;
-    }
+        // TUI output renderer - registered as IOutputRenderer to override HeadlessRenderer
+        services.AddSingleton<IOutputRenderer, TuiOutputRenderer>();
 
-    /// <summary>
-    /// Registers <see cref="UserPromptQueue"/> as a singleton for passing user prompts
-    /// from the TUI to the orchestrator or command handler.
-    /// </summary>
-    public static IServiceCollection AddUserPromptQueue(this IServiceCollection services)
-    {
-        services.AddSingleton<IUserPromptQueue, UserPromptQueue>();
-        return services;
-    }
+        // User prompt queue for TUI-to-orchestrator communication
+        services.AddSingleton<TuiUserPromptQueue>();
+        services.AddSingleton<IUserPromptQueue, TuiUserPromptQueue>();
 
-    /// <summary>
-    /// Registers <see cref="TuiOutputRenderer"/> as the <see cref="IOutputRenderer"/> for TUI mode,
-    /// replacing the default <see cref="HeadlessRenderer"/>. Call after registering activity panel
-    /// data provider and user prompt queue.
-    /// </summary>
-    public static IServiceCollection AddTuiOutputRenderer(this IServiceCollection services)
-    {
-        // Remove any existing IOutputRenderer registration (e.g. HeadlessRenderer)
-        var descriptor = services.FirstOrDefault(d =>
-            d.ServiceType == typeof(IOutputRenderer));
-        if (descriptor is not null)
-            services.Remove(descriptor);
+        // Response rendering components
+        services.TryAddSingleton<ResponseRenderer>();
+        services.TryAddSingleton<ToolCallRenderer>();
+        services.TryAddSingleton<StatsBar>();
 
-        services.AddSingleton<IOutputRenderer>(sp =>
-            new TuiOutputRenderer(
-                sp.GetRequiredService<IActivityPanelDataProvider>(),
-                sp.GetService<IUserPromptQueue>(),
-                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<TuiOutputRenderer>>()));
-        return services;
-    }
+        // Workflow overview block
+        services.TryAddSingleton<WorkflowOverviewBlock>(sp =>
+        {
+            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
+            IOptions<LopenOptions> options = sp.GetRequiredService<IOptions<LopenOptions>>();
+            IWorkflowEngine? workflowEngine = sp.GetService<IWorkflowEngine>();
+            ITokenTracker? tokenTracker = sp.GetService<ITokenTracker>();
+            IPauseController? pauseController = sp.GetService<IPauseController>();
+            return new WorkflowOverviewBlock(console, options, workflowEngine, tokenTracker, pauseController);
+        });
 
-    /// <summary>
-    /// Registers <see cref="SessionDetector"/> to detect active sessions for the resume modal.
-    /// Requires ISessionManager to be registered.
-    /// </summary>
-    public static IServiceCollection AddSessionDetector(this IServiceCollection services)
-    {
-        services.AddSingleton<ISessionDetector, SessionDetector>();
+        // Command palette for command discovery (TUI-10 through TUI-13)
+        services.TryAddSingleton<CommandPalette>(sp =>
+        {
+            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
+            ISlashCommandRegistry registry = sp.GetRequiredService<ISlashCommandRegistry>();
+            return new CommandPalette(console, registry);
+        });
+
+        // TUI runner for the REPL loop
+        services.TryAddSingleton<TuiRunner>(sp =>
+        {
+            IAnsiConsole console = sp.GetRequiredService<IAnsiConsole>();
+            LopenLineEditor lineEditor = sp.GetRequiredService<LopenLineEditor>();
+            TuiUserPromptQueue promptQueue = sp.GetRequiredService<TuiUserPromptQueue>();
+            IOutputRenderer renderer = sp.GetRequiredService<IOutputRenderer>();
+            SlashCommandRegistry commandRegistry = sp.GetRequiredService<SlashCommandRegistry>();
+            IWorkflowOrchestrator? orchestrator = sp.GetService<IWorkflowOrchestrator>();
+            WorkflowOverviewBlock? overviewBlock = sp.GetService<WorkflowOverviewBlock>();
+            CommandPalette? commandPalette = sp.GetService<CommandPalette>();
+            ISessionManager? sessionManager = sp.GetService<ISessionManager>();
+            IModuleSelectionService? moduleSelectionService = sp.GetService<IModuleSelectionService>();
+            return new TuiRunner(console, lineEditor, promptQueue, renderer, commandRegistry, orchestrator, overviewBlock, commandPalette, sessionManager, moduleSelectionService);
+        });
+
+        // Gallery components for visual testing (TUI-34 through TUI-36)
+        services.AddSingleton<IGalleryComponent, WorkflowOverviewGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, PromptInputGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, CommandPaletteGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, ResponseRenderingGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, SessionListGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, ErrorPanelGalleryComponent>();
+        services.AddSingleton<IGalleryComponent, HelpOutputGalleryComponent>();
+
         return services;
     }
 }

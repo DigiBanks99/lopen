@@ -1,8 +1,8 @@
-using System.CommandLine;
 using Lopen.Commands;
 using Lopen.Core.Workflow;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -32,9 +32,9 @@ public class FizzBuzzWorkflowTests
     public async Task Spec_WithFizzBuzzPrompt_PassesPromptToOrchestrator()
     {
         var orchestrator = new TrackingOrchestrator();
-        var (config, output, _) = CreateConfig(orchestrator, hasSpec: false, hasPlan: false);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig(orchestrator, hasSpec: false, hasPlan: false);
 
-        var exitCode = await config.InvokeAsync(["spec", "--prompt", FizzBuzzPrompt]);
+        var exitCode = await config.InvokeAsync(["spec", "--resume", FizzBuzzSession.ToString(), "--prompt", FizzBuzzPrompt]);
 
         Assert.Equal(ExitCodes.Success, exitCode);
         Assert.Equal(FizzBuzzModule, orchestrator.LastModule);
@@ -45,9 +45,9 @@ public class FizzBuzzWorkflowTests
     public async Task Spec_Headless_WithFizzBuzzPrompt_CompletesSuccessfully()
     {
         var orchestrator = new TrackingOrchestrator();
-        var (config, output, _) = CreateConfig(orchestrator, hasSpec: false, hasPlan: false);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig(orchestrator, hasSpec: false, hasPlan: false);
 
-        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt]);
+        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt, "--resume", FizzBuzzSession.ToString()]);
 
         Assert.Equal(ExitCodes.Success, exitCode);
         Assert.Equal(FizzBuzzModule, orchestrator.LastModule);
@@ -60,9 +60,9 @@ public class FizzBuzzWorkflowTests
     public async Task Plan_AfterSpec_PassesModuleToOrchestrator()
     {
         var orchestrator = new TrackingOrchestrator();
-        var (config, _, _) = CreateConfig(orchestrator, hasSpec: true, hasPlan: false);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator, hasSpec: true, hasPlan: false);
 
-        var exitCode = await config.InvokeAsync(["plan"]);
+        var exitCode = await config.InvokeAsync(["plan", "--resume", FizzBuzzSession.ToString()]);
 
         Assert.Equal(ExitCodes.Success, exitCode);
         Assert.Equal(FizzBuzzModule, orchestrator.LastModule);
@@ -72,7 +72,7 @@ public class FizzBuzzWorkflowTests
     public async Task Plan_WithoutSpec_ReturnsFailure()
     {
         var orchestrator = new TrackingOrchestrator();
-        var (config, _, error) = CreateConfig(orchestrator, hasSpec: false, hasPlan: false);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator, hasSpec: false, hasPlan: false);
 
         var exitCode = await config.InvokeAsync(["plan"]);
 
@@ -86,9 +86,9 @@ public class FizzBuzzWorkflowTests
     public async Task Build_AfterSpecAndPlan_PassesModuleToOrchestrator()
     {
         var orchestrator = new TrackingOrchestrator();
-        var (config, _, _) = CreateConfig(orchestrator, hasSpec: true, hasPlan: true);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator, hasSpec: true, hasPlan: true);
 
-        var exitCode = await config.InvokeAsync(["build"]);
+        var exitCode = await config.InvokeAsync(["build", "--resume", FizzBuzzSession.ToString()]);
 
         Assert.Equal(ExitCodes.Success, exitCode);
         Assert.Equal(FizzBuzzModule, orchestrator.LastModule);
@@ -98,7 +98,7 @@ public class FizzBuzzWorkflowTests
     public async Task Build_WithoutPlan_ReturnsFailure()
     {
         var orchestrator = new TrackingOrchestrator();
-        var (config, _, error) = CreateConfig(orchestrator, hasSpec: true, hasPlan: false);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator, hasSpec: true, hasPlan: false);
 
         var exitCode = await config.InvokeAsync(["build"]);
 
@@ -110,7 +110,7 @@ public class FizzBuzzWorkflowTests
     public async Task Build_WithoutSpec_ReturnsFailure()
     {
         var orchestrator = new TrackingOrchestrator();
-        var (config, _, error) = CreateConfig(orchestrator, hasSpec: false, hasPlan: false);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator, hasSpec: false, hasPlan: false);
 
         var exitCode = await config.InvokeAsync(["build"]);
 
@@ -128,21 +128,21 @@ public class FizzBuzzWorkflowTests
         var buildOrchestrator = new TrackingOrchestrator();
 
         // Phase 1: Spec — no spec or plan exists yet
-        var (specConfig, specOutput, _) = CreateConfig(specOrchestrator, hasSpec: false, hasPlan: false);
-        var specExit = await specConfig.InvokeAsync(["spec", "--prompt", FizzBuzzPrompt]);
+        (CommandLineConfiguration? specConfig, StringWriter? specOutput, StringWriter _) = CreateConfig(specOrchestrator, hasSpec: false, hasPlan: false);
+        var specExit = await specConfig.InvokeAsync(["spec", "--resume", FizzBuzzSession.ToString(), "--prompt", FizzBuzzPrompt]);
         Assert.Equal(ExitCodes.Success, specExit);
         Assert.Equal(FizzBuzzModule, specOrchestrator.LastModule);
         Assert.Equal(FizzBuzzPrompt, specOrchestrator.LastPrompt);
 
         // Phase 2: Plan — spec now exists
-        var (planConfig, planOutput, _) = CreateConfig(planOrchestrator, hasSpec: true, hasPlan: false);
-        var planExit = await planConfig.InvokeAsync(["plan"]);
+        (CommandLineConfiguration? planConfig, StringWriter? planOutput, StringWriter _) = CreateConfig(planOrchestrator, hasSpec: true, hasPlan: false);
+        var planExit = await planConfig.InvokeAsync(["plan", "--resume", FizzBuzzSession.ToString()]);
         Assert.Equal(ExitCodes.Success, planExit);
         Assert.Equal(FizzBuzzModule, planOrchestrator.LastModule);
 
         // Phase 3: Build — spec and plan exist
-        var (buildConfig, buildOutput, _) = CreateConfig(buildOrchestrator, hasSpec: true, hasPlan: true);
-        var buildExit = await buildConfig.InvokeAsync(["build"]);
+        (CommandLineConfiguration? buildConfig, StringWriter? buildOutput, StringWriter _) = CreateConfig(buildOrchestrator, hasSpec: true, hasPlan: true);
+        var buildExit = await buildConfig.InvokeAsync(["build", "--resume", FizzBuzzSession.ToString()]);
         Assert.Equal(ExitCodes.Success, buildExit);
         Assert.Equal(FizzBuzzModule, buildOrchestrator.LastModule);
     }
@@ -155,19 +155,19 @@ public class FizzBuzzWorkflowTests
         var buildOrchestrator = new TrackingOrchestrator();
 
         // Phase 1: Spec headless with prompt
-        var (specConfig, specOutput, _) = CreateConfig(specOrchestrator, hasSpec: false, hasPlan: false);
+        (CommandLineConfiguration? specConfig, StringWriter? specOutput, StringWriter _) = CreateConfig(specOrchestrator, hasSpec: false, hasPlan: false);
         var specExit = await specConfig.InvokeAsync(["spec", "--headless", "--prompt", FizzBuzzPrompt]);
         Assert.Equal(ExitCodes.Success, specExit);
         Assert.Contains("requirement gathering", specOutput.ToString(), StringComparison.OrdinalIgnoreCase);
 
         // Phase 2: Plan headless with prompt
-        var (planConfig, planOutput, _) = CreateConfig(planOrchestrator, hasSpec: true, hasPlan: false);
+        (CommandLineConfiguration? planConfig, StringWriter? planOutput, StringWriter _) = CreateConfig(planOrchestrator, hasSpec: true, hasPlan: false);
         var planExit = await planConfig.InvokeAsync(["plan", "--headless", "--prompt", "Generate a plan for the fizz-buzz module"]);
         Assert.Equal(ExitCodes.Success, planExit);
         Assert.Contains("planning", planOutput.ToString(), StringComparison.OrdinalIgnoreCase);
 
         // Phase 3: Build headless with prompt
-        var (buildConfig, buildOutput, _) = CreateConfig(buildOrchestrator, hasSpec: true, hasPlan: true);
+        (CommandLineConfiguration? buildConfig, StringWriter? buildOutput, StringWriter _) = CreateConfig(buildOrchestrator, hasSpec: true, hasPlan: true);
         var buildExit = await buildConfig.InvokeAsync(["build", "--headless", "--prompt", "Build the fizz-buzz application with tests"]);
         Assert.Equal(ExitCodes.Success, buildExit);
         Assert.Contains("building", buildOutput.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -177,10 +177,10 @@ public class FizzBuzzWorkflowTests
     public async Task FullWorkflow_BuildWithPrompt_PassesFizzBuzzInstructions()
     {
         var orchestrator = new TrackingOrchestrator();
-        var (config, _, _) = CreateConfig(orchestrator, hasSpec: true, hasPlan: true);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator, hasSpec: true, hasPlan: true);
         const string buildPrompt = "Implement FizzBuzz: for numbers 1-100, print Fizz for multiples of 3, Buzz for multiples of 5, FizzBuzz for both";
 
-        var exitCode = await config.InvokeAsync(["build", "--prompt", buildPrompt]);
+        var exitCode = await config.InvokeAsync(["build", "--resume", FizzBuzzSession.ToString(), "--prompt", buildPrompt]);
 
         Assert.Equal(ExitCodes.Success, exitCode);
         Assert.Equal(FizzBuzzModule, orchestrator.LastModule);
@@ -215,7 +215,7 @@ public class FizzBuzzWorkflowTests
         services.AddSingleton<IPlanManager>(planManager);
         services.AddSingleton<IWorkflowOrchestrator>(orchestrator);
 
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         var output = new StringWriter();
         var error = new StringWriter();
 
@@ -254,5 +254,10 @@ public class FizzBuzzWorkflowTests
             CallCount++;
             return Task.FromResult(StepResult.Succeeded(WorkflowTrigger.Assess, "Step complete"));
         }
+
+        public string? ActiveModule => null;
+
+        public Task InitializeAsync(string moduleName, SessionId? resumeSessionId = null, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 }

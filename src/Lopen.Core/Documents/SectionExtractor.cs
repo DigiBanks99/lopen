@@ -30,12 +30,12 @@ internal sealed class SectionExtractor : ISectionExtractor
         if (relevantHeaders.Count == 0)
             return [];
 
-        var allSections = _parser.ExtractSections(specContent);
+        IReadOnlyList<DocumentSection> allSections = _parser.ExtractSections(specContent);
         var headerSet = new HashSet<string>(relevantHeaders, StringComparer.OrdinalIgnoreCase);
 
         var result = new List<ExtractedSection>();
 
-        foreach (var section in allSections)
+        foreach (DocumentSection section in allSections)
         {
             if (headerSet.Contains(section.Header))
             {
@@ -54,7 +54,7 @@ internal sealed class SectionExtractor : ISectionExtractor
     {
         ArgumentNullException.ThrowIfNull(specContent);
 
-        var allSections = _parser.ExtractSections(specContent);
+        IReadOnlyList<DocumentSection> allSections = _parser.ExtractSections(specContent);
 
         return allSections
             .Select(ToExtracted)

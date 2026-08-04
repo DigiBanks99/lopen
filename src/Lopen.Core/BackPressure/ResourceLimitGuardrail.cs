@@ -48,7 +48,7 @@ internal sealed class ResourceLimitGuardrail : IGuardrail
 
     public Task<GuardrailResult> EvaluateAsync(GuardrailContext context, CancellationToken cancellationToken = default)
     {
-        var metrics = _tokenTracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = _tokenTracker.GetSessionMetrics();
         var used = metrics.PremiumRequestCount;
         var ratio = (double)used / _premiumRequestBudget;
 

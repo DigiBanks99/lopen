@@ -1,4 +1,3 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Lopen.Commands;
 using Lopen.Configuration;
@@ -9,14 +8,25 @@ using Lopen.Storage;
 using Lopen.Tui;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.CommandLine;
 
-var builder = Host.CreateApplicationBuilder(args);
+HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 var projectRoot = Lopen.ProjectRootDiscovery.FindProjectRoot(Directory.GetCurrentDirectory());
 
+// Check if running in headless mode before registering services
+bool isHeadless = args.Contains("--headless") || args.Contains("-q");
+
 builder.Services.AddLopenConfiguration();
 builder.Services.AddLopenAuth();
-builder.Services.AddSingleton<IGitHubTokenProvider, Lopen.AuthBridgeTokenProvider>();
+
+// Register TUI before Core so TuiOutputRenderer takes precedence over HeadlessRenderer
+// via TryAddSingleton<IOutputRenderer> in Core.
+if (!isHeadless)
+{
+    builder.Services.AddLopenTui();
+}
+
 builder.Services.AddLopenCore(projectRoot);
 builder.Services.AddLopenStorage(projectRoot);
 if (projectRoot is not null)
@@ -24,19 +34,11 @@ if (projectRoot is not null)
     builder.Services.AddSingleton<ISessionStateSaver, Lopen.SessionStateSaverBridge>();
 }
 builder.Services.AddLopenLlm();
-builder.Services.AddLopenTui();
-builder.Services.UseRealTui();
-builder.Services.AddTopPanelDataProvider();
-builder.Services.AddContextPanelDataProvider();
-builder.Services.AddActivityPanelDataProvider();
-builder.Services.AddUserPromptQueue();
-builder.Services.AddSessionDetector();
-builder.Services.AddTuiOutputRenderer();
-builder.Services.AddLopenOtel(builder.Configuration);
+builder.Services.AddLopenOtel(builder.Configuration, args);
 
-using var host = builder.Build();
+using IHost host = builder.Build();
 
-var rootCommand = new RootCommand("Lopen — AI-powered software engineering workflow");
+RootCommand rootCommand = new("Lopen — AI-powered software engineering workflow");
 GlobalOptions.AddTo(rootCommand);
 
 RootCommandHandler.Configure(host.Services)(rootCommand);
@@ -48,8 +50,6 @@ rootCommand.Add(RevertCommand.Create(host.Services));
 rootCommand.Add(PhaseCommands.CreateSpec(host.Services));
 rootCommand.Add(PhaseCommands.CreatePlan(host.Services));
 rootCommand.Add(PhaseCommands.CreateBuild(host.Services));
-rootCommand.Add(TestCommand.Create(host.Services));
+rootCommand.Add(TuiCommand.Create(host.Services));
 
-var config = new CommandLineConfiguration(rootCommand);
-
-return await config.InvokeAsync(args);
+return await rootCommand.Parse(args).InvokeAsync();

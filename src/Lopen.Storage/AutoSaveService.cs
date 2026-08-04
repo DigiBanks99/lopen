@@ -31,7 +31,7 @@ internal sealed class AutoSaveService : IAutoSaveService
 
         try
         {
-            var updatedState = state with { UpdatedAt = DateTimeOffset.UtcNow };
+            SessionState updatedState = state with { UpdatedAt = DateTimeOffset.UtcNow };
             await _sessionManager.SaveSessionStateAsync(sessionId, updatedState, cancellationToken);
 
             if (metrics is not null)

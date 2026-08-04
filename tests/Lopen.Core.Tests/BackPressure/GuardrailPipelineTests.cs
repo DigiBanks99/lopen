@@ -10,7 +10,7 @@ public class GuardrailPipelineTests
         var pipeline = new GuardrailPipeline([]);
         var context = new GuardrailContext("auth", null, 1, 0);
 
-        var results = await pipeline.EvaluateAsync(context);
+        IReadOnlyList<GuardrailResult> results = await pipeline.EvaluateAsync(context);
 
         Assert.Empty(results);
     }
@@ -22,7 +22,7 @@ public class GuardrailPipelineTests
         var pipeline = new GuardrailPipeline([guardrail]);
         var context = new GuardrailContext("auth", null, 1, 0);
 
-        var results = await pipeline.EvaluateAsync(context);
+        IReadOnlyList<GuardrailResult> results = await pipeline.EvaluateAsync(context);
 
         Assert.Single(results);
         Assert.IsType<GuardrailResult.Pass>(results[0]);
@@ -37,7 +37,7 @@ public class GuardrailPipelineTests
         var pipeline = new GuardrailPipeline([g3, g1, g2]); // out of order
         var context = new GuardrailContext("auth", null, 1, 0);
 
-        var results = await pipeline.EvaluateAsync(context);
+        IReadOnlyList<GuardrailResult> results = await pipeline.EvaluateAsync(context);
 
         Assert.Equal(3, results.Count);
         Assert.IsType<GuardrailResult.Pass>(results[0]);
@@ -54,7 +54,7 @@ public class GuardrailPipelineTests
         var pipeline = new GuardrailPipeline([g1, g2, g3]);
         var context = new GuardrailContext("auth", null, 1, 0);
 
-        var results = await pipeline.EvaluateAsync(context);
+        IReadOnlyList<GuardrailResult> results = await pipeline.EvaluateAsync(context);
 
         Assert.Equal(2, results.Count);
         Assert.IsType<GuardrailResult.Pass>(results[0]);
@@ -69,7 +69,7 @@ public class GuardrailPipelineTests
         var pipeline = new GuardrailPipeline([g1, g2]);
         var context = new GuardrailContext("auth", null, 1, 0);
 
-        var results = await pipeline.EvaluateAsync(context);
+        IReadOnlyList<GuardrailResult> results = await pipeline.EvaluateAsync(context);
 
         Assert.Equal(2, results.Count);
     }

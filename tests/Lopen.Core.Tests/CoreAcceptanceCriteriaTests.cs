@@ -28,7 +28,7 @@ public class CoreAcceptanceCriteriaTests
         fs.AddFile("/project/docs/requirements/llm/SPECIFICATION.md", "# LLM Module");
 
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, "/project");
-        var modules = scanner.ScanModules();
+        IReadOnlyList<ModuleInfo> modules = scanner.ScanModules();
 
         Assert.Equal(2, modules.Count);
         Assert.Contains(modules, m => m.Name == "auth" && m.HasSpecification);
@@ -74,9 +74,10 @@ public class CoreAcceptanceCriteriaTests
 
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, "/project");
         var assessor = new CodebaseStateAssessor(
-            fs, scanner, NullLogger<CodebaseStateAssessor>.Instance);
+            fs, scanner, "/project", NullLogger<CodebaseStateAssessor>.Instance);
 
-        var step = await assessor.GetCurrentStepAsync("auth");
+        WorkflowAssessment assessment = await assessor.AssessAsync("auth");
+        WorkflowStep step = assessment.Step;
         // Has spec with incomplete checkboxes = in progress (not DraftSpecification, not Repeat)
         Assert.NotEqual(WorkflowStep.DraftSpecification, step);
     }
@@ -90,7 +91,7 @@ public class CoreAcceptanceCriteriaTests
         var hasher = new XxHashContentHasher();
         var detector = new DriftDetector(parser, hasher, NullLogger<DriftDetector>.Instance);
 
-        var cache = new[]
+        CachedSection[] cache = new[]
         {
             new CachedSection("spec.md", "Overview", "Original content\n",
                 hasher.ComputeHash("Original content\n"), DateTimeOffset.UtcNow),
@@ -99,7 +100,7 @@ public class CoreAcceptanceCriteriaTests
         };
 
         var changed = "# Overview\nModified content\n# Auth\nAuth section";
-        var drift = detector.DetectDrift("spec.md", changed, cache);
+        IReadOnlyList<DriftResult> drift = detector.DetectDrift("spec.md", changed, cache);
 
         Assert.Contains(drift, d => d.Header == "Overview");
     }
@@ -200,7 +201,7 @@ public class CoreAcceptanceCriteriaTests
             hasPassingVerification: _ => false);
 
         var ctx = new GuardrailContext("auth", "build-jwt", 1, 1);
-        var result = await guardrail.EvaluateAsync(ctx);
+        GuardrailResult result = await guardrail.EvaluateAsync(ctx);
         Assert.IsType<GuardrailResult.Block>(result);
     }
 
@@ -212,7 +213,7 @@ public class CoreAcceptanceCriteriaTests
             hasPassingVerification: _ => true);
 
         var ctx = new GuardrailContext("auth", "build-jwt", 1, 1);
-        var result = await guardrail.EvaluateAsync(ctx);
+        GuardrailResult result = await guardrail.EvaluateAsync(ctx);
         Assert.IsType<GuardrailResult.Pass>(result);
     }
 
@@ -230,7 +231,7 @@ public class CoreAcceptanceCriteriaTests
             blockThreshold: 0.9);
 
         var ctx = new GuardrailContext("auth", null, 1, 1);
-        var result = await guardrail.EvaluateAsync(ctx);
+        GuardrailResult result = await guardrail.EvaluateAsync(ctx);
         Assert.IsType<GuardrailResult.Warn>(result);
     }
 
@@ -241,13 +242,13 @@ public class CoreAcceptanceCriteriaTests
     {
         var guardrail = new ChurnDetectionGuardrail(failureThreshold: 3);
 
-        var r1 = await guardrail.EvaluateAsync(new GuardrailContext("auth", "failing-task", 1, 1));
+        GuardrailResult r1 = await guardrail.EvaluateAsync(new GuardrailContext("auth", "failing-task", 1, 1));
         Assert.IsType<GuardrailResult.Pass>(r1);
 
-        var r2 = await guardrail.EvaluateAsync(new GuardrailContext("auth", "failing-task", 2, 1));
+        GuardrailResult r2 = await guardrail.EvaluateAsync(new GuardrailContext("auth", "failing-task", 2, 1));
         Assert.IsType<GuardrailResult.Warn>(r2);
 
-        var r3 = await guardrail.EvaluateAsync(new GuardrailContext("auth", "failing-task", 3, 1));
+        GuardrailResult r3 = await guardrail.EvaluateAsync(new GuardrailContext("auth", "failing-task", 3, 1));
         Assert.IsType<GuardrailResult.Block>(r3);
     }
 
@@ -261,7 +262,7 @@ public class CoreAcceptanceCriteriaTests
             hasPassingVerification: _ => false);
 
         var ctx = new GuardrailContext("auth", "fake-complete", 1, 1);
-        var result = await guardrail.EvaluateAsync(ctx);
+        GuardrailResult result = await guardrail.EvaluateAsync(ctx);
 
         Assert.IsType<GuardrailResult.Block>(result);
         var block = (GuardrailResult.Block)result;
@@ -278,7 +279,7 @@ public class CoreAcceptanceCriteriaTests
             hasPassingVerification: _ => false);
 
         var ctx = new GuardrailContext("auth-module", null, 1, 1);
-        var result = await guardrail.EvaluateAsync(ctx);
+        GuardrailResult result = await guardrail.EvaluateAsync(ctx);
         Assert.IsType<GuardrailResult.Block>(result);
     }
 
@@ -289,7 +290,7 @@ public class CoreAcceptanceCriteriaTests
     {
         var guardrail = new ToolDisciplineGuardrail(toolCallThreshold: 5);
         var ctx = new GuardrailContext("auth", null, 1, 10);
-        var result = await guardrail.EvaluateAsync(ctx);
+        GuardrailResult result = await guardrail.EvaluateAsync(ctx);
 
         Assert.IsType<GuardrailResult.Warn>(result);
     }
@@ -327,7 +328,7 @@ public class CoreAcceptanceCriteriaTests
         var service = new RevertService(
             gitService, gitOptions, NullLogger<RevertService>.Instance);
 
-        var result = await service.RevertToCommitAsync("abc123");
+        RevertResult result = await service.RevertToCommitAsync("abc123");
         Assert.True(result.Success);
     }
 
@@ -339,7 +340,7 @@ public class CoreAcceptanceCriteriaTests
         var service = new RevertService(
             gitService, gitOptions, NullLogger<RevertService>.Instance);
 
-        var result = await service.RevertToCommitAsync("abc123");
+        RevertResult result = await service.RevertToCommitAsync("abc123");
         Assert.False(result.Success);
     }
 
@@ -352,7 +353,7 @@ public class CoreAcceptanceCriteriaTests
         var extractor = new SectionExtractor(parser, NullLogger<SectionExtractor>.Instance);
 
         var content = "# Overview\nThis is overview.\n# Authentication\nAuth details.\n# API\nAPI docs.";
-        var sections = extractor.ExtractRelevantSections(content, ["Authentication"]);
+        IReadOnlyList<ExtractedSection> sections = extractor.ExtractRelevantSections(content, ["Authentication"]);
 
         Assert.Single(sections);
         Assert.Contains("Auth details", sections[0].Content);
@@ -372,7 +373,7 @@ public class CoreAcceptanceCriteriaTests
     public void AC20_MarkdownUpdater_CountsCheckboxes()
     {
         var content = "- [ ] task1\n- [x] task2\n- [x] task3";
-        var (total, completed) = MarkdownUpdater.CountCheckboxes(content);
+        (int total, int completed) = MarkdownUpdater.CountCheckboxes(content);
         Assert.Equal(3, total);
         Assert.Equal(2, completed);
     }
@@ -383,7 +384,7 @@ public class CoreAcceptanceCriteriaTests
     public void AC21_SingleFailure_ReturnsSelfCorrect()
     {
         var handler = new FailureHandler(NullLogger<FailureHandler>.Instance);
-        var result = handler.RecordFailure("task-1", "Build failed");
+        FailureClassification result = handler.RecordFailure("task-1", "Build failed");
 
         Assert.Equal(FailureSeverity.TaskFailure, result.Severity);
         Assert.Equal(FailureAction.SelfCorrect, result.Action);
@@ -397,7 +398,7 @@ public class CoreAcceptanceCriteriaTests
         var handler = new FailureHandler(NullLogger<FailureHandler>.Instance, failureThreshold: 3);
         handler.RecordFailure("task-1", "fail 1");
         handler.RecordFailure("task-1", "fail 2");
-        var result = handler.RecordFailure("task-1", "fail 3");
+        FailureClassification result = handler.RecordFailure("task-1", "fail 3");
 
         Assert.Equal(FailureSeverity.RepeatedFailure, result.Severity);
         Assert.Equal(FailureAction.PromptUser, result.Action);
@@ -409,7 +410,7 @@ public class CoreAcceptanceCriteriaTests
     public void AC23_CriticalError_BlocksExecution()
     {
         var handler = new FailureHandler(NullLogger<FailureHandler>.Instance);
-        var result = handler.RecordCriticalError("Disk full");
+        FailureClassification result = handler.RecordCriticalError("Disk full");
 
         Assert.Equal(FailureSeverity.Critical, result.Severity);
         Assert.Equal(FailureAction.Block, result.Action);
@@ -450,7 +451,7 @@ public class CoreAcceptanceCriteriaTests
 
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, "/project");
         var lister = new ModuleLister(scanner, fs, NullLogger<ModuleLister>.Instance);
-        var modules = lister.ListModules();
+        IReadOnlyList<ModuleState> modules = lister.ListModules();
 
         Assert.Equal(2, modules.Count);
         Assert.Contains(modules, m => m.Name == "auth" && m.Status == ModuleStatus.Complete);
@@ -464,17 +465,8 @@ public class CoreAcceptanceCriteriaTests
         private readonly WorkflowStep _step;
         public FakeStateAssessor(WorkflowStep step) => _step = step;
 
-        public Task<WorkflowStep> GetCurrentStepAsync(string moduleName, CancellationToken ct = default)
-            => Task.FromResult(_step);
-
-        public Task PersistStepAsync(string moduleName, WorkflowStep step, CancellationToken ct = default)
-            => Task.CompletedTask;
-
-        public Task<bool> IsSpecReadyAsync(string moduleName, CancellationToken ct = default)
-            => Task.FromResult(true);
-
-        public Task<bool> HasMoreComponentsAsync(string moduleName, CancellationToken ct = default)
-            => Task.FromResult(true);
+        public Task<WorkflowAssessment> AssessAsync(string moduleName, CancellationToken ct = default) =>
+            Task.FromResult(new WorkflowAssessment(_step, IsSpecReady: true, HasMoreComponents: true));
     }
 
     private sealed class FakeTokenTracker : ITokenTracker

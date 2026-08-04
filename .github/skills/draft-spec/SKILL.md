@@ -3,16 +3,16 @@ name: draft-spec
 description: Draft a well-written module specification following the Lopen specification pattern.
 ---
 
-Draft a module specification that follows the canonical Lopen specification pattern. The result must be a complete, well-structured `SPECIFICATION.md` ready for human review.
+Draft a module specification that follows the canonical Lopen specification pattern. The result must be a complete, well-structured markdown document stored as a module in `lopen-memory` ready for human review.
 
 ## Instructions
 
 1. Identify the module name and its high-level purpose from the user's input or conversation context.
 2. Interview the user to gather requirements if the input is vague. Ask focused, one-at-a-time questions.
-3. Create the specification file at `docs/requirements/<module>/SPECIFICATION.md`.
+3. Create the specification as a module in `lopen-memory`.
 4. Follow the **Required Structure** below exactly.
 5. Write acceptance criteria as concrete, verifiable conditions — not vague aspirations.
-6. Identify dependencies on other modules (check `docs/requirements/` subfolders) and external libraries.
+6. Identify dependencies on other modules (check `lopen-memory`) and external libraries.
 7. Define skills and hooks that are specific to this module's verification needs.
 
 ## Required Structure

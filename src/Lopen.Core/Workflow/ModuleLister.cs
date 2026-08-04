@@ -26,12 +26,12 @@ internal sealed class ModuleLister : IModuleLister
 
     public IReadOnlyList<ModuleState> ListModules()
     {
-        var modules = _scanner.ScanModules();
+        IReadOnlyList<ModuleInfo> modules = _scanner.ScanModules();
         var result = new List<ModuleState>(modules.Count);
 
-        foreach (var module in modules)
+        foreach (ModuleInfo module in modules)
         {
-            var state = DetermineState(module);
+            ModuleState state = DetermineState(module);
             result.Add(state);
         }
 
@@ -49,9 +49,9 @@ internal sealed class ModuleLister : IModuleLister
         try
         {
             var content = _fileSystem.ReadAllTextAsync(module.SpecificationPath).GetAwaiter().GetResult();
-            var (total, completed) = MarkdownUpdater.CountCheckboxes(content);
+            (int total, int completed) = MarkdownUpdater.CountCheckboxes(content);
 
-            var status = total == 0
+            ModuleStatus status = total == 0
                 ? ModuleStatus.NotStarted
                 : completed == total
                     ? ModuleStatus.Complete

@@ -15,28 +15,28 @@ public sealed class WorkflowEngineTests
     [Fact]
     public void InitialStep_IsDraftSpecification()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         Assert.Equal(WorkflowStep.DraftSpecification, engine.CurrentStep);
     }
 
     [Fact]
     public void InitialPhase_IsRequirementGathering()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         Assert.Equal(WorkflowPhase.RequirementGathering, engine.CurrentPhase);
     }
 
     [Fact]
     public void IsComplete_InitiallyFalse()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         Assert.False(engine.IsComplete);
     }
 
     [Fact]
     public void Fire_SpecApproved_TransitionsToDetermineDependencies()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         var result = engine.Fire(WorkflowTrigger.SpecApproved);
 
         Assert.True(result);
@@ -46,7 +46,7 @@ public sealed class WorkflowEngineTests
     [Fact]
     public void Fire_FullPath_DraftToRepeat()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
 
         Assert.True(engine.Fire(WorkflowTrigger.SpecApproved));
         Assert.Equal(WorkflowStep.DetermineDependencies, engine.CurrentStep);
@@ -70,7 +70,7 @@ public sealed class WorkflowEngineTests
     [Fact]
     public void Fire_TaskIterationReentry()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         engine.Fire(WorkflowTrigger.SpecApproved);
         engine.Fire(WorkflowTrigger.DependenciesDetermined);
         engine.Fire(WorkflowTrigger.ComponentsIdentified);
@@ -87,7 +87,7 @@ public sealed class WorkflowEngineTests
     [Fact]
     public void Fire_RepeatBackToSelect()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         engine.Fire(WorkflowTrigger.SpecApproved);
         engine.Fire(WorkflowTrigger.DependenciesDetermined);
         engine.Fire(WorkflowTrigger.ComponentsIdentified);
@@ -105,7 +105,7 @@ public sealed class WorkflowEngineTests
     [Fact]
     public void Fire_ModuleComplete_FromSelect_SetsIsComplete()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         engine.Fire(WorkflowTrigger.SpecApproved);
         engine.Fire(WorkflowTrigger.DependenciesDetermined);
         engine.Fire(WorkflowTrigger.ComponentsIdentified);
@@ -118,7 +118,7 @@ public sealed class WorkflowEngineTests
     [Fact]
     public void Fire_InvalidTrigger_ReturnsFalse()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         var result = engine.Fire(WorkflowTrigger.ComponentSelected);
 
         Assert.False(result);
@@ -128,8 +128,8 @@ public sealed class WorkflowEngineTests
     [Fact]
     public void GetPermittedTriggers_AtDraft_ReturnsSpecApproved()
     {
-        var engine = CreateEngine();
-        var triggers = engine.GetPermittedTriggers();
+        WorkflowEngine engine = CreateEngine();
+        IReadOnlyList<WorkflowTrigger> triggers = engine.GetPermittedTriggers();
 
         Assert.Single(triggers);
         Assert.Contains(WorkflowTrigger.SpecApproved, triggers);
@@ -138,12 +138,12 @@ public sealed class WorkflowEngineTests
     [Fact]
     public void GetPermittedTriggers_AtSelect_ReturnsComponentSelectedAndModuleComplete()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         engine.Fire(WorkflowTrigger.SpecApproved);
         engine.Fire(WorkflowTrigger.DependenciesDetermined);
         engine.Fire(WorkflowTrigger.ComponentsIdentified);
 
-        var triggers = engine.GetPermittedTriggers();
+        IReadOnlyList<WorkflowTrigger> triggers = engine.GetPermittedTriggers();
 
         Assert.Equal(2, triggers.Count);
         Assert.Contains(WorkflowTrigger.ComponentSelected, triggers);
@@ -153,14 +153,14 @@ public sealed class WorkflowEngineTests
     [Fact]
     public void GetPermittedTriggers_AtIterate_ReturnsComponentCompleteAndTaskIteration()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         engine.Fire(WorkflowTrigger.SpecApproved);
         engine.Fire(WorkflowTrigger.DependenciesDetermined);
         engine.Fire(WorkflowTrigger.ComponentsIdentified);
         engine.Fire(WorkflowTrigger.ComponentSelected);
         engine.Fire(WorkflowTrigger.TasksBrokenDown);
 
-        var triggers = engine.GetPermittedTriggers();
+        IReadOnlyList<WorkflowTrigger> triggers = engine.GetPermittedTriggers();
 
         Assert.Equal(2, triggers.Count);
         Assert.Contains(WorkflowTrigger.ComponentComplete, triggers);
@@ -182,7 +182,7 @@ public sealed class WorkflowEngineTests
     [Fact]
     public async Task InitializeAsync_NullModule_Throws()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         await Assert.ThrowsAsync<ArgumentNullException>(
             () => engine.InitializeAsync(null!));
     }
@@ -190,7 +190,7 @@ public sealed class WorkflowEngineTests
     [Fact]
     public async Task InitializeAsync_EmptyModule_Throws()
     {
-        var engine = CreateEngine();
+        WorkflowEngine engine = CreateEngine();
         await Assert.ThrowsAsync<ArgumentException>(
             () => engine.InitializeAsync(""));
     }
@@ -231,16 +231,7 @@ public sealed class WorkflowEngineTests
 
         public FakeStateAssessor(WorkflowStep step) => _step = step;
 
-        public Task<WorkflowStep> GetCurrentStepAsync(string moduleName, CancellationToken cancellationToken = default)
-            => Task.FromResult(_step);
-
-        public Task PersistStepAsync(string moduleName, WorkflowStep step, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
-
-        public Task<bool> IsSpecReadyAsync(string moduleName, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
-
-        public Task<bool> HasMoreComponentsAsync(string moduleName, CancellationToken cancellationToken = default)
-            => Task.FromResult(false);
+        public Task<WorkflowAssessment> AssessAsync(string moduleName, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new WorkflowAssessment(_step, IsSpecReady: true, HasMoreComponents: false));
     }
 }

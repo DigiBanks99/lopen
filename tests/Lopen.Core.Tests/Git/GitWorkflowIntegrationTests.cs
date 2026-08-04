@@ -1,6 +1,7 @@
 using Lopen.Configuration;
 using Lopen.Core.Git;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics;
 
 namespace Lopen.Core.Tests.Git;
 
@@ -35,9 +36,9 @@ public sealed class GitWorkflowIntegrationTests : IDisposable
         // Make a file change so there's something to commit
         await File.WriteAllTextAsync(Path.Combine(repoDir, "hello.txt"), "world");
 
-        var (workflow, _) = CreateWorkflowService(repoDir);
+        (GitWorkflowService? workflow, GitCliService _) = CreateWorkflowService(repoDir);
 
-        var result = await workflow.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
+        GitResult? result = await workflow.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
 
         Assert.NotNull(result);
         Assert.True(result!.Success);
@@ -55,9 +56,9 @@ public sealed class GitWorkflowIntegrationTests : IDisposable
         await File.WriteAllTextAsync(Path.Combine(repoDir, "hello.txt"), "world");
 
         var options = new GitOptions { Enabled = true, AutoCommit = false };
-        var (workflow, _) = CreateWorkflowService(repoDir, options);
+        (GitWorkflowService? workflow, GitCliService _) = CreateWorkflowService(repoDir, options);
 
-        var result = await workflow.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
+        GitResult? result = await workflow.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
 
         Assert.Null(result);
 
@@ -72,9 +73,9 @@ public sealed class GitWorkflowIntegrationTests : IDisposable
         var repoDir = CreateTempGitRepo();
 
         // No file changes — working tree is clean
-        var (workflow, _) = CreateWorkflowService(repoDir);
+        (GitWorkflowService? workflow, GitCliService _) = CreateWorkflowService(repoDir);
 
-        var result = await workflow.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
+        GitResult? result = await workflow.CommitTaskCompletionAsync("auth", "login", "implement-jwt");
 
         // Should return a result (not null, since auto-commit is enabled) but git commit
         // exits non-zero when there's nothing to commit.
@@ -110,7 +111,7 @@ public sealed class GitWorkflowIntegrationTests : IDisposable
             NullLogger<GitCliService>.Instance,
             workingDirectory);
 
-        var gitOptions = options ?? new GitOptions();
+        GitOptions gitOptions = options ?? new GitOptions();
 
         var workflow = new GitWorkflowService(
             gitService,
@@ -133,7 +134,7 @@ public sealed class GitWorkflowIntegrationTests : IDisposable
             CreateNoWindow = true,
         };
 
-        using var process = System.Diagnostics.Process.Start(psi)
+        using Process process = System.Diagnostics.Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start git");
         process.WaitForExit();
 
@@ -157,7 +158,7 @@ public sealed class GitWorkflowIntegrationTests : IDisposable
             CreateNoWindow = true,
         };
 
-        using var process = System.Diagnostics.Process.Start(psi)
+        using Process process = System.Diagnostics.Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start git");
 
         var stdout = await process.StandardOutput.ReadToEndAsync();

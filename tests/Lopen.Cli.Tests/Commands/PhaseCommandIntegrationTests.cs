@@ -1,8 +1,8 @@
-using System.CommandLine;
 using Lopen.Commands;
 using Lopen.Core.Workflow;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -56,7 +56,7 @@ public class PhaseCommandIntegrationTests
         if (registerOrchestrator && orchestrator is not null)
             services.AddSingleton<IWorkflowOrchestrator>(orchestrator);
 
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         var output = new StringWriter();
         var error = new StringWriter();
 
@@ -75,9 +75,9 @@ public class PhaseCommandIntegrationTests
     public async Task Spec_OrchestratorFailure_ReturnsErrorExitCode()
     {
         var orchestrator = new ThrowingOrchestrator(new InvalidOperationException("LLM service unavailable"));
-        var (config, _, error) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator);
 
-        var exitCode = await config.InvokeAsync(["spec"]);
+        var exitCode = await config.InvokeAsync(["spec", "--resume", Session1.ToString()]);
 
         Assert.Equal(ExitCodes.Failure, exitCode);
         Assert.Contains("LLM service unavailable", error.ToString());
@@ -88,9 +88,9 @@ public class PhaseCommandIntegrationTests
     {
         var orchestrator = new ConfigurableOrchestrator(
             OrchestrationResult.Interrupted(1, WorkflowStep.DraftSpecification, "User input needed"));
-        var (config, output, _) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig(orchestrator);
 
-        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", "test"]);
+        var exitCode = await config.InvokeAsync(["spec", "--headless", "--prompt", "test", "--resume", Session1.ToString()]);
 
         Assert.Equal(ExitCodes.UserInterventionRequired, exitCode);
         Assert.Contains("interrupted", output.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -103,9 +103,9 @@ public class PhaseCommandIntegrationTests
     {
         var orchestrator = new ConfigurableOrchestrator(
             OrchestrationResult.Completed(1, WorkflowStep.DraftSpecification, "Done"));
-        var (config, _, _) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator);
 
-        await config.InvokeAsync(["plan", "--prompt", "Focus on security"]);
+        await config.InvokeAsync(["plan", "--resume", Session1.ToString(), "--prompt", "Focus on security"]);
 
         Assert.Equal("Focus on security", orchestrator.LastPrompt);
         Assert.Equal("auth", orchestrator.LastModule);
@@ -115,9 +115,9 @@ public class PhaseCommandIntegrationTests
     public async Task Plan_OrchestratorFailure_ReturnsErrorExitCode()
     {
         var orchestrator = new ThrowingOrchestrator(new InvalidOperationException("Plan generation failed"));
-        var (config, _, error) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator);
 
-        var exitCode = await config.InvokeAsync(["plan"]);
+        var exitCode = await config.InvokeAsync(["plan", "--resume", Session1.ToString()]);
 
         Assert.Equal(ExitCodes.Failure, exitCode);
         Assert.Contains("Plan generation failed", error.ToString());
@@ -130,9 +130,9 @@ public class PhaseCommandIntegrationTests
     {
         var orchestrator = new ConfigurableOrchestrator(
             OrchestrationResult.Completed(1, WorkflowStep.DraftSpecification, "Done"));
-        var (config, _, _) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateConfig(orchestrator);
 
-        await config.InvokeAsync(["build", "--prompt", "Skip tests"]);
+        await config.InvokeAsync(["build", "--resume", Session1.ToString(), "--prompt", "Skip tests"]);
 
         Assert.Equal("Skip tests", orchestrator.LastPrompt);
         Assert.Equal("auth", orchestrator.LastModule);
@@ -142,9 +142,9 @@ public class PhaseCommandIntegrationTests
     public async Task Build_OrchestratorFailure_ReturnsErrorExitCode()
     {
         var orchestrator = new ThrowingOrchestrator(new InvalidOperationException("Build step crashed"));
-        var (config, _, error) = CreateConfig(orchestrator);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator);
 
-        var exitCode = await config.InvokeAsync(["build"]);
+        var exitCode = await config.InvokeAsync(["build", "--resume", Session1.ToString()]);
 
         Assert.Equal(ExitCodes.Failure, exitCode);
         Assert.Contains("Build step crashed", error.ToString());
@@ -158,7 +158,7 @@ public class PhaseCommandIntegrationTests
     [InlineData("build")]
     public async Task AllPhaseCommands_NullOrchestrator_ReturnsFailure(string command)
     {
-        var (config, _, error) = CreateConfig(orchestrator: null, registerOrchestrator: false);
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig(orchestrator: null, registerOrchestrator: false);
 
         var exitCode = await config.InvokeAsync([command]);
 
@@ -182,6 +182,11 @@ public class PhaseCommandIntegrationTests
 
         public Task<StepResult> RunStepAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
             => throw _exception;
+
+        public string? ActiveModule => null;
+
+        public Task InitializeAsync(string moduleName, SessionId? resumeSessionId = null, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 
     /// <summary>
@@ -209,5 +214,10 @@ public class PhaseCommandIntegrationTests
             LastPrompt = userPrompt;
             return Task.FromResult(StepResult.Succeeded(WorkflowTrigger.Assess, "Done"));
         }
+
+        public string? ActiveModule => null;
+
+        public Task InitializeAsync(string moduleName, SessionId? resumeSessionId = null, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 }

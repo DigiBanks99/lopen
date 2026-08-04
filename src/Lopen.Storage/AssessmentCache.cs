@@ -1,7 +1,7 @@
+using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 
 namespace Lopen.Storage;
 
@@ -44,7 +44,7 @@ public sealed class AssessmentCache : IAssessmentCache
         try
         {
             var json = await _fileSystem.ReadAllTextAsync(diskPath, cancellationToken);
-            var entry = JsonSerializer.Deserialize<AssessmentCacheEntry>(json, JsonOptions);
+            AssessmentCacheEntry? entry = JsonSerializer.Deserialize<AssessmentCacheEntry>(json, JsonOptions);
 
             if (entry is not null && IsValid(entry))
                 return entry;
@@ -116,9 +116,9 @@ public sealed class AssessmentCache : IAssessmentCache
 
     private bool IsValid(AssessmentCacheEntry entry)
     {
-        foreach (var (filePath, cachedTimestamp) in entry.FileTimestamps)
+        foreach ((string? filePath, DateTime cachedTimestamp) in entry.FileTimestamps)
         {
-            var currentTimestamp = _fileSystem.GetLastWriteTimeUtc(filePath);
+            DateTime currentTimestamp = _fileSystem.GetLastWriteTimeUtc(filePath);
             if (currentTimestamp != cachedTimestamp)
                 return false;
         }
@@ -139,9 +139,9 @@ public sealed class AssessmentCache : IAssessmentCache
             if (_fileSystem.FileExists(path))
                 _fileSystem.DeleteFile(path);
         }
-        catch (IOException)
+        catch (IOException ex)
         {
-            // Best effort cleanup
+            _logger.LogDebug(ex, "Best-effort cache cleanup failed for {Path}", path);
         }
     }
 }

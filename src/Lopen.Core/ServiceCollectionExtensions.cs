@@ -2,8 +2,10 @@ using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
-using Lopen.Core.ToolHandlers;
 using Lopen.Core.Workflow;
+using Lopen.Llm;
+using Lopen.Llm.Tools;
+using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -37,87 +39,24 @@ public static class ServiceCollectionExtensions
                     projectRoot));
             services.AddSingleton<IModuleLister, ModuleLister>();
             services.AddSingleton<IModuleSelectionService, ModuleSelectionService>();
-            services.AddSingleton<IStateAssessor, CodebaseStateAssessor>();
+            services.AddSingleton<CodebaseStateAssessor>(sp =>
+                new CodebaseStateAssessor(
+                    sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
+                    sp.GetRequiredService<IModuleScanner>(),
+                    projectRoot,
+                    sp.GetRequiredService<ILogger<CodebaseStateAssessor>>()));
+            services.AddSingleton<IStateAssessor>(sp => sp.GetRequiredService<CodebaseStateAssessor>());
+            services.AddSingleton<IStepRecorder>(sp => sp.GetRequiredService<CodebaseStateAssessor>());
             services.AddSingleton<IWorkflowEngine, WorkflowEngine>();
             services.AddSingleton<IFailureHandler>(sp =>
             {
-                var workflowOptions = sp.GetService<WorkflowOptions>();
+                WorkflowOptions? workflowOptions = sp.GetService<WorkflowOptions>();
                 var threshold = workflowOptions?.FailureThreshold ?? 3;
                 return new FailureHandler(
                     sp.GetRequiredService<ILogger<FailureHandler>>(),
                     threshold);
             });
-            services.AddSingleton<IWorkflowOrchestrator>(sp =>
-            {
-                Git.IGitWorkflowService? gitService = null;
-                try
-                { gitService = sp.GetService<Git.IGitWorkflowService>(); }
-                catch { /* Git service optional — dependencies may not be registered */ }
-
-                Lopen.Storage.IAutoSaveService? autoSave = null;
-                try
-                { autoSave = sp.GetService<Lopen.Storage.IAutoSaveService>(); }
-                catch { /* Auto-save optional */ }
-
-                Lopen.Storage.ISessionManager? sessionMgr = null;
-                try
-                { sessionMgr = sp.GetService<Lopen.Storage.ISessionManager>(); }
-                catch { /* Session manager optional */ }
-
-                Lopen.Llm.ITokenTracker? tokenTracker = null;
-                try
-                { tokenTracker = sp.GetService<Lopen.Llm.ITokenTracker>(); }
-                catch { /* Token tracker optional */ }
-
-                IFailureHandler? failureHandler = null;
-                try
-                { failureHandler = sp.GetService<IFailureHandler>(); }
-                catch { /* Failure handler optional */ }
-
-                Lopen.Configuration.IBudgetEnforcer? budgetEnforcer = null;
-                try
-                { budgetEnforcer = sp.GetService<Lopen.Configuration.IBudgetEnforcer>(); }
-                catch { /* Budget enforcer optional */ }
-
-                Lopen.Storage.IPlanManager? planMgr = null;
-                try
-                { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
-                catch { /* Plan manager optional */ }
-
-                IPauseController? pauseCtrl = null;
-                try
-                { pauseCtrl = sp.GetService<IPauseController>(); }
-                catch { /* Pause controller optional */ }
-
-                IToolHandlerBinder? toolBinder = null;
-                try
-                { toolBinder = sp.GetService<IToolHandlerBinder>(); }
-                catch { /* Tool handler binder optional */ }
-
-                return new WorkflowOrchestrator(
-                    sp.GetRequiredService<IWorkflowEngine>(),
-                    sp.GetRequiredService<IStateAssessor>(),
-                    sp.GetRequiredService<Lopen.Llm.ILlmService>(),
-                    sp.GetRequiredService<Lopen.Llm.IPromptBuilder>(),
-                    sp.GetRequiredService<Lopen.Llm.IToolRegistry>(),
-                    sp.GetRequiredService<Lopen.Llm.IModelSelector>(),
-                    sp.GetRequiredService<BackPressure.IGuardrailPipeline>(),
-                    sp.GetRequiredService<IOutputRenderer>(),
-                    sp.GetRequiredService<IPhaseTransitionController>(),
-                    sp.GetRequiredService<ISpecificationDriftService>(),
-                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<WorkflowOrchestrator>>(),
-                    gitService,
-                    autoSave,
-                    sessionMgr,
-                    tokenTracker,
-                    failureHandler,
-                    budgetEnforcer,
-                    planMgr,
-                    pauseCtrl,
-                    sp.GetService<IUserPromptQueue>(),
-                    toolBinder,
-                    sp.GetService<WorkflowOptions>());
-            });
+            services.AddSingleton<IWorkflowOrchestrator, WorkflowOrchestrator>();
             services.AddSingleton<IPauseController, PauseController>();
             services.AddSingleton<ISpecificationDriftService, SpecificationDriftService>();
             services.AddSingleton<IResourceTracker>(sp =>
@@ -125,39 +64,38 @@ public static class ServiceCollectionExtensions
                     sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
                     projectRoot,
                     sp.GetRequiredService<ILogger<ResourceTracker>>()));
-            services.AddSingleton<IToolHandlerBinder>(sp =>
+
+            services.AddSingleton<ToolCatalog>(sp =>
             {
-                Git.IGitWorkflowService? gitSvc = null;
-                try
-                { gitSvc = sp.GetService<Git.IGitWorkflowService>(); }
-                catch { /* Git service optional */ }
+                IFileSystem fs = sp.GetRequiredService<Lopen.Storage.IFileSystem>();
+                ISectionExtractor sectionExtractor = sp.GetRequiredService<ISectionExtractor>();
+                IWorkflowEngine engine = sp.GetRequiredService<IWorkflowEngine>();
+                IVerificationTracker verificationTracker = sp.GetRequiredService<Lopen.Llm.IVerificationTracker>();
 
-                Lopen.Llm.ITaskStatusGate? taskGate = null;
-                try
-                { taskGate = sp.GetService<Lopen.Llm.ITaskStatusGate>(); }
-                catch { /* Task status gate optional */ }
+                Lopen.Llm.ITaskStatusGate? taskGateCatalog = null;
+                try { taskGateCatalog = sp.GetService<Lopen.Llm.ITaskStatusGate>(); }
+                catch { /* optional */ }
 
-                Lopen.Storage.IPlanManager? planMgr = null;
-                try
-                { planMgr = sp.GetService<Lopen.Storage.IPlanManager>(); }
-                catch { /* Plan manager optional */ }
+                Lopen.Storage.IPlanManager? planMgrCatalog = null;
+                try { planMgrCatalog = sp.GetService<Lopen.Storage.IPlanManager>(); }
+                catch { /* optional */ }
 
-                Lopen.Llm.IOracleVerifier? oracleVerifier = null;
-                try
-                { oracleVerifier = sp.GetService<Lopen.Llm.IOracleVerifier>(); }
-                catch { /* Oracle verifier optional */ }
+                Lopen.Llm.IOracleVerifier? oracleCatalog = null;
+                try { oracleCatalog = sp.GetService<Lopen.Llm.IOracleVerifier>(); }
+                catch { /* optional */ }
 
-                return new ToolHandlerBinder(
-                    sp.GetRequiredService<Lopen.Storage.IFileSystem>(),
-                    sp.GetRequiredService<ISectionExtractor>(),
-                    sp.GetRequiredService<IWorkflowEngine>(),
-                    sp.GetRequiredService<Lopen.Llm.IVerificationTracker>(),
-                    sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ToolHandlerBinder>>(),
+                var toolSectionExtractor = new SectionExtractorToolAdapter(sectionExtractor);
+                var toolWorkflowEngine = new WorkflowEngineToolAdapter(engine);
+
+                return new ToolCatalog(
+                    fs,
+                    toolSectionExtractor,
+                    toolWorkflowEngine,
+                    verificationTracker,
                     projectRoot,
-                    gitSvc,
-                    taskGate,
-                    planMgr,
-                    oracleVerifier);
+                    taskGateCatalog,
+                    planMgrCatalog,
+                    oracleCatalog);
             });
         }
 
@@ -170,14 +108,14 @@ public static class ServiceCollectionExtensions
         // Register guardrails
         services.AddSingleton<IGuardrail>(sp =>
         {
-            var options = sp.GetService<ToolDisciplineOptions>();
+            ToolDisciplineOptions? options = sp.GetService<ToolDisciplineOptions>();
             return options is not null
                 ? new ToolDisciplineGuardrail(options)
                 : new ToolDisciplineGuardrail();
         });
         services.AddSingleton<IGuardrail>(sp =>
         {
-            var tracker = sp.GetService<Lopen.Llm.IVerificationTracker>();
+            IVerificationTracker? tracker = sp.GetService<Lopen.Llm.IVerificationTracker>();
             if (tracker is null)
             {
                 return new QualityGateGuardrail(
@@ -195,8 +133,8 @@ public static class ServiceCollectionExtensions
         // Register ResourceLimitGuardrail (CORE-11) when token tracker and budget are available
         services.AddSingleton<IGuardrail>(sp =>
         {
-            var tokenTracker = sp.GetService<Lopen.Llm.ITokenTracker>();
-            var budgetOptions = sp.GetService<BudgetOptions>();
+            ITokenTracker? tokenTracker = sp.GetService<Lopen.Llm.ITokenTracker>();
+            BudgetOptions? budgetOptions = sp.GetService<BudgetOptions>();
             var budget = budgetOptions?.PremiumRequestBudget ?? 0;
             if (tokenTracker is not null && budget > 0)
             {
@@ -212,7 +150,7 @@ public static class ServiceCollectionExtensions
         // Register ChurnDetectionGuardrail (CORE-12)
         services.AddSingleton<IGuardrail>(sp =>
         {
-            var workflowOptions = sp.GetService<WorkflowOptions>();
+            WorkflowOptions? workflowOptions = sp.GetService<WorkflowOptions>();
             var threshold = workflowOptions?.FailureThreshold ?? 3;
             return new ChurnDetectionGuardrail(threshold);
         });

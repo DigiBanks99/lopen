@@ -1,6 +1,6 @@
-using System.CommandLine;
 using Lopen.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Commands;
 
@@ -29,13 +29,6 @@ public static class GlobalOptions
     public static Option<string?> Resume { get; } = new("--resume")
     {
         Description = "Resume a specific session by ID",
-        Recursive = true,
-    };
-
-    /// <summary>Forces starting a fresh session, skipping the resume prompt.</summary>
-    public static Option<bool> NoResume { get; } = new("--no-resume")
-    {
-        Description = "Start a fresh session; skip the resume prompt",
         Recursive = true,
     };
 
@@ -75,7 +68,6 @@ public static class GlobalOptions
         root.Options.Add(Headless);
         root.Options.Add(Prompt);
         root.Options.Add(Resume);
-        root.Options.Add(NoResume);
         root.Options.Add(NoWelcome);
         root.Options.Add(Model);
         root.Options.Add(Unattended);
@@ -94,7 +86,7 @@ public static class GlobalOptions
 
         if (model is not null)
         {
-            var modelOptions = services.GetRequiredService<ModelOptions>();
+            ModelOptions modelOptions = services.GetRequiredService<ModelOptions>();
             modelOptions.RequirementGathering = model;
             modelOptions.Planning = model;
             modelOptions.Building = model;
@@ -103,13 +95,13 @@ public static class GlobalOptions
 
         if (unattended)
         {
-            var workflowOptions = services.GetRequiredService<WorkflowOptions>();
+            WorkflowOptions workflowOptions = services.GetRequiredService<WorkflowOptions>();
             workflowOptions.Unattended = true;
         }
 
         if (maxIterations is not null)
         {
-            var workflowOptions = services.GetRequiredService<WorkflowOptions>();
+            WorkflowOptions workflowOptions = services.GetRequiredService<WorkflowOptions>();
             workflowOptions.MaxIterations = maxIterations.Value;
         }
     }

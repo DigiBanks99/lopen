@@ -38,8 +38,9 @@ internal sealed class WorkflowEngine : IWorkflowEngine
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
 
-        _currentStep = await _assessor.GetCurrentStepAsync(moduleName, cancellationToken);
-        _isComplete = false;
+        WorkflowAssessment assessment = await _assessor.AssessAsync(moduleName, cancellationToken);
+        _currentStep = assessment.Step;
+        _isComplete = !assessment.HasMoreComponents && assessment.Step == WorkflowStep.Repeat;
 
         _logger.LogInformation(
             "Workflow initialized for module {Module} at step {Step} (phase: {Phase})",
@@ -56,7 +57,7 @@ internal sealed class WorkflowEngine : IWorkflowEngine
             return false;
         }
 
-        var previousStep = CurrentStep;
+        WorkflowStep previousStep = CurrentStep;
         _machine.Fire(trigger);
 
         _logger.LogInformation(
@@ -104,6 +105,7 @@ internal sealed class WorkflowEngine : IWorkflowEngine
         // Step 7: Repeat — loops back to SelectNextComponent or marks complete
         _machine.Configure(WorkflowStep.Repeat)
             .Permit(WorkflowTrigger.Assess, WorkflowStep.SelectNextComponent)
+            .PermitReentry(WorkflowTrigger.ModuleComplete)
             .OnEntry(transition =>
             {
                 if (transition.Trigger == WorkflowTrigger.ModuleComplete)

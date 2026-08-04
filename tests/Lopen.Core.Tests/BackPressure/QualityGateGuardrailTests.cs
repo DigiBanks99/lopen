@@ -12,7 +12,7 @@ public class QualityGateGuardrailTests
             hasPassingVerification: _ => false);
         var context = new GuardrailContext("mod", "task", 1, 5);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }
@@ -25,7 +25,7 @@ public class QualityGateGuardrailTests
             hasPassingVerification: _ => true);
         var context = new GuardrailContext("mod", "task", 1, 5);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Pass>(result);
     }
@@ -38,7 +38,7 @@ public class QualityGateGuardrailTests
             hasPassingVerification: _ => false);
         var context = new GuardrailContext("mod", "task", 1, 5);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
         Assert.IsType<GuardrailResult.Block>(result);
     }
@@ -51,9 +51,9 @@ public class QualityGateGuardrailTests
             hasPassingVerification: _ => false);
         var context = new GuardrailContext("mod", "my-task", 1, 5);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
-        var block = Assert.IsType<GuardrailResult.Block>(result);
+        GuardrailResult.Block block = Assert.IsType<GuardrailResult.Block>(result);
         Assert.Contains("my-task", block.Message);
     }
 
@@ -65,9 +65,9 @@ public class QualityGateGuardrailTests
             hasPassingVerification: _ => false);
         var context = new GuardrailContext("auth-module", null, 1, 5);
 
-        var result = await guardrail.EvaluateAsync(context);
+        GuardrailResult result = await guardrail.EvaluateAsync(context);
 
-        var block = Assert.IsType<GuardrailResult.Block>(result);
+        GuardrailResult.Block block = Assert.IsType<GuardrailResult.Block>(result);
         Assert.Contains("auth-module", block.Message);
     }
 

@@ -1,7 +1,7 @@
-using System.CommandLine;
 using Lopen.Commands;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -14,11 +14,11 @@ public class ConfigCommandTests
         if (settings is not null)
             configBuilder.AddInMemoryCollection(settings);
 
-        var configRoot = configBuilder.Build();
+        IConfigurationRoot configRoot = configBuilder.Build();
 
         var services = new ServiceCollection();
         services.AddSingleton<IConfigurationRoot>(configRoot);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -38,7 +38,7 @@ public class ConfigCommandTests
             ["Lopen:Models:Primary"] = "gpt-5",
             ["Lopen:Budget:MaxPremiumRequests"] = "100",
         };
-        var (config, output, _) = CreateConfig(settings);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig(settings);
 
         var exitCode = await config.InvokeAsync(["config", "show"]);
 
@@ -51,7 +51,7 @@ public class ConfigCommandTests
     [Fact]
     public async Task Show_NoEntries_DisplaysMessage()
     {
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["config", "show"]);
 
@@ -66,7 +66,7 @@ public class ConfigCommandTests
         {
             ["Lopen:Models:Primary"] = "gpt-5",
         };
-        var (config, output, _) = CreateConfig(settings);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig(settings);
 
         var exitCode = await config.InvokeAsync(["config", "show", "--json"]);
 
@@ -84,7 +84,7 @@ public class ConfigCommandTests
         {
             ["Lopen:Budget:MaxPremiumRequests"] = "100",
         };
-        var (config, output, _) = CreateConfig(settings);
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig(settings);
 
         var exitCode = await config.InvokeAsync(["config", "show"]);
 

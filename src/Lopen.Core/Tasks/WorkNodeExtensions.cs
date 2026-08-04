@@ -10,10 +10,10 @@ public static class WorkNodeExtensions
     /// </summary>
     public static IEnumerable<IWorkNode> Descendants(this IWorkNode node)
     {
-        foreach (var child in node.Children)
+        foreach (IWorkNode child in node.Children)
         {
             yield return child;
-            foreach (var descendant in child.Descendants())
+            foreach (IWorkNode descendant in child.Descendants())
             {
                 yield return descendant;
             }
@@ -29,7 +29,7 @@ public static class WorkNodeExtensions
     /// </summary>
     public static WorkNodeState ComputeAggregateState(this IWorkNode node)
     {
-        var children = node.Children;
+        IReadOnlyList<IWorkNode> children = node.Children;
         if (children.Count == 0)
         {
             return node.State;
@@ -64,9 +64,9 @@ public static class WorkNodeExtensions
             yield break;
         }
 
-        foreach (var child in node.Children)
+        foreach (IWorkNode child in node.Children)
         {
-            foreach (var leaf in child.Leaves())
+            foreach (IWorkNode leaf in child.Leaves())
             {
                 yield return leaf;
             }

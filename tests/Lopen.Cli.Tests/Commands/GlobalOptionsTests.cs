@@ -1,5 +1,5 @@
-using System.CommandLine;
 using Lopen.Commands;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -34,7 +34,7 @@ public class GlobalOptionsTests
     [Fact]
     public void Headless_Option_HasExpectedAliases()
     {
-        var aliases = GlobalOptions.Headless.Aliases;
+        ICollection<string> aliases = GlobalOptions.Headless.Aliases;
         Assert.Contains("-q", aliases);
         Assert.Contains("--quiet", aliases);
     }
@@ -42,7 +42,7 @@ public class GlobalOptionsTests
     [Fact]
     public void Prompt_Option_HasExpectedAlias()
     {
-        var aliases = GlobalOptions.Prompt.Aliases;
+        ICollection<string> aliases = GlobalOptions.Prompt.Aliases;
         Assert.Contains("-p", aliases);
     }
 
@@ -79,7 +79,7 @@ public class GlobalOptionsTests
     }
 
     [Fact]
-    public void AddTo_RegistersAllEightOptions()
+    public void AddTo_RegistersAllSevenOptions()
     {
         var root = new RootCommand("test");
         GlobalOptions.AddTo(root);
@@ -88,7 +88,6 @@ public class GlobalOptionsTests
         Assert.Contains("--headless", optionNames);
         Assert.Contains("--prompt", optionNames);
         Assert.Contains("--resume", optionNames);
-        Assert.Contains("--no-resume", optionNames);
         Assert.Contains("--no-welcome", optionNames);
         Assert.Contains("--model", optionNames);
         Assert.Contains("--unattended", optionNames);

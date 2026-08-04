@@ -88,6 +88,45 @@ public class WorkNodeTests
     }
 
     [Fact]
+    public void TransitionTo_Complete_To_Failed_Throws()
+    {
+        var node = new TaskNode("t1", "Task 1");
+        node.TransitionTo(WorkNodeState.InProgress);
+        node.TransitionTo(WorkNodeState.Complete);
+        Assert.Throws<InvalidStateTransitionException>(() =>
+            node.TransitionTo(WorkNodeState.Failed));
+    }
+
+    [Fact]
+    public void TransitionTo_Complete_To_Pending_Throws()
+    {
+        var node = new TaskNode("t1", "Task 1");
+        node.TransitionTo(WorkNodeState.InProgress);
+        node.TransitionTo(WorkNodeState.Complete);
+        Assert.Throws<InvalidStateTransitionException>(() =>
+            node.TransitionTo(WorkNodeState.Pending));
+    }
+
+    [Fact]
+    public void TransitionTo_Failed_To_Complete_Throws()
+    {
+        var node = new TaskNode("t1", "Task 1");
+        node.TransitionTo(WorkNodeState.InProgress);
+        node.TransitionTo(WorkNodeState.Failed);
+        Assert.Throws<InvalidStateTransitionException>(() =>
+            node.TransitionTo(WorkNodeState.Complete));
+    }
+
+    [Fact]
+    public void TransitionTo_InProgress_To_Pending_Throws()
+    {
+        var node = new TaskNode("t1", "Task 1");
+        node.TransitionTo(WorkNodeState.InProgress);
+        Assert.Throws<InvalidStateTransitionException>(() =>
+            node.TransitionTo(WorkNodeState.Pending));
+    }
+
+    [Fact]
     public void AddChild_AddsToChildren()
     {
         var task = new TaskNode("t1", "Task 1");

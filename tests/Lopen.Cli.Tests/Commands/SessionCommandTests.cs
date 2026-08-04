@@ -1,9 +1,9 @@
-using System.CommandLine;
 using Lopen.Cli.Tests.Fakes;
 using Lopen.Commands;
 using Lopen.Configuration;
 using Lopen.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests.Commands;
 
@@ -53,7 +53,7 @@ public class SessionCommandTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(_fakeSessionManager);
         services.AddSingleton(_options);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -70,7 +70,7 @@ public class SessionCommandTests
     [Fact]
     public async Task List_NoSessions_DisplaysMessage()
     {
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "list"]);
 
@@ -84,7 +84,7 @@ public class SessionCommandTests
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.AddSession(Session2, CompleteState);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "list"]);
 
@@ -101,7 +101,7 @@ public class SessionCommandTests
     public async Task List_Error_ReturnsExitCode1()
     {
         _fakeSessionManager.ListException = new InvalidOperationException("Storage error");
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "list"]);
 
@@ -116,7 +116,7 @@ public class SessionCommandTests
     {
         _fakeSessionManager.AddSession(Session1, ActiveState, SampleMetrics);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "show"]);
 
@@ -132,7 +132,7 @@ public class SessionCommandTests
     public async Task Show_SpecificSession_DisplaysDetails()
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "show", "auth-20260214-1"]);
 
@@ -143,7 +143,7 @@ public class SessionCommandTests
     [Fact]
     public async Task Show_NoLatestSession_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "show"]);
 
@@ -154,7 +154,7 @@ public class SessionCommandTests
     [Fact]
     public async Task Show_SessionNotFound_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "show", "auth-20260214-1"]);
 
@@ -165,7 +165,7 @@ public class SessionCommandTests
     [Fact]
     public async Task Show_InvalidSessionId_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "show", "invalid-id"]);
 
@@ -177,7 +177,7 @@ public class SessionCommandTests
     public async Task Show_JsonFormat_ReturnsJson()
     {
         _fakeSessionManager.AddSession(Session1, ActiveState, SampleMetrics);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "show", "auth-20260214-1", "--format", "json"]);
 
@@ -192,7 +192,7 @@ public class SessionCommandTests
     public async Task Show_YamlFormat_ReturnsYaml()
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "show", "auth-20260214-1", "--format", "yaml"]);
 
@@ -208,7 +208,7 @@ public class SessionCommandTests
     public async Task Resume_SpecificSession_SetsLatest()
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "resume", "auth-20260214-1"]);
 
@@ -223,7 +223,7 @@ public class SessionCommandTests
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
         _fakeSessionManager.SetLatestSessionId(Session1);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "resume"]);
 
@@ -234,7 +234,7 @@ public class SessionCommandTests
     [Fact]
     public async Task Resume_NoLatestSession_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "resume"]);
 
@@ -246,7 +246,7 @@ public class SessionCommandTests
     public async Task Resume_CompletedSession_ReturnsExitCode1()
     {
         _fakeSessionManager.AddSession(Session2, CompleteState);
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "resume", "core-20260215-1"]);
 
@@ -257,7 +257,7 @@ public class SessionCommandTests
     [Fact]
     public async Task Resume_SessionNotFound_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "resume", "auth-20260214-1"]);
 
@@ -268,7 +268,7 @@ public class SessionCommandTests
     [Fact]
     public async Task Resume_InvalidSessionId_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "resume", "bad-format"]);
 
@@ -282,7 +282,7 @@ public class SessionCommandTests
     public async Task Delete_ExistingSession_DeletesIt()
     {
         _fakeSessionManager.AddSession(Session1, ActiveState);
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "delete", "auth-20260214-1"]);
 
@@ -296,7 +296,7 @@ public class SessionCommandTests
     public async Task Delete_StorageException_ReturnsExitCode1()
     {
         _fakeSessionManager.DeleteException = new StorageException("Session not found: auth-20260214-99");
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "delete", "auth-20260214-99"]);
 
@@ -307,7 +307,7 @@ public class SessionCommandTests
     [Fact]
     public async Task Delete_InvalidSessionId_ReturnsExitCode1()
     {
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "delete", "bad-format"]);
 
@@ -321,7 +321,7 @@ public class SessionCommandTests
     public async Task Prune_PrunesSessions()
     {
         _fakeSessionManager.PruneResult = 3;
-        var (config, output, _) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "prune"]);
 
@@ -334,7 +334,7 @@ public class SessionCommandTests
     public async Task Prune_Error_ReturnsExitCode1()
     {
         _fakeSessionManager.PruneException = new InvalidOperationException("Prune failed");
-        var (config, _, error) = CreateConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfig();
 
         var exitCode = await config.InvokeAsync(["session", "prune"]);
 
@@ -400,7 +400,7 @@ public class SessionCommandTests
     private (CommandLineConfiguration config, StringWriter output, StringWriter error) CreateConfigWithoutServices()
     {
         var services = new ServiceCollection();
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         var output = new StringWriter();
         var error = new StringWriter();
         var root = new RootCommand("test");
@@ -412,7 +412,7 @@ public class SessionCommandTests
     [Fact]
     public async Task List_NoServiceRegistered_ReturnsFailureWithMessage()
     {
-        var (config, _, error) = CreateConfigWithoutServices();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfigWithoutServices();
 
         var exitCode = await config.InvokeAsync(["session", "list"]);
 
@@ -423,7 +423,7 @@ public class SessionCommandTests
     [Fact]
     public async Task Show_NoServiceRegistered_ReturnsFailureWithMessage()
     {
-        var (config, _, error) = CreateConfigWithoutServices();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfigWithoutServices();
 
         var exitCode = await config.InvokeAsync(["session", "show"]);
 
@@ -434,7 +434,7 @@ public class SessionCommandTests
     [Fact]
     public async Task Resume_NoServiceRegistered_ReturnsFailureWithMessage()
     {
-        var (config, _, error) = CreateConfigWithoutServices();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfigWithoutServices();
 
         var exitCode = await config.InvokeAsync(["session", "resume"]);
 
@@ -445,7 +445,7 @@ public class SessionCommandTests
     [Fact]
     public async Task Delete_NoServiceRegistered_ReturnsFailureWithMessage()
     {
-        var (config, _, error) = CreateConfigWithoutServices();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfigWithoutServices();
 
         var exitCode = await config.InvokeAsync(["session", "delete", "test-id"]);
 
@@ -456,7 +456,7 @@ public class SessionCommandTests
     [Fact]
     public async Task Prune_NoServiceRegistered_ReturnsFailureWithMessage()
     {
-        var (config, _, error) = CreateConfigWithoutServices();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateConfigWithoutServices();
 
         var exitCode = await config.InvokeAsync(["session", "prune"]);
 

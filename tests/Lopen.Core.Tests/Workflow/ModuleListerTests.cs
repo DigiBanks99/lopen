@@ -23,9 +23,9 @@ public sealed class ModuleListerTests
     [Fact]
     public void ListModules_EmptyProject_ReturnsEmpty()
     {
-        var (_, lister) = CreateLister();
+        (InMemoryFileSystem _, ModuleLister? lister) = CreateLister();
 
-        var result = lister.ListModules();
+        IReadOnlyList<ModuleState> result = lister.ListModules();
 
         Assert.Empty(result);
     }
@@ -33,12 +33,12 @@ public sealed class ModuleListerTests
     [Fact]
     public void ListModules_ModuleWithNoSpec_ReturnsUnknown()
     {
-        var (_, lister) = CreateLister(fs =>
+        (InMemoryFileSystem _, ModuleLister? lister) = CreateLister(fs =>
         {
             fs.AddDirectory(ReqDir + "/auth");
         });
 
-        var result = lister.ListModules();
+        IReadOnlyList<ModuleState> result = lister.ListModules();
 
         Assert.Single(result);
         Assert.Equal("auth", result[0].Name);
@@ -49,13 +49,13 @@ public sealed class ModuleListerTests
     [Fact]
     public void ListModules_ModuleWithNoCheckboxes_ReturnsNotStarted()
     {
-        var (_, lister) = CreateLister(fs =>
+        (InMemoryFileSystem _, ModuleLister? lister) = CreateLister(fs =>
         {
             fs.AddDirectory(ReqDir + "/auth");
             fs.AddFile(ReqDir + "/auth/SPECIFICATION.md", "# Overview\n\nNo checkboxes here.");
         });
 
-        var result = lister.ListModules();
+        IReadOnlyList<ModuleState> result = lister.ListModules();
 
         Assert.Single(result);
         Assert.Equal(ModuleStatus.NotStarted, result[0].Status);
@@ -65,14 +65,14 @@ public sealed class ModuleListerTests
     [Fact]
     public void ListModules_AllCheckboxesUnchecked_ReturnsNotStarted()
     {
-        var (_, lister) = CreateLister(fs =>
+        (InMemoryFileSystem _, ModuleLister? lister) = CreateLister(fs =>
         {
             fs.AddDirectory(ReqDir + "/auth");
             fs.AddFile(ReqDir + "/auth/SPECIFICATION.md",
                 "# AC\n\n- [ ] First\n- [ ] Second\n- [ ] Third");
         });
 
-        var result = lister.ListModules();
+        IReadOnlyList<ModuleState> result = lister.ListModules();
 
         Assert.Equal(ModuleStatus.NotStarted, result[0].Status);
         Assert.Equal(0, result[0].CompletedCriteria);
@@ -82,14 +82,14 @@ public sealed class ModuleListerTests
     [Fact]
     public void ListModules_SomeCheckboxesChecked_ReturnsInProgress()
     {
-        var (_, lister) = CreateLister(fs =>
+        (InMemoryFileSystem _, ModuleLister? lister) = CreateLister(fs =>
         {
             fs.AddDirectory(ReqDir + "/core");
             fs.AddFile(ReqDir + "/core/SPECIFICATION.md",
                 "# AC\n\n- [x] Done\n- [ ] Pending\n- [x] Also done");
         });
 
-        var result = lister.ListModules();
+        IReadOnlyList<ModuleState> result = lister.ListModules();
 
         Assert.Equal(ModuleStatus.InProgress, result[0].Status);
         Assert.Equal(2, result[0].CompletedCriteria);
@@ -99,14 +99,14 @@ public sealed class ModuleListerTests
     [Fact]
     public void ListModules_AllCheckboxesChecked_ReturnsComplete()
     {
-        var (_, lister) = CreateLister(fs =>
+        (InMemoryFileSystem _, ModuleLister? lister) = CreateLister(fs =>
         {
             fs.AddDirectory(ReqDir + "/storage");
             fs.AddFile(ReqDir + "/storage/SPECIFICATION.md",
                 "# AC\n\n- [x] First\n- [x] Second");
         });
 
-        var result = lister.ListModules();
+        IReadOnlyList<ModuleState> result = lister.ListModules();
 
         Assert.Equal(ModuleStatus.Complete, result[0].Status);
         Assert.Equal(2, result[0].CompletedCriteria);
@@ -116,7 +116,7 @@ public sealed class ModuleListerTests
     [Fact]
     public void ListModules_MultipleModules_SortedAlphabetically()
     {
-        var (_, lister) = CreateLister(fs =>
+        (InMemoryFileSystem _, ModuleLister? lister) = CreateLister(fs =>
         {
             fs.AddDirectory(ReqDir + "/zebra");
             fs.AddFile(ReqDir + "/zebra/SPECIFICATION.md", "# Z\n\n- [ ] todo");
@@ -126,7 +126,7 @@ public sealed class ModuleListerTests
             fs.AddFile(ReqDir + "/middle/SPECIFICATION.md", "# M\n\n- [x] a\n- [ ] b");
         });
 
-        var result = lister.ListModules();
+        IReadOnlyList<ModuleState> result = lister.ListModules();
 
         Assert.Equal(3, result.Count);
         Assert.Equal("alpha", result[0].Name);
@@ -137,7 +137,7 @@ public sealed class ModuleListerTests
     [Fact]
     public void ListModules_MultipleModules_CorrectStates()
     {
-        var (_, lister) = CreateLister(fs =>
+        (InMemoryFileSystem _, ModuleLister? lister) = CreateLister(fs =>
         {
             fs.AddDirectory(ReqDir + "/complete");
             fs.AddFile(ReqDir + "/complete/SPECIFICATION.md", "# AC\n\n- [x] done");
@@ -147,7 +147,7 @@ public sealed class ModuleListerTests
             fs.AddFile(ReqDir + "/notstarted/SPECIFICATION.md", "# AC\n\n- [ ] todo");
         });
 
-        var result = lister.ListModules();
+        IReadOnlyList<ModuleState> result = lister.ListModules();
 
         Assert.Equal(ModuleStatus.Complete, result.First(m => m.Name == "complete").Status);
         Assert.Equal(ModuleStatus.InProgress, result.First(m => m.Name == "inprogress").Status);
@@ -166,7 +166,7 @@ public sealed class ModuleListerTests
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, ProjectRoot);
         var lister = new ModuleLister(scanner, fs, NullLogger<ModuleLister>.Instance);
 
-        var result = lister.ListModules();
+        IReadOnlyList<ModuleState> result = lister.ListModules();
 
         // ModuleScanner will report HasSpecification=false since file doesn't exist
         Assert.Single(result);

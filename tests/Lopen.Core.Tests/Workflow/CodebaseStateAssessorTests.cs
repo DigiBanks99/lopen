@@ -16,159 +16,125 @@ public sealed class CodebaseStateAssessorTests
         setup?.Invoke(fs);
 
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, ProjectRoot);
-        var assessor = new CodebaseStateAssessor(fs, scanner, NullLogger<CodebaseStateAssessor>.Instance);
+        var assessor = new CodebaseStateAssessor(fs, scanner, ProjectRoot, NullLogger<CodebaseStateAssessor>.Instance);
         return (fs, assessor);
     }
 
     [Fact]
-    public async Task GetCurrentStep_NoSpec_ReturnsDraftSpecification()
+    public async Task AssessAsync_NoSpec_ReturnsDraftSpecification()
     {
-        var (_, assessor) = CreateAssessor(fs =>
+        (InMemoryFileSystem _, CodebaseStateAssessor assessor) = CreateAssessor(fs =>
         {
             fs.AddDirectory(ReqDir + "/auth");
         });
 
-        var step = await assessor.GetCurrentStepAsync("auth");
-        Assert.Equal(WorkflowStep.DraftSpecification, step);
+        WorkflowAssessment result = await assessor.AssessAsync("auth");
+        Assert.Equal(WorkflowStep.DraftSpecification, result.Step);
+        Assert.False(result.IsSpecReady);
+        Assert.False(result.HasMoreComponents);
     }
 
     [Fact]
-    public async Task GetCurrentStep_ModuleNotFound_ReturnsDraftSpecification()
+    public async Task AssessAsync_ModuleNotFound_ReturnsDraftSpecification()
     {
-        var (_, assessor) = CreateAssessor();
+        (InMemoryFileSystem _, CodebaseStateAssessor assessor) = CreateAssessor();
 
-        var step = await assessor.GetCurrentStepAsync("nonexistent");
-        Assert.Equal(WorkflowStep.DraftSpecification, step);
+        WorkflowAssessment result = await assessor.AssessAsync("nonexistent");
+        Assert.Equal(WorkflowStep.DraftSpecification, result.Step);
+        Assert.False(result.IsSpecReady);
     }
 
     [Fact]
-    public async Task GetCurrentStep_AllCheckboxesComplete_ReturnsRepeat()
+    public async Task AssessAsync_AllCheckboxesComplete_ReturnsRepeat_WithNoMoreComponents()
     {
-        var (_, assessor) = CreateAssessor(fs =>
+        (InMemoryFileSystem _, CodebaseStateAssessor assessor) = CreateAssessor(fs =>
         {
             fs.AddDirectory(ReqDir + "/auth");
             fs.AddFile(ReqDir + "/auth/SPECIFICATION.md",
                 "# Auth\n\nSpec content here.\n\n# AC\n\n- [x] First\n- [x] Second");
         });
 
-        var step = await assessor.GetCurrentStepAsync("auth");
-        Assert.Equal(WorkflowStep.Repeat, step);
+        WorkflowAssessment result = await assessor.AssessAsync("auth");
+        Assert.Equal(WorkflowStep.Repeat, result.Step);
+        Assert.True(result.IsSpecReady);
+        Assert.False(result.HasMoreComponents);
     }
 
     [Fact]
-    public async Task GetCurrentStep_SomeCheckboxesComplete_ReturnsIterate()
+    public async Task AssessAsync_SomeCheckboxesComplete_ReturnsIterateThroughTasks()
     {
-        var (_, assessor) = CreateAssessor(fs =>
+        (InMemoryFileSystem _, CodebaseStateAssessor assessor) = CreateAssessor(fs =>
         {
             fs.AddDirectory(ReqDir + "/core");
             fs.AddFile(ReqDir + "/core/SPECIFICATION.md",
                 "# Core\n\nLong spec content that is over one hundred characters for testing purposes.\n\n# AC\n\n- [x] Done\n- [ ] Pending");
         });
 
-        var step = await assessor.GetCurrentStepAsync("core");
-        Assert.Equal(WorkflowStep.IterateThroughTasks, step);
+        WorkflowAssessment result = await assessor.AssessAsync("core");
+        Assert.Equal(WorkflowStep.IterateThroughTasks, result.Step);
+        Assert.True(result.IsSpecReady);
+        Assert.True(result.HasMoreComponents);
     }
 
     [Fact]
-    public async Task GetCurrentStep_SpecExistsWithContent_ReturnsDependencies()
+    public async Task AssessAsync_SpecWithContent_ReturnsDetermineDependencies()
     {
-        var (_, assessor) = CreateAssessor(fs =>
+        (InMemoryFileSystem _, CodebaseStateAssessor assessor) = CreateAssessor(fs =>
         {
             fs.AddDirectory(ReqDir + "/llm");
             fs.AddFile(ReqDir + "/llm/SPECIFICATION.md",
                 "# LLM\n\n" + new string('x', 200) + "\n\n# AC\n\n- [ ] Todo");
         });
 
-        // Has spec with content but no completed checkboxes → DetermineDependencies
-        var step = await assessor.GetCurrentStepAsync("llm");
-        Assert.Equal(WorkflowStep.DetermineDependencies, step);
+        WorkflowAssessment result = await assessor.AssessAsync("llm");
+        Assert.Equal(WorkflowStep.DetermineDependencies, result.Step);
+        Assert.True(result.IsSpecReady);
     }
 
     [Fact]
-    public async Task GetCurrentStep_PersistedStep_ReturnsPersistedValue()
+    public async Task RecordStepAsync_WritesHintFile_ThatAssessAsyncReads()
     {
-        var (_, assessor) = CreateAssessor(fs =>
+        (InMemoryFileSystem _, CodebaseStateAssessor assessor) = CreateAssessor(fs =>
         {
             fs.AddDirectory(ReqDir + "/auth");
             fs.AddFile(ReqDir + "/auth/SPECIFICATION.md", "# Auth\n\nShort");
         });
 
-        // Persist a step
-        await assessor.PersistStepAsync("auth", WorkflowStep.BreakIntoTasks);
+        await assessor.RecordStepAsync("auth", WorkflowStep.BreakIntoTasks);
 
-        var step = await assessor.GetCurrentStepAsync("auth");
-        Assert.Equal(WorkflowStep.BreakIntoTasks, step);
+        WorkflowAssessment result = await assessor.AssessAsync("auth");
+        Assert.Equal(WorkflowStep.BreakIntoTasks, result.Step);
     }
 
     [Fact]
-    public async Task PersistStep_StoresStep()
+    public async Task AssessAsync_IgnoresHint_WhenCheckboxesAreTicked()
     {
-        var (_, assessor) = CreateAssessor(fs =>
-        {
-            fs.AddDirectory(ReqDir + "/m");
-            fs.AddFile(ReqDir + "/m/SPECIFICATION.md", "# M\n\nShort");
-        });
-
-        await assessor.PersistStepAsync("m", WorkflowStep.SelectNextComponent);
-        var step = await assessor.GetCurrentStepAsync("m");
-        Assert.Equal(WorkflowStep.SelectNextComponent, step);
-    }
-
-    [Fact]
-    public async Task IsSpecReady_NoSpec_ReturnsFalse()
-    {
-        var (_, assessor) = CreateAssessor(fs =>
-        {
-            fs.AddDirectory(ReqDir + "/auth");
-        });
-
-        Assert.False(await assessor.IsSpecReadyAsync("auth"));
-    }
-
-    [Fact]
-    public async Task IsSpecReady_WithSpec_ReturnsTrue()
-    {
-        var (_, assessor) = CreateAssessor(fs =>
-        {
-            fs.AddDirectory(ReqDir + "/auth");
-            fs.AddFile(ReqDir + "/auth/SPECIFICATION.md", "# Auth");
-        });
-
-        Assert.True(await assessor.IsSpecReadyAsync("auth"));
-    }
-
-    [Fact]
-    public async Task HasMoreComponents_AllComplete_ReturnsFalse()
-    {
-        var (_, assessor) = CreateAssessor(fs =>
+        (InMemoryFileSystem _, CodebaseStateAssessor assessor) = CreateAssessor(fs =>
         {
             fs.AddDirectory(ReqDir + "/auth");
             fs.AddFile(ReqDir + "/auth/SPECIFICATION.md",
-                "# AC\n\n- [x] Done\n- [x] Done too");
+                "# Auth\n\n- [x] Done\n- [ ] Pending");
         });
 
-        Assert.False(await assessor.HasMoreComponentsAsync("auth"));
+        // Record a hint suggesting an earlier planning step
+        await assessor.RecordStepAsync("auth", WorkflowStep.DetermineDependencies);
+
+        // Filesystem truth (some checkboxes ticked) should override the hint
+        WorkflowAssessment result = await assessor.AssessAsync("auth");
+        Assert.Equal(WorkflowStep.IterateThroughTasks, result.Step);
     }
 
     [Fact]
-    public async Task HasMoreComponents_SomePending_ReturnsTrue()
+    public async Task AssessAsync_ShortSpec_ReturnsDraftSpecification_WhenNoHint()
     {
-        var (_, assessor) = CreateAssessor(fs =>
+        (InMemoryFileSystem _, CodebaseStateAssessor assessor) = CreateAssessor(fs =>
         {
-            fs.AddDirectory(ReqDir + "/core");
-            fs.AddFile(ReqDir + "/core/SPECIFICATION.md",
-                "# AC\n\n- [x] Done\n- [ ] Pending");
+            fs.AddDirectory(ReqDir + "/auth");
+            fs.AddFile(ReqDir + "/auth/SPECIFICATION.md", "# Auth\n\nShort");
         });
 
-        Assert.True(await assessor.HasMoreComponentsAsync("core"));
-    }
-
-    [Fact]
-    public async Task HasMoreComponents_NoSpec_ReturnsFalse()
-    {
-        var (_, assessor) = CreateAssessor();
-
-        Assert.False(await assessor.HasMoreComponentsAsync("missing"));
+        WorkflowAssessment result = await assessor.AssessAsync("auth");
+        Assert.Equal(WorkflowStep.DraftSpecification, result.Step);
     }
 
     [Fact]
@@ -177,14 +143,14 @@ public sealed class CodebaseStateAssessorTests
         var fs = new InMemoryFileSystem();
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, ProjectRoot);
         Assert.Throws<ArgumentNullException>(
-            () => new CodebaseStateAssessor(null!, scanner, NullLogger<CodebaseStateAssessor>.Instance));
+            () => new CodebaseStateAssessor(null!, scanner, ProjectRoot, NullLogger<CodebaseStateAssessor>.Instance));
     }
 
     [Fact]
     public void Constructor_NullScanner_Throws()
     {
         Assert.Throws<ArgumentNullException>(
-            () => new CodebaseStateAssessor(new InMemoryFileSystem(), null!, NullLogger<CodebaseStateAssessor>.Instance));
+            () => new CodebaseStateAssessor(new InMemoryFileSystem(), null!, ProjectRoot, NullLogger<CodebaseStateAssessor>.Instance));
     }
 
     [Fact]
@@ -193,6 +159,6 @@ public sealed class CodebaseStateAssessorTests
         var fs = new InMemoryFileSystem();
         var scanner = new ModuleScanner(fs, NullLogger<ModuleScanner>.Instance, ProjectRoot);
         Assert.Throws<ArgumentNullException>(
-            () => new CodebaseStateAssessor(fs, scanner, null!));
+            () => new CodebaseStateAssessor(fs, scanner, ProjectRoot, null!));
     }
 }

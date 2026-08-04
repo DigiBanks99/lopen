@@ -1,6 +1,6 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace Lopen.Commands;
 
@@ -11,21 +11,22 @@ public static class AuthCommand
 {
     public static Command Create(IServiceProvider services, TextWriter? output = null, TextWriter? error = null)
     {
-        var stdout = output ?? Console.Out;
-        var stderr = error ?? Console.Error;
+        TextWriter stdout = output ?? Console.Out;
+        TextWriter stderr = error ?? Console.Error;
 
-        var auth = new Command("auth", "Manage authentication");
-
-        auth.Add(CreateLoginCommand(services, stdout, stderr));
-        auth.Add(CreateStatusCommand(services, stdout, stderr));
-        auth.Add(CreateLogoutCommand(services, stdout, stderr));
+        Command auth = new("auth", "Manage authentication")
+        {
+            CreateLoginCommand(services, stdout, stderr),
+            CreateStatusCommand(services, stdout, stderr),
+            CreateLogoutCommand(services, stdout, stderr)
+        };
 
         return auth;
     }
 
     private static Command CreateLoginCommand(IServiceProvider services, TextWriter stdout, TextWriter stderr)
     {
-        var login = new Command("login", "Authenticate via Copilot SDK device flow");
+        Command login = new("login", "Authenticate via Copilot SDK device flow");
         login.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
         {
             // AUTH-05: --headless flag explicitly blocks interactive login
@@ -35,7 +36,7 @@ public static class AuthCommand
                 return 1;
             }
 
-            var authService = services.GetRequiredService<IAuthService>();
+            IAuthService authService = services.GetRequiredService<IAuthService>();
             try
             {
                 await authService.LoginAsync(cancellationToken);
@@ -53,13 +54,13 @@ public static class AuthCommand
 
     private static Command CreateStatusCommand(IServiceProvider services, TextWriter stdout, TextWriter stderr)
     {
-        var status = new Command("status", "Check current authentication state");
+        Command status = new("status", "Check current authentication state");
         status.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
         {
-            var authService = services.GetRequiredService<IAuthService>();
+            IAuthService authService = services.GetRequiredService<IAuthService>();
             try
             {
-                var result = await authService.GetStatusAsync(cancellationToken);
+                AuthStatusResult result = await authService.GetStatusAsync(cancellationToken);
                 await stdout.WriteLineAsync($"State:  {result.State}");
                 await stdout.WriteLineAsync($"Source: {result.Source}");
                 if (result.Username is not null)
@@ -79,10 +80,10 @@ public static class AuthCommand
 
     private static Command CreateLogoutCommand(IServiceProvider services, TextWriter stdout, TextWriter stderr)
     {
-        var logout = new Command("logout", "Clear stored credentials");
+        Command logout = new("logout", "Clear stored credentials");
         logout.SetAction(async (ParseResult _, CancellationToken cancellationToken) =>
         {
-            var authService = services.GetRequiredService<IAuthService>();
+            IAuthService authService = services.GetRequiredService<IAuthService>();
             try
             {
                 await authService.LogoutAsync(cancellationToken);

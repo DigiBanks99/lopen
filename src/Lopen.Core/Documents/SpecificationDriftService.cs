@@ -65,7 +65,7 @@ internal sealed class SpecificationDriftService : ISpecificationDriftService
             .ToList();
 
         // Detect drift against cached hashes
-        var driftResults = _driftDetector.DetectDrift(specPath, currentContent, cachedSections);
+        IReadOnlyList<DriftResult> driftResults = _driftDetector.DetectDrift(specPath, currentContent, cachedSections);
 
         if (driftResults.Count > 0)
         {
@@ -82,8 +82,8 @@ internal sealed class SpecificationDriftService : ISpecificationDriftService
 
     private string? ResolveSpecPath(string moduleName)
     {
-        var modules = _moduleScanner.ScanModules();
-        var module = modules.FirstOrDefault(m =>
+        IReadOnlyList<ModuleInfo> modules = _moduleScanner.ScanModules();
+        ModuleInfo? module = modules.FirstOrDefault(m =>
             string.Equals(m.Name, moduleName, StringComparison.OrdinalIgnoreCase));
 
         return module?.HasSpecification == true ? module.SpecificationPath : null;
@@ -93,14 +93,14 @@ internal sealed class SpecificationDriftService : ISpecificationDriftService
     {
         // Remove old entries for this file
         var keysToRemove = _sectionCache.Keys.Where(k => k.Item1 == specPath).ToList();
-        foreach (var key in keysToRemove)
+        foreach ((string, string) key in keysToRemove)
         {
             _sectionCache.Remove(key);
         }
 
         // Parse and cache current sections
-        var sections = _parser.ExtractSections(content);
-        foreach (var section in sections)
+        IReadOnlyList<DocumentSection> sections = _parser.ExtractSections(content);
+        foreach (DocumentSection section in sections)
         {
             var hash = _hasher.ComputeHash(section.Content);
             _sectionCache[(specPath, section.Header)] = new CachedSection(

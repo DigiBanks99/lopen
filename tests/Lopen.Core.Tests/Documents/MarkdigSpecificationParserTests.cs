@@ -23,7 +23,7 @@ public class MarkdigSpecificationParserTests
             Section two content.
             """;
 
-        var sections = _parser.ExtractSections(content);
+        IReadOnlyList<DocumentSection> sections = _parser.ExtractSections(content);
 
         Assert.Equal(3, sections.Count);
         Assert.Equal("Title", sections[0].Header);
@@ -47,7 +47,7 @@ public class MarkdigSpecificationParserTests
             These are the details.
             """;
 
-        var sections = _parser.ExtractSections(content);
+        IReadOnlyList<DocumentSection> sections = _parser.ExtractSections(content);
 
         Assert.Equal(2, sections.Count);
         Assert.Contains("This is the overview.", sections[0].Content);
@@ -57,14 +57,14 @@ public class MarkdigSpecificationParserTests
     [Fact]
     public void ExtractSections_EmptyContent_ReturnsEmpty()
     {
-        var sections = _parser.ExtractSections(string.Empty);
+        IReadOnlyList<DocumentSection> sections = _parser.ExtractSections(string.Empty);
         Assert.Empty(sections);
     }
 
     [Fact]
     public void ExtractSections_NoHeadings_ReturnsEmpty()
     {
-        var sections = _parser.ExtractSections("Just some text without headings.");
+        IReadOnlyList<DocumentSection> sections = _parser.ExtractSections("Just some text without headings.");
         Assert.Empty(sections);
     }
 

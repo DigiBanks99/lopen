@@ -5,7 +5,7 @@ public class VerificationScopeTests
     [Fact]
     public void VerificationScope_HasThreeValues()
     {
-        var values = Enum.GetValues<VerificationScope>();
+        VerificationScope[] values = Enum.GetValues<VerificationScope>();
         Assert.Equal(3, values.Length);
     }
 

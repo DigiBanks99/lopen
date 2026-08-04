@@ -1,15 +1,18 @@
 using GitHub.Copilot.SDK;
+using Lopen.Auth;
 using Microsoft.Extensions.Logging;
+using System.Runtime.InteropServices;
 
 namespace Lopen.Llm;
 
 /// <summary>
 /// Manages a singleton <see cref="CopilotClient"/> lifecycle with auth token injection
-/// from <see cref="IGitHubTokenProvider"/>.
+/// from <see cref="IAuthTokenProvider"/>.
 /// </summary>
 internal sealed class CopilotClientProvider : ICopilotClientProvider
 {
-    private readonly IGitHubTokenProvider _tokenProvider;
+    private const string CopilotCliEnvironmentVariable = "COPILOT_CLI";
+    private readonly IAuthTokenProvider _tokenProvider;
     private readonly ILogger<CopilotClientProvider> _logger;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
@@ -17,7 +20,7 @@ internal sealed class CopilotClientProvider : ICopilotClientProvider
     private bool _disposed;
 
     public CopilotClientProvider(
-        IGitHubTokenProvider tokenProvider,
+        IAuthTokenProvider tokenProvider,
         ILogger<CopilotClientProvider> logger)
     {
         _tokenProvider = tokenProvider ?? throw new ArgumentNullException(nameof(tokenProvider));
@@ -47,7 +50,7 @@ internal sealed class CopilotClientProvider : ICopilotClientProvider
                 await DisposeClientAsync();
             }
 
-            _client = CreateClient();
+            _client = await CreateClientAsync(cancellationToken);
 
             _logger.LogInformation("Starting Copilot SDK client");
             await _client.StartAsync(cancellationToken);
@@ -58,7 +61,7 @@ internal sealed class CopilotClientProvider : ICopilotClientProvider
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(ex, "Failed to start Copilot SDK client");
-            throw new LlmException("Failed to start Copilot SDK client", model: null, ex);
+            throw CopilotStartupFailureMapper.CreateDiagnosticException("Failed to start Copilot SDK client", ex);
         }
         finally
         {
@@ -72,8 +75,8 @@ internal sealed class CopilotClientProvider : ICopilotClientProvider
 
         try
         {
-            var client = await GetClientAsync(cancellationToken);
-            var authStatus = await client.GetAuthStatusAsync(cancellationToken);
+            CopilotClient client = await GetClientAsync(cancellationToken);
+            GetAuthStatusResponse authStatus = await client.GetAuthStatusAsync(cancellationToken);
             return authStatus.IsAuthenticated;
         }
         catch (LlmException)
@@ -87,18 +90,24 @@ internal sealed class CopilotClientProvider : ICopilotClientProvider
         }
     }
 
-    internal CopilotClient CreateClient()
+    internal async Task<CopilotClient> CreateClientAsync(CancellationToken cancellationToken = default)
     {
-        var token = _tokenProvider.GetToken();
-        var options = new CopilotClientOptions
+        // Prefer an explicit token from the auth module. If one is provided,
+        // we can avoid requiring the Copilot CLI to be present on PATH.
+        string? token = await _tokenProvider.GetTokenAsync(cancellationToken);
+
+        if (string.IsNullOrEmpty(token))
         {
-            AutoRestart = true,
+            EnsureCopilotCliPathConfigured();
+        }
+        CopilotClientOptions options = new()
+        {
             UseStdio = true,
         };
 
         if (!string.IsNullOrEmpty(token))
         {
-            options.GithubToken = token;
+            options.GitHubToken = token;
             _logger.LogDebug("Copilot client configured with explicit GitHub token");
         }
         else
@@ -107,6 +116,57 @@ internal sealed class CopilotClientProvider : ICopilotClientProvider
         }
 
         return new CopilotClient(options);
+    }
+
+    internal void EnsureCopilotCliPathConfigured()
+    {
+        string? explicitCliPath = Environment.GetEnvironmentVariable(CopilotCliEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(explicitCliPath))
+        {
+            if (!File.Exists(explicitCliPath))
+            {
+                throw new InvalidOperationException(
+                    $"{CopilotCliEnvironmentVariable} is set but points to a missing file: '{explicitCliPath}'. " +
+                    "Set COPILOT_CLI to a valid executable path.");
+            }
+
+            _logger.LogDebug("Using Copilot CLI path from {EnvironmentVariable}", CopilotCliEnvironmentVariable);
+            return;
+        }
+
+        string? discoveredCliPath = FindCopilotCliInPath(Environment.GetEnvironmentVariable("PATH"));
+        if (string.IsNullOrWhiteSpace(discoveredCliPath))
+        {
+            throw new InvalidOperationException(
+                "Copilot CLI executable was not found on PATH. " +
+                "Install Copilot CLI and ensure 'copilot' is on PATH, or set COPILOT_CLI to an absolute executable path.");
+        }
+
+        Environment.SetEnvironmentVariable(CopilotCliEnvironmentVariable, discoveredCliPath);
+        _logger.LogInformation("Configured {EnvironmentVariable} from PATH discovery", CopilotCliEnvironmentVariable);
+    }
+
+    internal static string? FindCopilotCliInPath(string? pathValue)
+    {
+        if (string.IsNullOrWhiteSpace(pathValue))
+        {
+            return null;
+        }
+
+        bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        string executableName = isWindows ? "copilot.exe" : "copilot";
+
+        string[] pathSegments = pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (string directory in pathSegments)
+        {
+            string candidate = Path.Combine(directory, executableName);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 
     private async Task DisposeClientAsync()

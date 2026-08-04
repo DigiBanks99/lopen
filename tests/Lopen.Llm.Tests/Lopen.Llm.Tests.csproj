@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Lopen.Llm\Lopen.Llm.csproj" />
+    <ProjectReference Include="..\..\src\Lopen.Storage\Lopen.Storage.csproj" />
   </ItemGroup>
 
   <ItemGroup>

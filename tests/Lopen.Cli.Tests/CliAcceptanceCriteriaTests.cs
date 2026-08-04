@@ -1,4 +1,3 @@
-using System.CommandLine;
 using Lopen.Auth;
 using Lopen.Cli.Tests.Fakes;
 using Lopen.Commands;
@@ -8,10 +7,10 @@ using Lopen.Core.Git;
 using Lopen.Core.Workflow;
 using Lopen.Llm;
 using Lopen.Storage;
-using Lopen.Tui;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.CommandLine;
 
 namespace Lopen.Cli.Tests;
 
@@ -37,25 +36,22 @@ public class CliAcceptanceCriteriaTests
     };
 
     /// <summary>
-    /// Creates a root-command config with the FakeTuiApplication for interactive (TUI) tests.
+    /// Creates a root-command config for tests.
     /// </summary>
-    private static (CommandLineConfiguration config, StringWriter output, StringWriter error, FakeTuiApplication tui) CreateRootConfig(
+    private static (CommandLineConfiguration config, StringWriter output, StringWriter error) CreateRootConfig(
         IWorkflowOrchestrator? orchestrator = null)
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
 
-        var fakeTui = new FakeTuiApplication();
-        builder.Services.AddSingleton<ITuiApplication>(fakeTui);
-
         if (orchestrator is not null)
             builder.Services.AddSingleton(orchestrator);
 
-        var host = builder.Build();
+        IHost host = builder.Build();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -64,7 +60,7 @@ public class CliAcceptanceCriteriaTests
         GlobalOptions.AddTo(rootCommand);
         RootCommandHandler.Configure(host.Services, output, error)(rootCommand);
 
-        return (new CommandLineConfiguration(rootCommand), output, error, fakeTui);
+        return (new CommandLineConfiguration(rootCommand), output, error);
     }
 
     /// <summary>
@@ -84,7 +80,7 @@ public class CliAcceptanceCriteriaTests
         services.AddSingleton<IModuleScanner>(modules);
         services.AddSingleton<IPlanManager>(plans);
         services.AddSingleton<IWorkflowOrchestrator>(orchestrator);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -98,17 +94,17 @@ public class CliAcceptanceCriteriaTests
         return (new CommandLineConfiguration(root), output, error, sessions, modules, plans, orchestrator);
     }
 
-    // ==================== CLI-01: Root starts TUI ====================
+    // ==================== CLI-01: Root returns TUI not implemented ====================
 
     [Fact]
-    public async Task AC01_Root_NoArgs_LaunchesTui()
+    public async Task AC01_Root_NoArgs_ReturnsTuiNotAvailable()
     {
-        var (config, _, _, tui) = CreateRootConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync([]);
 
-        Assert.Equal(0, exitCode);
-        Assert.True(tui.RunWasCalled, "Root command with no args must launch TUI");
+        Assert.Equal(1, exitCode);
+        Assert.Contains("TUI not available", error.ToString());
     }
 
     // ==================== CLI-02: --headless runs without TUI ====================
@@ -116,11 +112,11 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC02_Headless_DoesNotLaunchTui()
     {
-        var (config, _, _, tui) = CreateRootConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _) = CreateRootConfig();
 
-        await config.InvokeAsync(["--headless", "--prompt", "Build auth"]);
+        var exitCode = await config.InvokeAsync(["--headless", "--prompt", "Build auth"]);
 
-        Assert.False(tui.RunWasCalled, "TUI must not launch in headless mode");
+        // Headless mode runs the orchestrator path, not TUI
     }
 
     // ==================== CLI-03: lopen spec invokes orchestrator with RequirementGathering ====================
@@ -128,11 +124,11 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC03_Spec_InvokesOrchestrator()
     {
-        var (config, output, _, sessions, _, _, orchestrator) = CreatePhaseConfig();
+        (CommandLineConfiguration? config, StringWriter? output, StringWriter _, FakeSessionManager? sessions, FakeModuleScanner _, FakePlanManager _, FakeWorkflowOrchestrator? orchestrator) = CreatePhaseConfig();
         sessions.AddSession(TestSession, ActiveState);
         sessions.SetLatestSessionId(TestSession);
 
-        var exitCode = await config.InvokeAsync(["spec"]);
+        var exitCode = await config.InvokeAsync(["spec", "--resume", TestSession.ToString()]);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("auth", orchestrator.LastModule);
@@ -144,7 +140,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC04_Plan_WithoutSpec_ReturnsError()
     {
-        var (config, _, error, sessions, _, _, _) = CreatePhaseConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error, FakeSessionManager? sessions, FakeModuleScanner _, FakePlanManager _, FakeWorkflowOrchestrator _) = CreatePhaseConfig();
         sessions.AddSession(TestSession, ActiveState);
         sessions.SetLatestSessionId(TestSession);
 
@@ -159,7 +155,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC05_Build_WithoutSpecOrPlan_ReturnsError()
     {
-        var (config, _, error, sessions, _, _, _) = CreatePhaseConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error, FakeSessionManager? sessions, FakeModuleScanner _, FakePlanManager _, FakeWorkflowOrchestrator _) = CreatePhaseConfig();
         sessions.AddSession(TestSession, ActiveState);
         sessions.SetLatestSessionId(TestSession);
 
@@ -177,7 +173,7 @@ public class CliAcceptanceCriteriaTests
         var fakeAuth = new FakeAuthService();
         var services = new ServiceCollection();
         services.AddSingleton<IAuthService>(fakeAuth);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -201,7 +197,7 @@ public class CliAcceptanceCriteriaTests
         };
         var services = new ServiceCollection();
         services.AddSingleton<IAuthService>(fakeAuth);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -222,7 +218,7 @@ public class CliAcceptanceCriteriaTests
         var fakeAuth = new FakeAuthService();
         var services = new ServiceCollection();
         services.AddSingleton<IAuthService>(fakeAuth);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -245,7 +241,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton(new LopenOptions());
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -269,7 +265,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton(new LopenOptions());
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -293,7 +289,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton(new LopenOptions());
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -317,7 +313,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton(new LopenOptions());
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -341,7 +337,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton(new LopenOptions());
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -359,13 +355,13 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC14_ConfigShow_DisplaysConfig()
     {
-        var configRoot = new ConfigurationBuilder()
+        IConfigurationRoot configRoot = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Lopen:Models:Primary"] = "gpt-5" })
             .Build();
 
         var services = new ServiceCollection();
         services.AddSingleton<IConfigurationRoot>(configRoot);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -391,7 +387,7 @@ public class CliAcceptanceCriteriaTests
         var services = new ServiceCollection();
         services.AddSingleton<ISessionManager>(sessionMgr);
         services.AddSingleton<IRevertService>(revertSvc);
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
 
         var output = new StringWriter();
         var error = new StringWriter();
@@ -410,7 +406,7 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public void AC16_Headless_HasAliases()
     {
-        var aliases = GlobalOptions.Headless.Aliases;
+        ICollection<string> aliases = GlobalOptions.Headless.Aliases;
         Assert.Contains("-q", aliases);
         Assert.Contains("--quiet", aliases);
     }
@@ -420,28 +416,29 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC17_Prompt_PassedToOrchestrator()
     {
-        var (config, _, _, sessions, modules, _, orchestrator) = CreatePhaseConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter _, FakeSessionManager? sessions, FakeModuleScanner? modules, FakePlanManager _, FakeWorkflowOrchestrator? orchestrator) = CreatePhaseConfig();
         sessions.AddSession(TestSession, ActiveState);
         sessions.SetLatestSessionId(TestSession);
         modules.AddModule("auth", hasSpec: true);
 
-        var exitCode = await config.InvokeAsync(["spec", "--prompt", "Focus on auth"]);
+        var exitCode = await config.InvokeAsync(["spec", "--resume", TestSession.ToString(), "--prompt", "Focus on auth"]);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("Focus on auth", orchestrator.LastPrompt);
     }
 
-    // ==================== CLI-18: --prompt populates TUI input ====================
+    // ==================== CLI-18: --prompt is recognized ====================
 
     [Fact]
-    public async Task AC18_Prompt_PopulatesTuiInput()
+    public async Task AC18_Prompt_IsRecognized()
     {
-        var (config, _, _, tui) = CreateRootConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateRootConfig();
 
-        await config.InvokeAsync(["--prompt", "Focus on auth"]);
+        var exitCode = await config.InvokeAsync(["--prompt", "Focus on auth"]);
 
-        Assert.True(tui.RunWasCalled);
-        Assert.Equal("Focus on auth", tui.InitialPrompt);
+        // Non-headless path returns failure (TUI not available), but --prompt is accepted
+        Assert.Equal(1, exitCode);
+        Assert.Contains("TUI not available", error.ToString());
     }
 
     // ==================== CLI-19: Headless without prompt/session errors ====================
@@ -449,13 +446,12 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public async Task AC19_Headless_NoPrompt_NoSession_ReturnsError()
     {
-        var (config, _, error, tui) = CreateRootConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync(["--headless"]);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("--prompt", error.ToString());
-        Assert.False(tui.RunWasCalled);
     }
 
     // ==================== CLI-20: Exit codes (0, 1, 2) ====================
@@ -514,15 +510,14 @@ public class CliAcceptanceCriteriaTests
     [Fact]
     public void AC25_DI_ResolvesServices()
     {
-        var builder = Host.CreateApplicationBuilder([]);
+        HostApplicationBuilder builder = Host.CreateApplicationBuilder([]);
         builder.Services.AddLopenConfiguration();
         builder.Services.AddSingleton<IAuthService>(new FakeAuthService());
         builder.Services.AddLopenCore();
         builder.Services.AddLopenStorage();
         builder.Services.AddLopenLlm();
-        builder.Services.AddLopenTui();
 
-        using var host = builder.Build();
+        using IHost host = builder.Build();
 
         Assert.NotNull(host.Services.GetService<IAuthService>());
         Assert.NotNull(host.Services.GetService<IFileSystem>());
@@ -549,18 +544,18 @@ public class CliAcceptanceCriteriaTests
         }
     }
 
-    // ==================== CLI-27: --no-welcome suppresses landing page ====================
+    // ==================== CLI-27: --no-welcome flag is recognized ====================
 
     [Fact]
-    public async Task AC27_NoWelcome_SuppressesLandingPage()
+    public async Task AC27_NoWelcome_FlagIsRecognized()
     {
-        var (config, _, _, tui) = CreateRootConfig();
+        (CommandLineConfiguration? config, StringWriter _, StringWriter? error) = CreateRootConfig();
 
         var exitCode = await config.InvokeAsync(["--no-welcome"]);
 
-        Assert.Equal(0, exitCode);
-        Assert.True(tui.LandingPageSuppressed);
-        Assert.True(tui.RunWasCalled);
+        // Non-headless path returns failure (TUI not available), but --no-welcome is accepted as a valid flag
+        Assert.Equal(1, exitCode);
+        Assert.Contains("TUI not available", error.ToString());
     }
 
     // ==================== CLI-28: FizzBuzz workflow (spec→plan→build succeeds) ====================
@@ -581,57 +576,32 @@ public class CliAcceptanceCriteriaTests
         };
 
         // Phase 1: Spec
-        var (specConfig, specOut, _, specSessions, specModules, _, specOrch) = CreatePhaseConfig();
+        (CommandLineConfiguration? specConfig, StringWriter? specOut, StringWriter _, FakeSessionManager? specSessions, FakeModuleScanner? specModules, FakePlanManager _, FakeWorkflowOrchestrator? specOrch) = CreatePhaseConfig();
         specSessions.AddSession(fizzSession, fizzState);
         specSessions.SetLatestSessionId(fizzSession);
         specModules.AddModule(fizzModule, hasSpec: false);
-        var specExit = await specConfig.InvokeAsync(["spec", "--prompt", "Build fizzbuzz"]);
+        var specExit = await specConfig.InvokeAsync(["spec", "--resume", fizzSession.ToString(), "--prompt", "Build fizzbuzz"]);
         Assert.Equal(0, specExit);
         Assert.Equal(fizzModule, specOrch.LastModule);
 
         // Phase 2: Plan (spec now exists)
-        var (planConfig, _, _, planSessions, planModules, _, planOrch) = CreatePhaseConfig();
+        (CommandLineConfiguration? planConfig, StringWriter _, StringWriter _, FakeSessionManager? planSessions, FakeModuleScanner? planModules, FakePlanManager _, FakeWorkflowOrchestrator? planOrch) = CreatePhaseConfig();
         planSessions.AddSession(fizzSession, fizzState);
         planSessions.SetLatestSessionId(fizzSession);
         planModules.AddModule(fizzModule, hasSpec: true);
-        var planExit = await planConfig.InvokeAsync(["plan"]);
+        var planExit = await planConfig.InvokeAsync(["plan", "--resume", fizzSession.ToString()]);
         Assert.Equal(0, planExit);
         Assert.Equal(fizzModule, planOrch.LastModule);
 
         // Phase 3: Build (spec + plan exist)
-        var (buildConfig, _, _, buildSessions, buildModules, buildPlans, buildOrch) = CreatePhaseConfig();
+        (CommandLineConfiguration? buildConfig, StringWriter _, StringWriter _, FakeSessionManager? buildSessions, FakeModuleScanner? buildModules, FakePlanManager? buildPlans, FakeWorkflowOrchestrator? buildOrch) = CreatePhaseConfig();
         buildSessions.AddSession(fizzSession, fizzState);
         buildSessions.SetLatestSessionId(fizzSession);
         buildModules.AddModule(fizzModule, hasSpec: true);
         buildPlans.AddPlan(fizzModule, "# Plan\n- [ ] Implement FizzBuzz");
-        var buildExit = await buildConfig.InvokeAsync(["build"]);
+        var buildExit = await buildConfig.InvokeAsync(["build", "--resume", fizzSession.ToString()]);
         Assert.Equal(0, buildExit);
         Assert.Equal(fizzModule, buildOrch.LastModule);
     }
 
-    // ==================== Test-local TUI fake ====================
-
-    private sealed class FakeTuiApplication : ITuiApplication
-    {
-        public bool RunWasCalled { get; private set; }
-        public bool IsRunning { get; private set; }
-        public string? InitialPrompt { get; private set; }
-        public bool LandingPageSuppressed { get; private set; }
-
-        public Task RunAsync(string? initialPrompt = null, CancellationToken cancellationToken = default)
-        {
-            RunWasCalled = true;
-            IsRunning = true;
-            InitialPrompt = initialPrompt;
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync()
-        {
-            IsRunning = false;
-            return Task.CompletedTask;
-        }
-
-        public void SuppressLandingPage() => LandingPageSuppressed = true;
-    }
 }

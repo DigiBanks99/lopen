@@ -16,7 +16,7 @@ public sealed class ResourceTrackerTests
     [Fact]
     public async Task GetActiveResourcesAsync_NullModuleName_ThrowsArgumentException()
     {
-        var tracker = CreateTracker();
+        ResourceTracker tracker = CreateTracker();
         await Assert.ThrowsAsync<ArgumentNullException>(
             () => tracker.GetActiveResourcesAsync(null!));
     }
@@ -26,7 +26,7 @@ public sealed class ResourceTrackerTests
     [InlineData("  ")]
     public async Task GetActiveResourcesAsync_EmptyModuleName_ThrowsArgumentException(string moduleName)
     {
-        var tracker = CreateTracker();
+        ResourceTracker tracker = CreateTracker();
         await Assert.ThrowsAsync<ArgumentException>(
             () => tracker.GetActiveResourcesAsync(moduleName));
     }
@@ -34,8 +34,8 @@ public sealed class ResourceTrackerTests
     [Fact]
     public async Task GetActiveResourcesAsync_NoRequirementsDirectory_ReturnsEmpty()
     {
-        var tracker = CreateTracker();
-        var result = await tracker.GetActiveResourcesAsync("auth");
+        ResourceTracker tracker = CreateTracker();
+        IReadOnlyList<TrackedResource> result = await tracker.GetActiveResourcesAsync("auth");
         Assert.Empty(result);
     }
 
@@ -45,8 +45,8 @@ public sealed class ResourceTrackerTests
         _fs.AddDirectory("/proj/docs/requirements/auth");
         _fs.AddFile("/proj/docs/requirements/auth/SPECIFICATION.md", "# Spec content");
 
-        var tracker = CreateTracker();
-        var result = await tracker.GetActiveResourcesAsync("auth");
+        ResourceTracker tracker = CreateTracker();
+        IReadOnlyList<TrackedResource> result = await tracker.GetActiveResourcesAsync("auth");
 
         Assert.Contains(result, r => r.Label == "SPECIFICATION.md");
         // All results should be from the spec file (InMemoryFileSystem.GetFiles ignores pattern)
@@ -59,8 +59,8 @@ public sealed class ResourceTrackerTests
         _fs.AddDirectory("/proj/docs/requirements/auth");
         _fs.AddFile("/proj/docs/requirements/auth/RESEARCH.md", "# Research index");
 
-        var tracker = CreateTracker();
-        var result = await tracker.GetActiveResourcesAsync("auth");
+        ResourceTracker tracker = CreateTracker();
+        IReadOnlyList<TrackedResource> result = await tracker.GetActiveResourcesAsync("auth");
 
         Assert.Contains(result, r => r.Label == "RESEARCH.md");
         Assert.All(result, r => Assert.Equal("RESEARCH.md", r.Label));
@@ -73,8 +73,8 @@ public sealed class ResourceTrackerTests
         _fs.AddFile("/proj/docs/requirements/auth/RESEARCH-jwt.md", "# JWT research");
         _fs.AddFile("/proj/docs/requirements/auth/RESEARCH-oauth.md", "# OAuth research");
 
-        var tracker = CreateTracker();
-        var result = await tracker.GetActiveResourcesAsync("auth");
+        ResourceTracker tracker = CreateTracker();
+        IReadOnlyList<TrackedResource> result = await tracker.GetActiveResourcesAsync("auth");
 
         Assert.Contains(result, r => r.Label == "RESEARCH-jwt.md");
         Assert.Contains(result, r => r.Label == "RESEARCH-oauth.md");
@@ -85,8 +85,8 @@ public sealed class ResourceTrackerTests
     {
         _fs.AddFile("/proj/.lopen/modules/auth/plan.md", "# Plan content");
 
-        var tracker = CreateTracker();
-        var result = await tracker.GetActiveResourcesAsync("auth");
+        ResourceTracker tracker = CreateTracker();
+        IReadOnlyList<TrackedResource> result = await tracker.GetActiveResourcesAsync("auth");
 
         Assert.Single(result);
         Assert.Equal("plan.md", result[0].Label);
@@ -101,8 +101,8 @@ public sealed class ResourceTrackerTests
         _fs.AddFile("/proj/docs/requirements/auth/RESEARCH-jwt.md", "# JWT");
         _fs.AddFile("/proj/.lopen/modules/auth/plan.md", "# Plan");
 
-        var tracker = CreateTracker();
-        var result = await tracker.GetActiveResourcesAsync("auth");
+        ResourceTracker tracker = CreateTracker();
+        IReadOnlyList<TrackedResource> result = await tracker.GetActiveResourcesAsync("auth");
 
         Assert.Contains(result, r => r.Label == "SPECIFICATION.md");
         Assert.Contains(result, r => r.Label == "RESEARCH.md");
@@ -121,7 +121,7 @@ public sealed class ResourceTrackerTests
 
         var failFs = new FailingReadFileSystem(inner, "/proj/docs/requirements/auth/SPECIFICATION.md");
         var tracker = new ResourceTracker(failFs, ProjectRoot, NullLogger<ResourceTracker>.Instance);
-        var result = await tracker.GetActiveResourcesAsync("auth");
+        IReadOnlyList<TrackedResource> result = await tracker.GetActiveResourcesAsync("auth");
 
         // SPECIFICATION.md should be skipped, only RESEARCH.md should appear
         Assert.DoesNotContain(result, r => r.Label == "SPECIFICATION.md");
@@ -135,13 +135,13 @@ public sealed class ResourceTrackerTests
         _fs.AddFile("/proj/docs/requirements/auth/SPECIFICATION.md", "spec body here");
         _fs.AddFile("/proj/.lopen/modules/auth/plan.md", "plan body here");
 
-        var tracker = CreateTracker();
-        var result = await tracker.GetActiveResourcesAsync("auth");
+        ResourceTracker tracker = CreateTracker();
+        IReadOnlyList<TrackedResource> result = await tracker.GetActiveResourcesAsync("auth");
 
-        var spec = result.First(r => r.Label == "SPECIFICATION.md");
+        TrackedResource spec = result.First(r => r.Label == "SPECIFICATION.md");
         Assert.Equal("spec body here", spec.Content);
 
-        var plan = result.First(r => r.Label == "plan.md");
+        TrackedResource plan = result.First(r => r.Label == "plan.md");
         Assert.Equal("plan body here", plan.Content);
     }
 

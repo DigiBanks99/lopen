@@ -1,3 +1,4 @@
+using Lopen.Auth;
 using Lopen.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -14,6 +15,7 @@ public class ServiceCollectionExtensionsTests
         var lopenOptions = new LopenOptions();
         services.AddSingleton(Options.Create(lopenOptions));
         services.AddSingleton(lopenOptions.Oracle);
+        services.AddSingleton<IAuthTokenProvider>(new TestTokenProvider("test-token"));
         services.AddLopenLlm();
         return services.BuildServiceProvider();
     }
@@ -21,10 +23,10 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public async Task AddLopenLlm_RegistersILlmService()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var service = provider.GetService<ILlmService>();
+            ILlmService? service = provider.GetService<ILlmService>();
 
             Assert.NotNull(service);
             Assert.IsType<RetryingLlmService>(service);
@@ -38,10 +40,10 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public async Task AddLopenLlm_RegistersIModelSelector()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var selector = provider.GetService<IModelSelector>();
+            IModelSelector? selector = provider.GetService<IModelSelector>();
 
             Assert.NotNull(selector);
             Assert.IsType<DefaultModelSelector>(selector);
@@ -55,10 +57,10 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public async Task AddLopenLlm_RegistersITokenTracker()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var tracker = provider.GetService<ITokenTracker>();
+            ITokenTracker? tracker = provider.GetService<ITokenTracker>();
 
             Assert.NotNull(tracker);
             Assert.IsType<InMemoryTokenTracker>(tracker);
@@ -74,7 +76,7 @@ public class ServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        var result = services.AddLopenLlm();
+        IServiceCollection result = services.AddLopenLlm();
 
         Assert.Same(services, result);
     }
@@ -82,11 +84,11 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public async Task AddLopenLlm_ILlmService_IsSingleton()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var first = provider.GetRequiredService<ILlmService>();
-            var second = provider.GetRequiredService<ILlmService>();
+            ILlmService first = provider.GetRequiredService<ILlmService>();
+            ILlmService second = provider.GetRequiredService<ILlmService>();
 
             Assert.Same(first, second);
         }
@@ -99,11 +101,11 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public async Task AddLopenLlm_IModelSelector_IsSingleton()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var first = provider.GetRequiredService<IModelSelector>();
-            var second = provider.GetRequiredService<IModelSelector>();
+            IModelSelector first = provider.GetRequiredService<IModelSelector>();
+            IModelSelector second = provider.GetRequiredService<IModelSelector>();
 
             Assert.Same(first, second);
         }
@@ -116,11 +118,11 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public async Task AddLopenLlm_ITokenTracker_IsSingleton()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var first = provider.GetRequiredService<ITokenTracker>();
-            var second = provider.GetRequiredService<ITokenTracker>();
+            ITokenTracker first = provider.GetRequiredService<ITokenTracker>();
+            ITokenTracker second = provider.GetRequiredService<ITokenTracker>();
 
             Assert.Same(first, second);
         }
@@ -131,29 +133,12 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task AddLopenLlm_RegistersIToolRegistry()
-    {
-        var provider = BuildProvider();
-        try
-        {
-            var registry = provider.GetService<IToolRegistry>();
-
-            Assert.NotNull(registry);
-            Assert.IsType<DefaultToolRegistry>(registry);
-        }
-        finally
-        {
-            await provider.DisposeAsync();
-        }
-    }
-
-    [Fact]
     public async Task AddLopenLlm_RegistersIPromptBuilder()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var builder = provider.GetService<IPromptBuilder>();
+            IPromptBuilder? builder = provider.GetService<IPromptBuilder>();
 
             Assert.NotNull(builder);
             Assert.IsType<DefaultPromptBuilder>(builder);
@@ -167,10 +152,10 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public async Task AddLopenLlm_RegistersIVerificationTracker()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var tracker = provider.GetService<IVerificationTracker>();
+            IVerificationTracker? tracker = provider.GetService<IVerificationTracker>();
 
             Assert.NotNull(tracker);
             Assert.IsType<VerificationTracker>(tracker);
@@ -184,10 +169,10 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public async Task AddLopenLlm_RegistersIOracleVerifier()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var verifier = provider.GetService<IOracleVerifier>();
+            IOracleVerifier? verifier = provider.GetService<IOracleVerifier>();
 
             Assert.NotNull(verifier);
             Assert.IsType<OracleVerifier>(verifier);
@@ -201,11 +186,11 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public async Task AddLopenLlm_IOracleVerifier_IsSingleton()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var first = provider.GetRequiredService<IOracleVerifier>();
-            var second = provider.GetRequiredService<IOracleVerifier>();
+            IOracleVerifier first = provider.GetRequiredService<IOracleVerifier>();
+            IOracleVerifier second = provider.GetRequiredService<IOracleVerifier>();
 
             Assert.Same(first, second);
         }
@@ -216,15 +201,15 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task AddLopenLlm_RegistersIGitHubTokenProvider()
+    public async Task AddLopenLlm_RequiresCallerProvidedIAuthTokenProvider()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var tokenProvider = provider.GetService<IGitHubTokenProvider>();
+            IAuthTokenProvider tokenProvider = provider.GetRequiredService<IAuthTokenProvider>();
 
-            Assert.NotNull(tokenProvider);
-            Assert.IsType<NullGitHubTokenProvider>(tokenProvider);
+            Assert.IsType<TestTokenProvider>(tokenProvider);
+            Assert.Equal("test-token", await tokenProvider.GetTokenAsync());
         }
         finally
         {
@@ -235,10 +220,10 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public async Task AddLopenLlm_RegistersICopilotClientProvider()
     {
-        var provider = BuildProvider();
+        ServiceProvider provider = BuildProvider();
         try
         {
-            var clientProvider = provider.GetService<ICopilotClientProvider>();
+            ICopilotClientProvider? clientProvider = provider.GetService<ICopilotClientProvider>();
 
             Assert.NotNull(clientProvider);
             Assert.IsType<CopilotClientProvider>(clientProvider);
@@ -250,22 +235,21 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task AddLopenLlm_CustomTokenProvider_IsUsed()
+    public async Task AddLopenLlm_CopilotClientProvider_ResolvesWithProvidedAuthTokenProvider()
     {
         var services = new ServiceCollection();
         services.AddLogging();
         var lopenOptions = new LopenOptions();
         services.AddSingleton(Options.Create(lopenOptions));
         services.AddSingleton(lopenOptions.Oracle);
-        services.AddSingleton<IGitHubTokenProvider>(new TestTokenProvider("test-token"));
+        services.AddSingleton<IAuthTokenProvider>(new TestTokenProvider("test-token"));
         services.AddLopenLlm();
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         try
         {
-            var tokenProvider = provider.GetRequiredService<IGitHubTokenProvider>();
+            ICopilotClientProvider copilotClientProvider = provider.GetRequiredService<ICopilotClientProvider>();
 
-            Assert.IsType<TestTokenProvider>(tokenProvider);
-            Assert.Equal("test-token", tokenProvider.GetToken());
+            Assert.IsType<CopilotClientProvider>(copilotClientProvider);
         }
         finally
         {
@@ -273,8 +257,8 @@ public class ServiceCollectionExtensionsTests
         }
     }
 
-    private sealed class TestTokenProvider(string token) : IGitHubTokenProvider
+    private sealed class TestTokenProvider(string? token) : IAuthTokenProvider
     {
-        public string? GetToken() => token;
+        public Task<string?> GetTokenAsync(CancellationToken cancellationToken = default) => Task.FromResult(token);
     }
 }

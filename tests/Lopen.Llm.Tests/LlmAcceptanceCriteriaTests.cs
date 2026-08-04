@@ -1,3 +1,5 @@
+using GitHub.Copilot.SDK;
+using Lopen.Auth;
 using Lopen.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -16,20 +18,19 @@ public class LlmAcceptanceCriteriaTests
     // Primary coverage: CopilotClientProviderTests, CopilotLlmServiceTests
 
     [Fact]
-    public void AC1_TokenProvider_InjectableViaInterface()
+    public async Task AC1_TokenProvider_InjectableViaInterface()
     {
-        var provider = new NullGitHubTokenProvider();
-        Assert.Null(provider.GetToken());
+        IAuthTokenProvider provider = new FakeTokenProvider(null);
+        Assert.Null(await provider.GetTokenAsync());
     }
 
     [Fact]
     public async Task AC1_ClientProvider_AcceptsTokenFromAuthModule()
     {
-        var tokenProvider = new FakeTokenProvider("gh_test_token");
-        var clientProvider = new CopilotClientProvider(
-            tokenProvider, NullLogger<CopilotClientProvider>.Instance);
+        FakeTokenProvider tokenProvider = new("gh_test_token");
+        CopilotClientProvider clientProvider = new(tokenProvider, NullLogger<CopilotClientProvider>.Instance);
 
-        var client = clientProvider.CreateClient();
+        CopilotClient client = await clientProvider.CreateClientAsync();
         Assert.NotNull(client);
         await clientProvider.DisposeAsync();
     }
@@ -37,12 +38,13 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC1_ServiceRegistration_RegistersAuthComponents()
     {
-        var services = new ServiceCollection();
+        ServiceCollection services = new();
         services.AddLogging();
+        services.AddSingleton<IAuthTokenProvider>(new FakeTokenProvider(null));
         services.AddLopenLlm();
 
-        var sp = services.BuildServiceProvider();
-        Assert.NotNull(sp.GetService<IGitHubTokenProvider>());
+        ServiceProvider sp = services.BuildServiceProvider();
+        Assert.NotNull(sp.GetService<IAuthTokenProvider>());
         Assert.NotNull(sp.GetService<ICopilotClientProvider>());
     }
 
@@ -52,8 +54,8 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public async Task AC2_EachInvocation_CreatesNewSession()
     {
-        var counter = new CountingClientProvider();
-        var service = new CopilotLlmService(
+        CountingClientProvider counter = new();
+        CopilotLlmService service = new(
             counter, new StubAuthErrorHandler(), NullLogger<CopilotLlmService>.Instance);
 
         try
@@ -73,8 +75,7 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC3_SystemPrompt_ContainsAllRequiredSections()
     {
-        var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        var builder = new DefaultPromptBuilder(registry, NullLogger<DefaultPromptBuilder>.Instance);
+        DefaultPromptBuilder builder = new(null, NullLogger<DefaultPromptBuilder>.Instance);
 
         var prompt = builder.BuildSystemPrompt(
             WorkflowPhase.Building,
@@ -100,57 +101,29 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC4_ContextBudgetManager_TruncatesLowPrioritySections()
     {
-        var manager = new ContextBudgetManager(NullLogger<ContextBudgetManager>.Instance);
+        ContextBudgetManager manager = new(NullLogger<ContextBudgetManager>.Instance);
 
-        var sections = new ContextSection[]
+        ContextSection[] sections = new ContextSection[]
         {
             new("high", "Important content", ContextBudgetManager.EstimateTokens("Important content")),
             new("low", new string('x', 100_000), ContextBudgetManager.EstimateTokens(new string('x', 100_000))),
         };
 
-        var result = manager.FitToBudget(sections, budgetTokens: 100);
+        IReadOnlyList<ContextSection> result = manager.FitToBudget(sections, budgetTokens: 100);
         Assert.Contains(result, s => s.Title == "high");
     }
 
     // AC5: Lopen-managed tools are registered and functional
-    // Primary coverage: DefaultToolRegistryTests
-
-    [Fact]
-    public void AC5_AllSpecifiedTools_AreRegistered()
-    {
-        var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        var allTools = registry.GetAllTools();
-        var toolNames = allTools.Select(t => t.Name).ToHashSet();
-
-        Assert.Contains("read_spec", toolNames);
-        Assert.Contains("read_research", toolNames);
-        Assert.Contains("read_plan", toolNames);
-        Assert.Contains("update_task_status", toolNames);
-        Assert.Contains("get_current_context", toolNames);
-        Assert.Contains("log_research", toolNames);
-        Assert.Contains("report_progress", toolNames);
-    }
+    // Primary coverage: ToolCatalogTests
 
     // AC6: Oracle verification tools dispatch a sub-agent and return pass/fail verdicts
     // Primary coverage: OracleVerifierTests
 
     [Fact]
-    public void AC6_VerificationTools_AreRegistered()
-    {
-        var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        var allTools = registry.GetAllTools();
-        var toolNames = allTools.Select(t => t.Name).ToHashSet();
-
-        Assert.Contains("verify_task_completion", toolNames);
-        Assert.Contains("verify_component_completion", toolNames);
-        Assert.Contains("verify_module_completion", toolNames);
-    }
-
-    [Fact]
     public void AC6_OracleVerdict_ReturnsPassOrFail()
     {
-        var pass = new OracleVerdict(Passed: true, Gaps: [], Scope: VerificationScope.Task);
-        var fail = new OracleVerdict(Passed: false, Gaps: ["Missing auth"], Scope: VerificationScope.Task);
+        OracleVerdict pass = new(Passed: true, Gaps: [], Scope: VerificationScope.Task);
+        OracleVerdict fail = new(Passed: false, Gaps: ["Missing auth"], Scope: VerificationScope.Task);
 
         Assert.True(pass.Passed);
         Assert.Empty(pass.Gaps);
@@ -172,7 +145,6 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC7_OracleVerifier_RegistersNoTools()
     {
-        // OracleVerifier invokes with Array.Empty<LopenToolDefinition>()
         var prompt = OracleVerifier.BuildPrompt(
             VerificationScope.Task, "evidence", "criteria");
         Assert.Contains("acceptance criteria", prompt, StringComparison.OrdinalIgnoreCase);
@@ -184,10 +156,10 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC8_CompletionRejected_WithoutVerification()
     {
-        var tracker = new VerificationTracker();
-        var gate = new TaskStatusGate(tracker, NullLogger<TaskStatusGate>.Instance);
+        VerificationTracker tracker = new();
+        TaskStatusGate gate = new(tracker, NullLogger<TaskStatusGate>.Instance);
 
-        var result = gate.ValidateCompletion(VerificationScope.Task, "my-task");
+        TaskStatusGateResult result = gate.ValidateCompletion(VerificationScope.Task, "my-task");
         Assert.False(result.IsAllowed);
         Assert.Contains("verify_task_completion", result.RejectionReason!);
     }
@@ -195,40 +167,16 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC8_CompletionAllowed_AfterPassingVerification()
     {
-        var tracker = new VerificationTracker();
-        var gate = new TaskStatusGate(tracker, NullLogger<TaskStatusGate>.Instance);
+        VerificationTracker tracker = new();
+        TaskStatusGate gate = new(tracker, NullLogger<TaskStatusGate>.Instance);
 
         tracker.RecordVerification(VerificationScope.Task, "my-task", passed: true);
-        var result = gate.ValidateCompletion(VerificationScope.Task, "my-task");
+        TaskStatusGateResult result = gate.ValidateCompletion(VerificationScope.Task, "my-task");
         Assert.True(result.IsAllowed);
     }
 
     // AC9: Tool registration varies by workflow step
-    // Primary coverage: DefaultToolRegistryTests
-
-    [Fact]
-    public void AC9_ResearchPhase_IncludesLogResearch_ExcludesVerification()
-    {
-        var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        var tools = registry.GetToolsForPhase(WorkflowPhase.Research);
-        var names = tools.Select(t => t.Name).ToHashSet();
-
-        Assert.Contains("log_research", names);
-        Assert.DoesNotContain("verify_task_completion", names);
-        Assert.DoesNotContain("update_task_status", names);
-    }
-
-    [Fact]
-    public void AC9_BuildingPhase_IncludesVerification_ExcludesLogResearch()
-    {
-        var registry = new DefaultToolRegistry(NullLogger<DefaultToolRegistry>.Instance);
-        var tools = registry.GetToolsForPhase(WorkflowPhase.Building);
-        var names = tools.Select(t => t.Name).ToHashSet();
-
-        Assert.Contains("verify_task_completion", names);
-        Assert.Contains("update_task_status", names);
-        Assert.DoesNotContain("log_research", names);
-    }
+    // Primary coverage: ToolCatalogTests
 
     // AC10: Per-phase model selection works
     // Primary coverage: DefaultModelSelectorTests
@@ -236,7 +184,7 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC10_DifferentPhases_CanUseDifferentModels()
     {
-        var options = Options.Create(new LopenOptions
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions
         {
             Models = new ModelOptions
             {
@@ -247,7 +195,7 @@ public class LlmAcceptanceCriteriaTests
             },
         });
 
-        var selector = new DefaultModelSelector(options, NullLogger<DefaultModelSelector>.Instance);
+        DefaultModelSelector selector = new(options, NullLogger<DefaultModelSelector>.Instance);
 
         Assert.Equal("claude-sonnet-4.5", selector.SelectModel(WorkflowPhase.Building).SelectedModel);
         Assert.Equal("gpt-5-mini", selector.SelectModel(WorkflowPhase.Research).SelectedModel);
@@ -262,13 +210,13 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC11_EmptyModelConfig_FallsBackWithWarning()
     {
-        var options = Options.Create(new LopenOptions
+        IOptions<LopenOptions> options = Options.Create(new LopenOptions
         {
             Models = new ModelOptions { Building = "" },
         });
 
-        var selector = new DefaultModelSelector(options, NullLogger<DefaultModelSelector>.Instance);
-        var result = selector.SelectModel(WorkflowPhase.Building);
+        DefaultModelSelector selector = new(options, NullLogger<DefaultModelSelector>.Instance);
+        ModelFallbackResult result = selector.SelectModel(WorkflowPhase.Building);
 
         Assert.True(result.WasFallback);
         Assert.Equal(DefaultModelSelector.FallbackModel, result.SelectedModel);
@@ -280,12 +228,12 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC12_TokenTracker_RecordsAndAggregatesUsage()
     {
-        var tracker = new InMemoryTokenTracker();
+        InMemoryTokenTracker tracker = new();
 
         tracker.RecordUsage(new TokenUsage(100, 50, 150, 8192, true));
         tracker.RecordUsage(new TokenUsage(200, 75, 275, 8192, false));
 
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
         Assert.Equal(300, metrics.CumulativeInputTokens);
         Assert.Equal(125, metrics.CumulativeOutputTokens);
         Assert.Equal(1, metrics.PremiumRequestCount);
@@ -307,15 +255,16 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC13_TokenTracker_ExposesMetricsViaPublicInterface()
     {
-        var services = new ServiceCollection();
+        ServiceCollection services = new();
         services.AddLogging();
+        services.AddSingleton<IAuthTokenProvider>(new FakeTokenProvider(null));
         services.AddLopenLlm();
 
-        var sp = services.BuildServiceProvider();
-        var tracker = sp.GetRequiredService<ITokenTracker>();
+        ServiceProvider sp = services.BuildServiceProvider();
+        ITokenTracker tracker = sp.GetRequiredService<ITokenTracker>();
 
         tracker.RecordUsage(new TokenUsage(500, 200, 700, 16384, true));
-        var metrics = tracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = tracker.GetSessionMetrics();
 
         Assert.Equal(500, metrics.CumulativeInputTokens);
         Assert.Equal(200, metrics.CumulativeOutputTokens);
@@ -335,16 +284,16 @@ public class LlmAcceptanceCriteriaTests
     [Fact]
     public void AC14_BudgetManager_RespectsTokenLimit()
     {
-        var manager = new ContextBudgetManager(NullLogger<ContextBudgetManager>.Instance);
+        ContextBudgetManager manager = new(NullLogger<ContextBudgetManager>.Instance);
 
-        var sections = new ContextSection[]
+        ContextSection[] sections = new ContextSection[]
         {
             new("spec", new string('a', 400), ContextBudgetManager.EstimateTokens(new string('a', 400))),
             new("research", new string('b', 400), ContextBudgetManager.EstimateTokens(new string('b', 400))),
             new("notes", new string('c', 400), ContextBudgetManager.EstimateTokens(new string('c', 400))),
         };
 
-        var result = manager.FitToBudget(sections, budgetTokens: 150);
+        IReadOnlyList<ContextSection> result = manager.FitToBudget(sections, budgetTokens: 150);
 
         Assert.True(result.Count <= sections.Length);
         if (result.Count > 0)
@@ -355,11 +304,11 @@ public class LlmAcceptanceCriteriaTests
 
     // Test helpers
 
-    private sealed class FakeTokenProvider : IGitHubTokenProvider
+    private sealed class FakeTokenProvider : IAuthTokenProvider
     {
         private readonly string? _token;
         public FakeTokenProvider(string? token) => _token = token;
-        public string? GetToken() => _token;
+        public Task<string?> GetTokenAsync(CancellationToken cancellationToken = default) => Task.FromResult(_token);
     }
 
     private sealed class CountingClientProvider : ICopilotClientProvider

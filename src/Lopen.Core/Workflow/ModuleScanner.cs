@@ -28,6 +28,8 @@ internal sealed class ModuleScanner : IModuleScanner
     {
         var requirementsPath = Path.Combine(_projectRoot, RequirementsRelativePath);
 
+        _logger.LogInformation("Scanning for modules in {Path}", requirementsPath);
+        Console.WriteLine($"Scanning for modules in {requirementsPath}...");
         if (!_fileSystem.DirectoryExists(requirementsPath))
         {
             _logger.LogWarning("Requirements directory not found: {Path}", requirementsPath);

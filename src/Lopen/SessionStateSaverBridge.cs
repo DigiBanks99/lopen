@@ -22,21 +22,21 @@ internal sealed class SessionStateSaverBridge : ISessionStateSaver
     /// <inheritdoc />
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        var sessionId = await _sessionManager.GetLatestSessionIdAsync(cancellationToken);
+        SessionId? sessionId = await _sessionManager.GetLatestSessionIdAsync(cancellationToken);
         if (sessionId is null)
         {
             _logger.LogWarning("No active session found; nothing to save.");
             return;
         }
 
-        var state = await _sessionManager.LoadSessionStateAsync(sessionId, cancellationToken);
+        SessionState? state = await _sessionManager.LoadSessionStateAsync(sessionId, cancellationToken);
         if (state is null)
         {
             _logger.LogWarning("Session {SessionId} has no persisted state; nothing to save.", sessionId);
             return;
         }
 
-        var updated = state with { UpdatedAt = DateTimeOffset.UtcNow };
+        SessionState updated = state with { UpdatedAt = DateTimeOffset.UtcNow };
         await _sessionManager.SaveSessionStateAsync(sessionId, updated, cancellationToken);
 
         _logger.LogInformation("Session state saved for {SessionId}.", sessionId);

@@ -1,13 +1,14 @@
-using System.Diagnostics;
 using Lopen.Configuration;
 using Lopen.Core.BackPressure;
 using Lopen.Core.Documents;
 using Lopen.Core.Git;
-using Lopen.Core.ToolHandlers;
 using Lopen.Llm;
+using Lopen.Llm.Tools;
 using Lopen.Otel;
 using Lopen.Storage;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace Lopen.Core.Workflow;
 
@@ -19,9 +20,10 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 {
     private readonly IWorkflowEngine _engine;
     private readonly IStateAssessor _assessor;
+    private readonly IStepRecorder? _stepRecorder;
     private readonly ILlmService _llmService;
     private readonly IPromptBuilder _promptBuilder;
-    private readonly IToolRegistry _toolRegistry;
+    private readonly ToolCatalog _toolCatalog;
     private readonly IModelSelector _modelSelector;
     private readonly IGuardrailPipeline _guardrailPipeline;
     private readonly IOutputRenderer _renderer;
@@ -36,20 +38,22 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IPlanManager? _planManager;
     private readonly IPauseController? _pauseController;
     private readonly IUserPromptQueue? _userPromptQueue;
-    private readonly IToolHandlerBinder? _toolHandlerBinder;
     private readonly WorkflowOptions? _workflowOptions;
     private readonly ILogger<WorkflowOrchestrator> _logger;
 
     private int _iterationCount;
     private SessionId? _sessionId;
     private string? _userPrompt;
+    private string? _activeModule;
+
+    public string? ActiveModule => _activeModule;
 
     public WorkflowOrchestrator(
         IWorkflowEngine engine,
         IStateAssessor assessor,
         ILlmService llmService,
         IPromptBuilder promptBuilder,
-        IToolRegistry toolRegistry,
+        ToolCatalog toolCatalog,
         IModelSelector modelSelector,
         IGuardrailPipeline guardrailPipeline,
         IOutputRenderer renderer,
@@ -65,14 +69,15 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IPlanManager? planManager = null,
         IPauseController? pauseController = null,
         IUserPromptQueue? userPromptQueue = null,
-        IToolHandlerBinder? toolHandlerBinder = null,
+        IStepRecorder? stepRecorder = null,
         WorkflowOptions? workflowOptions = null)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _assessor = assessor ?? throw new ArgumentNullException(nameof(assessor));
+        _stepRecorder = stepRecorder;
         _llmService = llmService ?? throw new ArgumentNullException(nameof(llmService));
         _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
-        _toolRegistry = toolRegistry ?? throw new ArgumentNullException(nameof(toolRegistry));
+        _toolCatalog = toolCatalog ?? throw new ArgumentNullException(nameof(toolCatalog));
         _modelSelector = modelSelector ?? throw new ArgumentNullException(nameof(modelSelector));
         _guardrailPipeline = guardrailPipeline ?? throw new ArgumentNullException(nameof(guardrailPipeline));
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
@@ -88,8 +93,55 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _planManager = planManager;
         _pauseController = pauseController;
         _userPromptQueue = userPromptQueue;
-        _toolHandlerBinder = toolHandlerBinder;
         _workflowOptions = workflowOptions;
+    }
+
+    public async Task InitializeAsync(string moduleName, SessionId? resumeSessionId = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
+
+        _activeModule = moduleName;
+
+        // Check for resumable session (STOR-07)
+        if (_sessionManager is not null)
+        {
+            if (resumeSessionId is not null)
+            {
+                // Explicit resume: use the provided session ID
+                _sessionId = resumeSessionId;
+                await RestoreSessionMetricsAsync(resumeSessionId, cancellationToken);
+
+                SessionState? savedState = await _sessionManager.LoadSessionStateAsync(resumeSessionId, cancellationToken);
+                if (savedState is not null)
+                {
+                    await _renderer.RenderResultAsync($"Resuming session {resumeSessionId} at {savedState.Step}", cancellationToken);
+                }
+            }
+            else
+            {
+                // Auto-detect: check for latest resumable session
+                SessionId? latestId = await _sessionManager.GetLatestSessionIdAsync(cancellationToken);
+                if (latestId is not null && latestId.Module.Equals(moduleName, StringComparison.OrdinalIgnoreCase))
+                {
+                    SessionState? savedState = await _sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
+                    if (savedState is not null && !savedState.IsComplete)
+                    {
+                        _logger.LogInformation("Resuming session {SessionId} for module {Module}",
+                            latestId, moduleName);
+                        _sessionId = latestId;
+
+                        await RestoreSessionMetricsAsync(latestId, cancellationToken);
+
+                        await _renderer.RenderResultAsync($"Resuming session {latestId} at {savedState.Step}", cancellationToken);
+                    }
+                }
+
+                // Create new session if not resuming
+                _sessionId ??= await _sessionManager.CreateSessionAsync(moduleName, cancellationToken);
+            }
+        }
+
+        await _engine.InitializeAsync(moduleName, cancellationToken);
     }
 
     public async Task<OrchestrationResult> RunAsync(string moduleName, string? userPrompt = null, CancellationToken cancellationToken = default)
@@ -102,7 +154,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         // Ensure module-specific git branch before starting
         if (_gitWorkflowService is not null)
         {
-            var branchResult = await _gitWorkflowService.EnsureModuleBranchAsync(moduleName, cancellationToken);
+            GitResult? branchResult = await _gitWorkflowService.EnsureModuleBranchAsync(moduleName, cancellationToken);
             if (branchResult is not null)
             {
                 _logger.LogInformation("Git branch for module {Module}: {Success}",
@@ -110,52 +162,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             }
         }
 
-        // Check for resumable session (STOR-07)
-        if (_sessionManager is not null)
-        {
-            var latestId = await _sessionManager.GetLatestSessionIdAsync(cancellationToken);
-            if (latestId is not null && latestId.Module.Equals(moduleName, StringComparison.OrdinalIgnoreCase))
-            {
-                var savedState = await _sessionManager.LoadSessionStateAsync(latestId, cancellationToken);
-                if (savedState is not null && !savedState.IsComplete)
-                {
-                    _logger.LogInformation("Resuming session {SessionId} for module {Module}",
-                        latestId, moduleName);
-                    _sessionId = latestId;
-
-                    // Restore token metrics so new usage accumulates on top (LLM-13)
-                    if (_tokenTracker is not null)
-                    {
-                        var savedMetrics = await _sessionManager.LoadSessionMetricsAsync(latestId, cancellationToken);
-                        if (savedMetrics is not null)
-                        {
-                            var priorIterations = savedMetrics.Iterations.Select(i => new TokenUsage(
-                                i.InputTokens, i.OutputTokens, i.TotalTokens, i.ContextWindowSize, i.IsPremiumRequest)).ToList();
-                            _tokenTracker.RestoreMetrics(
-                                (int)savedMetrics.CumulativeInputTokens,
-                                (int)savedMetrics.CumulativeOutputTokens,
-                                savedMetrics.PremiumRequestCount,
-                                priorIterations);
-                            _logger.LogInformation(
-                                "Restored token metrics: {Input} in, {Output} out, {Premium} premium",
-                                savedMetrics.CumulativeInputTokens, savedMetrics.CumulativeOutputTokens,
-                                savedMetrics.PremiumRequestCount);
-                        }
-                    }
-
-                    await _renderer.RenderResultAsync(
-                        $"Resuming session {latestId} at step {savedState.Step}");
-                }
-            }
-
-            // Create new session if not resuming
-            _sessionId ??= await _sessionManager.CreateSessionAsync(moduleName, cancellationToken);
-        }
-
-        await _engine.InitializeAsync(moduleName, cancellationToken);
-
-        // Bind tool handlers to registry so LLM can invoke them (CORE-25)
-        _toolHandlerBinder?.BindAll(_toolRegistry);
+        await InitializeAsync(moduleName, cancellationToken: cancellationToken);
 
         _logger.LogInformation("Starting orchestration for module {Module} at step {Step}",
             moduleName, _engine.CurrentStep);
@@ -168,19 +175,19 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 if (_pauseController is not null && _pauseController.IsPaused)
                 {
                     _logger.LogInformation("Execution paused — waiting for resume");
-                    await _renderer.RenderResultAsync("Paused — press Ctrl+P to resume");
+                    await _renderer.RenderResultAsync("Paused — press Ctrl+P to resume", cancellationToken);
                     await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
                     await _pauseController.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false);
                     _logger.LogInformation("Execution resumed");
-                    await _renderer.RenderResultAsync("Resumed");
+                    await _renderer.RenderResultAsync("Resumed", cancellationToken);
                 }
 
-                var stepResult = await RunStepAsync(moduleName, cancellationToken: cancellationToken);
+                StepResult stepResult = await RunStepAsync(moduleName, cancellationToken: cancellationToken);
 
                 if (!stepResult.Success)
                 {
                     _logger.LogWarning("Step {Step} failed: {Summary}", _engine.CurrentStep, stepResult.Summary);
-                    await _renderer.RenderErrorAsync(stepResult.Summary ?? "Step failed");
+                    await _renderer.RenderErrorAsync(stepResult.Summary ?? "Step failed", cancellationToken: cancellationToken);
                     await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
 
                     // CORE-21: Consult failure handler for self-correction vs interruption
@@ -191,19 +198,18 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                         // CORE-23: Critical system errors bypass normal failure tracking and block immediately
                         if (stepResult.IsCriticalError)
                         {
-                            var criticalClassification = _failureHandler.RecordCriticalError(
+                            FailureClassification criticalClassification = _failureHandler.RecordCriticalError(
                                 stepResult.Summary ?? "Critical system error");
                             _logger.LogCritical(
                                 "Critical system error — blocking execution: {Message}",
                                 criticalClassification.Message);
-                            await _renderer.RenderErrorAsync(
-                                $"CRITICAL ERROR — execution blocked: {criticalClassification.Message}");
+                            await _renderer.RenderErrorAsync($"CRITICAL ERROR — execution blocked: {criticalClassification.Message}", cancellationToken: cancellationToken);
                             await AutoSaveAsync(AutoSaveTrigger.TaskFailure, moduleName, cancellationToken);
                             return OrchestrationResult.CriticalError(_iterationCount, _engine.CurrentStep,
                                 criticalClassification.Message);
                         }
 
-                        var classification = _failureHandler.RecordFailure(taskId, stepResult.Summary ?? "Step failed");
+                        FailureClassification classification = _failureHandler.RecordFailure(taskId, stepResult.Summary ?? "Step failed");
 
                         if (classification.Action == FailureAction.SelfCorrect)
                         {
@@ -263,7 +269,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 if (stepResult.RequiresUserConfirmation)
                 {
                     _logger.LogInformation("User confirmation required at step {Step}", _engine.CurrentStep);
-                    await _renderer.RenderResultAsync(stepResult.Summary ?? "Awaiting user confirmation");
+                    await _renderer.RenderResultAsync(stepResult.Summary ?? "Awaiting user confirmation", cancellationToken);
                     await AutoSaveAsync(AutoSaveTrigger.UserPause, moduleName, cancellationToken);
                     return OrchestrationResult.Interrupted(_iterationCount, _engine.CurrentStep,
                         "User confirmation required");
@@ -271,7 +277,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
                 if (stepResult.NextTrigger.HasValue)
                 {
-                    var previousPhase = _engine.CurrentPhase;
+                    WorkflowPhase previousPhase = _engine.CurrentPhase;
                     var fired = _engine.Fire(stepResult.NextTrigger.Value);
                     if (!fired)
                     {
@@ -283,6 +289,18 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                         // Phase transition occurred — save state
                         await AutoSaveAsync(AutoSaveTrigger.PhaseTransition, moduleName, cancellationToken);
                     }
+
+                    if (fired && _stepRecorder is not null)
+                    {
+                        WorkflowStep newStep = _engine.CurrentStep;
+                        if (newStep is WorkflowStep.DetermineDependencies
+                                 or WorkflowStep.IdentifyComponents
+                                 or WorkflowStep.SelectNextComponent
+                                 or WorkflowStep.BreakIntoTasks)
+                        {
+                            await _stepRecorder.RecordStepAsync(moduleName, newStep, cancellationToken);
+                        }
+                    }
                 }
             }
             catch (StorageException ex) when (ex.IsCritical)
@@ -293,7 +311,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 _failureHandler?.RecordCriticalError(errorMessage);
 
                 _logger.LogCritical(ex, "Critical storage error — pausing workflow: {Message}", errorMessage);
-                await _renderer.RenderErrorAsync($"CRITICAL ERROR — workflow paused: {errorMessage}");
+                await _renderer.RenderErrorAsync($"CRITICAL ERROR — workflow paused: {errorMessage}", cancellationToken: cancellationToken);
 
                 return OrchestrationResult.CriticalError(
                     _iterationCount, _engine.CurrentStep, errorMessage);
@@ -308,7 +326,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         _logger.LogInformation("Orchestration complete for module {Module} after {Iterations} iterations",
             moduleName, _iterationCount);
-        await _renderer.RenderResultAsync($"Module {moduleName} completed after {_iterationCount} iterations");
+        await _renderer.RenderResultAsync($"Module {moduleName} completed after {_iterationCount} iterations", cancellationToken);
 
         return OrchestrationResult.Completed(_iterationCount, _engine.CurrentStep);
     }
@@ -320,11 +338,11 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             _userPrompt = userPrompt;
         _iterationCount++;
 
-        var currentStep = _engine.CurrentStep;
-        var currentPhase = _engine.CurrentPhase;
+        WorkflowStep currentStep = _engine.CurrentStep;
+        WorkflowPhase currentPhase = _engine.CurrentPhase;
 
         // OTEL-02: Workflow phase span
-        using var phaseActivity = SpanFactory.StartWorkflowPhase(
+        using Activity? phaseActivity = SpanFactory.StartWorkflowPhase(
             currentPhase.ToString(), moduleName, _iterationCount);
 
         _logger.LogDebug("Iteration {Iteration}: step={Step}, phase={Phase}",
@@ -334,20 +352,20 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         LopenTelemetryDiagnostics.SessionIteration.Record(_iterationCount);
 
         // 0. Check budget before LLM invocation (CFG-12)
-        var budgetStepResult = await CheckBudgetAsync(moduleName);
+        StepResult? budgetStepResult = await CheckBudgetAsync(moduleName);
         if (budgetStepResult is not null)
             return budgetStepResult;
 
         // 1. Evaluate guardrails before LLM invocation
         var guardrailContext = new GuardrailContext(moduleName, null, _iterationCount, 0);
-        var guardrailResults = await _guardrailPipeline.EvaluateAsync(guardrailContext, cancellationToken);
+        IReadOnlyList<GuardrailResult> guardrailResults = await _guardrailPipeline.EvaluateAsync(guardrailContext, cancellationToken);
 
-        foreach (var result in guardrailResults)
+        foreach (GuardrailResult result in guardrailResults)
         {
             if (result is GuardrailResult.Block block)
             {
                 // OTEL-07: Back-pressure event span + counter
-                using var bpActivity = SpanFactory.StartBackpressure("guardrail", "block", block.Message);
+                using Activity? bpActivity = SpanFactory.StartBackpressure("guardrail", "block", block.Message);
                 LopenTelemetryDiagnostics.BackPressureEventCount.Add(1,
                     new KeyValuePair<string, object?>("lopen.backpressure.action", "block"));
 
@@ -357,25 +375,24 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
             if (result is GuardrailResult.Warn warn)
             {
-                using var warnActivity = SpanFactory.StartBackpressure("guardrail", "warn", warn.Message);
+                using Activity? warnActivity = SpanFactory.StartBackpressure("guardrail", "warn", warn.Message);
                 LopenTelemetryDiagnostics.BackPressureEventCount.Add(1,
                     new KeyValuePair<string, object?>("lopen.backpressure.action", "warn"));
 
                 _logger.LogWarning("Guardrail warning: {Message}", warn.Message);
-                await _renderer.RenderErrorAsync($"Warning: {warn.Message}");
+                await _renderer.RenderErrorAsync($"Warning: {warn.Message}", cancellationToken: cancellationToken);
             }
         }
 
         // 2. Assess specification drift at re-entry
-        var driftResults = await _driftService.CheckDriftAsync(moduleName, cancellationToken);
+        IReadOnlyList<DriftResult> driftResults = await _driftService.CheckDriftAsync(moduleName, cancellationToken);
         if (driftResults.Count > 0)
         {
-            foreach (var drift in driftResults)
+            foreach (DriftResult drift in driftResults)
             {
                 var action = drift.IsNew ? "added" : drift.IsRemoved ? "removed" : "changed";
                 _logger.LogWarning("Spec drift: section '{Header}' was {Action}", drift.Header, action);
-                await _renderer.RenderErrorAsync(
-                    $"Specification drift detected: section '{drift.Header}' was {action}");
+                await _renderer.RenderErrorAsync($"Specification drift detected: section '{drift.Header}' was {action}", cancellationToken: cancellationToken);
             }
         }
 
@@ -384,12 +401,24 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         {
             if (!_phaseController.IsRequirementGatheringToPlannningApproved)
             {
-                // Invoke LLM for spec drafting, then pause for human gate
-                var specResult = await InvokeLlmForStepAsync(moduleName, currentStep, currentPhase, cancellationToken);
+                // Invoke LLM for spec drafting, then prompt user for approval (human gate)
+                StepResult specResult = await InvokeLlmForStepAsync(moduleName, currentStep, currentPhase, cancellationToken);
                 if (!specResult.Success)
                     return specResult;
-                return StepResult.NeedsConfirmation(
-                    specResult.Summary ?? "Specification drafted. Please review and approve to continue.");
+
+                var confirmationSummary = specResult.Summary ?? "Specification drafted. Please review and approve to continue.";
+                var response = await _renderer.PromptAsync(
+                    $"{confirmationSummary}\n\nApprove specification to continue? [y/N]", cancellationToken);
+
+                if (response is not null &&
+                    (response.Trim().Equals("y", StringComparison.OrdinalIgnoreCase) ||
+                     response.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase)))
+                {
+                    _phaseController.ApproveSpecification();
+                    return StepResult.Succeeded(WorkflowTrigger.SpecApproved, "Specification approved");
+                }
+
+                return StepResult.NeedsConfirmation(confirmationSummary);
             }
 
             // Spec already approved, fire transition
@@ -406,7 +435,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 $"iteration-{_iterationCount}", "current", moduleName);
         }
 
-        var llmResult = await InvokeLlmForStepAsync(moduleName, currentStep, currentPhase, cancellationToken);
+        StepResult llmResult = await InvokeLlmForStepAsync(moduleName, currentStep, currentPhase, cancellationToken);
         taskStopwatch.Stop();
 
         if (taskActivity is not null)
@@ -435,7 +464,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             await PersistPlanAsync(moduleName, llmResult.Summary, cancellationToken);
 
             // Check if planning is structurally complete for auto-transition to building
-            var hasComponents = await _assessor.HasMoreComponentsAsync(moduleName, cancellationToken);
+            WorkflowAssessment assessment = await _assessor.AssessAsync(moduleName, cancellationToken);
             if (_phaseController.CanAutoTransitionToBuilding(true, true))
             {
                 _logger.LogInformation("Auto-transition: Planning structurally complete");
@@ -445,8 +474,8 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         if (currentStep == WorkflowStep.Repeat)
         {
             // Check if all components are built for auto-transition to complete
-            var hasMore = await _assessor.HasMoreComponentsAsync(moduleName, cancellationToken);
-            if (!hasMore)
+            WorkflowAssessment repeatAssessment = await _assessor.AssessAsync(moduleName, cancellationToken);
+            if (!repeatAssessment.HasMoreComponents)
             {
                 _logger.LogInformation("No more components — checking module completion");
                 return StepResult.Succeeded(WorkflowTrigger.ModuleComplete, "All components complete");
@@ -454,7 +483,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
 
         // 6. Determine next trigger based on current step
-        var nextTrigger = DetermineNextTrigger(currentStep);
+        WorkflowTrigger? nextTrigger = DetermineNextTrigger(currentStep);
         if (nextTrigger.HasValue)
         {
             return StepResult.Succeeded(nextTrigger.Value, llmResult.Summary);
@@ -470,9 +499,9 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         await _renderer.RenderProgressAsync(
             phase.ToString(), step.ToString(), CalculateProgress(step), cancellationToken);
 
-        var model = _modelSelector.SelectModel(phase);
-        var tools = _toolRegistry.GetToolsForPhase(phase);
-        var contextSections = _userPrompt is not null
+        ModelFallbackResult model = _modelSelector.SelectModel(phase);
+        IReadOnlyList<AIFunction> tools = _toolCatalog.GetToolsForPhase(phase);
+        Dictionary<string, string> contextSections = _userPrompt is not null
             ? new Dictionary<string, string> { ["user_prompt"] = _userPrompt }
             : new Dictionary<string, string>();
 
@@ -490,12 +519,12 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             contextSections.Count > 0 ? contextSections : null);
 
         // OTEL-03: SDK invocation span
-        using var sdkActivity = SpanFactory.StartSdkInvocation(model.SelectedModel);
+        using Activity? sdkActivity = SpanFactory.StartSdkInvocation(model.SelectedModel);
         var sdkStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         try
         {
-            var result = await _llmService.InvokeAsync(systemPrompt, model.SelectedModel, tools, cancellationToken);
+            LlmInvocationResult result = await _llmService.InvokeAsync(systemPrompt, model.SelectedModel, tools, cancellationToken);
 
             sdkStopwatch.Stop();
             _logger.LogInformation(
@@ -527,6 +556,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                     (double)result.TokenUsage.TotalTokens / result.TokenUsage.ContextWindowSize);
             }
 
+            await _renderer.RenderResultAsync(result.Output, cancellationToken);
             return StepResult.Succeeded(
                 DetermineNextTrigger(step) ?? WorkflowTrigger.Assess,
                 result.Output);
@@ -540,14 +570,14 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             // CORE-23: Critical system errors block execution
             sdkActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogCritical(ex, "Critical system error at step {Step}", step);
-            await _renderer.RenderErrorAsync($"CRITICAL: {ex.Message}", ex);
+            await _renderer.RenderErrorAsync($"CRITICAL: {ex.Message}", ex, cancellationToken);
             return StepResult.CriticalFailure($"Critical system error: {ex.Message}");
         }
         catch (Exception ex)
         {
             sdkActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogError(ex, "LLM invocation failed at step {Step}", step);
-            await _renderer.RenderErrorAsync($"LLM error: {ex.Message}", ex);
+            await _renderer.RenderErrorAsync($"LLM error: {ex.Message}", ex, cancellationToken);
             return StepResult.Failed($"LLM invocation failed: {ex.Message}");
         }
     }
@@ -561,9 +591,9 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         if (_budgetEnforcer is null || _tokenTracker is null)
             return null;
 
-        var metrics = _tokenTracker.GetSessionMetrics();
+        SessionTokenMetrics metrics = _tokenTracker.GetSessionMetrics();
         long totalTokens = metrics.CumulativeInputTokens + metrics.CumulativeOutputTokens;
-        var check = _budgetEnforcer.Check(totalTokens, metrics.PremiumRequestCount);
+        BudgetCheckResult check = _budgetEnforcer.Check(totalTokens, metrics.PremiumRequestCount);
 
         switch (check.Status)
         {
@@ -656,7 +686,7 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         SessionMetrics? metrics = null;
         if (_tokenTracker is not null)
         {
-            var tokenMetrics = _tokenTracker.GetSessionMetrics();
+            SessionTokenMetrics tokenMetrics = _tokenTracker.GetSessionMetrics();
             metrics = new SessionMetrics
             {
                 SessionId = _sessionId.ToString(),
@@ -733,6 +763,28 @@ internal sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             or UnauthorizedAccessException
             or OutOfMemoryException
             or System.Security.SecurityException;
+
+    private async Task RestoreSessionMetricsAsync(SessionId sessionId, CancellationToken cancellationToken)
+    {
+        if (_tokenTracker is null || _sessionManager is null)
+            return;
+
+        SessionMetrics? savedMetrics = await _sessionManager.LoadSessionMetricsAsync(sessionId, cancellationToken);
+        if (savedMetrics is not null)
+        {
+            var priorIterations = savedMetrics.Iterations.Select(i => new TokenUsage(
+                i.InputTokens, i.OutputTokens, i.TotalTokens, i.ContextWindowSize, i.IsPremiumRequest)).ToList();
+            _tokenTracker.RestoreMetrics(
+                (int)savedMetrics.CumulativeInputTokens,
+                (int)savedMetrics.CumulativeOutputTokens,
+                savedMetrics.PremiumRequestCount,
+                priorIterations);
+            _logger.LogInformation(
+                "Restored token metrics: {Input} in, {Output} out, {Premium} premium",
+                savedMetrics.CumulativeInputTokens, savedMetrics.CumulativeOutputTokens,
+                savedMetrics.PremiumRequestCount);
+        }
+    }
 
     /// <summary>
     /// Formats a critical storage error with path and OS details for user display (STOR-16).

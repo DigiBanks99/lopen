@@ -10,8 +10,8 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddLopenStorage();
 
-        using var provider = services.BuildServiceProvider();
-        var fileSystem = provider.GetService<IFileSystem>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IFileSystem? fileSystem = provider.GetService<IFileSystem>();
 
         Assert.NotNull(fileSystem);
         Assert.IsType<PhysicalFileSystem>(fileSystem);
@@ -22,7 +22,7 @@ public class ServiceCollectionExtensionsTests
     {
         var services = new ServiceCollection();
 
-        var result = services.AddLopenStorage();
+        IServiceCollection result = services.AddLopenStorage();
 
         Assert.Same(services, result);
     }
@@ -33,9 +33,9 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddLopenStorage();
 
-        using var provider = services.BuildServiceProvider();
-        var first = provider.GetRequiredService<IFileSystem>();
-        var second = provider.GetRequiredService<IFileSystem>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IFileSystem first = provider.GetRequiredService<IFileSystem>();
+        IFileSystem second = provider.GetRequiredService<IFileSystem>();
 
         Assert.Same(first, second);
     }

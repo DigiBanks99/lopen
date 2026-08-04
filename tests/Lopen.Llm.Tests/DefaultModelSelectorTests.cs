@@ -25,9 +25,9 @@ public class DefaultModelSelectorTests
     [InlineData(WorkflowPhase.Research, "claude-opus-4.6")]
     public void SelectModel_DefaultConfig_ReturnsDefaultModels(WorkflowPhase phase, string expectedModel)
     {
-        var selector = CreateSelector();
+        DefaultModelSelector selector = CreateSelector();
 
-        var result = selector.SelectModel(phase);
+        ModelFallbackResult result = selector.SelectModel(phase);
 
         Assert.Equal(expectedModel, result.SelectedModel);
         Assert.False(result.WasFallback);
@@ -38,9 +38,9 @@ public class DefaultModelSelectorTests
     public void SelectModel_CustomModel_ReturnsConfiguredModel()
     {
         var options = new ModelOptions { Building = "claude-sonnet-4" };
-        var selector = CreateSelector(options);
+        DefaultModelSelector selector = CreateSelector(options);
 
-        var result = selector.SelectModel(WorkflowPhase.Building);
+        ModelFallbackResult result = selector.SelectModel(WorkflowPhase.Building);
 
         Assert.Equal("claude-sonnet-4", result.SelectedModel);
         Assert.False(result.WasFallback);
@@ -50,9 +50,9 @@ public class DefaultModelSelectorTests
     public void SelectModel_EmptyModel_FallsBack()
     {
         var options = new ModelOptions { Research = "" };
-        var selector = CreateSelector(options);
+        DefaultModelSelector selector = CreateSelector(options);
 
-        var result = selector.SelectModel(WorkflowPhase.Research);
+        ModelFallbackResult result = selector.SelectModel(WorkflowPhase.Research);
 
         Assert.Equal(DefaultModelSelector.FallbackModel, result.SelectedModel);
         Assert.True(result.WasFallback);
@@ -62,9 +62,9 @@ public class DefaultModelSelectorTests
     public void SelectModel_WhitespaceModel_FallsBack()
     {
         var options = new ModelOptions { Planning = "   " };
-        var selector = CreateSelector(options);
+        DefaultModelSelector selector = CreateSelector(options);
 
-        var result = selector.SelectModel(WorkflowPhase.Planning);
+        ModelFallbackResult result = selector.SelectModel(WorkflowPhase.Planning);
 
         Assert.Equal(DefaultModelSelector.FallbackModel, result.SelectedModel);
         Assert.True(result.WasFallback);
@@ -74,7 +74,7 @@ public class DefaultModelSelectorTests
     [Fact]
     public void SelectModel_InvalidPhase_ThrowsArgumentOutOfRange()
     {
-        var selector = CreateSelector();
+        DefaultModelSelector selector = CreateSelector();
 
         Assert.Throws<ArgumentOutOfRangeException>(() => selector.SelectModel((WorkflowPhase)99));
     }
@@ -89,7 +89,7 @@ public class DefaultModelSelectorTests
             Building = "claude-opus-4.6",
             Research = "gpt-5-mini",
         };
-        var selector = CreateSelector(options);
+        DefaultModelSelector selector = CreateSelector(options);
 
         Assert.Equal("claude-opus-4.6", selector.SelectModel(WorkflowPhase.RequirementGathering).SelectedModel);
         Assert.Equal("claude-sonnet-4", selector.SelectModel(WorkflowPhase.Planning).SelectedModel);

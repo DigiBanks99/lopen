@@ -56,6 +56,10 @@ public static class StoragePaths
     public static string GetAssessmentsCacheDirectory(string projectRoot) =>
         Path.Combine(GetCacheDirectory(projectRoot), "assessments");
 
+    /// <summary>Returns the path to a module's step-hint file: .lopen/cache/assessments/{moduleName}.json</summary>
+    public static string GetModuleAssessmentHintPath(string projectRoot, string moduleName) =>
+        Path.Combine(GetAssessmentsCacheDirectory(projectRoot), $"{moduleName}.json");
+
     /// <summary>Returns the corrupted/ directory path for quarantined files.</summary>
     public static string GetCorruptedDirectory(string projectRoot) =>
         Path.Combine(GetRoot(projectRoot), "corrupted");

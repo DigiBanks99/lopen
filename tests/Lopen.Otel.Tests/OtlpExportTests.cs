@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using System.Diagnostics;
 
 namespace Lopen.Otel.Tests;
 
@@ -16,13 +18,13 @@ public class OtlpExportTests
     [Fact]
     public void OtlpExport_NotActivated_WhenEndpointNotSet()
     {
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["otel:enabled"] = "true" })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
 
         // Should not throw — no export when no endpoint
         Assert.NotNull(sp);
@@ -31,7 +33,7 @@ public class OtlpExportTests
     [Fact]
     public void OtlpExport_Activates_WhenEndpointSet()
     {
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["otel:enabled"] = "true",
@@ -39,9 +41,9 @@ public class OtlpExportTests
             })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
 
         // Export is configured (no way to verify at DI level, but it should not crash)
         Assert.NotNull(sp);
@@ -50,16 +52,16 @@ public class OtlpExportTests
     [Fact]
     public void OtlpExport_ConfigEndpoint_Activates()
     {
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["otel:export:endpoint"] = "http://localhost:4317"
             })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.NotNull(sp);
     }
@@ -67,7 +69,7 @@ public class OtlpExportTests
     [Fact]
     public void OtelDisabled_NoInstrumentation()
     {
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["otel:enabled"] = "false",
@@ -75,9 +77,9 @@ public class OtlpExportTests
             })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
 
         // Disabled — no OTEL services registered
         Assert.NotNull(sp);
@@ -86,7 +88,7 @@ public class OtlpExportTests
     [Fact]
     public void IndividualSignalToggles_TracesDisabled()
     {
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["otel:traces:enabled"] = "false",
@@ -95,9 +97,9 @@ public class OtlpExportTests
             })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.NotNull(sp);
     }
@@ -105,7 +107,7 @@ public class OtlpExportTests
     [Fact]
     public void IndividualSignalToggles_MetricsDisabled()
     {
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["otel:traces:enabled"] = "true",
@@ -114,9 +116,9 @@ public class OtlpExportTests
             })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.NotNull(sp);
     }
@@ -124,7 +126,7 @@ public class OtlpExportTests
     [Fact]
     public void IndividualSignalToggles_LogsDisabled()
     {
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["otel:traces:enabled"] = "true",
@@ -133,9 +135,9 @@ public class OtlpExportTests
             })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.NotNull(sp);
     }
@@ -143,7 +145,7 @@ public class OtlpExportTests
     [Fact]
     public void ServiceName_EnvVarTakesPrecedence()
     {
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["OTEL_SERVICE_NAME"] = "custom-service",
@@ -151,9 +153,9 @@ public class OtlpExportTests
             })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
 
         // OTEL_SERVICE_NAME takes precedence — just verify no errors
         Assert.NotNull(sp);
@@ -163,12 +165,12 @@ public class OtlpExportTests
     public void AspireAppHost_ProjectFile_Exists()
     {
         // Verify the AppHost project structure exists
-        var appHostDir = Path.Combine(
+        string appHostDir = Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory,
             "..", "..", "..", "..", "..", "src", "Lopen.AppHost");
 
-        var csprojPath = Path.Combine(appHostDir, "Lopen.AppHost.csproj");
-        var programPath = Path.Combine(appHostDir, "Program.cs");
+        string csprojPath = Path.Combine(appHostDir, "Lopen.AppHost.csproj");
+        string programPath = Path.Combine(appHostDir, "Program.cs");
 
         Assert.True(File.Exists(csprojPath), $"AppHost csproj not found at {csprojPath}");
         Assert.True(File.Exists(programPath), $"AppHost Program.cs not found at {programPath}");
@@ -177,14 +179,28 @@ public class OtlpExportTests
     [Fact]
     public void AspireAppHost_Program_ReferencesLopen()
     {
-        var appHostDir = Path.Combine(
+        string appHostDir = Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory,
             "..", "..", "..", "..", "..", "src", "Lopen.AppHost");
-        var programPath = Path.Combine(appHostDir, "Program.cs");
+        string programPath = Path.Combine(appHostDir, "Program.cs");
 
-        var content = File.ReadAllText(programPath);
+        string content = File.ReadAllText(programPath);
         Assert.Contains("lopen", content);
         Assert.Contains("DistributedApplication", content);
+    }
+
+    [Fact]
+    public void Lopen_DoesNotReference_ServiceDefaults()
+    {
+        // OTEL-13: ServiceDefaults is ASP.NET Core web-service boilerplate, not needed for CLI.
+        // AddLopenOtel() provides all necessary OTEL wiring.
+        string lopenDir = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory,
+            "..", "..", "..", "..", "..", "src", "Lopen");
+        string csprojPath = Path.Combine(lopenDir, "Lopen.csproj");
+
+        string content = File.ReadAllText(csprojPath);
+        Assert.DoesNotContain("ServiceDefaults", content);
     }
 
     // ==================== OTEL-10: Log correlation with TraceId/SpanId ====================
@@ -193,16 +209,16 @@ public class OtlpExportTests
     public void StructuredLogs_CarryTraceIdAndSpanId_WhenActivityActive()
     {
         // OTEL-10: Verify structured logs carry TraceId and SpanId from active Activity
-        using var source = new System.Diagnostics.ActivitySource("Lopen.Otel.Tests.LogCorrelation");
-        using var listener = new System.Diagnostics.ActivityListener
+        using ActivitySource source = new("Lopen.Otel.Tests.LogCorrelation");
+        using ActivityListener listener = new()
         {
             ShouldListenTo = _ => true,
-            Sample = (ref System.Diagnostics.ActivityCreationOptions<System.Diagnostics.ActivityContext> _) =>
-                System.Diagnostics.ActivitySamplingResult.AllData
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.AllData
         };
-        System.Diagnostics.ActivitySource.AddActivityListener(listener);
+        ActivitySource.AddActivityListener(listener);
 
-        using var activity = source.StartActivity("test-span");
+        using Activity? activity = source.StartActivity("test-span");
         Assert.NotNull(activity);
 
         // Verify the activity has valid TraceId and SpanId
@@ -210,28 +226,28 @@ public class OtlpExportTests
         Assert.NotEqual(default, activity.SpanId);
 
         // Verify Activity.Current is set within the span
-        Assert.Equal(activity, System.Diagnostics.Activity.Current);
+        Assert.Equal(activity, Activity.Current);
 
         // Log via ILogger within the activity context
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["otel:enabled"] = "true" })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
-        var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("test");
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
+        ILogger logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("test");
 
         logger.LogInformation("Test log within span");
 
         // The key assertion: Activity.Current is available for log correlation
-        Assert.Equal(activity.TraceId, System.Diagnostics.Activity.Current!.TraceId);
-        Assert.Equal(activity.SpanId, System.Diagnostics.Activity.Current!.SpanId);
+        Assert.Equal(activity.TraceId, Activity.Current!.TraceId);
+        Assert.Equal(activity.SpanId, Activity.Current!.SpanId);
 
         // Verify ActivityTrackingOptions configured for non-OTLP sink enrichment
-        var optionsMonitor = sp.GetService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>();
+        IOptions<LoggerFactoryOptions>? optionsMonitor = sp.GetService<IOptions<LoggerFactoryOptions>>();
         Assert.NotNull(optionsMonitor);
-        var options = optionsMonitor!.Value;
+        LoggerFactoryOptions options = optionsMonitor!.Value;
         Assert.True(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.TraceId));
         Assert.True(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.SpanId));
     }
@@ -242,7 +258,7 @@ public class OtlpExportTests
     public void OtlpExport_AllThreeSignals_WhenEndpointSet()
     {
         // OTEL-11: When OTEL_EXPORTER_OTLP_ENDPOINT is set, all 3 signals should be active
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["otel:enabled"] = "true",
@@ -253,23 +269,23 @@ public class OtlpExportTests
             })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
 
         // Verify all three signal providers are registered
         Assert.NotNull(sp); // Provider built without error
 
         // Verify TracerProvider is available (traces enabled)
-        var tracerProvider = sp.GetService<TracerProvider>();
+        TracerProvider? tracerProvider = sp.GetService<TracerProvider>();
         Assert.NotNull(tracerProvider);
 
         // Verify MeterProvider is available (metrics enabled)
-        var meterProvider = sp.GetService<MeterProvider>();
+        MeterProvider? meterProvider = sp.GetService<MeterProvider>();
         Assert.NotNull(meterProvider);
 
         // Verify ILoggerFactory is configured (logs enabled via AddOpenTelemetry)
-        var loggerFactory = sp.GetService<ILoggerFactory>();
+        ILoggerFactory? loggerFactory = sp.GetService<ILoggerFactory>();
         Assert.NotNull(loggerFactory);
     }
 
@@ -279,7 +295,7 @@ public class OtlpExportTests
     public void NoEndpoint_NoOtlpExporter_ServicesStillResolve()
     {
         // OTEL-12: When no OTLP endpoint configured, no telemetry leaves the process
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["otel:enabled"] = "true"
@@ -287,24 +303,24 @@ public class OtlpExportTests
             })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
 
         // Services resolve but no OTLP exporter is configured
         Assert.NotNull(sp);
 
         // Create and record spans — they should be processed but not exported
-        using var source = new System.Diagnostics.ActivitySource(LopenTelemetryDiagnostics.AllSourceNames[0]);
-        using var listener = new System.Diagnostics.ActivityListener
+        using ActivitySource source = new(LopenTelemetryDiagnostics.AllSourceNames[0]);
+        using ActivityListener listener = new()
         {
             ShouldListenTo = _ => true,
-            Sample = (ref System.Diagnostics.ActivityCreationOptions<System.Diagnostics.ActivityContext> _) =>
-                System.Diagnostics.ActivitySamplingResult.AllData
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.AllData
         };
-        System.Diagnostics.ActivitySource.AddActivityListener(listener);
+        ActivitySource.AddActivityListener(listener);
 
-        using var activity = source.StartActivity("test-no-export");
+        using Activity? activity = source.StartActivity("test-no-export");
         Assert.NotNull(activity);
         activity.SetTag("test", "value");
         // Activity completes without error — no OTLP export attempted
@@ -314,7 +330,7 @@ public class OtlpExportTests
     public void Disabled_NoSignals_NoExport()
     {
         // OTEL-12: When otel is disabled entirely, nothing is configured
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["otel:enabled"] = "false",
@@ -322,12 +338,12 @@ public class OtlpExportTests
             })
             .Build();
 
-        var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        var sp = services.BuildServiceProvider();
+        ServiceCollection services = new();
+        services.AddLopenOtel(config, []);
+        ServiceProvider sp = services.BuildServiceProvider();
 
         // When disabled, TracerProvider should NOT be registered
-        var tracerProvider = sp.GetService<TracerProvider>();
+        TracerProvider? tracerProvider = sp.GetService<TracerProvider>();
         Assert.Null(tracerProvider);
     }
 
@@ -337,43 +353,43 @@ public class OtlpExportTests
     public void AddLopenOtel_Overhead_LessThan5ms()
     {
         // OTEL-17: OTEL instrumentation should add < 5ms to startup
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["otel:enabled"] = "true" })
             .Build();
 
         // Warm up JIT
-        var warmup = new ServiceCollection();
-        warmup.AddLopenOtel(config);
+        ServiceCollection warmup = new();
+        warmup.AddLopenOtel(config, []);
         warmup.BuildServiceProvider().Dispose();
 
         // Measure baseline (no OTEL)
-        var baselineConfig = new ConfigurationBuilder()
+        IConfigurationRoot baselineConfig = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["otel:enabled"] = "false" })
             .Build();
 
         const int iterations = 50;
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Stopwatch sw = Stopwatch.StartNew();
         for (int i = 0; i < iterations; i++)
         {
-            var s = new ServiceCollection();
-            s.AddLopenOtel(baselineConfig);
+            ServiceCollection s = new();
+            s.AddLopenOtel(baselineConfig, []);
             s.BuildServiceProvider().Dispose();
         }
         sw.Stop();
-        var baselineMs = sw.Elapsed.TotalMilliseconds / iterations;
+        double baselineMs = sw.Elapsed.TotalMilliseconds / iterations;
 
         // Measure with OTEL enabled
         sw.Restart();
         for (int i = 0; i < iterations; i++)
         {
-            var s = new ServiceCollection();
-            s.AddLopenOtel(config);
+            ServiceCollection s = new();
+            s.AddLopenOtel(config, []);
             s.BuildServiceProvider().Dispose();
         }
         sw.Stop();
-        var otelMs = sw.Elapsed.TotalMilliseconds / iterations;
+        double otelMs = sw.Elapsed.TotalMilliseconds / iterations;
 
-        var overheadMs = otelMs - baselineMs;
+        double overheadMs = otelMs - baselineMs;
         Assert.True(overheadMs < 5.0,
             $"OTEL overhead was {overheadMs:F2}ms (baseline: {baselineMs:F2}ms, OTEL: {otelMs:F2}ms) — exceeds 5ms limit");
     }

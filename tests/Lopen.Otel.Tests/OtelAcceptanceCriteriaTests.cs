@@ -1,10 +1,11 @@
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace Lopen.Otel.Tests;
 
@@ -41,7 +42,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC01_CommandRootSpan_HasRequiredAttributes()
     {
-        using var cmd = SpanFactory.StartCommand("build", headless: true, hasPrompt: false);
+        using Activity? cmd = SpanFactory.StartCommand("build", headless: true, hasPrompt: false);
         Assert.NotNull(cmd);
         Assert.Equal("lopen.command", cmd!.OperationName);
         Assert.Equal("build", cmd.GetTagItem("lopen.command.name"));
@@ -54,7 +55,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC01_CommandRootSpan_ExitCodeNonZero()
     {
-        using var cmd = SpanFactory.StartCommand("plan");
+        using Activity? cmd = SpanFactory.StartCommand("plan");
         SpanFactory.SetCommandExitCode(cmd, 1);
         Assert.Equal(1, cmd!.GetTagItem("lopen.command.exit_code"));
     }
@@ -64,8 +65,8 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC02_WorkflowPhaseSpan_HasPhaseNameAndModuleAttributes()
     {
-        using var cmd = SpanFactory.StartCommand("spec");
-        using var phase = SpanFactory.StartWorkflowPhase("spec", "auth", iteration: 1);
+        using Activity? cmd = SpanFactory.StartCommand("spec");
+        using Activity? phase = SpanFactory.StartWorkflowPhase("spec", "auth", iteration: 1);
 
         Assert.NotNull(phase);
         Assert.Equal("lopen.workflow.phase", phase!.OperationName);
@@ -76,8 +77,8 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC02_WorkflowPhaseSpan_IsChildOfCommandSpan()
     {
-        using var cmd = SpanFactory.StartCommand("build");
-        using var phase = SpanFactory.StartWorkflowPhase("build", "core");
+        using Activity? cmd = SpanFactory.StartCommand("build");
+        using Activity? phase = SpanFactory.StartWorkflowPhase("build", "core");
 
         Assert.Equal(cmd!.Context.TraceId, phase!.Context.TraceId);
         Assert.Equal(cmd.Context.SpanId, phase.ParentSpanId);
@@ -88,9 +89,9 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC03_SdkInvocationSpan_HasModelAndTokenAttributes()
     {
-        using var cmd = SpanFactory.StartCommand("build");
-        using var phase = SpanFactory.StartWorkflowPhase("build", "core");
-        using var sdk = SpanFactory.StartSdkInvocation("claude-sonnet-4");
+        using Activity? cmd = SpanFactory.StartCommand("build");
+        using Activity? phase = SpanFactory.StartWorkflowPhase("build", "core");
+        using Activity? sdk = SpanFactory.StartSdkInvocation("claude-sonnet-4");
 
         Assert.NotNull(sdk);
         Assert.Equal("lopen.sdk.invocation", sdk!.OperationName);
@@ -108,7 +109,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC04_ToolSpan_HasToolNameAndSuccessAttributes()
     {
-        using var tool = SpanFactory.StartTool("read_spec", module: "auth");
+        using Activity? tool = SpanFactory.StartTool("read_spec", module: "auth");
         Assert.NotNull(tool);
         Assert.Contains("lopen.tool.read_spec", tool!.OperationName);
         Assert.Equal("read_spec", tool.GetTagItem("lopen.tool.name"));
@@ -120,7 +121,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC04_ToolSpan_FailureRecordsError()
     {
-        using var tool = SpanFactory.StartTool("write_file");
+        using Activity? tool = SpanFactory.StartTool("write_file");
         SpanFactory.SetToolResult(tool, success: false, error: "Permission denied");
 
         Assert.Equal(false, tool!.GetTagItem("lopen.tool.success"));
@@ -132,7 +133,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC05_OracleVerificationSpan_HasScopeVerdictAndAttemptAttributes()
     {
-        using var oracle = SpanFactory.StartOracleVerification("task", "gpt-4o", attempt: 3);
+        using Activity? oracle = SpanFactory.StartOracleVerification("task", "gpt-4o", attempt: 3);
         Assert.NotNull(oracle);
         Assert.Equal("lopen.oracle.verification", oracle!.OperationName);
         Assert.Equal("task", oracle.GetTagItem("lopen.oracle.scope"));
@@ -148,7 +149,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC06_TaskExecutionSpan_HasOutcomeAndIterationsAttributes()
     {
-        using var task = SpanFactory.StartTask("Implement login", "auth_handler", "auth");
+        using Activity? task = SpanFactory.StartTask("Implement login", "auth_handler", "auth");
         Assert.NotNull(task);
         Assert.Equal("lopen.task.execution", task!.OperationName);
 
@@ -162,7 +163,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC07_BackpressureEventSpan_CreatedWithAttributes()
     {
-        using var bp = SpanFactory.StartBackpressure("resource_limits", "budget_exceeded", "throttle");
+        using Activity? bp = SpanFactory.StartBackpressure("resource_limits", "budget_exceeded", "throttle");
         Assert.NotNull(bp);
         Assert.Equal("lopen.backpressure.event", bp!.OperationName);
         Assert.Equal("resource_limits", bp.GetTagItem("lopen.backpressure.category"));
@@ -241,18 +242,18 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     public void AC10_StructuredLogs_CarryTraceIdAndSpanId()
     {
         using var source = new ActivitySource("Lopen.Otel.Tests.AC10");
-        using var activity = source.StartActivity("test-log-correlation");
+        using Activity? activity = source.StartActivity("test-log-correlation");
         Assert.NotNull(activity);
 
         Assert.Equal(activity, Activity.Current);
         Assert.NotEqual(default, activity!.TraceId);
         Assert.NotEqual(default, activity.SpanId);
 
-        var config = BuildConfig(new Dictionary<string, string?> { ["otel:enabled"] = "true" });
+        IConfiguration config = BuildConfig(new Dictionary<string, string?> { ["otel:enabled"] = "true" });
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        using var sp = services.BuildServiceProvider();
-        var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("AC10");
+        services.AddLopenOtel(config, []);
+        using ServiceProvider sp = services.BuildServiceProvider();
+        ILogger logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("AC10");
 
         // Capture scopes emitted by the logger to verify TraceId/SpanId enrichment
         var scopeValues = new List<KeyValuePair<string, object?>>();
@@ -262,8 +263,8 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         }
 
         // Verify ActivityTrackingOptions are configured so non-OTLP sinks receive TraceId/SpanId
-        var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-        var scopeLogger = loggerFactory.CreateLogger("AC10.ScopeCheck");
+        ILoggerFactory loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+        ILogger scopeLogger = loggerFactory.CreateLogger("AC10.ScopeCheck");
         var capturedScopes = new List<string>();
         // Use a scope-capturing logger to verify TraceId/SpanId appear in scopes
         scopeLogger.Log(LogLevel.Information, 0, "scope-test", null, (s, _) =>
@@ -273,9 +274,9 @@ public class OtelAcceptanceCriteriaTests : IDisposable
 
         // The definitive assertion: ActivityTrackingOptions enables the framework to
         // inject TraceId/SpanId as scopes. We verify the options are set.
-        var optionsMonitor = sp.GetService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>();
+        IOptions<LoggerFactoryOptions>? optionsMonitor = sp.GetService<Microsoft.Extensions.Options.IOptions<LoggerFactoryOptions>>();
         Assert.NotNull(optionsMonitor);
-        var options = optionsMonitor!.Value;
+        LoggerFactoryOptions options = optionsMonitor!.Value;
         Assert.True(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.TraceId));
         Assert.True(options.ActivityTrackingOptions.HasFlag(ActivityTrackingOptions.SpanId));
 
@@ -288,7 +289,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC11_OtlpEndpointSet_AllThreeSignalsRegistered()
     {
-        var config = BuildConfig(new Dictionary<string, string?>
+        IConfiguration config = BuildConfig(new Dictionary<string, string?>
         {
             ["otel:enabled"] = "true",
             ["otel:traces:enabled"] = "true",
@@ -298,8 +299,8 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         });
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        using var sp = services.BuildServiceProvider();
+        services.AddLopenOtel(config, []);
+        using ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.NotNull(sp.GetService<TracerProvider>());
         Assert.NotNull(sp.GetService<MeterProvider>());
@@ -311,19 +312,19 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC12_NoEndpoint_NoTelemetryExported()
     {
-        var config = BuildConfig(new Dictionary<string, string?>
+        IConfiguration config = BuildConfig(new Dictionary<string, string?>
         {
             ["otel:enabled"] = "true"
         });
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
+        services.AddLopenOtel(config, []);
 
-        var exception = Record.Exception(() =>
+        Exception exception = Record.Exception(() =>
         {
-            using var sp = services.BuildServiceProvider();
+            using ServiceProvider sp = services.BuildServiceProvider();
             using var source = new ActivitySource(LopenTelemetryDiagnostics.AllSourceNames[0]);
-            using var activity = source.StartActivity("no-export-test");
+            using Activity? activity = source.StartActivity("no-export-test");
             activity?.SetTag("test", "value");
         });
 
@@ -353,15 +354,15 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC14_MasterToggleDisabled_NoInstrumentation()
     {
-        var config = BuildConfig(new Dictionary<string, string?>
+        IConfiguration config = BuildConfig(new Dictionary<string, string?>
         {
             ["otel:enabled"] = "false",
             ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4317"
         });
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        using var sp = services.BuildServiceProvider();
+        services.AddLopenOtel(config, []);
+        using ServiceProvider sp = services.BuildServiceProvider();
 
         Assert.Null(sp.GetService<TracerProvider>());
         Assert.Null(sp.GetService<MeterProvider>());
@@ -377,7 +378,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         string traces, string metrics, string logs,
         bool expectTracer, bool expectMeter)
     {
-        var config = BuildConfig(new Dictionary<string, string?>
+        IConfiguration config = BuildConfig(new Dictionary<string, string?>
         {
             ["otel:traces:enabled"] = traces,
             ["otel:metrics:enabled"] = metrics,
@@ -385,8 +386,8 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         });
 
         var services = new ServiceCollection();
-        services.AddLopenOtel(config);
-        using var sp = services.BuildServiceProvider();
+        services.AddLopenOtel(config, []);
+        using ServiceProvider sp = services.BuildServiceProvider();
 
         if (expectTracer)
             Assert.NotNull(sp.GetService<TracerProvider>());
@@ -404,7 +405,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC16_OtelEnvVars_TakePrecedenceOverConfig()
     {
-        var config = BuildConfig(new Dictionary<string, string?>
+        IConfiguration config = BuildConfig(new Dictionary<string, string?>
         {
             ["OTEL_SERVICE_NAME"] = "env-service",
             ["otel:service_name"] = "config-service"
@@ -418,7 +419,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC16_OtelEndpointEnvVar_TakePrecedenceOverConfig()
     {
-        var config = BuildConfig(new Dictionary<string, string?>
+        IConfiguration config = BuildConfig(new Dictionary<string, string?>
         {
             ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://env:4317",
             ["otel:export:endpoint"] = "http://config:4317"
@@ -433,12 +434,12 @@ public class OtelAcceptanceCriteriaTests : IDisposable
     [Fact]
     public void AC17_InstrumentationOverhead_LessThan50ms()
     {
-        var config = BuildConfig(new Dictionary<string, string?> { ["otel:enabled"] = "true" });
-        var disabledConfig = BuildConfig(new Dictionary<string, string?> { ["otel:enabled"] = "false" });
+        IConfiguration config = BuildConfig(new Dictionary<string, string?> { ["otel:enabled"] = "true" });
+        IConfiguration disabledConfig = BuildConfig(new Dictionary<string, string?> { ["otel:enabled"] = "false" });
 
         // JIT warmup
         var warmup = new ServiceCollection();
-        warmup.AddLopenOtel(config);
+        warmup.AddLopenOtel(config, []);
         warmup.BuildServiceProvider().Dispose();
 
         const int iterations = 20;
@@ -447,7 +448,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         for (int i = 0; i < iterations; i++)
         {
             var s = new ServiceCollection();
-            s.AddLopenOtel(disabledConfig);
+            s.AddLopenOtel(disabledConfig, []);
             s.BuildServiceProvider().Dispose();
         }
         sw.Stop();
@@ -457,7 +458,7 @@ public class OtelAcceptanceCriteriaTests : IDisposable
         for (int i = 0; i < iterations; i++)
         {
             var s = new ServiceCollection();
-            s.AddLopenOtel(config);
+            s.AddLopenOtel(config, []);
             s.BuildServiceProvider().Dispose();
         }
         sw.Stop();

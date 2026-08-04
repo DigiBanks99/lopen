@@ -7,7 +7,7 @@ public class ConfigurationDiagnosticsTests
     [Fact]
     public void GetEntries_ReturnsEntriesWithSources()
     {
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Models:Planning"] = "gpt-5",
@@ -15,7 +15,7 @@ public class ConfigurationDiagnosticsTests
             })
             .Build();
 
-        var entries = ConfigurationDiagnostics.GetEntries(config);
+        IReadOnlyList<ConfigurationEntry> entries = ConfigurationDiagnostics.GetEntries(config);
 
         Assert.Equal(2, entries.Count);
         Assert.Contains(entries, e => e.Key == "Models:Planning" && e.Value == "gpt-5");
@@ -25,7 +25,7 @@ public class ConfigurationDiagnosticsTests
     [Fact]
     public void GetEntries_SkipsNullValues()
     {
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Key1"] = "value",
@@ -33,7 +33,7 @@ public class ConfigurationDiagnosticsTests
             })
             .Build();
 
-        var entries = ConfigurationDiagnostics.GetEntries(config);
+        IReadOnlyList<ConfigurationEntry> entries = ConfigurationDiagnostics.GetEntries(config);
 
         Assert.Single(entries);
         Assert.Equal("Key1", entries[0].Key);
@@ -42,14 +42,14 @@ public class ConfigurationDiagnosticsTests
     [Fact]
     public void GetEntries_IdentifiesMemoryProviderAsCLIOverride()
     {
-        var config = new ConfigurationBuilder()
+        IConfigurationRoot config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Models:Planning"] = "gpt-5"
             })
             .Build();
 
-        var entries = ConfigurationDiagnostics.GetEntries(config);
+        IReadOnlyList<ConfigurationEntry> entries = ConfigurationDiagnostics.GetEntries(config);
 
         Assert.Single(entries);
         Assert.Equal("CLI Override", entries[0].Source);
@@ -63,14 +63,14 @@ public class ConfigurationDiagnosticsTests
         {
             File.WriteAllText(tempFile, """{"Models": {"Planning": "gpt-5"}}""");
 
-            var config = new ConfigurationBuilder()
+            IConfigurationRoot config = new ConfigurationBuilder()
                 .AddJsonFile(tempFile, optional: false)
                 .Build();
 
-            var entries = ConfigurationDiagnostics.GetEntries(config);
+            IReadOnlyList<ConfigurationEntry> entries = ConfigurationDiagnostics.GetEntries(config);
 
             Assert.Contains(entries, e => e.Key == "Models:Planning" && e.Value == "gpt-5");
-            var planningEntry = entries.First(e => e.Key == "Models:Planning");
+            ConfigurationEntry planningEntry = entries.First(e => e.Key == "Models:Planning");
             Assert.Contains(Path.GetFileName(tempFile), planningEntry.Source);
         }
         finally
@@ -119,7 +119,7 @@ public class ConfigurationDiagnosticsTests
         {
             File.WriteAllText(tempFile, """{"Key": "from-json"}""");
 
-            var config = new ConfigurationBuilder()
+            IConfigurationRoot config = new ConfigurationBuilder()
                 .AddJsonFile(tempFile, optional: false)
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
@@ -127,9 +127,9 @@ public class ConfigurationDiagnosticsTests
                 })
                 .Build();
 
-            var entries = ConfigurationDiagnostics.GetEntries(config);
+            IReadOnlyList<ConfigurationEntry> entries = ConfigurationDiagnostics.GetEntries(config);
 
-            var entry = entries.First(e => e.Key == "Key");
+            ConfigurationEntry entry = entries.First(e => e.Key == "Key");
             Assert.Equal("from-override", entry.Value);
             Assert.Equal("CLI Override", entry.Source);
         }

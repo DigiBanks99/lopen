@@ -19,7 +19,7 @@ public static class ServiceCollectionExtensions
         {
             var globalPath = LopenConfigurationBuilder.GetDefaultGlobalConfigPath();
             var projectPath = LopenConfigurationBuilder.DiscoverProjectConfigPath(Directory.GetCurrentDirectory());
-            var result = new LopenConfigurationBuilder(globalPath, projectPath).Build();
+            (LopenOptions Options, IConfigurationRoot Configuration) result = new LopenConfigurationBuilder(globalPath, projectPath).Build();
             options = result.Options;
             configRoot = result.Configuration;
         }

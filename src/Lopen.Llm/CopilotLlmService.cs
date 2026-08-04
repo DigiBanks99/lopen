@@ -1,4 +1,5 @@
 using GitHub.Copilot.SDK;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
 namespace Lopen.Llm;
@@ -28,7 +29,7 @@ internal sealed class CopilotLlmService : ILlmService
     public async Task<LlmInvocationResult> InvokeAsync(
         string systemPrompt,
         string model,
-        IReadOnlyList<LopenToolDefinition> tools,
+        IReadOnlyList<AIFunction> tools,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(systemPrompt);
@@ -52,7 +53,7 @@ internal sealed class CopilotLlmService : ILlmService
         }
 
         // Verify auth before creating session
-        var authStatus = await client.GetAuthStatusAsync(cancellationToken);
+        GetAuthStatusResponse authStatus = await client.GetAuthStatusAsync(cancellationToken);
         if (!authStatus.IsAuthenticated)
         {
             throw new LlmException(
@@ -60,37 +61,15 @@ internal sealed class CopilotLlmService : ILlmService
                 model);
         }
 
-        var aiFunctions = ToolConversion.ToAiFunctions(tools);
-        _logger.LogDebug("Converted {BoundToolCount}/{TotalToolCount} tools to AIFunction instances",
-            aiFunctions.Count, tools.Count);
-
-        var config = new SessionConfig
-        {
-            Model = model,
-            SystemMessage = new SystemMessageConfig
-            {
-                Content = systemPrompt,
-                Mode = SystemMessageMode.Replace,
-            },
-            Tools = aiFunctions,
-            Streaming = false,
-            Hooks = new SessionHooks
-            {
-                OnErrorOccurred = async (input, _) =>
-                {
-                    var result = await _authErrorHandler.HandleErrorAsync(input, cancellationToken);
-                    return result ?? new ErrorOccurredHookOutput();
-                },
-            },
-        };
+        SessionConfig config = BuildSessionConfig(model, systemPrompt, tools.ToList(), _authErrorHandler, cancellationToken);
 
         // Track usage via events
         int inputTokens = 0, outputTokens = 0, toolCallCount = 0;
         int contextWindowSize = 0;
 
-        await using var session = await client.CreateSessionAsync(config, cancellationToken);
+        await using CopilotSession session = await client.CreateSessionAsync(config, cancellationToken);
 
-        using var eventSub = session.On(evt =>
+        using IDisposable eventSub = session.On(evt =>
         {
             switch (evt)
             {
@@ -115,7 +94,7 @@ internal sealed class CopilotLlmService : ILlmService
         {
             _logger.LogDebug("Sending prompt to session {SessionId}", session.SessionId);
 
-            var response = await session.SendAndWaitAsync(
+            AssistantMessageEvent? response = await session.SendAndWaitAsync(
                 new MessageOptions { Prompt = "" },
                 DefaultTimeout,
                 cancellationToken);
@@ -149,6 +128,39 @@ internal sealed class CopilotLlmService : ILlmService
                 IsModelUnavailable = LlmException.LooksLikeModelUnavailable(ex),
             };
         }
+    }
+
+    /// <summary>
+    /// Builds the session configuration for a Copilot SDK session.
+    /// OnPermissionRequest is always set to PermissionHandler.ApproveAll as required by the SDK.
+    /// </summary>
+    internal static SessionConfig BuildSessionConfig(
+        string model,
+        string systemPrompt,
+        List<AIFunction> tools,
+        IAuthErrorHandler authErrorHandler,
+        CancellationToken cancellationToken)
+    {
+        return new SessionConfig
+        {
+            OnPermissionRequest = PermissionHandler.ApproveAll,
+            Model = model,
+            SystemMessage = new SystemMessageConfig
+            {
+                Content = systemPrompt,
+                Mode = SystemMessageMode.Replace,
+            },
+            Tools = tools,
+            Streaming = false,
+            Hooks = new SessionHooks
+            {
+                OnErrorOccurred = async (input, _) =>
+                {
+                    ErrorOccurredHookOutput? result = await authErrorHandler.HandleErrorAsync(input, cancellationToken);
+                    return result ?? new ErrorOccurredHookOutput();
+                },
+            },
+        };
     }
 
     /// <summary>

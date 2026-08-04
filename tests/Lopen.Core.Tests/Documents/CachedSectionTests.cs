@@ -7,7 +7,7 @@ public class CachedSectionTests
     [Fact]
     public void Constructor_SetsAllProperties()
     {
-        var timestamp = DateTimeOffset.UtcNow;
+        DateTimeOffset timestamp = DateTimeOffset.UtcNow;
         var section = new CachedSection(
             "/docs/requirements/core/SPECIFICATION.md",
             "Acceptance Criteria",
@@ -25,7 +25,7 @@ public class CachedSectionTests
     [Fact]
     public void Equality_WorksByValue()
     {
-        var timestamp = DateTimeOffset.UtcNow;
+        DateTimeOffset timestamp = DateTimeOffset.UtcNow;
         var a = new CachedSection("file", "header", "content", "hash", timestamp);
         var b = new CachedSection("file", "header", "content", "hash", timestamp);
         Assert.Equal(a, b);
@@ -34,7 +34,7 @@ public class CachedSectionTests
     [Fact]
     public void Inequality_DifferentContent()
     {
-        var timestamp = DateTimeOffset.UtcNow;
+        DateTimeOffset timestamp = DateTimeOffset.UtcNow;
         var a = new CachedSection("file", "header", "content1", "hash1", timestamp);
         var b = new CachedSection("file", "header", "content2", "hash2", timestamp);
         Assert.NotEqual(a, b);

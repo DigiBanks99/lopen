@@ -165,4 +165,12 @@ public class StoragePathsTests
         Assert.DoesNotContain(".lopen", result);
         Assert.Contains("docs", result);
     }
+
+    [Fact]
+    public void GetModuleAssessmentHintPath_ReturnsCorrectPath()
+    {
+        var result = StoragePaths.GetModuleAssessmentHintPath(ProjectRoot, "auth");
+
+        Assert.Equal(Path.Combine(ProjectRoot, ".lopen", "cache", "assessments", "auth.json"), result);
+    }
 }
